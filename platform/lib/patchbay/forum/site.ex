@@ -316,7 +316,10 @@ defmodule Patchbay.Forum.Site do
     end
 
     update :picture_failed do
-      description("Three tries at a picture failed: the next try waits a day.")
+      description(
+        "Three tries at a picture failed, or the site asked us to slow down: the next try waits a day."
+      )
+
       accept([])
       change(set_attribute(:picture_failed_at, &DateTime.utc_now/0))
     end

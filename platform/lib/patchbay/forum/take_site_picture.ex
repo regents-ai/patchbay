@@ -6,12 +6,12 @@ defmodule Patchbay.Forum.TakeSitePicture do
   site's card at it.
 
   A page that answers with an error status has refused the picture, and
-  asking again within a minute gets the same answer, so that is the outcome:
-  the earlier picture is forgotten, so the card never shows a page that now
-  fails, and the next try waits a day. A 429 is the site asking us to slow
-  down, so it, and any other picture that does not come back, is an error
-  (`Patchbay.Forum.PictureNotTaken`) and its job tries again with Oban's
-  backoff.
+  asking again within a minute gets the same answer, so that is the outcome
+  and the next try waits a day. The earlier picture is forgotten, so the card
+  never shows a page that now fails, except after a 429: that is the site
+  asking us to slow down, not a failing page. Any other picture that does not
+  come back is an error (`Patchbay.Forum.PictureNotTaken`), and its job tries
+  again with Oban's backoff.
   """
 
   use Ash.Resource.ManualUpdate
@@ -29,7 +29,8 @@ defmodule Patchbay.Forum.TakeSitePicture do
 
     case Shots.take(site.screenshot_source_url) do
       {:ok, image} -> keep(site, image)
-      {:error, {:page_status, status} = reason} when status != 429 -> refused(site, reason)
+      {:error, {:page_status, 429} = reason} -> slowed(site, reason)
+      {:error, {:page_status, _status} = reason} -> refused(site, reason)
       {:error, reason} -> not_taken(site, reason)
     end
     |> logged()
@@ -61,6 +62,14 @@ defmodule Patchbay.Forum.TakeSitePicture do
 
     site
     |> Ash.Changeset.for_update(:forget_picture, %{})
+    |> Ash.update(authorize?: false)
+  end
+
+  defp slowed(site, reason) do
+    warn(site, reason)
+
+    site
+    |> Ash.Changeset.for_update(:picture_failed, %{})
     |> Ash.update(authorize?: false)
   end
 
