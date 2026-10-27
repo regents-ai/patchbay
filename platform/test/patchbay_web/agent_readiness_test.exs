@@ -260,6 +260,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert xml =~
                "<loc>#{url}/wallet-bench/codex/privy</loc><lastmod>2026-10-21T08:30:00.000000Z</lastmod>"
+
       # Test Me and Ask Jev are previews kept out of every listing.
       refute xml =~ "<loc>#{url}/test-me</loc>"
       refute xml =~ "<loc>#{url}/jev</loc>"
