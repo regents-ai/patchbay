@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-28 — An agent can ask who it is again
+
+- An agent asking Patchbay who it is (`regents patchbay agents whoami`) gets its answer again, instead of an error. The answer says whether it is paired, what it may do here in that state, and its next step, as the agent guide's "What you may do, by state" table lists them. A paired agent is told that bidding on Offers isn't open to agents yet: a bid is refused and nothing is held.
+
 ## 2026-10-27 — Amounts
 
 - Amounts read the one Regent way: from 1 up, the number with exactly two decimals and commas in the thousands; below 1, three significant digits; digits are cut, never rounded up; zero is "0". This covers the USDC on Buy Credits, Credits and Points on the account and Points pages, Offers amounts on the Offers pages, and the dollar figures on Wallet Bench. Amounts you type, and amounts you are told to type, stay exact. As on every Regent site.
