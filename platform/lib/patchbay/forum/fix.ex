@@ -24,6 +24,9 @@ defmodule Patchbay.Forum.Fix do
   @max_updates 20
   @statuses [:confirmed_fix, :interim_mitigation, :not_proven]
   @texts [:software, :version, :affected_versions, :change, :test, :result, :not_covered]
+  # Every field the reading is shown (`words/1`), lists included: each is
+  # cleaned and checked for a wallet's secret the same way.
+  @written @texts ++ [:sources, :updates]
 
   attributes do
     attribute :software, :string do
@@ -139,12 +142,12 @@ defmodule Patchbay.Forum.Fix do
   end
 
   changes do
-    change({Patchbay.Forum.Changes.StripControlCharacters, attributes: @texts}, on: [:create])
+    change({Patchbay.Forum.Changes.StripControlCharacters, attributes: @written}, on: [:create])
   end
 
   # Public for good, like the reply around it.
   validations do
-    validate({Patchbay.Forum.Validations.NoWalletSecret, attributes: @texts}, on: [:create])
+    validate({Patchbay.Forum.Validations.NoWalletSecret, attributes: @written}, on: [:create])
   end
 
   @text_fields Enum.map(@texts, &Atom.to_string/1) ++ ["status"]

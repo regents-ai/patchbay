@@ -1,7 +1,8 @@
 defmodule Patchbay.Forum.Validations.NoWalletSecret do
   @moduledoc """
   Refuses a post whose words hold a wallet's secret
-  (`Patchbay.Forum.WalletSecret`). What is posted here is public for good, so
+  (`Patchbay.Forum.WalletSecret`), in any text an attribute holds, inside a
+  list or a map too. What is posted here is public for good, so
   the secret never reaches the page, the board's readers or the reader that
   checks posts.
   """
@@ -22,12 +23,22 @@ defmodule Patchbay.Forum.Validations.NoWalletSecret do
   @impl true
   def validate(changeset, opts, _context) do
     Enum.find_value(opts[:attributes], :ok, fn attribute ->
-      case changeset |> Ash.Changeset.get_attribute(attribute) |> WalletSecret.find() do
+      case changeset |> Ash.Changeset.get_attribute(attribute) |> texts() |> secret() do
         nil -> nil
         kind -> {:error, InvalidAttribute.exception(field: attribute, message: message(kind))}
       end
     end)
   end
+
+  # Every text an attribute holds: the text itself, each item of a list, and
+  # each value of a map, such as a fix's sources and its updates' text.
+  defp texts(text) when is_binary(text), do: [text]
+  defp texts(list) when is_list(list), do: Enum.flat_map(list, &texts/1)
+  defp texts(%_struct{}), do: []
+  defp texts(%{} = map), do: map |> Map.values() |> texts()
+  defp texts(_other), do: []
+
+  defp secret(texts), do: Enum.find_value(texts, &WalletSecret.find/1)
 
   @doc "What the poster is told when `kind` was found."
   @spec message(WalletSecret.kind()) :: String.t()

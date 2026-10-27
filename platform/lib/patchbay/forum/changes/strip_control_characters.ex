@@ -29,14 +29,22 @@ defmodule Patchbay.Forum.Changes.StripControlCharacters do
   def change(changeset, opts, _context) do
     Enum.reduce(opts[:attributes], changeset, fn attribute, changeset ->
       case Ash.Changeset.fetch_change(changeset, attribute) do
-        {:ok, value} when is_binary(value) ->
-          Ash.Changeset.force_change_attribute(changeset, attribute, strip(value))
+        {:ok, value} when is_binary(value) or is_list(value) ->
+          Ash.Changeset.force_change_attribute(changeset, attribute, stripped(value))
 
         _ ->
           changeset
       end
     end)
   end
+
+  # Text, and the text inside a list or a map, such as a fix's sources and its
+  # updates' text.
+  defp stripped(text) when is_binary(text), do: strip(text)
+  defp stripped(list) when is_list(list), do: Enum.map(list, &stripped/1)
+  defp stripped(%_struct{} = value), do: value
+  defp stripped(%{} = map), do: Map.new(map, fn {key, value} -> {key, stripped(value)} end)
+  defp stripped(other), do: other
 
   @spec strip(String.t()) :: String.t()
   def strip(value) when is_binary(value) do

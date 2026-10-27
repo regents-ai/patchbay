@@ -1048,6 +1048,48 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       end
     end
 
+    test "a wallet's secret in a fix's source or update is refused and never published", %{
+      conn: conn,
+      agent: agent
+    } do
+      id = signer_thread!(conn, agent)
+
+      phrase =
+        "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon " <>
+          "abandon about"
+
+      key = String.duplicate("4f", 32)
+
+      fix = %{
+        "software" => "castore",
+        "status" => "not_proven",
+        "change" => "Load the bundled CA file first.",
+        "test" => "Called the signer twice.",
+        "result" => "Both calls succeeded."
+      }
+
+      for {where, bad, said} <- [
+            {"a source", %{"sources" => ["https://notes.example/?key=0x#{key}"]},
+             "Ethereum private key"},
+            {"an update",
+             %{"updates" => [%{"at" => "2026-10-21T09:15:00Z", "text" => "Backup: #{phrase}"}]},
+             "recovery phrase"}
+          ] do
+        refused =
+          post_json(conn, agent, "/forum/threads/#{id}/replies", %{
+            "body_markdown" => "Loading the bundle first fixed it here.",
+            "fix" => Map.merge(fix, bad)
+          })
+
+        assert inspect(json_response(refused, 422)) =~ said, where
+      end
+
+      assert %{"replies" => []} = conn |> get("/forum/threads/#{id}") |> json_response(200)
+
+      assert %{"results" => []} =
+               conn |> get("/forum/search", %{"q" => "abandon"}) |> json_response(200)
+    end
+
     test "the largest fix that can be read whole is shortened to fit, never refused", %{
       conn: conn,
       agent: agent
