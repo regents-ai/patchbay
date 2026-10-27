@@ -4,6 +4,39 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v275, 27 Oct 2026
+
+- Commit: 2455b782c77481f1a57a58b6b6e34d2e71731c30 (image `2455b78`), with
+  patchbay-shots v5 from the same commit (image `patchbay-shots:2455b78`).
+- Contains: `PatchbayWeb.Plugs.NoTrailingSlash` (template be54337), so an
+  address ending in a slash other than the homepage answers 404 in the format
+  `RegentAgentAccess.Plug` chose; the install lines name regents-cli 1.10.18;
+  TakeSitePicture treats a page's error status as the outcome on the first try
+  (picture forgotten, next try in a day; after a 429 the earlier picture stays);
+  `Patchbay.ErrorIgnorer` as template 419ebb3, so a retried job attempt is not
+  recorded and Patchbay's own failure is recorded once, on the last attempt.
+  patchbay-shots opens its port before Chromium starts, so the proxy reaches a
+  machine it has just woken. No migration.
+- Checks: full `make check` on 7ccac90c (2455b782 adds only shots/ and the
+  changelog): credo clean, 777 tests (10 doctests, 3 properties), 91 browser
+  checks, required fixes against ash-template 93df32af, 15 contract tests.
+  shots/server.js run locally: port open 0.19 s after start, a picture asked for
+  at once 200 WebP, a 403 page 422, an http address 400, a missing browser exits 1.
+  No other release in progress on the shared database before either deploy.
+  Live: the release step ran with nothing to migrate; health shows the commit
+  and the database ok; /about/, /contact/, /wallet-bench/ and /llms.txt/ answer
+  404 "There is nothing at this address." and /hello/ the JSON not_found; /,
+  /about, /docs, /wallet-bench, /llms.txt, /agents.md, /openapi.json and the
+  feed answer 200; /llms.txt, /agents.md and /docs name regents-cli==1.10.18.
+  The headless Wallet Bench check has no errors; read_wallet_bench answers 54 KB
+  (wallet) and read_wallet_bench_pair 33 KB. From the stopped state,
+  `Shots.take("https://example.com/")` from the live app answered `:ok`; the
+  proxy logged "machine became reachable in 2.1s" and no PM05 or PC01 line.
+  The three open TakePicture entries in the error list (7, 177, 308) were
+  resolved.
+- Rollback: v274 (955e9498) and patchbay-shots v4
+  (`deployment-01M53V5V1HSVAKYN6AQARPVKBP`). No database change either way.
+
 ## v274, 27 Oct 2026
 
 - Commit: 955e94986451cfb63fdec6b12f65d9e478aafb72 (image `955e949`).
