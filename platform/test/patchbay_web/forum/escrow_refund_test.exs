@@ -12,8 +12,8 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   """
 
   use PatchbayWeb.ConnCase, async: false
+  use AshOban.Test, repo: Patchbay.Repo
 
-  alias Patchbay.Escrow.Watch
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PriorityRefund
@@ -239,27 +239,27 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert ordinary_ids(versions) == [report.id]
     end
 
-    test "a pass with no escrow configured reads nothing and changes nothing", %{tool: tool} do
+    test "a sweep with no escrow configured reads nothing and changes nothing", %{tool: tool} do
       asker = profile("aaa")
       report = credited(tool, asker)
 
-      assert Watch.reconcile() == {:ok, 0}
+      assert %{failure: 0} = schedule_and_run_triggers({Forum.Report, :read_escrow_refund})
 
       {:ok, untouched} = Forum.get_report(report.id)
       assert untouched.escrow_status == :credited
     end
 
-    test "the reconcile list is the bounties the board still believes are held", %{tool: tool} do
+    test "the refund sweep asks about the bounties the board still believes are held", %{
+      tool: tool
+    } do
       asker = profile("aaa")
       held = credited(tool, asker)
       {:ok, gone} = PriorityRefund.record(credited(tool, profile("bbb")), "0xdead")
-      free_report(tool)
+      free = free_report(tool)
 
-      {:ok, to_check} = Forum.bounties_to_reconcile()
-      ids = Enum.map(to_check, & &1.id)
-
-      assert held.id in ids
-      refute gone.id in ids
+      assert_would_schedule(held, :read_escrow_refund)
+      refute_would_schedule(gone, :read_escrow_refund)
+      refute_would_schedule(free, :read_escrow_refund)
     end
   end
 

@@ -325,8 +325,8 @@ nothing about the money, it relays the request and pays the gas, and Base
 answers. Before the 30 days that answer is no, which is the ordinary case and
 is said plainly. Because a transaction Base accepted is not money that has
 moved, and because anybody can refund a bounty without Patchbay in the middle,
-`Patchbay.Escrow.Watch` is what actually marks a bounty refunded: every few
-minutes it asks the contract what it still holds for each bounty the board
+`Patchbay.Escrow.Watch` is what actually marks a bounty refunded: every five
+minutes a background job (`Patchbay.Forum.Report`'s `:read_escrow_refund`) asks the contract what it still holds for each bounty the board
 believes is open, and writes down the ones that have gone back. A refunded
 report stops being one of the paid ones and is listed with the ordinary
 reports from then on.

@@ -329,8 +329,6 @@ defmodule Patchbay.ForumTest do
                  {:record_escrow_refund, :update},
                  {:push_escrow_revenue, :update},
                  {:record_escrow_revenue_pushed, :update},
-                 {:bounties_to_reconcile, :read},
-                 {:credits_to_confirm, :read},
                  {:ask_question, :create},
                  {:open_techtree_discussion, :create},
                  {:for_techtree_digest, :read},
@@ -343,6 +341,8 @@ defmodule Patchbay.ForumTest do
                  {:touch, :update},
                  {:read_by_jev, :update},
                  {:give_up_on_jev, :update},
+                 {:read_escrow_credit, :update},
+                 {:read_escrow_refund, :update},
                  {:repair_by_agent, :update},
                  {:give_up_agent_repair, :update}
                ])

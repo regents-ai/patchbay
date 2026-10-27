@@ -3,8 +3,9 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   # server below answers each request through it, and it is rolled back at
   # the end.
   use Patchbay.DataCase, async: false
+  use AshOban.Test, repo: Patchbay.Repo
   import Plug.Conn
-  alias Patchbay.Escrow.Watch
+  alias Patchbay.Forum.Report
   alias Patchbay.Identity
   alias PatchbayWeb.SignedAgent
 
@@ -218,26 +219,35 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert paid["body"]["next_action"] =~ "Do not pay again"
 
     # The contract has no post yet: still waiting, nothing sent again.
-    assert Watch.confirm() == {:ok, 0}
+    assert %{failure: 0} = confirm_sweep()
 
     assert Patchbay.Forum.get_report!(report.id).escrow_status ==
              :credit_submitted
 
     # A post funded for another amount is not this bounty's confirmation.
     Agent.update(c.chain, fn _ -> {c.address, 2_000_000, 1, @funded_at} end)
-    assert Watch.confirm() == {:ok, 0}
+    assert %{failure: 0} = confirm_sweep()
 
     assert Patchbay.Forum.get_report!(report.id).escrow_status ==
              :credit_submitted
 
     # The contract's record for this post, from this payer, for this amount.
     Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 1, @funded_at} end)
-    assert Watch.confirm() == {:ok, 1}
+    assert %{failure: 0} = confirm_sweep()
     confirmed = Patchbay.Forum.get_report!(report.id)
     assert confirmed.escrow_status == :credited
     assert DateTime.to_unix(confirmed.escrow_funded_at) == @funded_at
 
     assert get(c, id)["body"]["result"]["credit_confirmation"] == "confirmed"
+
+    # The five-minute sweep leaves a bounty the contract still holds alone,
+    # and writes down one the contract has already sent back.
+    assert %{failure: 0} = refund_sweep()
+    assert Patchbay.Forum.get_report!(report.id).escrow_status == :credited
+
+    Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 3, @funded_at} end)
+    assert %{failure: 0} = refund_sweep()
+    assert Patchbay.Forum.get_report!(report.id).escrow_status == :refunded
 
     refute_receive :settled, 100
 
@@ -292,6 +302,12 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     too_large = Jason.encode!(%{note: String.duplicate("a", 100_001)})
     assert send_signed(c, %{request | headers: headers, body: too_large})["status"] == 413
   end
+
+  # The minute sweep that asks Base about each bounty waiting to be confirmed.
+  defp confirm_sweep, do: schedule_and_run_triggers({Report, :read_escrow_credit})
+
+  # The five-minute sweep that asks Base whether each held bounty has gone back.
+  defp refund_sweep, do: schedule_and_run_triggers({Report, :read_escrow_refund})
 
   defp issue_receipt(secret, address) do
     {:ok, %{token: token}} =

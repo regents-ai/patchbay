@@ -39,7 +39,6 @@ defmodule Patchbay.Application do
         # The paid-call test page's record of payments it has already seen.
         PatchbayWeb.Plugs.X402Test.replays(),
         {Finch, name: Patchbay.Assist.Target.finch()},
-        Patchbay.Escrow.Watch,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.OfferReportLimit, clean_period: :timer.minutes(10)},
