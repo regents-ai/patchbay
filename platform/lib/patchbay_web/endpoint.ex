@@ -72,6 +72,10 @@ defmodule PatchbayWeb.Endpoint do
     guide: "/llms.txt",
     json_prefixes: ~w(api forum hello mcp chatgpt tools)
 
+  # After the error format is chosen, so a slash address is answered as any
+  # address that names nothing.
+  plug PatchbayWeb.Plugs.NoTrailingSlash
+
   plug PatchbayWeb.Plugs.Parsers,
     body_reader: {PatchbayWeb.WalletBodyReader, :read_body, []},
     # A forum post from the home page carries up to three 3 MB pictures.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — One address per page
+
+- An address with a slash at the end, such as patchbay.help/about/, now shows the "nothing at this address" page instead of opening the page a second time. Agents asking an API address the same way get the usual not-found answer. Each page and each agent call has one address, as on every Regent site. The homepage is unchanged.
+
 ## 2026-10-26 — Database and sign-in library security update
 
 - The database library (ash_postgres) moves from 2.13.0 to the library's own latest code, as in ash-template, until its next release. It clears the two advisories on 2.13.0 and keeps upserts and bulk updates in Patchbay's own schema on the shared database. The shared Regent libraries move to elixir-utils e796a9d. The token library behind sign-in (jose) moves to 1.11.13, which fixes two weaknesses in how it checks signatures. Nothing changes on the pages.
