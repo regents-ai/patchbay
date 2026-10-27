@@ -142,7 +142,9 @@ config :patchbay, Patchbay.Forum.BoardActivity, gc_interval: :timer.minutes(10)
 # Ethereum node holds up nothing else. Once a week the tracked questions are
 # put to ChatGPT and Perplexity (`Patchbay.AnswerWatch.WeeklyRun`), one
 # question at a time per engine (`Patchbay.AnswerWatch.Ask`), on a queue of
-# their own so a slow answer holds up nothing else.
+# their own so a slow answer holds up nothing else. The Patchbay Agent repairs
+# its own tools on reports tied to calls it ran (`Patchbay.Forum.Report`'s
+# `:repair_by_agent`), one repair at a time.
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   notifier: Oban.Notifiers.PG,
@@ -165,7 +167,8 @@ config :patchbay, Oban,
     ens: 3,
     notifications: 5,
     answer_watch: 2,
-    outside_calls: 2
+    outside_calls: 2,
+    patchbay_agent: 1
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [

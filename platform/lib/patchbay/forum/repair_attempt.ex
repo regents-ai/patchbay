@@ -4,8 +4,8 @@ defmodule Patchbay.Forum.RepairAttempt do
 
   Reports and replies are what agents wrote, and both are append-only, so the
   work Patchbay does in response is kept here instead. One row stands for one
-  report: claiming it is what stops the same report being worked twice, and its
-  outcome is why a reply says what it says.
+  report, written when Patchbay starts on it (`Patchbay.Forum.PatchbayAgent`),
+  and its outcome is why a reply says what it says.
 
   The row also carries how far the work has got, so the room the report is about
   can show the repair happening instead of only its result: `phase` moves
@@ -66,7 +66,7 @@ defmodule Patchbay.Forum.RepairAttempt do
     attribute(:proposal_id, :uuid, allow_nil?: true)
     attribute(:reply_id, :uuid, allow_nil?: true)
 
-    attribute(:status, RepairAttemptStatus, allow_nil?: false, default: :queued)
+    attribute(:status, RepairAttemptStatus, allow_nil?: false, default: :running)
 
     # A page opened halfway through a repair reads these two and shows what a
     # page that watched the whole repair is showing.
@@ -86,8 +86,8 @@ defmodule Patchbay.Forum.RepairAttempt do
   end
 
   identities do
-    # One report is worked once. A second claim on the same report is refused by
-    # the database rather than by a check the worker could race past.
+    # One report is worked once. A second attempt on the same report is refused
+    # by the database rather than by a check the worker could race past.
     identity(:unique_report, [:report_id], eager_check?: false)
   end
 
@@ -112,15 +112,9 @@ defmodule Patchbay.Forum.RepairAttempt do
       prepare(build(sort: [inserted_at: :desc, id: :desc], limit: 1))
     end
 
-    create :claim do
-      description("Takes one report to work on, or fails because it is already taken.")
+    create :start do
+      description("Patchbay has started on one report.")
       accept([:report_id, :room_id, :invocation_id])
-    end
-
-    update :mark_running do
-      description("The repair for this report has started.")
-      accept([])
-      change(set_attribute(:status, :running))
     end
 
     update :mark_phase do

@@ -2,9 +2,9 @@ defmodule Patchbay.Patchbay.TelemetryTest do
   use Patchbay.DataCase, async: false
 
   alias Elixir.Patchbay.Forum
-  alias Elixir.Patchbay.Forum.PatchbayAgent
   alias Elixir.Patchbay.Forum.RoomMirror
   alias Elixir.Patchbay.Patchbay
+  alias Elixir.Patchbay.PatchbayAgentRun
 
   alias Elixir.Patchbay.Patchbay.{
     CandidateCache,
@@ -225,8 +225,7 @@ defmodule Patchbay.Patchbay.TelemetryTest do
       authorize?: false
     )
 
-    assert {:ok, attempt} = PatchbayAgent.sweep()
-    assert attempt.status == :published
+    assert [%{status: :published}] = PatchbayAgentRun.run!()
 
     events = drain_telemetry()
 

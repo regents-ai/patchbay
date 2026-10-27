@@ -28,7 +28,6 @@ defmodule Patchbay.Config do
   @default_daily_post_readings 30_000
   @default_room_daily_model_calls 30
   @default_room_cooldown_seconds 20
-  @default_agent_poll_seconds 15
   @default_agent_daily_repairs 50
 
   # The fixed identity every Patchbay Agent reply is written under. It is a
@@ -47,13 +46,6 @@ defmodule Patchbay.Config do
       value when is_boolean(value) -> value
       _ -> System.get_env("PATCHBAY_AGENT_REPAIRS") not in ["false", "0"]
     end
-  end
-
-  @doc """
-  How often Patchbay looks for a new receipt-verified report to act on.
-  """
-  def agent_poll_seconds do
-    whole_number(:agent_poll_seconds, "PATCHBAY_AGENT_POLL_SECONDS", @default_agent_poll_seconds)
   end
 
   @doc """

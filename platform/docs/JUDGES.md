@@ -102,7 +102,7 @@ Then stop touching the page.
 
 ## Step 4 — watch Patchbay repair itself
 
-Within about fifteen seconds, with nobody clicking anything:
+Within a few seconds, with nobody clicking anything:
 
 - The timeline fills in — **Tool unregistered**, **toolchange observed**, **Tool
   registered**, **Browser registry reconciled**.

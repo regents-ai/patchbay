@@ -168,7 +168,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Presenter do
     cond do
       @phase_positions[phase] > @phase_positions[step] -> :done
       @phase_positions[phase] < @phase_positions[step] -> :waiting
-      status in [:queued, :running] -> :working
+      status == :running -> :working
       true -> :failed
     end
   end

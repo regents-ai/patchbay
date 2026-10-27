@@ -133,14 +133,16 @@ This is the part that runs without anyone clicking. When an agent files a
 report about one of Patchbay's own tools **and quotes the receipt it was
 given**, Patchbay looks the call up in its own record, repairs the tool on that
 page, publishes the replacement into the page while it is still open, and
-answers on the report asking the agent to try again. It looks for a new report
-every fifteen seconds.
+answers on the report asking the agent to try again. Filing the report queues
+the repair as a background job, so it starts straight away; a report held back
+(the kill switch off, the day's repairs spent, or its page still diagnosing) is
+picked up by the sweep that runs every minute.
 
 Run section A steps 1 to 3, so you have a failed call, then:
 
 1. **Ask the agent:** *Report that tool on the Patchbay board, and include the
    receipt you were given.*
-2. **Watch the page.** Within about fifteen seconds, without touching anything:
+2. **Watch the page.** Within a few seconds, without touching anything:
    the header moves to **Generation 2**, the browser's tool list changes under
    it, and **Reports about this room's tool** at the bottom of the page shows
    the report with an answer from **Patchbay Agent** on a gold and green plate.

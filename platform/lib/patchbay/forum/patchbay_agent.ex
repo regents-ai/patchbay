@@ -8,19 +8,26 @@ defmodule Patchbay.Forum.PatchbayAgent do
   into that page while it is still open, and answers on the report saying what
   changed and asking the agent to try again.
 
+  This is the `:repair_by_agent` action of `Patchbay.Forum.Report`, run by that
+  trigger's job: filing a verified report queues it, and the minute sweep takes
+  up any report still waiting. Its queue runs one repair at a time. A job that
+  fails before the repair starts is tried again, and after its last try
+  `:give_up_agent_repair` answers the report as one Patchbay could not finish.
+
   Four rules keep this bounded:
 
   - Only a report matched to a call Patchbay ran is acted on. Everything else on
     the board is one agent's word and is left alone.
   - What the report *says* is never read as an instruction. The repair is worked
     out from the recorded call, and only from the page that call belongs to.
-  - One report gets one attempt, and the attempt row is claimed before any work
-    starts, so the same report can never be worked twice.
+  - One report gets one attempt. The trigger runs one job per report at a
+    time, a report with an attempt no longer matches it, and the database holds
+    one attempt per report, so the same report can never be worked twice.
   - A replacement is published only when the current tool still fails the way
     the record says it failed, and the replacement passes its checks.
   """
 
-  use GenServer
+  use Ash.Resource.ManualUpdate
 
   require Ash.Query
   require Logger
@@ -29,7 +36,6 @@ defmodule Patchbay.Forum.PatchbayAgent do
   alias Patchbay.Config
   alias Patchbay.Forum
   alias Patchbay.Forum.RepairAttempt
-  alias Patchbay.Forum.RoomMirror
   alias Patchbay.Patchbay, as: Rooms
 
   alias Patchbay.Patchbay.{
@@ -46,87 +52,32 @@ defmodule Patchbay.Forum.PatchbayAgent do
 
   @window_seconds 24 * 60 * 60
 
-  # One report per pass. A pass may call a model and publish a tool, so the loop
-  # stays deliberately slow and does the oldest waiting report first.
-  @batch 1
-
-  @doc false
-  def start_link(opts), do: GenServer.start_link(__MODULE__, :ok, Keyword.take(opts, [:name]))
-
-  @doc "Runs one pass now and waits for it, for tests and for the console."
-  @spec poll_now(GenServer.server()) :: :ok
-  def poll_now(server \\ __MODULE__), do: GenServer.call(server, :poll_now, 60_000)
-
   @impl true
-  def init(:ok) do
-    {:ok, schedule(%{})}
+  def update(changeset, opts, _context) do
+    report = changeset.data
+
+    if opts[:give_up?],
+      do: give_up(report, Ash.Changeset.get_argument(changeset, :error)),
+      else: take(report)
+
+    {:ok, report}
   end
 
-  @impl true
-  def handle_info(:poll, state) do
-    run()
-    {:noreply, schedule(state)}
+  # While the kill switch is off or the day's repairs are spent, the report is
+  # left as it is, and the next sweep offers it again.
+  defp take(report) do
+    if Config.agent_repairs_enabled?() and repairs_today() < Config.agent_daily_repairs(),
+      do: consider(report)
   end
 
-  @impl true
-  def handle_info(_message, state), do: {:noreply, state}
+  # Every try at this report failed before its repair could start, so it is
+  # answered as one Patchbay could not finish, and the sweep stops taking it.
+  defp give_up(report, error) do
+    invocation = invocation(report.invocation_id)
+    attempt = start!(report, invocation)
+    started_at = announce_start(report, invocation, attempt)
 
-  @impl true
-  def handle_call(:poll_now, _from, state) do
-    {:reply, run(), state}
-  end
-
-  defp schedule(state) do
-    Process.send_after(self(), :poll, Config.agent_poll_seconds() * 1_000)
-    state
-  end
-
-  # A pass must never take the worker down with it: the report that failed is
-  # recorded as failed and answered, and the loop keeps its next appointment.
-  defp run do
-    sweep()
-    :ok
-  rescue
-    error ->
-      Logger.error("[webmcp] the Patchbay Agent pass failed: #{Exception.message(error)}")
-      :ok
-  end
-
-  @doc """
-  One pass of the loop: find the oldest report Patchbay can act on and act on it.
-
-  Returns what the pass did, which is what the tests read.
-  """
-  @spec sweep() ::
-          :disabled
-          | :at_daily_limit
-          | :nothing_to_do
-          | :waiting_for_room
-          | {:ok, RepairAttempt.t()}
-  def sweep do
-    cond do
-      not Config.agent_repairs_enabled?() -> :disabled
-      repairs_today() >= Config.agent_daily_repairs() -> :at_daily_limit
-      true -> take_next()
-    end
-  end
-
-  defp take_next do
-    case waiting_reports() do
-      [] -> :nothing_to_do
-      [report | _rest] -> consider(report)
-    end
-  end
-
-  # The queue crosses from the public board into Patchbay's own record of what
-  # it has already worked on, which nothing on the board may read; the worker
-  # reads it directly and deliberately.
-  defp waiting_reports do
-    RoomMirror.origin()
-    |> Forum.list_reports_awaiting_repair!(
-      query: [limit: @batch],
-      authorize?: false
-    )
+    settle(attempt, report, invocation, {:errored, Exception.message(error)}, started_at)
   end
 
   defp repairs_today do
@@ -139,8 +90,8 @@ defmodule Patchbay.Forum.PatchbayAgent do
     |> Ash.count!(authorize?: false)
   end
 
-  # Decided before anything is claimed, so a report Patchbay is not ready to
-  # answer yet stays in the queue rather than being spent on a refusal.
+  # Decided before any attempt is written, so a report Patchbay is not ready to
+  # answer yet waits for the next sweep rather than being spent on a refusal.
   defp consider(report) do
     invocation = invocation(report.invocation_id)
     room = invocation && room(invocation.room_id)
@@ -179,16 +130,14 @@ defmodule Patchbay.Forum.PatchbayAgent do
   defp decide(_invocation, _room), do: :repair
 
   defp repair(report, invocation, room, proposal) do
-    attempt = claim!(report, invocation)
+    attempt = start!(report, invocation)
     started_at = announce_start(report, invocation, attempt)
-    # The attempt is Patchbay's own bookkeeping and is reachable no other way.
-    attempt = Forum.mark_repair_attempt_running!(attempt, %{}, authorize?: false)
 
     settle(attempt, report, invocation, work(attempt, invocation, room, proposal), started_at)
   end
 
   defp refuse(report, invocation, detail) do
-    attempt = claim!(report, invocation)
+    attempt = start!(report, invocation)
     started_at = announce_start(report, invocation, attempt)
 
     settle(attempt, report, invocation, {:refused, detail}, started_at)
@@ -235,14 +184,14 @@ defmodule Patchbay.Forum.PatchbayAgent do
     end
   end
 
-  defp claim!(report, invocation) do
-    Forum.claim_repair_attempt!(
+  defp start!(report, invocation) do
+    Forum.start_repair_attempt!(
       %{
         report_id: report.id,
         room_id: invocation && invocation.room_id,
         invocation_id: report.invocation_id
       },
-      # Claiming is Patchbay's own bookkeeping and is reachable no other way.
+      # The attempt is Patchbay's own bookkeeping and is reachable no other way.
       authorize?: false
     )
   end

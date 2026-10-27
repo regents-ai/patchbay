@@ -60,7 +60,6 @@ defmodule Patchbay.Application do
     children =
       children ++
         site_loader() ++
-        patchbay_agent() ++
         [
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
@@ -89,17 +88,6 @@ defmodule Patchbay.Application do
            Patchbay.Forum.ProgramSites.make!()
          end}
       ]
-    else
-      []
-    end
-  end
-
-  # The worker that repairs a reported tool runs beside the room it repairs.
-  # Tests start their own when they want one, so the suite is never racing a
-  # loop it did not ask for.
-  defp patchbay_agent do
-    if Application.get_env(:patchbay, :start_patchbay_agent, true) do
-      [{Patchbay.Forum.PatchbayAgent, name: Patchbay.Forum.PatchbayAgent}]
     else
       []
     end
