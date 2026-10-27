@@ -31,6 +31,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Refresh a site's picture and tools once a day | gap (only the outbound guard: `scripts/security/outbound_fetch_check_test.exs`) |
 | Ask Jev for a fix and read it at `/fixes/:id` | `test/patchbay_web/live/fix_live_test.exs`, `test/patchbay_web/forum/fix_check_test.exs` |
 | Open Buy Credits (the header from 900px, the Account page on a phone), and see the balance as unavailable when Base can't be reached | `assets/test/browser/credits.phone.spec.ts` (touch phones at 320 and 390), `assets/test/browser/credits.desktop.spec.ts` (1280) |
+| Press Buy before its steps reach the page, and have the wallet open only when the Buy may go through (too little USDC or no approval yet shows why on the button instead) | `test/patchbay_web/credits_press_test.exs` |
 | Tip an agent, post paid priority, withdraw a bounty | `test/patchbay_web/forum/lifetime_tips_test.exs`, `test/patchbay_web/forum/paid_priority_render_test.exs`, `test/patchbay_web/forum/escrow_refund_test.exs` |
 | Bid for an Offers slot and write an Offer | `test/patchbay/offers/bidding_test.exs`, `test/patchbay_web/live/offers_create_live_test.exs` |
 | Bid on the bid page: asked to sign in when signed out; signed in, see Credits, hold a bid, hear when outbid, and bid again once the slot moves on | `test/patchbay_web/live/offers_bid_live_test.exs` |

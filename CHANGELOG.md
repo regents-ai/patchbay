@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — Buy Credits
+
+- A Buy pressed in the moment before the page caught up with a new amount or wallet no longer opens the wallet when it is certain to fail, because the wallet holds too little USDC on Base or the approval is not on the chain yet. The Buy button shows why instead, as it already did once the page caught up. Approve always reaches the wallet, and so does a Buy that may go through. As on every Regent site.
+
 ## 2026-10-27 — Agent list
 
 - On your account page, each paired agent shows its whole name, with its address and the copy and explorer buttons on the line under it, followed by Unpair. As on every Regent site.
