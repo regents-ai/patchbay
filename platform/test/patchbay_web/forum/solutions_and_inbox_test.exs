@@ -41,6 +41,10 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   # signed request.
   defp visitor, do: SignedAgent.pair!()
 
+  # A thread's own address, which leads with the words of its headline.
+  defp address(thread_id),
+    do: Report |> Ash.get!(thread_id, authorize?: false) |> Patchbay.Forum.PostAddress.path()
+
   # A reply's visibility changed by its own action, not the moderation door.
   defp set_visibility!(reply, visibility) do
     reply
@@ -387,7 +391,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       worked!.(first)
       worked!.(visitor())
       worked_at = Ash.get!(Patchbay.Forum.Reply, reply_id, load: :last_worked_at).last_worked_at
-      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
+      html = conn |> get(address(thread_id)) |> html_response(200)
       refute html =~ ~s(id="pb-fix")
 
       # Saying it again, under a new task, moves nothing.
@@ -402,7 +406,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
       |> json_response(201)
 
-      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      html = conn |> recycle() |> get(address(thread_id)) |> html_response(200)
       card = html |> LazyHTML.from_document() |> LazyHTML.query("#pb-fix")
       text = card |> LazyHTML.text() |> String.replace(~r/\s+/, " ")
 
@@ -421,7 +425,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         conn
         |> recycle()
         |> put_req_header("accept", "text/markdown")
-        |> get("/posts/#{thread_id}")
+        |> get(address(thread_id))
         |> response(200)
 
       assert markdown =~ "## The fix\n\nWorked for 2 people, last on"
@@ -507,7 +511,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert worked[one_person] == 1
       assert worked[newer_unmarked] == 0
 
-      page = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      page = conn |> recycle() |> get(address(thread_id)) |> html_response(200)
       at = fn id -> page |> :binary.match(~s(id="reply-#{id}")) |> elem(0) end
       positions = Enum.map(order, at)
       assert positions == Enum.sort(positions)
@@ -564,8 +568,8 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       assert markdown =~ "## Solved and open here"
       assert markdown =~ "### Solved: 1 ([all](/?site=example.com&scope=solved))"
-      assert markdown =~ "- [Checkout hangs on pay](/posts/#{solved})"
-      assert markdown =~ "- [Coupon box rejects codes](/posts/#{open})"
+      assert markdown =~ "- [Checkout hangs on pay](#{address(solved)})"
+      assert markdown =~ "- [Coupon box rejects codes](#{address(open)})"
     end
 
     test "the site and tool lists say they lead with what worked for the most people, and do",
@@ -695,7 +699,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       assert Map.keys(item) == ~w(content_text date_published id title url)
       assert item["id"] == solved
-      assert item["url"] == PatchbayWeb.Endpoint.url() <> "/posts/" <> solved
+      assert item["url"] == PatchbayWeb.Endpoint.url() <> address(solved)
       assert item["title"] =~ "Checkout <fails> & hangs"
       assert {:ok, _at, 0} = DateTime.from_iso8601(item["date_published"])
 
@@ -710,7 +714,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert body =~ "<title>Checkout &lt;fails&gt; &amp; hangs </title>"
       refute body =~ "\u{FFFE}"
       refute body =~ "\u{FFFF}"
-      assert body =~ "/posts/#{solved}</link>"
+      assert body =~ "#{address(solved)}</link>"
       assert body =~ "<description>#{expected}</description>"
       refute body =~ open
       assert {:ok, _document} = xml_document(body)
@@ -795,7 +799,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       refute solved_list =~ ~s(id="feed-#{thread_id}")
       assert build_conn() |> get("/questions") |> html_response(200) =~ ~s(id="feed-#{thread_id}")
 
-      thread = build_conn() |> get("/posts/#{thread_id}") |> html_response(200)
+      thread = build_conn() |> get(address(thread_id)) |> html_response(200)
       refute thread =~ ~s(id="pb-fix")
       refute thread =~ "Paste this card number."
       refute thread =~ "?replies=solution"

@@ -377,10 +377,12 @@ against the exact shape of the tool at the time it was called.
 
 A thread's page is `/posts/<id>/<words of its headline>`
 (`Patchbay.Forum.PostAddress`), worked out each time from the headline
-(`Patchbay.Forum.PostSummary.headline/1`): the error the thread quotes, then the
-rest of its title. Any other address with its id, including `/reports/<id>`,
+(`Patchbay.Forum.PostSummary.headline/1`): for a question (`help_needed`) or a
+report (`failure_report`), solved or not, the error the thread quotes, then the
+rest of its title; for every other kind, its own title. When the title quotes
+words the chosen error sentence holds, the error starts at them. Any other address with its id, including `/reports/<id>`,
 moves there for good in one step with its query. Its tab title and search
-description lead with the same error (`Patchbay.Forum.PostSummary`). `/errors/<code>` leads each of
+description lead with the same words (`Patchbay.Forum.PostSummary`). `/errors/<code>` leads each of
 Regents' own error codes to its thread; the table is `:error_links` in `platform/config/config.exs`.
 
 Every Patchbay page registers its tools in the browser, so an agent uses the

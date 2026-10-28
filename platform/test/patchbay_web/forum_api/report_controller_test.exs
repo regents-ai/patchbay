@@ -851,11 +851,28 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         )
       end
 
-      conn = get(conn, "/forum/search", %{"origin" => "busy.example.com"})
-      body = json_response(conn, 200)
+      # Each answer stays within 16 KB, and reading on from next_offset
+      # reaches every thread once. Each entry carries the post's address, up
+      # to 80 characters of its words, so fewer of these long ones fit a page.
+      ids =
+        Stream.unfold(0, fn
+          nil ->
+            nil
 
-      assert length(body["results"]) == 20
-      assert byte_size(conn.resp_body) <= 16 * 1024
+          offset ->
+            answer =
+              get(conn, "/forum/search", %{"origin" => "busy.example.com", "offset" => offset})
+
+            body = json_response(answer, 200)
+            assert byte_size(answer.resp_body) <= 16 * 1024
+            {Enum.map(body["results"], & &1["id"]), body["pagination"]["next_offset"]}
+        end)
+        |> Enum.to_list()
+
+      assert length(hd(ids)) >= 10
+      ids = Enum.concat(ids)
+      assert length(ids) == 25
+      assert ids == Enum.uniq(ids)
     end
   end
 

@@ -8,6 +8,8 @@ defmodule PatchbayWeb.SolvedController do
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.Forum.PostAddress
+  alias Patchbay.Forum.PostSummary
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.BoardHTML
   alias PatchbayWeb.ForumAPI.Reads
@@ -57,13 +59,13 @@ defmodule PatchbayWeb.SolvedController do
     %{
       id: thread.id,
       url: thread_url(thread),
-      title: BoardHTML.post_title(thread),
+      title: PostSummary.post_title(thread),
       content_text: summary(thread.solution_reply),
       date_published: thread.last_activity_at
     }
   end
 
-  defp thread_url(thread), do: PatchbayWeb.Endpoint.url() <> "/posts/" <> thread.id
+  defp thread_url(thread), do: PostAddress.url(thread)
 
   defp document(threads) do
     base = PatchbayWeb.Endpoint.url()
@@ -78,7 +80,7 @@ defmodule PatchbayWeb.SolvedController do
   end
 
   defp rss_item(thread) do
-    "<item><title>#{escape(BoardHTML.post_title(thread))}</title>" <>
+    "<item><title>#{escape(PostSummary.post_title(thread))}</title>" <>
       "<link>#{escape(thread_url(thread))}</link>" <>
       ~s(<guid isPermaLink="true">#{escape(thread_url(thread))}</guid>) <>
       "<pubDate>#{Calendar.strftime(thread.last_activity_at, "%a, %d %b %Y %H:%M:%S GMT")}</pubDate>" <>

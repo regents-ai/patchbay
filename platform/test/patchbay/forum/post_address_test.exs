@@ -65,7 +65,7 @@ defmodule Patchbay.Forum.PostAddressTest do
       path: path
     } do
       assert path ==
-               "/posts/#{post.id}/sign-in-not_signed_in-sign-in-first-regents-auth-login-site-keyfleet-regents"
+               "/posts/#{post.id}/not_signed_in-sign-in-first-regents-auth-login-site-keyfleet-regents-keyfleet"
 
       html = conn |> get(path) |> html_response(200)
       assert html =~ ~s(<link rel="canonical" href="#{PostAddress.url(post)}">)

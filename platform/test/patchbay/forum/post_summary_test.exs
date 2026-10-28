@@ -28,12 +28,20 @@ defmodule Patchbay.Forum.PostSummaryTest do
 
   @site %{display_name: nil, origin: "errors.example"}
 
-  defp shown(report),
-    do: Map.merge(report, %{id: Ash.UUID.generate(), note: nil, tool_names: [], site: @site})
+  defp shown(report, kind \\ :help_needed),
+    do:
+      Map.merge(report, %{
+        id: Ash.UUID.generate(),
+        thread_kind: kind,
+        note: nil,
+        tool_names: [],
+        site: @site
+      })
 
   defp written(body, title \\ "A question"),
     do: %{
       id: Ash.UUID.generate(),
+      thread_kind: :help_needed,
       title: title,
       note: nil,
       tool_names: [],
@@ -163,6 +171,7 @@ defmodule Patchbay.Forum.PostSummaryTest do
         )
 
       check all(
+              kind <- member_of(Patchbay.Forum.Types.ThreadKind.values()),
               title <- one_of([line, constant(nil), constant("   ")]),
               note <- one_of([line, constant(nil)]),
               tools <-
@@ -171,6 +180,7 @@ defmodule Patchbay.Forum.PostSummaryTest do
             ) do
         post = %{
           id: Ash.UUID.generate(),
+          thread_kind: kind,
           title: title,
           note: note,
           tool_names: tools,
@@ -196,6 +206,7 @@ defmodule Patchbay.Forum.PostSummaryTest do
   test "a post with no body is described by its own words" do
     post = %{
       id: Ash.UUID.generate(),
+      thread_kind: :help_needed,
       title: nil,
       body_markdown: nil,
       tool_names: [],
@@ -203,6 +214,166 @@ defmodule Patchbay.Forum.PostSummaryTest do
     }
 
     assert PostSummary.description(post) == "The cart stayed empty."
+  end
+
+  describe "only a question or a report leads with its error" do
+    # The kind each of the eight is posted as on patchbay.help (read 28 Oct
+    # 2026), and the Shopify success story posted that day, word for word.
+    @live_kinds %{
+      "draft_07_output_schema" => :success_story,
+      "entra_aadsts9010010" => :success_story,
+      "keyfleet_git_401" => :success_story,
+      "keyfleet_join" => :success_story,
+      "touch_id" => :success_story,
+      "webmcp_model_context" => :success_story,
+      "x402_header_overflow" => :discussion,
+      "x402_payment_signature" => :success_story
+    }
+
+    defp shopify do
+      [title, body] =
+        "../../support/live_posts/shopify_cart_tools.md"
+        |> Path.expand(__DIR__)
+        |> File.read!()
+        |> String.split("\n\n", parts: 2)
+
+      %{title: title, body_markdown: String.trim(body)}
+    end
+
+    test "a success story keeps its own title, though its code block holds words" do
+      post = shown(shopify(), :success_story)
+      title = post.title
+
+      assert post.body_markdown =~ "const tools = await document.modelContext.getTools();"
+      assert PostSummary.error(post) == nil
+      assert PostSummary.headline(post) == title
+
+      assert PostSummary.title(post) ==
+               "Shopify storefront WebMCP: add_to_cart and update_cart_lines replace…"
+
+      assert String.starts_with?(PostSummary.description(post), title)
+
+      assert PostAddress.path(post) ==
+               "/posts/#{post.id}/shopify-storefront-webmcp-add_to_cart-and-update_cart_lines-replace-update_cart"
+
+      for text <- [PostSummary.title(post), PostSummary.description(post), PostAddress.path(post)] do
+        refute text =~ ~r/const|getTools/i
+      end
+    end
+
+    test "each of the eight, as it is posted, is headed by its own title" do
+      for report <- ErrorReports.all() do
+        post = shown(report, Map.fetch!(@live_kinds, report.name))
+
+        assert PostSummary.headline(post) == report.title, report.name
+        assert PostSummary.error(post) == nil, report.name
+        assert String.starts_with?(PostSummary.description(post), report.title), report.name
+        assert PostAddress.path(post) == "/posts/#{post.id}/#{PostAddress.slug(report.title)}"
+      end
+    end
+
+    test "a discussion and a feature request keep their titles; a question and a report do not" do
+      report = ErrorReports.get!("x402_header_overflow")
+
+      for kind <- [:discussion, :feature_request, :success_story] do
+        assert PostSummary.headline(shown(report, kind)) == report.title, "#{kind}"
+      end
+
+      for kind <- [:help_needed, :failure_report] do
+        assert PostSummary.headline(shown(report, kind)) =~
+                 ~r/\Afetch failed cause.code: UND_ERR_HEADERS_OVERFLOW/,
+               "#{kind}"
+      end
+    end
+
+    test "a solved question still leads with its error" do
+      post = "keyfleet_join" |> ErrorReports.get!() |> shown()
+      solved = Map.put(post, :solution_reply_id, Ash.UUID.generate())
+
+      assert PostSummary.headline(solved) == PostSummary.headline(post)
+      assert PostSummary.headline(solved) =~ ~r/\Anot_signed_in: /
+    end
+  end
+
+  describe "a title that quotes the error a code block prints" do
+    test "starts the error at the quoted words, not at the check's name before them" do
+      report = ErrorReports.get!("keyfleet_join")
+      assert report.title =~ ~s(regents keyfleet: "not_signed_in", then)
+      assert report.body_markdown =~ "✗ sign-in  not_signed_in: Sign in first:"
+
+      for kind <- [:help_needed, :failure_report] do
+        post = shown(report, kind)
+
+        assert PostSummary.error(post) ==
+                 "not_signed_in: Sign in first: regents auth login --site keyfleet."
+
+        assert String.starts_with?(
+                 PostSummary.headline(post),
+                 "not_signed_in: Sign in first: regents auth login --site keyfleet. " <>
+                   report.title
+               )
+
+        assert PostSummary.title(post) ==
+                 "not_signed_in: Sign in first: regents auth login --site keyfleet…"
+
+        assert PostSummary.description(post) =~
+                 ~r/\Anot_signed_in: Sign in first: regents auth login --site keyfleet\. /
+
+        assert PostAddress.path(post) ==
+                 "/posts/#{post.id}/not_signed_in-sign-in-first-regents-auth-login-site-keyfleet-regents-keyfleet"
+      end
+    end
+
+    test "keeps the whole sentence when the quoted words are only part of a longer word" do
+      post =
+        written("```\nError: signed_in_twice is not allowed.\n```\n", ~s(Login says "signed_in"))
+
+      assert PostSummary.error(post) == "Error: signed_in_twice is not allowed."
+    end
+  end
+
+  describe "a body read once for a page" do
+    # Every result is the one a process that had read nothing would give.
+    defp afresh(fun, post), do: fn -> fun.(post) end |> Task.async() |> Task.await()
+
+    property "never answers for another post, or for this post before an edit" do
+      body =
+        member_of([
+          "```\nError: first thing broke.\n```\n\n**Fix:** restart the first thing today.",
+          "```\nError: second thing broke.\n```\n\n**Fix:** restart the second thing today.",
+          "Nothing in code here, only words."
+        ])
+
+      post =
+        gen all(id <- member_of(Enum.map(1..3, fn _ -> Ash.UUID.generate() end)), body <- body) do
+          %{
+            id: id,
+            thread_kind: :help_needed,
+            title: "Something broke",
+            note: nil,
+            tool_names: [],
+            site: @site,
+            body_markdown: body
+          }
+        end
+
+      reading =
+        member_of([&PostSummary.headline/1, &PostSummary.description/1, &PostSummary.error/1])
+
+      check all(reads <- list_of(tuple({post, reading}), min_length: 2, max_length: 12)) do
+        for {post, fun} <- reads, do: assert(fun.(post) == afresh(fun, post))
+      end
+    end
+
+    test "two posts with the same id and different words are each read for their own" do
+      id = Ash.UUID.generate()
+      first = %{written("```\nError: first thing broke.\n```\n") | id: id}
+      edited = %{written("```\nError: second thing broke.\n```\n") | id: id}
+
+      assert PostSummary.error(first) == "Error: first thing broke."
+      assert PostSummary.error(edited) == "Error: second thing broke."
+      assert PostSummary.error(first) == "Error: first thing broke."
+    end
   end
 
   describe "a report's page" do

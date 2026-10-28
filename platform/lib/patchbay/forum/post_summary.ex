@@ -4,8 +4,11 @@ defmodule Patchbay.Forum.PostSummary do
   about, and the headline its tab title, search description and address are
   made of. One set of rules, so the page, its tab and its address agree.
 
-  A post about an error quotes the error in a code block and says what fixed
-  it in a paragraph that starts with a bold **Fix** label.
+  A question (a help_needed thread) or a report (a failure_report thread) is
+  about an error, solved or not: it quotes the error in a code block and says
+  what fixed it in a paragraph that starts with a bold **Fix** label. Any
+  other kind of thread, such as a success story or a discussion, names no
+  error and is headed by its title, whatever its code blocks hold.
 
     * The error is a sentence of the post's first code block that holds one:
       the sentence that shares the most words with the title, the earliest on
@@ -13,7 +16,10 @@ defmodule Patchbay.Forum.PostSummary do
       wrapped over several lines. Commands typed at a prompt (`$ npm install`)
       are not part of the error, and a block with no words left, such as `{}`,
       holds none. A post whose code holds no error, or that has no code, takes
-      the first quoted words of its title (`"no_touch_id"`), if any.
+      the first quoted words of its title (`"no_touch_id"`), if any. When
+      the title quotes words and the chosen sentence holds them exactly, the
+      error starts at them: a tool's own labels before them (the name of the
+      check that printed it) are not the error.
     * The headline is the error, then the rest of the title (the title less
       its quoted copy of the error). A post with no error is headed by its
       title.
@@ -57,9 +63,9 @@ defmodule Patchbay.Forum.PostSummary do
   def headline(post) do
     title = post_title(post)
 
-    case error_in(code_blocks(post), title) do
+    case found(post, fn -> code_blocks(post) end) do
       nil -> title
-      {_error, _after} = found -> headed(found, title)
+      {_error, _where} = error -> headed(error, title)
     end
   end
 
@@ -69,44 +75,54 @@ defmodule Patchbay.Forum.PostSummary do
     blocks = blocks(post)
     title = post_title(post)
 
-    case error_in(blocks, title) do
+    case found(post, fn -> blocks end) do
       nil -> join(title, first_sentence(prose(blocks)))
       {error, {:code, after_error}} -> join(error, fix(blocks, after_error))
-      {_error, :title} = found -> join(headed(found, title), fix(blocks, blocks))
+      {_error, :title} = error -> join(headed(error, title), fix(blocks, blocks))
     end
   end
 
   @doc "The error the post is about, word for word, or nil when it names none."
   @spec error(map()) :: String.t() | nil
   def error(post) do
-    case error_in(code_blocks(post), post_title(post)) do
+    case found(post, fn -> code_blocks(post) end) do
       nil -> nil
       {error, _where} -> error
     end
   end
 
+  @doc "Whether the post is about an error: a question or a report, solved or not."
+  @spec about_error?(map()) :: boolean()
+  def about_error?(%{thread_kind: kind}), do: kind in [:help_needed, :failure_report]
+
   # The error and where it was found: in a code block (with the blocks after
-  # it), or in the title.
+  # it), or in the title. Only a post about an error has one, so no other
+  # post's body is read for it.
+  defp found(post, blocks) do
+    if about_error?(post), do: error_in(blocks.(), post_title(post))
+  end
+
   defp error_in(blocks, title) do
     wanted = words(title)
+    in_title = quoted_words(title)
 
     blocks
     |> Enum.with_index()
     |> Enum.find_value(fn
       {{:code, text}, index} ->
-        with error when is_binary(error) <- chosen(text, wanted),
+        with error when is_binary(error) <- chosen(text, wanted, in_title),
              do: {error, {:code, Enum.drop(blocks, index + 1)}}
 
       _paragraph ->
         nil
     end)
     |> case do
-      nil -> quoted(title)
+      nil -> with words when is_binary(words) <- in_title, do: {words, :title}
       found -> found
     end
   end
 
-  defp chosen(text, wanted) do
+  defp chosen(text, wanted, in_title) do
     case sentences(text) do
       [] ->
         nil
@@ -116,15 +132,29 @@ defmodule Patchbay.Forum.PostSummary do
         |> Enum.with_index()
         |> Enum.max_by(fn {sentence, index} -> {overlap(sentence, wanted), -index} end)
         |> elem(0)
+        |> from_quoted(in_title)
         |> without_marks()
         |> worded()
     end
   end
 
-  # The first quoted words of the title.
-  defp quoted(title) do
+  # The sentence from the title's quoted words on, when it holds them whole
+  # (not inside a longer word).
+  defp from_quoted(sentence, nil), do: sentence
+
+  defp from_quoted(sentence, words) do
+    whole = ~r/(?<![\p{L}\p{N}_])#{Regex.escape(words)}(?![\p{L}\p{N}_])/u
+
+    case Regex.run(whole, sentence, return: :index) do
+      [{at, _length}] -> binary_part(sentence, at, byte_size(sentence) - at)
+      nil -> sentence
+    end
+  end
+
+  # The first quoted words of the title, if they hold a letter or digit.
+  defp quoted_words(title) do
     case Regex.run(~r/["“]([^"“”]+)["”]/u, title, capture: :all_but_first) do
-      [words] -> with error when is_binary(error) <- worded(squash(words)), do: {error, :title}
+      [words] -> words |> squash() |> worded()
       nil -> nil
     end
   end
@@ -168,16 +198,21 @@ defmodule Patchbay.Forum.PostSummary do
   # The post's top-level blocks: each code block's text without the commands
   # typed at a prompt, and each paragraph's leading bold label (lowercased,
   # for matching) and the words after it. A page asks for the same post's
-  # blocks many times over (each link to it, its title, its description), so
-  # the last body read is kept for the process that read it.
-  defp blocks(%{body_markdown: body}) when is_binary(body) and body != "" do
+  # blocks many times over (each link to it, such as one per reply, its title,
+  # its description), and reading a body takes over a tenth of a millisecond,
+  # so the last post read is kept for the process that read it: by the post's
+  # id and the SHA-256 of its body, so another post, or this one edited, is
+  # read afresh.
+  defp blocks(%{id: id, body_markdown: body}) when is_binary(body) and body != "" do
+    key = {id, :crypto.hash(:sha256, body)}
+
     case Process.get(__MODULE__) do
-      {^body, blocks} ->
+      {^key, blocks} ->
         blocks
 
       _other ->
         blocks = read(body)
-        Process.put(__MODULE__, {body, blocks})
+        Process.put(__MODULE__, {key, blocks})
         blocks
     end
   end
@@ -303,7 +338,7 @@ defmodule Patchbay.Forum.PostSummary do
           {false, [head, _partial_word]} -> head
         end
 
-      String.replace(kept, ~r/[\s,;:]+$/u, "") <> "…"
+      String.replace(kept, ~r/[\s,;:.]+$/u, "") <> "…"
     end
   end
 end

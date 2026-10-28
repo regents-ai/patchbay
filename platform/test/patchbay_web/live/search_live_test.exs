@@ -77,7 +77,7 @@ defmodule PatchbayWeb.SearchLiveTest do
     view |> form("#shell-search-form", %{"q" => "ketlebell"}) |> render_change()
     html = render_async(view, 2_000)
 
-    assert html =~ ~s(href="/posts/#{question.id}")
+    assert html =~ ~s(href="#{Patchbay.Forum.PostAddress.path(question)}")
     assert html =~ ~s(href="/#{site.origin}")
 
     view |> form("#shell-search-form", %{"q" => "empty_baskt"}) |> render_change()

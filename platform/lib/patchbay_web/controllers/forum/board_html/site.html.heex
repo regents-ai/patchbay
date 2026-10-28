@@ -82,7 +82,7 @@
         </h3>
         <ol :if={Map.fetch!(@standing, key).threads != []}>
           <li :for={thread <- Map.fetch!(@standing, key).threads}>
-            <a href={~p"/posts/#{thread.id}"}>{post_title(thread)}</a>
+            <a href={PostAddress.path(thread)}>{post_title(thread)}</a>
           </li>
         </ol>
         <p :if={Map.fetch!(@standing, key).threads == []} class="patchbay-muted">{empty}</p>

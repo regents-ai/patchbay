@@ -60,11 +60,13 @@ defmodule PatchbayWeb.Forum.BoardMD do
     end
   end
 
-  defp this_page(report, nil, "all"), do: "/posts/#{report.id}"
-  defp this_page(report, nil, filter), do: "/posts/#{report.id}?replies=#{filter}"
+  defp this_page(report, nil, "all"), do: PostAddress.path(report)
+
+  defp this_page(report, nil, filter),
+    do: PostAddress.path(report, replies: filter)
 
   defp this_page(report, cursor, filter),
-    do: "/posts/#{report.id}?after=#{cursor}&replies=#{filter}"
+    do: PostAddress.path(report, after: cursor, replies: filter)
 
   @doc "A fix written down as fields, one list line each (`Patchbay.Forum.Fix`)."
   def fix_lines(fix) do

@@ -6584,7 +6584,7 @@
         ],
         "responses": {
           "302": {
-            "description": "The Result's discussion. Location is the thread's page, /posts/{id}/{words}, the error it is about first and then its title; the id is the thread's id for /forum/threads/{id}.",
+            "description": "The Result's discussion. Location is the thread's page, /posts/{id}/{words}: for a question or report, the error it is about first and then its title; otherwise its title; the id is the thread's id for /forum/threads/{id}.",
             "headers": {
               "Location": {
                 "schema": {

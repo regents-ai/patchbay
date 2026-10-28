@@ -1,8 +1,9 @@
 defmodule Patchbay.Forum.PostAddress do
   @moduledoc """
   A post's one address: `/posts/<id>/<words>`, its id and then the words of
-  its headline (`Patchbay.Forum.PostSummary.headline/1`): the error it is
-  about first, then its title. So the address says what the post is about.
+  its headline (`Patchbay.Forum.PostSummary.headline/1`): for a question or a
+  report, the error it is about first, then its title; for any other thread,
+  its title. So the address says what the post is about.
 
   The words are worked out each time, never stored. The id alone finds the
   post, so an address with other words after the id (or none) is answered
@@ -29,13 +30,14 @@ defmodule Patchbay.Forum.PostAddress do
   def url(post), do: PatchbayWeb.Endpoint.url() <> path(post)
 
   @doc """
-  A read of reports with only what their addresses are made from: the title,
-  note and tools, the body that quotes the error, and the site's name.
+  A read of reports with only what their addresses are made from: the kind
+  of thread, the title, note and tools, the body that quotes the error, and
+  the site's name.
   """
   @spec report_query() :: Ash.Query.t()
   def report_query do
     Report
-    |> Ash.Query.select([:id, :title, :note, :tool_names, :body_markdown, :site_id])
+    |> Ash.Query.select([:id, :thread_kind, :title, :note, :tool_names, :body_markdown, :site_id])
     |> Ash.Query.load(site: Ash.Query.select(Site, [:id, :display_name, :origin]))
   end
 
