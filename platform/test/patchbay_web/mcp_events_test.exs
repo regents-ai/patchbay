@@ -1,16 +1,16 @@
 defmodule PatchbayWeb.MCPEventsTest do
   @moduledoc """
   How many update subscriptions `events/subscribe` lets in: an account holds at
-  most 20 live ones, whichever connection made them, and one callback host
-  receives at most 100 from every account together. A new subscription past
-  either is refused before its callback is sent anything, and so is bringing
-  back one that has run out; refreshing a live one is never refused; one that
-  has run out frees its place.
+  most 20 live ones, whichever connection made them. A new subscription past
+  that is normally turned down before its callback is sent anything, and so is
+  bringing back one that has run out; refreshing a live one is never refused;
+  one that has run out frees its place, and is removed within the hour. Two
+  sent at once at the edge cannot both get in.
 
-  A subscription the cap lets through goes on to its callback's challenge.
-  Each such callback here is on `localhost`, which resolves on this machine
-  and is refused as not public, so nothing leaves the machine and the answer
-  is a callback error rather than the cap's refusal.
+  A subscription the cap lets through goes on to its callback's challenge,
+  answered here by `PatchbayWeb.CallbackStandIn`: a callback on `localhost` is
+  refused as not public, so the answer is a callback error rather than the
+  cap's refusal, and one on `answers.test` answers when the test says so.
   """
 
   use Patchbay.DataCase, async: false
@@ -117,29 +117,41 @@ defmodule PatchbayWeb.MCPEventsTest do
     end
   end
 
-  describe "one callback host" do
-    setup do
-      for _ <- 1..100,
-          do: seed!(Principal.for_profile(Ash.UUID.generate()), "https://OcalHost/in")
+  describe "two subscribes at once" do
+    test "at the account's edge, only one gets in, though both passed the first look" do
+      actor = Patchbay.AssistFixtures.paired_agent()
+      for n <- 1..19, do: seed!(owner(actor), "https://hooks-#{n}.example/in")
 
-      :ok
+      tasks =
+        for n <- 1..2,
+            do: Task.async(fn -> Events.subscribe(params("https://answers.test/#{n}"), actor) end)
+
+      # Both have counted 19 and are at their callback's challenge.
+      challenged =
+        for _ <- tasks do
+          assert_receive {:challenged, pid}, 5_000
+          pid
+        end
+
+      for pid <- challenged, do: send(pid, :answer)
+      answers = Enum.map(tasks, &Task.await(&1, 15_000))
+
+      assert Enum.count(answers, &match?({:ok, %{"id" => _}}, &1)) == 1
+      assert Enum.count(answers, &refused?(&1, "too_many_subscriptions")) == 1
+      assert count() == 20
     end
+  end
 
-    test "receives 100 from every account together, however its name is written" do
-      for url <- ["https://ocalhost/other", "https://OCALHOST:8443/in?x=1"] do
-        answer = Events.subscribe(params(url), actor())
-        assert refused?(answer, "callback_host_full")
-        {:error, _code, message, _data} = answer
-        assert message == "ocalhost already receives 100 event subscriptions from Patchbay."
-      end
+  describe "one that has run out" do
+    test "is removed by the hourly look, and a live one stays" do
+      actor = actor()
+      live = seed!(owner(actor), "https://kept.example/in")
+      seed!(owner(actor), "https://old.example/in", lives_seconds: -1)
 
-      assert count() == 100
-    end
+      AshOban.Test.schedule_and_run_triggers({EventSubscription, :forget_lapsed})
 
-    test "is only the host the address names, not a name that holds it or a path" do
-      for url <- ["https://localhost/ocalhost", "https://localhost/in"] do
-        assert past_the_cap?(Events.subscribe(params(url), actor()))
-      end
+      assert [%{id: id}] = EventSubscription |> Ash.read!(authorize?: false)
+      assert id == live.id
     end
   end
 end

@@ -218,5 +218,21 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
       assert Ash.get!(Report, thread.id).visibility == :published
       assert Ash.read!(ModerationAction, authorize?: false) == []
     end
+
+    test "putting a held thread back is refused when nobody is signed in" do
+      {:ok, held} = Forum.moderate(thread!(), :quarantine, "Held for a look.", moderator!())
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Ash.update(held, %{visibility: :published}, action: :set_visibility)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Forum.moderate(held, :publish, "Nobody signed in.", nil)
+
+      assert Ash.get!(Report, held.id, authorize?: false).visibility == :quarantined
+
+      assert Ash.read!(ModerationAction, authorize?: false) |> Enum.map(& &1.action) == [
+               :quarantine
+             ]
+    end
   end
 end

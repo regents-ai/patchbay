@@ -17,6 +17,9 @@ defmodule Patchbay.Forum.EventSubscription do
   When the attempts run out, the subscription stops where it was, and a
   refresh resumes it from the same event.
 
+  A subscription that has run out is removed by the `:forget_lapsed`
+  trigger, looked for every hour; subscribing again starts a new one.
+
   The signing secrets are stored encrypted (`Patchbay.Forum.EventSecret`)
   and never leave the server except as webhook signatures.
   """
@@ -57,6 +60,19 @@ defmodule Patchbay.Forum.EventSubscription do
         worker_module_name(Patchbay.Forum.EventSubscription.Workers.Deliver)
         scheduler_module_name(Patchbay.Forum.EventSubscription.Schedulers.Deliver)
       end
+
+      # A subscription that has run out is removed, so it no longer holds a
+      # row; looked for every hour.
+      trigger :forget_lapsed do
+        action(:forget)
+        queue(:lapsed_subscriptions)
+        where(expr(expires_at <= now()))
+        scheduler_cron("0 * * * *")
+        max_attempts(3)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.EventSubscription.Workers.ForgetLapsed)
+        scheduler_module_name(Patchbay.Forum.EventSubscription.Schedulers.ForgetLapsed)
+      end
     end
   end
 
@@ -70,6 +86,11 @@ defmodule Patchbay.Forum.EventSubscription do
   postgres do
     table("forum_event_subscriptions")
     repo(Patchbay.Repo)
+
+    custom_indexes do
+      # The account's live subscriptions, counted before each new one.
+      index([:owner_id, :expires_at])
+    end
   end
 
   actions do
@@ -127,6 +148,10 @@ defmodule Patchbay.Forum.EventSubscription do
       transaction?(false)
       require_atomic?(false)
       manual(PatchbayWeb.MCP.EventDelivery)
+    end
+
+    destroy :forget do
+      description("Removes a subscription that has run out. Run by the `:forget_lapsed` trigger.")
     end
 
     update :advance do

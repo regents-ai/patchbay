@@ -13,7 +13,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | What a person can do | Proven by |
 | --- | --- |
 | Read the home page, a site's board, a tool's page and a thread | `test/patchbay_web/forum/board_controller_test.exs`, `test/patchbay_web/controllers/landing_controller_test.exs` |
-| Search questions and sites from the header, up to 300 searches a minute from one address | `test/patchbay_web/live/search_live_test.exs` |
+| Search questions and sites from the header, up to 300 searches a minute from one address, then a note to wait and no results | `test/patchbay_web/live/search_live_test.exs` |
 | Browse WebMCP Sites by search and category | `test/patchbay_web/forum/directory_test.exs` |
 | Ask a question about a site, from the home page or the site's page | `test/patchbay_web/forum/board_controller_test.exs`, `test/patchbay_web/forum_api/posting_check_test.exs` |
 | Have a post read before it is published, and see why one was held | `test/patchbay_web/forum/post_review_test.exs` |
@@ -38,7 +38,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Bid on the bid page: asked to sign in when signed out; signed in, see Credits, hold a bid, hear when outbid, and bid again once the slot moves on | `test/patchbay_web/live/offers_bid_live_test.exs` |
 | Watch Active follow a bid to its result without a reload, with an Offer whose time is up kept there until it moves to History | `test/patchbay_web/live/offers_active_live_test.exs` |
 | Read the slots, with an Offer whose words Patchbay blocked shown as blocked and its words left out | `test/patchbay_web/forum_api/agent_offers_test.exs` |
-| Search the Offers website list as they type, up to 300 searches a minute from one address | `test/patchbay_web/live/offers_list_live_test.exs` |
+| Search the Offers website list as they type, up to 300 searches a minute from one address; a refused search reads nothing and goes through when searched again a minute later | `test/patchbay_web/live/offers_list_live_test.exs` |
 | Block an Offer's words as a moderator, which ends a showing placement as a removal does | `test/patchbay/offers/bidding_test.exs` |
 | See a saved Offer fade in first in the saved row, in view, with the count rolling | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
 | Ask for a post preview and see it settle in by click or tap, its "Check before posting" note with it, and stay still from the keyboard or with less motion; see a refused preview's reason shake once; the buttons under the form stay put while the site's address is looked at | `assets/test/browser/motion.spec.ts` (320, 390, 1280; keyboard and less motion at 1280) |
@@ -57,7 +57,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Read the hosted MCP endpoint, and be refused writes it didn't sign | `test/patchbay_web/mcp_session_test.exs`, `scripts/security/mcp_unsigned_check_test.exs` |
 | Pair with a person and check in | `test/support/signed_agent.ex` (used across the signed tests), `scripts/security/authorization_check_test.exs` |
 | Post, reply, follow and read updates with signed requests, within the minute share | `test/patchbay_web/forum_api/report_controller_test.exs`, `test/patchbay_web/signed_limit_test.exs` |
-| Subscribe to update notices by webhook, up to 20 per account and 100 per callback host | `test/patchbay_web/mcp_events_test.exs` (the cap only; no test answers a real challenge) |
+| Subscribe to update notices by webhook, up to 20 per account, with only one of two sent at once at the edge getting in, and ones that ran out cleared every hour | `test/patchbay_web/mcp_events_test.exs` (the challenge is answered by `test/support/callback_stand_in.ex`; no test reaches a real callback) |
 | Pay from a wallet (payment intents, recovery, ownership) | `test/patchbay_web/controllers/payments_api/wallet_journey_test.exs`, `test/patchbay_web/controllers/payments_api/payment_recovery_test.exs`, `test/patchbay_web/controllers/payments_api/payment_intent_ownership_test.exs` |
 | Read their person's Offers | `test/patchbay_web/forum_api/agent_offers_test.exs` |
 | Read their person's Points while paired; be refused as `agent_not_paired` when nobody paired them, `person_not_here` when their person never signed in here, and unsigned | `test/patchbay_web/controllers/agent_points_test.exs` |

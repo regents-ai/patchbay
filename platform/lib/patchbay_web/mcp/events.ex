@@ -16,10 +16,13 @@ defmodule PatchbayWeb.MCP.Events do
   stream, so a refresh never skips an event still owed.
 
   An account holds at most 20 live subscriptions, whichever of its
-  connections made them, and one callback host receives at most 100, from
-  every account together. A new subscription past either is refused before
-  its callback is sent anything, and so is bringing back one that has run
-  out; refreshing a live one is never refused.
+  connections made them. A new subscription past that is normally turned
+  down before its callback is sent anything, and so is bringing back one
+  that has run out; refreshing a live one is never refused. Room is checked
+  again under the account's lock when the subscription is saved, so two
+  sent at once at the edge cannot both get in: the later one is turned down
+  after its callback answered. A subscription that has run out is removed
+  within the hour (`EventSubscription`'s `:forget_lapsed`).
   """
 
   alias Patchbay.Forum.EventSecret
@@ -31,7 +34,6 @@ defmodule PatchbayWeb.MCP.Events do
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.MCP.EventDelivery
 
-  import Ash.Expr, only: [expr: 1]
   require Ash.Query
 
   # A subscription lives a day unless the subscriber asks for less, and is
@@ -42,10 +44,12 @@ defmodule PatchbayWeb.MCP.Events do
   # switches over.
   @rotation_ms 300_000
 
-  # The most live subscriptions one account holds, and one callback host
-  # receives from every account together.
+  # The most live subscriptions one account holds.
   @per_account 20
-  @per_callback_host 100
+
+  # Who sends a callback its challenge: `Regent.MCPEvents`, and in the tests
+  # `PatchbayWeb.CallbackStandIn`.
+  @callbacks Application.compile_env!(:patchbay, [__MODULE__, :callbacks])
 
   @filter %{
     "type" => "object",
@@ -116,7 +120,7 @@ defmodule PatchbayWeb.MCP.Events do
          {:ok, cursor} <- cursor(params),
          {:ok, id} <- identity(identity_owner(actor), name, arguments, url),
          :ok <- secret(secret),
-         :ok <- room(existing(id), owner_id, url),
+         :ok <- room(existing(id), owner_id),
          :ok <- challenge(id, url, secret) do
       now = DateTime.utc_now()
 
@@ -176,17 +180,17 @@ defmodule PatchbayWeb.MCP.Events do
     end
   end
 
-  # One writer per account, then per callback host, at a time, always in that
-  # order: two subscribes racing for the same id refresh one row rather than
-  # colliding on its insert, and a burst of new ones cannot all count the same
-  # room and all get in.
+  # One writer per account at a time: two subscribes racing for the same id
+  # refresh one row rather than colliding on its insert, and a burst of new
+  # ones cannot all count the same room and all get in.
   defp store(fields, cursor, now, actor) do
-    for key <- ["owner:" <> fields.owner_id, "host:" <> callback_host(fields.url)],
-        do: Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [key])
+    Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [
+      "owner:" <> fields.owner_id
+    ])
 
     existing = existing(fields.id)
 
-    case room(existing, fields.owner_id, fields.url) do
+    case room(existing, fields.owner_id) do
       :ok when is_nil(existing) -> subscribe_new(fields, cursor, actor)
       :ok -> refresh(existing, fields, now, actor)
       refusal -> {:full, refusal}
@@ -231,54 +235,29 @@ defmodule PatchbayWeb.MCP.Events do
   end
 
   # A live subscription refreshed always has room; a new one, or one that has
-  # run out and is brought back, needs it in both the account's share and the
-  # callback host's.
-  defp room(%EventSubscription{expires_at: expires_at}, owner_id, url) do
-    if DateTime.after?(expires_at, DateTime.utc_now()), do: :ok, else: full(owner_id, url) || :ok
+  # run out and is brought back, needs it in the account's share.
+  defp room(%EventSubscription{expires_at: expires_at}, owner_id) do
+    if DateTime.after?(expires_at, DateTime.utc_now()), do: :ok, else: room(nil, owner_id)
   end
 
-  defp room(nil, owner_id, url), do: full(owner_id, url) || :ok
-
-  defp full(owner_id, url) do
-    host = callback_host(url)
-
-    cond do
-      live_count(expr(owner_id == ^owner_id)) >= @per_account ->
+  defp room(nil, owner_id) do
+    if live_count(owner_id) < @per_account,
+      do: :ok,
+      else:
         refuse(
           "too_many_subscriptions",
           "This account already has #{@per_account} event subscriptions.",
           "End one with events/unsubscribe, or let one run out, then subscribe again."
         )
-
-      # The rows whose address holds the host's name, then the host each one
-      # names, read exactly.
-      live_count(expr(contains(string_downcase(url), ^host)), &(callback_host(&1.url) == host)) >=
-          @per_callback_host ->
-        refuse(
-          "callback_host_full",
-          "#{host} already receives #{@per_callback_host} event subscriptions from Patchbay.",
-          "Use a callback on another host, or end subscriptions to this one, then subscribe again."
-        )
-
-      true ->
-        nil
-    end
   end
 
-  # The count covers every account's subscriptions, which no one actor may
-  # read, so it is the server's own read, and only the address is selected.
-  defp live_count(filter, keep \\ fn _subscription -> true end) do
+  # The count covers every connection's subscriptions for the account, which
+  # no one actor may read, so it is the server's own count.
+  defp live_count(owner_id) do
     EventSubscription
-    |> Ash.Query.do_filter(filter)
-    |> Ash.Query.filter(expires_at > now())
-    |> Ash.Query.select([:url])
-    |> Ash.read!(authorize?: false)
-    |> Enum.count(keep)
+    |> Ash.Query.filter(owner_id == ^owner_id and expires_at > now())
+    |> Ash.count!(authorize?: false)
   end
-
-  # The callback was validated as an https address with a host, so the host
-  # is there; names are compared without regard to case.
-  defp callback_host(url), do: String.downcase(URI.parse(url).host)
 
   defp refuse(code, message, hint),
     do: {:error, -32_000, message, ApiError.body(code, message, hint).error}
@@ -369,7 +348,7 @@ defmodule PatchbayWeb.MCP.Events do
   end
 
   defp challenge(id, url, secret) do
-    case Regent.MCPEvents.verify_callback(id, url, secret) do
+    case @callbacks.verify_callback(id, url, secret) do
       :ok ->
         :ok
 

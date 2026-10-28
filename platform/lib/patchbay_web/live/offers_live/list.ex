@@ -57,34 +57,42 @@ defmodule PatchbayWeb.OffersLive.List do
 
   def handle_event("more", _params, socket), do: {:noreply, socket}
 
-  # The same search keeps the sites already shown. Every new search reads the
-  # whole page again as of one moment, so the times, prices and figures on it
-  # all agree; "Show more" adds sites as of that same moment.
-  defp search(%{assigns: %{text: text}} = socket, text), do: socket
+  # The same search keeps the sites already shown, unless it was refused. Every
+  # new search reads the whole page again as of one moment, so the times,
+  # prices and figures on it all agree; "Show more" adds sites as of that same
+  # moment. A refused search reads nothing: the page keeps the figures it has
+  # and lists no websites, and searching again once the allowance is back goes
+  # through.
+  defp search(%{assigns: %{text: text, limited?: false}} = socket, text), do: socket
 
   defp search(socket, text) do
+    if admitted?(socket, text),
+      do: socket |> read_moment() |> start_search(text, false) |> read_sites(),
+      else: socket |> first_moment() |> start_search(text, true)
+  end
+
+  defp start_search(socket, text, limited?),
+    do:
+      socket
+      |> assign(text: text, cursor: nil, more?: false, found: 0, limited?: limited?)
+      |> stream(:sites, [], reset: true)
+
+  defp read_moment(socket) do
     as_of = DateTime.utc_now()
     window = Returns.window(as_of)
 
-    socket =
-      socket
-      |> assign(
-        text: text,
-        as_of: as_of,
-        window: window,
-        counting_since: Returns.counting_since(),
-        global: Markets.global(window),
-        cursor: nil,
-        more?: false,
-        found: 0,
-        limited?: false
-      )
-      |> stream(:sites, [], reset: true)
-
-    if admitted?(socket, text),
-      do: read_sites(socket),
-      else: assign(socket, limited?: true)
+    assign(socket,
+      as_of: as_of,
+      window: window,
+      counting_since: Returns.counting_since(),
+      global: Markets.global(window)
+    )
   end
+
+  # Joining the page reads its figures once, as the page without a search does,
+  # even when the search it joins with is refused.
+  defp first_moment(%{assigns: %{global: _global}} = socket), do: socket
+  defp first_moment(socket), do: read_moment(socket)
 
   # Each page of a search the connected page reads spends the visitor's search
   # allowance (`Patchbay.Limits`), as in ash-template, so joining the page again

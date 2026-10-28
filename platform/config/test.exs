@@ -85,6 +85,10 @@ config :phoenix,
 # the tests, never the internet.
 config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists
 
+# An MCP events callback's challenge is answered by the test itself
+# (`PatchbayWeb.CallbackStandIn`), never sent to an address.
+config :patchbay, PatchbayWeb.MCP.Events, callbacks: PatchbayWeb.CallbackStandIn
+
 # The SIWA service answers signed agent requests from each test's own stub
 # (`PatchbayWeb.SignedAgent.stub_siwa/0`), never the internet.
 config :regent_agents, :req_options, plug: {Req.Test, RegentAgents.Broker}

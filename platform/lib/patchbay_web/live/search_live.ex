@@ -35,6 +35,7 @@ defmodule PatchbayWeb.SearchLive do
        assign(socket,
          q: "",
          opened?: false,
+         limited?: false,
          search_read: %Read{},
          visitor: Map.fetch!(session, "visitor")
        )}
@@ -46,13 +47,14 @@ defmodule PatchbayWeb.SearchLive do
   end
 
   # A search spends the visitor's search allowance (`Patchbay.Limits`), as in
-  # ash-template; past it, the last results stay.
+  # ash-template. Past it, the window says to wait, as Agent Offers does, and
+  # shows no results until a search goes through.
   def handle_event("search", %{"q" => q}, socket) do
     q = normalize(q)
 
     if q == "" or Patchbay.Limits.spend(:search_address, socket.assigns.visitor) == :ok,
-      do: {:noreply, socket |> assign(:q, q) |> search()},
-      else: {:noreply, socket}
+      do: {:noreply, socket |> assign(q: q, limited?: false) |> search()},
+      else: {:noreply, assign(socket, q: q, limited?: true)}
   end
 
   def handle_async({Read, _, _} = name, result, socket),
@@ -150,13 +152,17 @@ defmodule PatchbayWeb.SearchLive do
 
   def render(assigns) do
     read = assigns.search_read
-    search = %{query: assigns.q, results: groups(assigns.q, read.value), state: read.state}
+
+    search =
+      if assigns.limited?,
+        do: %{query: assigns.q, results: [], state: :limited},
+        else: %{query: assigns.q, results: groups(assigns.q, read.value), state: read.state}
 
     assigns =
       assign(assigns,
         search: search,
-        read_state: read.state,
-        drawn_query: if(read.state in [:idle, :ready, :empty], do: assigns.q)
+        read_state: search.state,
+        drawn_query: if(search.state in [:idle, :ready, :empty], do: assigns.q)
       )
 
     ~H"""
@@ -198,6 +204,13 @@ defmodule PatchbayWeb.SearchLive do
         data-query={@drawn_query}
       >
         <p :if={@read_state == :loading} class="shell-search__empty" role="status">Searching…</p>
+        <Regent.Primitives.notice
+          :if={@read_state == :limited}
+          id="shell-search-limited"
+          tone="warning"
+        >
+          You're searching quickly. Wait a moment and search again.
+        </Regent.Primitives.notice>
         <p :if={@read_state in [:error, :stale]} class="shell-search__empty" role="alert">
           {if @read_state == :stale,
             do: "Search could not refresh. Previous results are shown.",
@@ -205,7 +218,7 @@ defmodule PatchbayWeb.SearchLive do
         </p>
         <div
           :if={
-            @read_state not in [:loading, :error, :stale] and @search.query != "" and
+            @read_state not in [:loading, :error, :stale, :limited] and @search.query != "" and
               @search.results == []
           }
           class="shell-search__empty"
@@ -267,6 +280,7 @@ defmodule PatchbayWeb.SearchLive do
   defp kind_icon(kind) when kind in [:site, :tool], do: :link
 
   defp result_count(%{state: :loading}), do: "Searching…"
+  defp result_count(%{state: :limited}), do: ""
   defp result_count(%{state: state}) when state in [:error, :stale], do: "Search unavailable"
   defp result_count(%{query: ""}), do: ""
 

@@ -127,7 +127,8 @@ config :patchbay, Patchbay.Forum.BoardActivity, gc_interval: :timer.minutes(10)
 # `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
 # priority report (`:read_by_jev`); the screening of an Offer's wording
 # (`Patchbay.Offers.Review`'s `:screen`); board events posted to MCP events
-# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`); deciding an
+# subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`), and removing
+# the ones that have run out (`:forget_lapsed`); deciding an
 # Offer bid window and ending an Offer at its expiry (`Patchbay.Offers.BidWindow`'s
 # `:settle` and `Patchbay.Offers.Placement`'s `:expire`); checking Credits
 # purchases on chain (`regent_credits`); and a site's check
@@ -153,6 +154,7 @@ config :patchbay, Oban,
     offers_review: 2,
     offers_settlement: 4,
     webhooks: 10,
+    lapsed_subscriptions: 1,
     regent_credits: 3,
     site_checks: 2,
     site_pictures: 1,
@@ -219,6 +221,10 @@ config :patchbay, :assist_read_only_tools, %{
   "patchbay.help" => ~w(get_patchbay_help get_webmcp_guide read_site_directory search_threads
        get_thread get_tool_history get_agent_profile)
 }
+
+# An MCP events subscription's callback answers a signed challenge before
+# anything is stored (`PatchbayWeb.MCP.Events`).
+config :patchbay, PatchbayWeb.MCP.Events, callbacks: Regent.MCPEvents
 
 # Paid actions, through the Regents payments library shared by every Regent
 # site: a tip to an agent profile, a paid priority report and a paid assist.
