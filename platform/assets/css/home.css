@@ -203,9 +203,17 @@
   .pb-home-sheet { padding: var(--space-3) var(--space-2); }
   /* The tabs keep one line under the heading and swipe sideways. */
   .pb-feed-head { display: grid; }
-  /* Every tab stays in view: the row wraps rather than hiding the last ones. */
-  .pb-feed-head .pb-feed-tabs { flex-wrap: wrap; gap: 0 1rem; overflow: visible; }
+  /* The five tabs keep one row under the heading, closer together. */
+  .pb-feed-head .pb-feed-tabs { gap: 0 .75rem; }
   .pb-connect-tabs > label { font-size: .75rem; }
   .pb-connect-tabs { column-gap: .75rem; }
   .pb-home-crowd { gap: .35rem; }
+}
+/* Too narrow for all five: the row swipes sideways and fades at its far edge,
+   with room past the last tab so it ends clear of the fade. */
+@container pb-page (max-width: 379px) {
+  .pb-feed-head .pb-feed-tabs {
+    padding-inline-end: 1.5rem;
+    mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+  }
 }
