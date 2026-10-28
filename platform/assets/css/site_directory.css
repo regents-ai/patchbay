@@ -73,7 +73,7 @@
 .pb-directory-table { width: 100%; min-width: 660px; table-layout: fixed; border-collapse: collapse; font-size: .8125rem; }
 .pb-directory-table th, .pb-directory-table td { padding: .2rem .75rem; vertical-align: middle; }
 .pb-directory-table thead { background: var(--pb-surface); }
-.pb-directory-table thead th { position: sticky; top: 0; z-index: 1; background: var(--pb-surface); font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; color: var(--pb-text-muted); height: 3.5rem; text-align: left; }
+.pb-directory-table thead th { position: sticky; top: 0; z-index: var(--rg-layer-card); background: var(--pb-surface); font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; color: var(--pb-text-muted); height: 3.5rem; text-align: left; }
 .pb-directory-table thead th:first-child { width: 66%; }
 .pb-directory-table thead th span { display: block; font-size: .65rem; text-transform: none; letter-spacing: normal; margin-top: .2rem; }
 .pb-directory-table .pb-directory-numeric { text-align: right; font-variant-numeric: tabular-nums; }

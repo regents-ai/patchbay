@@ -14,7 +14,7 @@
   position: absolute;
   inset-block: calc(100% + var(--rg-rule-width)) auto;
   inset-inline-end: 0;
-  z-index: 30;
+  z-index: var(--rg-layer-panel);
   container-type: size;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -25,6 +25,7 @@
   overscroll-behavior: contain;
   border-inline-start: 1px solid var(--pb-line);
   background: var(--pb-canvas);
+  box-shadow: var(--rg-layer-panel-shadow);
   color: var(--pb-text);
   font-family: var(--font-family-ui);
   line-height: 1.55;
