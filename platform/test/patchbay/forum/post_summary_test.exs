@@ -95,7 +95,10 @@ defmodule Patchbay.Forum.PostSummaryTest do
 
       assert String.length(title) <= 70, report.name
       kept = String.trim_trailing(title, "…")
-      assert String.starts_with?(lead, kept) or String.starts_with?(kept, lead), report.name
+      headline = PostSummary.headline(post)
+      # The error's own words lead, a bracket the title adds aside.
+      assert String.starts_with?(headline, String.trim_trailing(lead, ".")), report.name
+      assert String.starts_with?(headline, kept), report.name
     end
 
     touch_id = "touch_id" |> ErrorReports.get!() |> shown()
@@ -223,10 +226,13 @@ defmodule Patchbay.Forum.PostSummaryTest do
     @live %{
       "draft_07_output_schema" => {:success_story, :title},
       "entra_aadsts9010010" => {:success_story, :title},
-      "keyfleet_git_401" => {:success_story, "Git needs a password for this fleet's code. "},
+      "keyfleet_git_401" =>
+        {:success_story,
+         "Git needs a password for this fleet's code (401). Keyfleet git: agents sign with git-remote-siwa"},
       "keyfleet_join" =>
         {:success_story, "not_signed_in: Sign in first: regents auth login --site keyfleet. "},
-      "touch_id" => {:success_story, :title},
+      "touch_id" =>
+        {:success_story, "no_touch_id — regents auth login on a Mac: after 5 minutes, key_helper"},
       "webmcp_model_context" => {:success_story, :title},
       "x402_header_overflow" =>
         {:discussion,
@@ -303,6 +309,43 @@ defmodule Patchbay.Forum.PostSummaryTest do
           assert PostSummary.error(post) == nil
         end
       end
+    end
+
+    test "any other kind also takes the quoted words from inline code, a table's too, whole" do
+      table = "| Code | Means |\n| --- | --- |\n| `no_touch_id` | Nobody confirmed |\n"
+      prose = "Login stops with `key_helper` stuck.\n"
+
+      for kind <- [:discussion, :feature_request, :success_story] do
+        post = %{
+          written(table, ~s(Login on a Mac: "no_touch_id" after 5 minutes))
+          | thread_kind: kind
+        }
+
+        assert PostSummary.error(post) == "no_touch_id"
+        assert PostSummary.headline(post) == "no_touch_id — Login on a Mac: after 5 minutes"
+
+        assert PostAddress.path(post) ==
+                 "/posts/#{post.id}/no_touch_id-login-on-a-mac-after-5-minutes"
+
+        # Only whole words: `no_touch_id` does not hold "touch".
+        for title <- [~s(Login: "touch"), ~s(Login: "key_helper_not_answering")] do
+          post = %{written(table <> "\n" <> prose, title) | thread_kind: kind}
+          assert PostSummary.headline(post) == title, "#{kind} #{title}"
+        end
+      end
+    end
+
+    test "a bracket right after the quoted error goes with it, and the clause reads on" do
+      post = "keyfleet_git_401" |> ErrorReports.get!() |> shown(:success_story)
+
+      assert post.title =~
+               ~s[Keyfleet git: "Git needs a password for this fleet's code" (401). Agents]
+
+      assert PostSummary.headline(post) ==
+               "Git needs a password for this fleet's code (401). Keyfleet git: agents sign with git-remote-siwa, which needs siwa_agent.py beside it"
+
+      assert PostSummary.title(post) ==
+               "Git needs a password for this fleet's code (401). Keyfleet git…"
     end
 
     test "a question or a report leads with its error whatever its title quotes" do

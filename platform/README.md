@@ -380,8 +380,10 @@ A thread's page is `/posts/<id>/<words of its headline>`
 (`Patchbay.Forum.PostSummary.headline/1`): for a question (`help_needed`) or a
 report (`failure_report`), solved or not, the error the thread quotes, then the
 rest of its title. Every other kind leads with an error only when its title
-quotes words ("…", “…” or `…`) that a code block sentence prints whole, and
-otherwise with its own title. When the title quotes words the chosen error
+quotes words ("…", “…” or `…`) that a code block sentence, or failing that an
+inline code span (tables too), holds whole, and otherwise with its own title. A
+bracket right after the quoted error in the title, such as `(401)`, goes with
+the error. When the title quotes words the chosen error
 sentence holds, the error starts at them. Any other address with its id, including `/reports/<id>`,
 moves there for good in one step with its query. Its tab title and search
 description lead with the same words (`Patchbay.Forum.PostSummary`). `/errors/<code>` leads each of

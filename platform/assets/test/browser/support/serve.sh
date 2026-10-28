@@ -1,9 +1,9 @@
 #!/bin/sh
 # The browser walk's server, from its database to its end (playwright.config.ts).
 # It makes the run's own database, signs the walk's people in, gives it a small
-# Agent Wallet Bench (bench.exs), builds the pages and serves them. When the
-# server fails to start or stops by itself, it drops the database on its way out;
-# when Playwright stops it, teardown.ts drops it.
+# Agent Wallet Bench (bench.exs) and one report (report.exs), builds the pages
+# and serves them. When the server fails to start or stops by itself, it drops
+# the database on its way out; when Playwright stops it, teardown.ts drops it.
 set -eu
 cd "$(dirname "$0")/../../../.."
 

@@ -9,9 +9,10 @@ defmodule Patchbay.Forum.PostSummary do
   what fixed it in a paragraph that starts with a bold **Fix** label. Any
   other kind of thread, such as a success story or a discussion, is about an
   error only when its title quotes words ("…", “…” or `…`) that a sentence of
-  one of its code blocks holds whole: the error is that sentence from those
-  words on, from the first quoted words that match. Otherwise it is headed by
-  its title, whatever its code blocks hold.
+  one of its code blocks holds whole, or failing that a span of inline code
+  (in a table too): the error is that sentence or span from those words on,
+  from the first quoted words that match. Otherwise it is headed by its
+  title, whatever its code holds.
 
     * The error is a sentence of the post's first code block that holds one:
       the sentence that shares the most words with the title, the earliest on
@@ -81,7 +82,7 @@ defmodule Patchbay.Forum.PostSummary do
     case found(post, fn -> blocks end) do
       nil -> join(title, first_sentence(prose(blocks)))
       {error, {:code, after_error}} -> join(error, fix(blocks, after_error))
-      {_error, :title} = error -> join(headed(error, title), fix(blocks, blocks))
+      {_error, _title_or_inline} = error -> join(headed(error, title), fix(blocks, blocks))
     end
   end
 
@@ -99,27 +100,47 @@ defmodule Patchbay.Forum.PostSummary do
   def about_error?(%{thread_kind: kind}), do: kind in [:help_needed, :failure_report]
 
   # The error and where it was found: in a code block (with the blocks after
-  # it), or in the title. Any other post has one only when its title quotes
-  # words a code block prints; a post whose title quotes nothing is not read.
+  # it), in the title, or in a span of inline code. Any other post has one
+  # only when its title quotes words its code prints; a post whose title
+  # quotes nothing is not read.
   defp found(post, blocks) do
     title = post_title(post)
 
     cond do
       about_error?(post) -> error_in(blocks.(), title)
-      (spans = quoted(title)) != [] -> printed(blocks.(), spans)
+      (spans = quoted(title)) != [] -> printed(blocks(post), spans)
       true -> nil
     end
   end
 
-  # The first sentence of a code block that holds one of the quoted words
-  # whole, from those words on.
+  # For the first quoted words that match: the first sentence of a code block
+  # that holds them whole, from those words on; or else the first span of
+  # inline code that holds them whole, from those words on.
   defp printed(blocks, spans) do
     found =
       for span <- spans,
-          {{:code, text}, index} <- Enum.with_index(blocks),
+          match <- [in_block(blocks, span), in_inline(blocks, span)],
+          match != nil,
+          do: match
+
+    List.first(found)
+  end
+
+  defp in_block(blocks, span) do
+    found =
+      for {{:code, text}, index} <- Enum.with_index(blocks),
           sentence <- sentences(text),
           error = from_whole(sentence, span),
           do: {error, {:code, Enum.drop(blocks, index + 1)}}
+
+    List.first(found)
+  end
+
+  defp in_inline(blocks, span) do
+    found =
+      for {:inline, text} <- blocks,
+          error = from_whole(text, span),
+          do: {error, :inline}
 
     List.first(found)
   end
@@ -188,13 +209,19 @@ defmodule Patchbay.Forum.PostSummary do
   defp worded(text), do: if(text =~ ~r/[\p{L}\p{N}]/u, do: text)
 
   # The error, then the title without its quoted copy of the error, or of
-  # the quoted words the error starts at.
+  # the quoted words the error starts at. A bracket right after that copy,
+  # such as a status code, goes with the error: `Keyfleet git: "Git needs a
+  # password" (401). Agents sign…` is headed `Git needs a password (401).
+  # Keyfleet git: agents sign…`.
   defp headed({error, _where}, title) do
-    said = for words <- quoted(title), String.starts_with?(error, words), do: words
+    {error, rest} =
+      title
+      |> quoted()
+      |> Enum.filter(&String.starts_with?(error, &1))
+      |> Enum.reduce({error, title}, &unquote_copy/2)
 
     rest =
-      title
-      |> String.replace(Enum.flat_map(said, &["\"#{&1}\"", "“#{&1}”", "`#{&1}`"]), " ")
+      rest
       |> squash()
       |> String.replace(~r/\s+(?=[,;.])/u, "")
       |> String.replace(~r/([,;:])[,;]/u, "\\1")
@@ -205,6 +232,43 @@ defmodule Patchbay.Forum.PostSummary do
       String.match?(error, ~r/[.!?]$/u) -> error <> " " <> rest
       true -> error <> " — " <> rest
     end
+  end
+
+  defp unquote_copy(words, {error, title}) do
+    copy = Enum.map_join(["\"#{words}\"", "“#{words}”", "`#{words}`"], "|", &Regex.escape/1)
+
+    case Regex.run(~r/(#{copy})(?:\s*(\([^()]*\))\.?)?/u, title, return: :index) do
+      nil ->
+        {error, title}
+
+      [{at, length} | bracket] ->
+        before = binary_part(title, 0, at) |> String.trim_trailing()
+        after_copy = title |> binary_part(at + length, byte_size(title) - at - length)
+
+        {with_bracket(error, title, bracket), joined(before, String.trim_leading(after_copy))}
+    end
+  end
+
+  defp with_bracket(error, _title, [_copy]), do: error
+
+  defp with_bracket(error, title, [_copy, {at, length}]) do
+    bracket = binary_part(title, at, length)
+
+    case String.split_at(error, -1) do
+      {said, end_mark} when end_mark in [".", "!", "?"] -> said <> " " <> bracket <> end_mark
+      _whole -> error <> " " <> bracket
+    end
+  end
+
+  # The title on either side of the removed copy. An ordinary capitalised
+  # word after a colon continues the clause, so it is lowercased.
+  defp joined(before, after_copy) do
+    after_copy =
+      if String.ends_with?(before, ":") and after_copy =~ ~r/\A\p{Lu}\p{Ll}/u,
+        do: String.downcase(String.first(after_copy)) <> String.slice(after_copy, 1..-1//1),
+        else: after_copy
+
+    before <> " " <> after_copy
   end
 
   # The fix's first sentence, after its label; or, when there is no labelled
@@ -228,7 +292,8 @@ defmodule Patchbay.Forum.PostSummary do
 
   # The post's top-level blocks: each code block's text without the commands
   # typed at a prompt, and each paragraph's leading bold label (lowercased,
-  # for matching) and the words after it. A page asks for the same post's
+  # for matching) and the words after it; then the text of every span of
+  # inline code, tables included, in the order written. A page asks for the same post's
   # blocks many times over (each link to it, such as one per reply, its title,
   # its description), and reading a body takes over a tenth of a millisecond,
   # so the last post read is kept for the process that read it: by the post's
@@ -252,8 +317,9 @@ defmodule Patchbay.Forum.PostSummary do
   defp blocks(_post), do: []
 
   defp read(body) do
-    body
-    |> MDEx.parse_document!()
+    document = MDEx.parse_document!(body)
+
+    document
     |> Map.fetch!(:nodes)
     |> Enum.flat_map(fn
       %MDEx.CodeBlock{literal: text} ->
@@ -272,6 +338,7 @@ defmodule Patchbay.Forum.PostSummary do
       _other ->
         []
     end)
+    |> Enum.concat(for %MDEx.Code{literal: text} <- document, do: {:inline, squash(text)})
   end
 
   # A line typed at a shell prompt: `$ `, `% `, `# `, `> `, `>>> `, `PS C:\>`
