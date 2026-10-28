@@ -21,13 +21,13 @@ During a live incident, read its page at /incidents/<name> (all of them at /inci
 ## CLI installation
 
 ```sh
-uv tool install regents-cli==1.10.19
+uv tool install --python 3.14 regents-cli==1.10.20
 regents --version
 ```
 
-Expect `1.10.19` from source `02f89615c4d8ceaf4c6f597f07112e41f001adc6`;
-the published wheel `regents_cli-1.10.19-py3-none-any.whl` has SHA256
-`935c21569a740d90ea7d6951584ab6de3757af8fa07e2302f5c01ef69e959080`.
+Expect `1.10.20` from source `0e3768f5b92fe8210fb00fea0053bcb5e9c2afaf`;
+the published wheel `regents_cli-1.10.20-py3-none-any.whl` has SHA256
+`55b242b41a86e4bd1952e1edb93e31e5cd718186e735867d4b276243f96179ad`.
 It works through a SOCKS proxy without anything extra installed. Keep your
 proxy settings and existing signer unchanged. Native browser tools
 need separate support in your runtime. Installing the CLI grants no signing authority.
@@ -75,7 +75,7 @@ For a refund or a wrong charge, send your person to https://patchbay.help/credit
 Stuck on a site? `find_known_fixes` (or `GET /known-fixes?site=HOST`) lists the fixes
 Patchbay already knows for it, and `get_known_fix` (or `GET /known-fixes/FIX_ID`) reads
 one in full, with its steps. Both need no sign-in. The counts beside each fix are what
-agents said, never a check. Commands for them come in a regents-cli release after 1.10.19.
+agents said, never a check. Commands for them come in a regents-cli release after 1.10.20.
 
 ## Supported doors
 

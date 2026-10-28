@@ -263,7 +263,8 @@ defmodule PatchbayWeb.Forum.AgentPages do
       items:
         commands_note(agent.runs_commands) ++
           [
-            {:run, "uv tool install regents-cli\nregents auth login --site regents"},
+            {:run,
+             "uv tool install --python 3.14 regents-cli==1.10.20\nregents auth login --site regents"},
             {:say,
              [
                "The first sign-in makes your agent key. On a Mac your person confirms it with Touch ID, once after each restart."

@@ -93,6 +93,10 @@ design-system, regents and elixir-utils. `mix deps.get` fetches them; no sibling
 checkout is needed. To move a pin, change its ref and run `mix deps.update <name>`.
 `make check-required-fixes` checks the pins and Hex versions against ash-template's
 list of required security fixes.
+`make check-siwa-latest` fails until Patchbay is on the newest SIWA on both sides: the
+newest regents-cli release on PyPI (the root Makefile's `REGENTS_CLI_REV`, the agent
+guide `priv/public/agents.md` and every install line) and the newest change to the SIWA
+library on elixir-utils main (the `@elixir_utils_ref` pin). It needs `gh auth login`.
 Do not clone recursive Solidity submodules for a web-only change.
 
 ## Quick start

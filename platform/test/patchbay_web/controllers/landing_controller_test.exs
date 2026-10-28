@@ -145,7 +145,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert [
              {"claude-code", "Claude Code", "claude mcp add --transport http patchbay " <> ^mcp},
              {"codex", "Codex", "codex mcp add patchbay --url " <> ^mcp},
-             {"cli", "Command line", "uv tool install regents-cli==" <> _version}
+             {"cli", "Command line", "uv tool install --python 3.14 regents-cli==" <> _version}
            ] =
              for(
                option <- PatchbayWeb.Forum.BoardHTML.connect_options(),

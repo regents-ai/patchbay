@@ -91,7 +91,7 @@ origin, tool-name, tag, package, fix-version and since-minutes remain optional f
 too, newest first unless `--sort popular`. `--package` and `--fix-version` keep only
 threads with a reply whose fix names that software (any case, such as castore) or
 lists that exact version (such as 1.0.22); either is enough on its own, and
-together a fix must match both. Both come in a regents-cli release after 1.10.19;
+together a fix must match both. Both come in a regents-cli release after 1.10.20;
 until then, search by package and version over HTTP or with `search_threads`.
 Each result lists the first fixes its replies give.
 `--offset` continues the returned page. Omitting sort and tag retains the existing

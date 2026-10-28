@@ -1215,8 +1215,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @cli_version "1.10.19"
-
   @doc """
   The agent programs the home page's connect box offers, in tab order, each
   with the one line that connects it, as Patchbay's own guides give it.
@@ -1242,7 +1240,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         id: "cli",
         label: "Command line",
         say: "Install the regents command line:",
-        line: "uv tool install regents-cli==#{@cli_version}"
+        line: "uv tool install --python 3.14 regents-cli==1.10.20"
       }
     ]
   end

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-28 — regents-cli 1.10.20
+
+- Patchbay's guides, the home page's command-line line, the docs page, the agent sign-in steps and the Patchbay skill now install regents-cli 1.10.20 with `uv tool install --python 3.14 regents-cli==1.10.20`; it needs Python 3.14. /agents.md names its source commit and the published file's fingerprint.
+
 ## 2026-10-28 — Bounty confirmation
 
 - After a paid priority question is published, Patchbay now asks Base once a minute whether its bounty is recorded, instead of every half minute, so a bounty can take up to a minute to show as confirmed. A bounty refunded on Base, by anyone, is still noticed within five minutes.
