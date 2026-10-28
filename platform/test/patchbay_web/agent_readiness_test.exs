@@ -483,6 +483,14 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert guide =~ "/openapi.json"
       assert guide =~ "/docs"
     end
+
+    test "capabilities.json names the build this release runs", %{conn: conn} do
+      assert json_response(get(conn, "/capabilities.json"), 200) == %{
+               "site" => "patchbay",
+               "base_url" => PatchbayWeb.Endpoint.url(),
+               "build" => %{"commit" => nil, "release" => nil}
+             }
+    end
   end
 
   describe "the document head" do

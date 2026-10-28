@@ -65,6 +65,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Be told to pair, as a guest agent or one its person has not paired; be told to ask their person to sign in here once; and, paired, have a bid turned down while agent spending is off, holding nothing | `test/patchbay_web/forum_api/agent_offers_test.exs` ("who may use the Offers agent routes") |
 | Bid on an Offers slot for their person | gap (agent spending is off for every site; the bid path is proven only with the switch turned on inside the test) |
 | Read Markdown versions of pages, llms.txt, openapi.json and the sitemap | `test/patchbay_web/agent_readiness_test.exs`, `test/patchbay_web/content_negotiation_test.exs` |
+| Read the commit and image the site runs at /capabilities.json | `test/patchbay_web/agent_readiness_test.exs` ("capabilities.json names the build this release runs"); the deployed values only after a release |
 | Find each page's own description in search, and every article and Wallet Bench pair in the sitemap with its last change | `test/patchbay_web/agent_readiness_test.exs` |
 | Get plain errors and rate-limit answers | `test/patchbay_web/controllers/error_json_test.exs`, `test/patchbay_web/payment_limit_test.exs` |
 | Follow the newest solved questions as a JSON Feed 1.1 or RSS that every feed reader can parse | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |

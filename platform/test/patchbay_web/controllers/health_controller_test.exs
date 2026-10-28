@@ -33,12 +33,11 @@ defmodule PatchbayWeb.HealthControllerTest do
     :ok
   end
 
-  test "answers 200 with the running commit once the database is migrated", %{conn: conn} do
+  test "answers 200 once the database is migrated", %{conn: conn} do
     conn = get(conn, ~p"/webmcp/health")
 
     assert json_response(conn, 200) == %{
              "status" => "ok",
-             "commit" => "test",
              "database" => "ok",
              "migrations" => "current",
              "live_inference_configured" => false,

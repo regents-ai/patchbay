@@ -126,9 +126,6 @@ config :esbuild,
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ]
 
-# /webmcp/health reports this where a production release reports its commit.
-config :patchbay, :release_commit, "development"
-
 # Do not include metadata nor timestamps in development logs
 config :logger, :default_formatter, format: "[$level] $message\n"
 

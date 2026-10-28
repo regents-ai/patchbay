@@ -95,10 +95,11 @@ ENV MIX_ENV="prod"
 # Only copy the final release from the build stage
 COPY --from=builder --chown=nobody:root /app/platform/_build/${MIX_ENV}/rel/patchbay ./
 
-# The commit this image is built from, reported by /webmcp/health. Build with
-# --build-arg SOURCE_COMMIT=<full commit>; a release without it does not start.
+# The commit this image is built from, which /capabilities.json names.
+# scripts/deploy.sh passes it; a build without it stops here.
 ARG SOURCE_COMMIT
-ENV SOURCE_COMMIT="${SOURCE_COMMIT}"
+RUN test -n "$SOURCE_COMMIT"
+ENV SOURCE_COMMIT=$SOURCE_COMMIT
 
 USER nobody
 

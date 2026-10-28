@@ -540,7 +540,8 @@ The handoff names one hosting provider: Fly.io.
 - Deployment from the repository root, after the commit is on `main`: `scripts/deploy.sh`
 - Secrets/configuration: Fly secrets
 - Database connection: the shared Regent PostgreSQL cluster, through `DATABASE_POOLED_URL` (serving) and `DATABASE_DIRECT_URL` (release commands)
-- Health endpoint: `/healthz` (plain `ok`, for Fly's check), and `/webmcp/health` (JSON with the running commit and migration state, for agents and the command line)
+- Health endpoint: `/healthz` (plain `ok`, for Fly's check), and `/webmcp/health` (JSON with the database and migration state, for agents and the command line)
+- Running build: `/capabilities.json` names the commit the release runs (`build.commit`) and its Fly image (`build.release`)
 - Base image: Debian Bookworm
 
 This document does not identify the PostgreSQL hosting provider separately, so

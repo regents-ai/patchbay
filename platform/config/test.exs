@@ -37,9 +37,6 @@ config :patchbay, Oban, testing: :manual
 # the Public Suffix List leaves out; here they count as real endings.
 config :domainatrex, custom_suffixes: ["example", "invalid", "test"]
 
-# /webmcp/health reports this where a production release reports its commit.
-config :patchbay, :release_commit, "test"
-
 # A closed incident beside the live ones, so a test reads both kinds.
 config :patchbay, :incident_files, ["priv/incidents/*.md", "test/support/incidents/*.md"]
 

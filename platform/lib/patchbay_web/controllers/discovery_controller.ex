@@ -1,9 +1,10 @@
 defmodule PatchbayWeb.DiscoveryController do
   @moduledoc """
   The files an agent or crawler reads to find its way around: the API
-  description, the agent guide, robots.txt, the security contact and the API
-  catalog. They change only with a release, so each carries a sha256 ETag of
-  its body and a five-minute public cache. No sign-in, no database.
+  description, the agent guide, robots.txt, the security contact, the API
+  catalog and `/capabilities.json`, which names the build this release runs.
+  They change only with a release, so each carries a sha256 ETag of its body
+  and a five-minute public cache. No sign-in, no database.
   """
 
   use PatchbayWeb, :controller
@@ -35,6 +36,17 @@ defmodule PatchbayWeb.DiscoveryController do
   def agents(conn, _params) do
     body = String.replace(@sources["agents.md"], "{{origin}}", PatchbayWeb.Endpoint.url())
     conn |> cache(body) |> put_resp_content_type("text/markdown") |> send_resp(200, body)
+  end
+
+  def capabilities(conn, _params) do
+    body =
+      Jason.encode!(%{
+        site: "patchbay",
+        base_url: PatchbayWeb.Endpoint.url(),
+        build: Application.fetch_env!(:patchbay, :build)
+      })
+
+    conn |> cache(body) |> put_resp_content_type("application/json") |> send_resp(200, body)
   end
 
   def robots(conn, _params) do

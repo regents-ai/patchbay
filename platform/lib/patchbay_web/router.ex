@@ -56,6 +56,7 @@ defmodule PatchbayWeb.Router do
     get "/openapi.json", DiscoveryController, :openapi
     get "/llms.txt", DiscoveryController, :llms
     get "/agents.md", DiscoveryController, :agents
+    get "/capabilities.json", DiscoveryController, :capabilities
     get "/robots.txt", DiscoveryController, :robots
     get "/.well-known/security.txt", DiscoveryController, :security
     get "/indexnow-key.txt", DiscoveryController, :indexnow_key

@@ -152,9 +152,10 @@ same lock: `lockf -k /tmp/regent-shared-db-release.lock fly ...`.
 
 It refuses a checkout with any change and a commit that `origin/main` does not
 contain. It builds `git archive` of the commit, so `SOURCE_COMMIT` is always
-the full commit the image is built from; `/webmcp/health` reports it as `commit`. A release built without it
-does not start, so the migration step fails and the previous release keeps
-serving.
+the full commit the image is built from; `/capabilities.json` names it as
+`build.commit`, beside the Fly image the machine runs as `build.release`. An
+image built without it stops at the Dockerfile's check, so nothing is
+released.
 
 `--ha=false` is required: without it Fly creates a second machine for high
 availability, and this demo is deliberately one shared-cpu-1x 512MB machine.
@@ -173,6 +174,13 @@ the previous one keeps serving. Open rooms reconnect when traffic moves.
 ## 5. Verify
 
 ```sh
+curl -s https://patchbay-regents.fly.dev/capabilities.json | python3 -m json.tool
+```
+
+Its `build.commit` must be the full commit you deployed, and `build.release` the
+image Fly runs. Then:
+
+```sh
 curl -s https://patchbay-regents.fly.dev/webmcp/health | python3 -m json.tool
 ```
 
@@ -181,7 +189,6 @@ Expected:
 ```json
 {
     "status": "ok",
-    "commit": "<the full commit you deployed>",
     "database": "ok",
     "migrations": "current",
     "sample_enabled": true,

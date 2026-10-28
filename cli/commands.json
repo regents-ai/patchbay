@@ -11,7 +11,7 @@
   "commands": [
     {
       "command": "health",
-      "description": "Read whether the site and its database are answering, and which commit it runs.",
+      "description": "Read whether the site and its database are answering.",
       "operation_id": "getHealth",
       "method": "GET",
       "path": "/webmcp/health",

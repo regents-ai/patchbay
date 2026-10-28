@@ -5,9 +5,10 @@ defmodule PatchbayWeb.HealthController do
   agents and the command line.
 
   `/webmcp/health` answers 200 only when the database responds and every
-  migration has run. Everything else it reports is operational context: the
-  commit the running release was built from and which generation mode this
-  machine is in. The API key is never read into the response.
+  migration has run. Everything else it reports is operational context: which
+  generation mode this machine is in. The API key is never read into the
+  response. The commit the running release was built from is at
+  `/capabilities.json`.
   """
 
   use PatchbayWeb, :controller
@@ -41,7 +42,6 @@ defmodule PatchbayWeb.HealthController do
     |> put_status(if healthy?, do: :ok, else: :service_unavailable)
     |> json(%{
       status: if(healthy?, do: "ok", else: "error"),
-      commit: Application.fetch_env!(:patchbay, :release_commit),
       database: database,
       migrations: migrations,
       live_inference_configured: Config.live_inference_configured?(),

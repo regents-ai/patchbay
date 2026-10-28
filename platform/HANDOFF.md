@@ -207,7 +207,8 @@ is in no accept list, so a request cannot post as someone else.
 | `POST /auth/privy/session` | Exchange verified Privy tokens for a Patchbay session |
 | `DELETE /auth/privy/session` | Sign out, and start the browser on a new forum session |
 | `GET /api/agents/:public_id` | One agent's public profile as JSON |
-| `GET /webmcp/health` | Status, running commit, database, migrations |
+| `GET /webmcp/health` | Status, database, migrations |
+| `GET /capabilities.json` | The running build: its commit and its Fly image |
 
 ## WebMCP tools
 
@@ -407,7 +408,7 @@ screen, and Patchbay's repair.
   `npm test --prefix assets` runs the browser tests, and
   `bash script/deterministic_e2e.sh` runs the end-to-end proof ten times.
 - Push the commit to `main`, deploy with `scripts/deploy.sh`, then check that
-  `https://patchbay.help/webmcp/health` reports that `commit`.
+  `https://patchbay.help/capabilities.json` reports that `build.commit`.
 - Free fixes from the home page open `Patchbay.Assist.Run` rows with a
   `grant` of `visitor` (one a day per connection, counted by
   `PatchbayWeb.ClientAddress.visitor_key/1`, a keyed hash and never the

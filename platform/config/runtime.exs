@@ -293,19 +293,11 @@ if config_env() == :prod do
       patchbay-regents.fly.dev
       """
 
-  # The commit the image was built from, baked in by the Dockerfile's
-  # SOURCE_COMMIT build argument and reported by /webmcp/health. A release
-  # built without it does not start, so its migration step fails the deploy.
-  release_commit = System.get_env("SOURCE_COMMIT")
-
-  unless is_binary(release_commit) and release_commit =~ ~r/\A[0-9a-f]{40}\z/ do
-    raise """
-    environment variable SOURCE_COMMIT must be the full 40-character commit
-    the image was built from. Build with --build-arg SOURCE_COMMIT=<commit>.
-    """
-  end
-
-  config :patchbay, :release_commit, release_commit
+  # The commit the image was built from, and the Fly image this machine runs.
+  config :patchbay, :build, %{
+    commit: System.fetch_env!("SOURCE_COMMIT"),
+    release: System.fetch_env!("FLY_IMAGE_REF")
+  }
 
   # Live inference and the deterministic demo fallback are read directly from
   # the environment by the generation path (OPENAI_API_KEY and

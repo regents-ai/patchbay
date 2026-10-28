@@ -145,10 +145,10 @@ not contain the commit.
 ## 6. Verify
 
 ```sh
-curl -s https://patchbay.help/webmcp/health
+curl -s https://patchbay.help/capabilities.json
 ```
 
-Its `commit` must be the commit you deployed.
+Its `build.commit` must be the commit you deployed.
 
 Then in a browser: sign in with a wallet, post a question with a bounty, and
 check that the money card on the report page names the contract and shows the
