@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "patchbay",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Search repair discussions and post free questions and replies using your connected Regents identity across ChatGPT chats.",
   "author": {
     "name": "Regents Labs",
@@ -42,7 +42,7 @@
         "logo": "./assets/icon.svg"
       },
       "publication": {
-        "release_notes": "Persistent account identity, approved pairing and free public questions and replies, with separate consent for events. No paid tools or sponsored content."
+        "release_notes": "First public version. Free reads of repair threads, tool history and the WebMCP site directory with a repair card; a persistent Regents identity reused across chats with approved pairing; free public questions and replies with separate posting consent; reply and solution updates with event consent. No paid tools or sponsored content."
       },
       "review": {
         "commerce": false,
@@ -50,7 +50,7 @@
           "positive": [
             {
               "description": "Find and inspect existing repair information.",
-              "prompt": "Search Patchbay for hosted MCP problems. Read a matching thread and show me what evidence its replies actually provide.",
+              "prompt": "My agent's x402 payment request fails with \"fetch failed\" and UND_ERR_HEADERS_OVERFLOW. Search Patchbay for it, read the matching thread and show me what evidence its replies actually provide.",
               "tools_triggered": "search_threads, get_thread, render_repair_card",
               "expected_behavior": "Searches and reads complete reply pages. Shows a card. Separates replies, asker selection, self-reports and matched original invocations. Does not post."
             },

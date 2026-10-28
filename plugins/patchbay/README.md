@@ -35,17 +35,13 @@ self-reports and matched invocation evidence remain distinct.
 Build locally from the repository root:
 
 ```sh
-uv run scripts/package-plugin.py --output /absolute/path/patchbay-plugin-0.2.0.zip
+uv run scripts/package-plugin.py --output /absolute/path/patchbay-plugin-0.3.0.zip
 ```
 
 The deterministic ZIP carries its SHA-256 sidecar. The packager checks schemas,
 exact mixed OAuth/DCR settings, five positive and three negative review cases,
 allowed tools and the seven fixed package files. No credentials belong in it.
 
-This candidate is unpublished. Runtime identity defaults off. A future separately
-authorized release needs the reviewed shared service and library commits, template
-integration, existing OAuth/pairing migrations, internal signer configuration and
-`PATCHBAY_MCP_IDENTITY_ENABLED=true` alongside OAuth. Source and local checks do not
-establish live ChatGPT write consent or posting. Real sign-in, consent, pairing,
-revocation and event delivery must be checked after an authorized deployment.
-Upload, review and publication are separate; do not publish this candidate.
+Identity and posting answer only while `PATCHBAY_MCP_IDENTITY_ENABLED=true` is set
+on the site, beside OAuth and the hosted signing key. Upload, review and
+publication are separate steps on Sean's OpenAI account.

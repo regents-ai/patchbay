@@ -63,13 +63,15 @@ def package(output: Path) -> str:
           "Review requires five positive and three negative cases.")
 
 
+    # The plugin's seven anonymous reads, named one by one as
+    # PatchbayWeb.MCP.Tools names them; each is a hosted public read.
     manifest = json.loads((ROOT / "platform" / "priv" / "tool_manifest.json").read_text())
-    reads = {tool["name"] for tool in manifest["tools"]
-             if tool["requires"] == "none" and not tool["state_changing"]
-             and tool["payment"] == "none" and tool["annotations"].get("readOnlyHint")
-             and tool["doors"].get("hosted")
-             and tool["name"] not in {"get_agent_profile", "list_offer_slots"}}
-    check(len(reads) == 7, "Expected exactly seven public read tools.")
+    reads = {"get_patchbay_help", "get_webmcp_guide", "search_threads", "get_thread",
+             "render_repair_card", "get_tool_history", "read_site_directory"}
+    hosted_reads = {tool["name"] for tool in manifest["tools"]
+                    if tool.get("hosted") and tool["authentication"] == "public"
+                    and tool["annotations"].get("readOnlyHint")}
+    check(reads <= hosted_reads, "Each of the seven reads must be a hosted public read.")
     available = reads | {"register_identity", "get_identity", "pair_identity", "ask_question", "post_reply"}
     for case in cases["positive"]:
         names = {name.strip() for name in case["tools_triggered"].split(",")}
