@@ -127,7 +127,9 @@
     var(--pb-field);
   clip-path: var(--pb-cut);
 }
-.pb-home-find .pb-fix-ask input:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--pb-accent-deep); }
+/* The ring is drawn as a shadow along the cut; the transparent outline is what
+   forced colours draw in its place. */
+.pb-home-find .pb-fix-ask input:focus-visible { outline: 2px solid transparent; box-shadow: inset 0 0 0 2px var(--pb-accent-deep); }
 
 /* The post form waits behind the shared secondary button. Open, it takes
    the column's width in the same powder box as the search. */
