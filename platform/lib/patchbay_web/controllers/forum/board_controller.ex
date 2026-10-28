@@ -785,12 +785,11 @@ defmodule PatchbayWeb.Forum.BoardController do
   ending is a missing page. `goal` and `error` in the address fill in the
   post form, and `page` names the exact page the visitor was on.
 
-  A name ending in `.md` is a missing page when the part before `.md` is one
-  of Patchbay's own page names (`/docs.md`, `/wallet-bench.md`) or one of them
-  with more after a hyphen (`/help-me.md`, from `/help`): every Markdown page
-  here is its page's address plus `.md`, so these name a page, not a site.
-  Any other `.md` domain (`999.md`, `point.md`) has its site page like every
-  other site.
+  A name ending in `.md` is a missing page when the part before `.md` is
+  exactly one of Patchbay's own page names (`/docs.md`, `/wallet-bench.md`):
+  every Markdown page here is its page's address plus `.md`, so these name a
+  page, not a site. Any other `.md` domain (`999.md`, `point.md`,
+  `help-me.md`) has its site page like every other site.
 
   Opening the page asks for the site's check when one is due, within the
   visitor's share (`PatchbayWeb.Forum.SiteChecks`). A site without a board
@@ -817,9 +816,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp page_name_md?(domain) do
     stem = Path.rootname(domain, ".md")
-
-    stem != domain and
-      Enum.any?(@page_names, &(stem == &1 or String.starts_with?(stem, &1 <> "-")))
+    stem != domain and stem in @page_names
   end
 
   @doc "A site's page at its earlier address, `/sites/<domain or slug>`, moved for good."

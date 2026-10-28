@@ -322,7 +322,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
 
     test "a Patchbay page name ending in .md is a missing page", %{conn: conn} do
-      for path <- ["/help-me.md", "/docs.md", "/wallet-bench.md", "/blog.md", "/jev-answers.md"] do
+      for path <- ["/docs.md", "/wallet-bench.md", "/blog.md", "/jev.md"] do
         {404, _headers, body} = assert_error_sent(404, fn -> get(conn, path) end)
         assert body =~ "There is nothing at this address."
       end
@@ -332,7 +332,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       site!("point.md")
       assert conn |> get(~p"/point.md") |> html_response(200) =~ "point.md"
 
-      for domain <- ["999.md", "simpals.md"] do
+      for domain <- ["999.md", "simpals.md", "help-me.md", "help-desk.md"] do
         assert conn |> get("/" <> domain) |> html_response(200) =~
                  "Be the first to post about #{domain}"
       end
