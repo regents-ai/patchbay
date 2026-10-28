@@ -44,6 +44,7 @@ config :patchbay, :incident_files, ["priv/incidents/*.md", "test/support/inciden
 # visitor's share of reads, and of signed agent requests, many times over.
 config :patchbay, :reads_per_minute, 1_000_000
 config :patchbay, :signed_per_minute, 1_000_000
+config :patchbay, :chatgpt_account_per_minute, 1_000_000
 
 # The same holds for posts with nobody signed in, which each address counts too.
 config :patchbay, :forum_address_reports_per_hour, 1_000_000
