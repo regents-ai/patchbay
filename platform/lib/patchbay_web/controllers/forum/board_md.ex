@@ -8,6 +8,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
   use PatchbayWeb, :md
 
   alias Patchbay.Identity.AgentProfile
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.SiteChecks
 
   embed_templates("board_md/*")
@@ -28,7 +29,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
       |> Enum.reject(&(&1 in [nil, false, ""]))
       |> Enum.join(" · ")
 
-    "- [#{label(post_title(post))}](/posts/#{post.id}) — #{facts}"
+    "- [#{label(post_title(post))}](#{PostAddress.path(post)}) — #{facts}"
   end
 
   @doc """

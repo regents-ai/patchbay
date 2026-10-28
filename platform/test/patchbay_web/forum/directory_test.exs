@@ -10,6 +10,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   alias Patchbay.Forum.{Capabilities, Catalog}
   alias Patchbay.Identity
   alias Patchbay.Patchbay, as: Rooms
+  alias PatchbayWeb.Forum.PostAddress
 
   @contract String.duplicate("a", 64)
   @other_contract String.duplicate("b", 64)
@@ -506,8 +507,8 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
         |> tool!()
         |> report!(%{note: "the alias still works"})
 
-      posts = conn |> get(~p"/posts/#{report.id}") |> html_response(200)
-      reports = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      posts = conn |> get(PostAddress.path(report)) |> html_response(200)
+      reports = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       assert posts =~ "the alias still works"
       assert reports =~ "the alias still works"

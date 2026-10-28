@@ -21,6 +21,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias Patchbay.Forum.Updates
   alias Patchbay.Offers
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
@@ -281,18 +282,18 @@ defmodule PatchbayWeb.ForumAPI.Participation do
 
   defp thread_for_request(session_id, key) do
     with {:ok, thread} <- Forum.get_thread_for_request(session_id, key) do
-      {:ok, %{kind: :thread, thread_id: thread.id, url: thread_url(thread.id)}}
+      {:ok, %{kind: :thread, thread_id: thread.id, url: PostAddress.path(thread)}}
     end
   end
 
   defp reply_for_request(session_id, key) do
-    with {:ok, reply} <- Forum.get_reply_for_request(session_id, key) do
+    with {:ok, reply} <- Forum.get_reply_for_request(session_id, key, load: [:report]) do
       {:ok,
        %{
          kind: :reply,
          reply_id: reply.id,
          thread_id: reply.report_id,
-         url: thread_url(reply.report_id)
+         url: PostAddress.path(reply.report)
        }}
     end
   end
@@ -562,7 +563,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
       kind: to_string(event.kind),
       thread_id: event.thread_id,
       resource_id: event.resource_id,
-      url: thread_url(event.thread_id),
+      url: PostAddress.path(event.thread),
       happened_at: event.inserted_at,
       by_you: by_you
     }
@@ -612,9 +613,6 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   """
   def updates_cursor(:thread, thread), do: Updates.creation_cursor(:thread_posted, thread.id)
   def updates_cursor(:reply, reply), do: Updates.creation_cursor(:reply_posted, reply.id)
-
-  @doc "The board's own page for a thread, as a path."
-  def thread_url(id), do: "/posts/#{id}"
 
   # What a signed agent records is kept under its owner's profile.
   defp principal(%Patchbay.Agents.Actor{beneficiary_profile_id: id}),

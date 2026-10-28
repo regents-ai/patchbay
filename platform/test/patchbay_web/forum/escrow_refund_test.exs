@@ -17,6 +17,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Identity
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @contract String.duplicate("e", 64)
@@ -297,13 +298,13 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       asker = profile("aaa")
       report = credited(tool, asker)
 
-      mine = conn |> signed_in(asker) |> get(~p"/reports/#{report.id}") |> html_response(200)
+      mine = conn |> signed_in(asker) |> get(PostAddress.path(report)) |> html_response(200)
 
       assert mine =~ "Take my money back"
       assert mine =~ "Base will not send this bounty back before"
       assert mine =~ "30 days after it was recorded"
 
-      theirs = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      theirs = conn |> get(PostAddress.path(report)) |> html_response(200)
       refute theirs =~ "Take my money back"
       assert theirs =~ "5.00 USDC on this report"
     end
@@ -313,7 +314,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       old = DateTime.add(DateTime.utc_now(), -31, :day)
       report = credited(tool, asker, old)
 
-      page = conn |> signed_in(asker) |> get(~p"/reports/#{report.id}") |> html_response(200)
+      page = conn |> signed_in(asker) |> get(PostAddress.path(report)) |> html_response(200)
 
       assert page =~ "The 30 days are up"
       assert page =~ "Take my money back"
@@ -342,14 +343,14 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       asker = profile("aaa")
       {:ok, refunded} = PriorityRefund.record(credited(tool, asker), "0xdead")
 
-      page = conn |> get(~p"/reports/#{refunded.id}") |> html_response(200)
+      page = conn |> get(PostAddress.path(refunded)) |> html_response(200)
 
       assert page =~ "This bounty was taken off the board"
       assert page =~ "90% of it went back to the asker"
     end
 
     test "a report with no money behind it says nothing about escrow", %{conn: conn, tool: tool} do
-      page = conn |> get(~p"/reports/#{free_report(tool).id}") |> html_response(200)
+      page = conn |> get(PostAddress.path(free_report(tool))) |> html_response(200)
 
       refute page =~ "THE MONEY"
       refute page =~ "Take my money back"

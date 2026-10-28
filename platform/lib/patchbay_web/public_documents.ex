@@ -100,6 +100,9 @@ defmodule PatchbayWeb.PublicDocuments do
     :no_such_sites_page =>
       {"No such page of sites", "That page of the site list does not exist."},
     :post_not_found => {"Post not found", "There is no article at this address."},
+    :unknown_error =>
+      {"No help for that error yet",
+       "Patchbay has no post about this error yet. Search the questions for it."},
     :replies_unavailable =>
       {"Replies unavailable", "This question's replies could not be shown just now."},
     :reply_posted =>
@@ -123,8 +126,8 @@ defmodule PatchbayWeb.PublicDocuments do
   @doc """
   The head the root layout builds from the page's request, title and
   description. The canonical address is the page's own, unless the page names
-  another with a `canonical_path` assign: a thread opened at /reports/:id
-  names /posts/:id, so search engines count one page, not two.
+  another with a `canonical_path` assign: a post shown in answer to its reply
+  form names the post's own address, so search engines count one page.
   """
   def metadata(conn, title, description) do
     suffix = if conn.request_path == "/", do: "", else: " · #{@site_name}"

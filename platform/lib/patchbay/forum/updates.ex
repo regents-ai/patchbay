@@ -117,6 +117,8 @@ defmodule Patchbay.Forum.Updates do
       |> in_scope(scope)
       |> Ash.Query.sort(seq: :asc)
       |> Ash.Query.limit(@max_limit)
+      # Its thread's title makes the thread's address.
+      |> Ash.Query.load(:thread)
       |> Ash.read!(authorize?: false)
 
     case {published_only(events), length(events)} do
@@ -152,6 +154,7 @@ defmodule Patchbay.Forum.Updates do
       |> in_scope(scope)
       |> Ash.Query.sort(seq: :asc)
       |> Ash.Query.limit(limit + 1)
+      |> Ash.Query.load(:thread)
       |> Ash.read!(authorize?: false)
 
     {taken, rest} = Enum.split(events, limit)

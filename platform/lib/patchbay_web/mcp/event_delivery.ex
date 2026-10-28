@@ -31,7 +31,6 @@ defmodule PatchbayWeb.MCP.EventDelivery do
   alias Patchbay.Forum.EventSecret
   alias Patchbay.Forum.Updates
   alias Patchbay.Forum.UpdatesCursor
-  alias PatchbayWeb.ForumAPI.Participation
 
   # Events sent per run; the trigger's next sweep takes up the rest.
   @batch 50
@@ -166,9 +165,7 @@ defmodule PatchbayWeb.MCP.EventDelivery do
       "data" => %{
         "thread_id" => event.thread_id,
         "reply_id" => event.resource_id,
-        "url" =>
-          PatchbayWeb.Endpoint.url() <>
-            Participation.thread_url(event.thread_id) <> "#reply-#{event.resource_id}",
+        "url" => PatchbayWeb.Forum.PostAddress.url(event.thread) <> "#reply-#{event.resource_id}",
         "by_you" => by_you
       },
       "cursor" => UpdatesCursor.encode(event.seq, scope(subscription))

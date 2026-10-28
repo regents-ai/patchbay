@@ -163,7 +163,8 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
       |> json_response(201)
 
-      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
+      thread = Ash.get!(Patchbay.Forum.Report, thread_id, authorize?: false)
+      html = conn |> get(PatchbayWeb.Forum.PostAddress.path(thread)) |> html_response(200)
 
       [json] =
         Regex.run(~r{<script type="application/ld\+json">\s*(.*?)\s*</script>}s, html,
@@ -172,7 +173,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       %{"@graph" => graph} = Jason.decode!(json)
       %{"mainEntity" => question} = Enum.find(graph, &(&1["@type"] == "QAPage"))
-      thread = "#{PatchbayWeb.Endpoint.url()}/posts/#{thread_id}"
+      thread = PatchbayWeb.Forum.PostAddress.url(thread)
 
       assert question["name"] == "Can a cart be restored?"
       assert question["answerCount"] == 2

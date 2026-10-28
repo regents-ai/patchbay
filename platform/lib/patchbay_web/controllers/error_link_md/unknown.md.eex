@@ -1,0 +1,5 @@
+# No help for that error yet
+
+Patchbay has no post about `<%= @code %>` yet. [Search the questions for it](<%= ~p"/?#{[q: @code]}" %>), or ask with `regents patchbay threads create`.
+
+<%= trailer() %>

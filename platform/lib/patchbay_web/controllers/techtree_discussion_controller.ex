@@ -12,6 +12,7 @@ defmodule PatchbayWeb.TechtreeDiscussionController do
   alias Patchbay.Forum
   alias Patchbay.Techtree
   alias PatchbayWeb.Forum.NotFoundError
+  alias PatchbayWeb.Forum.PostAddress
 
   def show(conn, %{"digest" => digest}) do
     unless Techtree.digest?(digest), do: raise(NotFoundError)
@@ -19,10 +20,10 @@ defmodule PatchbayWeb.TechtreeDiscussionController do
     with {:ok, nil} <- Forum.get_techtree_discussion(digest),
          {:ok, result} <- Techtree.fetch_result(digest),
          {:ok, thread} <- Techtree.open_discussion(result) do
-      redirect(conn, to: ~p"/posts/#{thread.id}")
+      redirect(conn, to: PostAddress.path(thread))
     else
       {:ok, thread} ->
-        redirect(conn, to: ~p"/posts/#{thread.id}")
+        redirect(conn, to: PostAddress.path(thread))
 
       {:error, :not_found} ->
         raise NotFoundError

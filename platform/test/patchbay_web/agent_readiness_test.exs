@@ -9,6 +9,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
+  alias PatchbayWeb.Forum.PostAddress
 
   @contract String.duplicate("a", 64)
 
@@ -146,7 +147,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert tool_md =~ "# checkout on shop.example"
       assert tool_md =~ "`#{@contract}`"
 
-      assert {200, post_md} = markdown(conn, "/posts/#{report.id}")
+      assert {200, post_md} = markdown(conn, PostAddress.path(report))
       assert post_md =~ "# Checkout worked | once the cart had an item"
       assert post_md =~ "`GET /forum/threads/#{report.id}`"
       assert post_md =~ "## Evidence"
@@ -245,7 +246,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert xml =~
                "<loc>#{url}/shop.example/tools/checkout</loc><lastmod>#{DateTime.to_iso8601(tool.last_seen_at)}</lastmod>"
 
-      assert xml =~ "<loc>#{url}/posts/#{report.id}</loc><lastmod>"
+      assert xml =~ "<loc>#{PostAddress.url(report)}</loc><lastmod>"
 
       assert xml =~
                "<loc>#{url}/blog/agent-wallet-bench-v7</loc><lastmod>2026-10-05T00:00:00Z</lastmod>"
@@ -548,20 +549,18 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert article =~
                ~s(<meta name="description" content="We asked 13 coding agents to install 18 wallet tools, make a wallet, sign a message and explain who holds the keys. Here is what happened.">)
 
-      thread = conn |> get("/posts/#{report.id}") |> html_response(200)
+      thread = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       [description] =
         Regex.run(~r/<meta name="description" content="([^"]*)">/, thread,
           capture: :all_but_first
         )
 
-      assert description == PatchbayWeb.Forum.BoardHTML.post_description(report)
+      assert description == PatchbayWeb.Forum.PostSummary.description(report)
       assert description =~ "Checkout worked"
 
-      # A thread answers at two addresses and names the same one from both.
-      address = ~s(<link rel="canonical" href="#{PatchbayWeb.Endpoint.url()}/posts/#{report.id}">)
-      assert thread =~ address
-      assert conn |> get("/reports/#{report.id}") |> html_response(200) =~ address
+      # A thread answers at its own address and names it as the one to count.
+      assert thread =~ ~s(<link rel="canonical" href="#{PostAddress.url(report)}">)
     end
 
     test "carries a canonical address, a share image and structured data", %{conn: conn} do
@@ -593,13 +592,13 @@ defmodule PatchbayWeb.AgentReadinessTest do
   describe "what a page holds, for search engines and AI answers" do
     test "a thread is a question, named and dated as the page shows it", %{conn: conn} do
       report = "shop.example" |> site!() |> tool!() |> report!()
-      html = conn |> get("/reports/#{report.id}") |> html_response(200)
+      html = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       [_website, _application, _organization, page] = structured_data(html)
       question = page["mainEntity"]
 
       assert page["@type"] == "QAPage"
-      assert page["url"] == "#{PatchbayWeb.Endpoint.url()}/posts/#{report.id}"
+      assert page["url"] == PostAddress.url(report)
       assert question["name"] == PatchbayWeb.Forum.BoardHTML.post_title(report)
       assert question["text"] =~ "once the cart had an item"
       assert question["datePublished"] == DateTime.to_iso8601(report.inserted_at)

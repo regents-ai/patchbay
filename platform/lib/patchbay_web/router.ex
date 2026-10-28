@@ -634,6 +634,8 @@ defmodule PatchbayWeb.Router do
     pipe_through :browser
 
     get "/agents/:public_id", AgentProfileController, :show
+    # A lasting link for each of Regents' own errors, to the post about it.
+    get "/errors/:code", ErrorLinkController, :show
     get "/discuss/techtree/:digest", TechtreeDiscussionController, :show
 
     # The incidents and each one's page, each also as Markdown at its own
@@ -689,8 +691,11 @@ defmodule PatchbayWeb.Router do
     get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false
     get "/sites/:origin", BoardController, :old_site
     get "/sites/:origin/tools/:name", BoardController, :old_tool
+    # A post's address is its id and the words of its title. The id alone,
+    # other words, or the earlier /reports/<id> move there for good.
+    get "/posts/:id/:slug", BoardController, :post
     get "/posts/:id", BoardController, :post
-    get "/reports/:id", BoardController, :report
+    get "/reports/:id", BoardController, :post
   end
 
   # A site's own page is its domain. These come last so no page of

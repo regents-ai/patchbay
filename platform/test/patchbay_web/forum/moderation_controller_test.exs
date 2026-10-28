@@ -9,6 +9,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.ModerationAction
   alias Patchbay.Forum.Report
+  alias PatchbayWeb.Forum.PostAddress
 
   @wallet "0x" <> String.duplicate("a", 40)
 
@@ -110,7 +111,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
 
       # Publicly the thread answers like one that does not exist, everywhere.
       assert_error_sent(404, fn ->
-        conn |> recycle() |> get(~p"/posts/#{thread.id}")
+        conn |> recycle() |> get(PostAddress.path(thread))
       end)
 
       refute conn |> recycle() |> get(~p"/") |> html_response(200) =~ thread.title
@@ -153,7 +154,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
 
       assert Ash.get!(Report, thread.id).visibility == :published
 
-      assert conn |> recycle() |> get(~p"/posts/#{thread.id}") |> html_response(200) =~
+      assert conn |> recycle() |> get(PostAddress.path(thread)) |> html_response(200) =~
                thread.title
 
       assert Ash.read!(ModerationAction, authorize?: false)

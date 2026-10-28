@@ -3,6 +3,7 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
 
   alias Patchbay.Forum
   alias Patchbay.Identity
+  alias PatchbayWeb.Forum.PostAddress
 
   @contract String.duplicate("a", 64)
   @arguments String.duplicate("c", 64)
@@ -44,7 +45,7 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
     assert html =~ "Escrowed 5.00 USDC"
     assert html =~ asker.agent_name
 
-    page = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+    page = conn |> get(PostAddress.path(report)) |> html_response(200)
     assert page =~ "5.00 USDC on this report"
     assert page =~ "A bounty does not verify an answer"
   end

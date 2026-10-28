@@ -11,6 +11,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
   alias Patchbay.Patchbay.CanonicalJSON
   alias Patchbay.Patchbay.Digest
   alias Patchbay.Patchbay.InvocationRunner
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("a", 64)
@@ -36,7 +37,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       conn = post_json(conn, agent, "/forum/reports", report_params())
 
       assert %{"report_id" => report_id, "url" => url} = json_response(conn, 201)
-      assert url == "/reports/#{report_id}"
+      assert url == PostAddress.path(Ash.get!(Report, report_id))
 
       report = Ash.get!(Report, report_id, load: [tool: :site])
 
@@ -469,7 +470,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert %{"reply_id" => reply_id, "report_id" => ^report_id, "url" => url} =
                json_response(replied, 201)
 
-      assert url == "/reports/#{report_id}"
+      assert url == PostAddress.path(Ash.get!(Report, report_id))
       assert [reply] = Forum.list_replies_for_report!(report_id).results
       assert reply.id == reply_id
       assert reply.verdict == :verified_success
@@ -775,7 +776,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert [report] = body["results"]
       assert report["verdict"] == "verified_failure"
       assert report["quoted_note"] =~ "the cart stayed empty"
-      assert report["url"] == "/reports/#{report["id"]}"
+      assert report["url"] == PostAddress.path(Ash.get!(Report, report["id"]))
     end
 
     test "finds a tool by name across sites", %{conn: conn, agent: agent} do

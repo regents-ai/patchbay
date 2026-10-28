@@ -35,8 +35,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.FixCheck
   alias PatchbayWeb.Forum.Hero
   alias PatchbayWeb.Forum.NotFoundError
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.PostPreview
+  alias PatchbayWeb.Forum.PostSummary
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.Forum.Troubleshooting
@@ -345,12 +347,12 @@ defmodule PatchbayWeb.Forum.BoardController do
            conn.assigns.current_profile
          ) do
       {:ok, _thread} ->
-        redirect(conn, to: ~p"/posts/#{report.id}" <> "#reply-#{reply_id}")
+        redirect(conn, to: PostAddress.path(report) <> "#reply-#{reply_id}")
 
       {:error, failure} ->
         conn
         |> put_flash(:error, solution_words(Participation.solution_refusal(failure)))
-        |> redirect(to: ~p"/posts/#{report.id}")
+        |> redirect(to: PostAddress.path(report))
     end
   end
 
@@ -401,7 +403,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         :error -> "#pb-post"
       end
 
-    ~p"/posts/#{report.id}?#{query}" <> anchor
+    PostAddress.path(report) <> query_part(query) <> anchor
   end
 
   defp solution_words({:solution_refused, _reason, words}), do: words
@@ -435,7 +437,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     with {:ok, _profile} <- require_signed_in(conn),
          {:ok, pictures} <- Hero.pictures(sent["pictures"]),
          {:ok, posted} <- ask_question(conn, thread, pictures) do
-      redirect(conn, to: ~p"/posts/#{posted.id}")
+      redirect(conn, to: PostAddress.path(posted))
     else
       {:error, problem} ->
         render_home(conn, %{}, hero(draft, %{problem: problem, preview: preview(thread)}))
@@ -580,7 +582,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     with {:ok, draft} <- conversation_draft(params["reply"]),
          {:ok, posted} <- post_thread_reply(conn, report, draft) do
-      landing(conn, report, posted, :posts)
+      landing(conn, report, posted)
     else
       {:error, problem} -> show_report(conn, id, params, reply_problem: problem)
     end
@@ -1048,15 +1050,30 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   @doc """
-  One report and a page of its replies: the opening page, or the page a
+  One post and a page of its replies: the opening page, or the page a
   continuation from this board or from the API names.
+
+  The post answers at its own address only (`PostAddress.path/1`). Any other
+  address with its id, such as `/posts/<id>`, `/reports/<id>` or one whose
+  words are not its title's, moves there for good, query and all.
   """
-  def report(conn, %{"id" => id} = params) do
-    :ok = id |> fetch_report!() |> Board.record_view(conn.assigns)
-    show_report(conn, id, params, [])
+  def post(conn, %{"id" => id} = params) do
+    report = fetch_report!(id)
+    path = PostAddress.path(report)
+
+    if conn.request_path == path do
+      :ok = Board.record_view(report, conn.assigns)
+      show_report(conn, id, params, [])
+    else
+      conn
+      |> put_status(:moved_permanently)
+      |> redirect(to: path <> query_part(conn.query_string))
+    end
   end
 
-  def post(conn, params), do: report(conn, params)
+  defp query_part(query) when query in ["", %{}], do: ""
+  defp query_part(query) when is_binary(query), do: "?" <> query
+  defp query_part(query) when is_map(query), do: "?" <> URI.encode_query(query)
 
   @doc """
   The asker takes the bounty they put up back off the board.
@@ -1068,7 +1085,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   def refund(conn, %{"id" => id}) do
     case PriorityRefund.run(id, conn.assigns.current_profile) do
       {:ok, %{escrow_refund_tx_hash: hash}} when is_binary(hash) ->
-        redirect(conn, to: ~p"/reports/#{id}" <> "#patchbay-escrow")
+        redirect(conn, to: PostAddress.path(fetch_report!(id)) <> "#patchbay-escrow")
 
       {:ok, _refused} ->
         show_report(conn, id, %{},
@@ -1143,10 +1160,10 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp reply_draft(_reply), do: {:error, %{said: @not_posted, draft: %{}}}
 
-  defp landing(conn, report, posted, door \\ :reports) do
+  defp landing(conn, report, posted) do
     case Board.page_ending_at(posted) do
       {:ok, cursor} ->
-        redirect(conn, to: replies_path(door, report.id, cursor))
+        redirect(conn, to: replies_path(report, cursor))
 
       {:error, failure} ->
         Logger.warning("Reply posted but its page was not read: #{inspect(error_type(failure))}")
@@ -1162,14 +1179,10 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  defp replies_path(:reports, id, nil), do: ~p"/reports/#{id}" <> "#patchbay-replies"
-  defp replies_path(:posts, id, nil), do: ~p"/posts/#{id}" <> "#patchbay-replies"
+  defp replies_path(report, nil), do: PostAddress.path(report) <> "#patchbay-replies"
 
-  defp replies_path(:reports, id, cursor),
-    do: ~p"/reports/#{id}?after=#{cursor}" <> "#patchbay-replies"
-
-  defp replies_path(:posts, id, cursor),
-    do: ~p"/posts/#{id}?after=#{cursor}" <> "#patchbay-replies"
+  defp replies_path(report, cursor),
+    do: PostAddress.path(report) <> query_part(%{"after" => cursor}) <> "#patchbay-replies"
 
   defp add_reply(%{assigns: %{current_profile: nil}}, _report, draft) do
     {:error,
@@ -1242,10 +1255,10 @@ defmodule PatchbayWeb.Forum.BoardController do
     with {:ok, keyset} <- ReplyCursor.verify(report.id, params["after"]),
          {:ok, replies, next_cursor} <- Board.replies(report, keyset, filter) do
       render(conn, :report,
-        page_title: PatchbayWeb.Forum.BoardHTML.post_title(report),
-        page_description: PatchbayWeb.Forum.BoardHTML.post_description(report),
-        # The thread answers at /posts/:id and /reports/:id; the first is its address.
-        canonical_path: ~p"/posts/#{report.id}",
+        page_title: PostSummary.title(report),
+        page_description: PostSummary.description(report),
+        # Also shown in answer to a reply or refund form, whose address is not the post's.
+        canonical_path: PostAddress.path(report),
         page_data: [PatchbayWeb.Forum.BoardHTML.thread_data(report, replies)],
         report: report,
         # Only the reply the asker marked is shown above the question.

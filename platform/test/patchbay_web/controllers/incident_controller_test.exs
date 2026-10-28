@@ -12,6 +12,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
   alias Patchbay.Forum
   alias Patchbay.Incidents
+  alias PatchbayWeb.Forum.PostAddress
 
   # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
   defp ask!(site, title, tags) do
@@ -39,14 +40,14 @@ defmodule PatchbayWeb.IncidentControllerTest do
     assert html =~ emudhra.title
     assert html =~ "Do this now"
     assert html =~ ~s(href="/incidents/emudhra.md")
-    assert html =~ ~s(href="/posts/#{fix.id}")
-    refute html =~ ~s(href="/posts/#{other.id}")
+    assert html =~ ~s(href="#{PostAddress.path(fix)}")
+    refute html =~ ~s(href="#{PostAddress.path(other)}")
 
     markdown = conn |> get("/incidents/emudhra.md") |> response(200)
     assert markdown =~ "# #{emudhra.title}"
     assert markdown =~ "## Do this now"
-    assert markdown =~ "(/posts/#{fix.id})"
-    refute markdown =~ "(/posts/#{other.id})"
+    assert markdown =~ "(#{PostAddress.path(fix)})"
+    refute markdown =~ "(#{PostAddress.path(other)})"
 
     asked =
       conn
@@ -86,7 +87,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
     assert [_open] = home |> LazyHTML.query("#pb-hero-details[open]") |> Enum.to_list()
 
     # The tag fills the form only: the questions below are not narrowed to it.
-    assert LazyHTML.to_html(home) =~ ~s(href="/posts/#{untagged.id}")
+    assert LazyHTML.to_html(home) =~ ~s(href="#{PostAddress.path(untagged)}")
   end
 
   test "a name with no incident file is a missing page", %{conn: conn} do

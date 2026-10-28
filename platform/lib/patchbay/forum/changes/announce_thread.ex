@@ -12,7 +12,10 @@ defmodule Patchbay.Forum.Changes.AnnounceThread do
   def change(changeset, _opts, _context) do
     Ash.Changeset.after_action(changeset, fn _changeset, event ->
       if Patchbay.IndexNow.key() do
-        [PatchbayWeb.Endpoint.url() <> "/posts/" <> event.thread_id]
+        # The address is the thread's own, which its title's words are part of.
+        %{thread: thread} = Ash.load!(event, :thread, authorize?: false)
+
+        [PatchbayWeb.Forum.PostAddress.url(thread)]
         |> Patchbay.IndexNow.submit()
         |> Oban.insert!()
       end

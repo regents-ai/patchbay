@@ -21,6 +21,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Forum.AgentArt
   alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.VersionDiff
 
   embed_templates("board_html/*")
@@ -575,7 +576,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc "Where a followed site, tool or thread lives, and what to call it."
   def following_path(:site, site), do: site_path(site)
   def following_path(:tool, tool), do: tool_path(tool.site, tool.name)
-  def following_path(:thread, report), do: ~p"/posts/#{report.id}"
+  def following_path(:thread, report), do: PostAddress.path(report)
 
   def following_title(:site, site), do: site_name(site)
   def following_title(:tool, tool), do: tool_name(tool)
@@ -1156,7 +1157,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
             </time>
           </p>
-          <a class="pb-row-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
+          <a class="pb-row-title" href={PostAddress.path(post)}>{post_title(post)}</a>
           <p :if={line = excerpt(post)} class="pb-row-excerpt">{line}</p>
           <div class="pb-row-foot">
             <a
@@ -1168,7 +1169,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <a class="pb-site-chip" href={site_path(post.site)}>{site_name(post.site)}</a>
             <a
               :if={post.bounty_open}
-              href={~p"/posts/#{post.id}" <> "#patchbay-escrow"}
+              href={PostAddress.path(post) <> "#patchbay-escrow"}
               class="pb-feed-bounty"
             >Bounty · {escrowed(post)} USDC</a>
           </div>
@@ -1562,17 +1563,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @snippet_bytes 160
 
-  @doc "A thread's search description: its own words, or its title when it has none."
-  def post_description(post), do: excerpt(post) || post_title(post)
-
   @doc """
   The thread as its page shows it, for search engines and AI answers: a
-  question with its marked answer, or a discussion with its replies. A
+  question with its marked answer, or a discussion with its replies, each
+  described by the error it is about and its fix. A
   failure report or a call for help is a question, and so is any thread whose
   asker marked an answer. `replies` is the page of replies on screen.
   """
   def thread_data(report, replies) do
-    url = url(~p"/posts/#{report.id}")
+    url = PostAddress.url(report)
 
     post = fn post ->
       %{
@@ -1608,7 +1607,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       replies: Enum.map(replies, post),
       answer: answer && post.(answer)
     })
+    |> described(PatchbayWeb.Forum.PostSummary.description(report))
   end
+
+  # The error the thread is about and its fix, in the words of the page's
+  # search description, on the question or the discussion itself.
+  defp described(%{"@type" => "QAPage"} = page, text),
+    do: update_in(page["mainEntity"], &Map.put(&1, "description", text))
+
+  defp described(posting, text), do: Map.put(posting, "description", text)
 
   defp data_author(post) do
     href = author_href(post.author)
@@ -1713,7 +1720,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       author_href={author_href(@reply.author)}
       at={@reply.inserted_at}
       ago={RegentFormat.relative_time(@reply.inserted_at, DateTime.utc_now())}
-      href={~p"/posts/#{@report.id}?#{if @cursor, do: %{after: @cursor, replies: @reply_filter}, else: %{replies: @reply_filter}}" <> "#reply-#{@reply.id}"}
+      href={PostAddress.path(@report, if(@cursor, do: [after: @cursor, replies: @reply_filter], else: [replies: @reply_filter])) <> "#reply-#{@reply.id}"}
       solution={@report.solution_reply_id == @reply.id}
       house={is_nil(@reply.author) && patchbay?(@reply.browser_session_id)}
     >
@@ -1796,7 +1803,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         ] do
       %{
         label: label,
-        href: ~p"/posts/#{report.id}?replies=#{value}" <> "#patchbay-replies",
+        href: PostAddress.path(report, replies: value) <> "#patchbay-replies",
         current: current == value
       }
     end
@@ -1958,7 +1965,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
     if Enum.any?(replies, &(&1.id == reply.id)),
       do: anchor,
-      else: ~p"/posts/#{report.id}?replies=solution" <> anchor
+      else: PostAddress.path(report, replies: "solution") <> anchor
   end
 
   @doc """

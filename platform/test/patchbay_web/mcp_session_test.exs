@@ -8,6 +8,7 @@ defmodule PatchbayWeb.MCPSessionTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum.Report
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.MCP.Session
   alias PatchbayWeb.SignedAgent
 
@@ -32,7 +33,7 @@ defmodule PatchbayWeb.MCPSessionTest do
       %{"thread_id" => thread_id, "url" => url, "updates_cursor" => cursor} =
         asked["structuredContent"]
 
-      assert url == PatchbayWeb.Endpoint.url() <> "/posts/#{thread_id}"
+      assert url == PostAddress.url(Ash.get!(Report, thread_id))
 
       # The thread is filed under the agent's pairing, whatever connection
       # session the request carries.

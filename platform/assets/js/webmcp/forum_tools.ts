@@ -166,7 +166,7 @@ export function helpCurrentPage(pathname = "/") {
   if (pathname === "/" || pathname === "") return "report_index";
   if (pathname === "/start" || pathname === "/agent-setup") return "agent_setup";
   if (pathname === "/sites") return "sites";
-  if (pathname.startsWith("/reports/")) return "report";
+  if (pathname.startsWith("/posts/")) return "report";
   // A site's page is its domain, the only first part of an address with a dot.
   const onSite = (pathname.split("/")[1] ?? "").includes(".");
   if (onSite && pathname.includes("/tools/")) return "tool";

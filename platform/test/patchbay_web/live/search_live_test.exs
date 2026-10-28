@@ -10,6 +10,7 @@ defmodule PatchbayWeb.SearchLiveTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
+  alias PatchbayWeb.Forum.PostAddress
 
   test "typing finds the matching questions and sites", %{conn: conn} do
     site = Forum.register_site!("kettlebell.example")
@@ -36,7 +37,7 @@ defmodule PatchbayWeb.SearchLiveTest do
     view |> form("#shell-search-form", %{"q" => "kettlebell"}) |> render_change()
     html = render_async(view, 2_000)
 
-    assert html =~ ~s(href="/posts/#{question.id}")
+    assert html =~ ~s(href="#{PostAddress.path(question)}")
     assert html =~ ~s(href="/#{site.origin}")
     assert html =~ ~s(href="/?q=kettlebell")
   end

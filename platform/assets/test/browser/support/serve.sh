@@ -26,5 +26,6 @@ rm -f "tmp/walk-outside${PATCHBAY_DEV_PARTITION}.txt"
 mix ecto.setup > /dev/null
 mix run assets/test/browser/support/sign_in.exs
 mix run assets/test/browser/support/bench.exs
+mix run assets/test/browser/support/report.exs
 mix assets.build > /dev/null
 mix phx.server

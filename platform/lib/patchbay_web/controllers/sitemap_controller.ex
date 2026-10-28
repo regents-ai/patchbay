@@ -14,6 +14,7 @@ defmodule PatchbayWeb.SitemapController do
   alias Patchbay.Incidents
   alias Patchbay.WalletBench
   alias PatchbayWeb.Blog
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.Troubleshooting
 
   @static ~w(/ /sites /questions /priority /start /dots /muse /grokbot /hermes /claude /agents /agent-setup /help /webmcp /docs /about /contact /privacy /terms /changelog /offers /offers/how-it-works /wallet-bench/how-it-works /incidents)
@@ -49,7 +50,7 @@ defmodule PatchbayWeb.SitemapController do
       wallet_bench() ++
       Enum.map(sites, &{site_path(&1), &1.updated_at}) ++
       Enum.map(tools, &{PatchbayWeb.Forum.BoardHTML.tool_path(&1.site, &1.name), &1.last_seen_at}) ++
-      Enum.map(threads, &{"/posts/" <> &1.id, &1.last_activity_at})
+      Enum.map(threads, &{PostAddress.path(&1), &1.last_activity_at})
   end
 
   # The motion lab is listed only while the showcase is public.

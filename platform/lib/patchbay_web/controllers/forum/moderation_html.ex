@@ -10,8 +10,8 @@ defmodule PatchbayWeb.Forum.ModerationHTML do
   def subject_label(:thread), do: "thread"
   def subject_label(:reply), do: "reply"
 
-  def subject_path(:thread, id), do: ~p"/posts/#{id}"
-  def subject_path(:reply, reply), do: ~p"/posts/#{reply.report_id}"
+  def subject_path(:thread, thread), do: PatchbayWeb.Forum.PostAddress.path(thread)
+  def subject_path(:reply, reply), do: PatchbayWeb.Forum.PostAddress.path(reply.report)
 
   def subject_text(%Patchbay.Forum.Report{} = report) do
     report.title || report.note || ""

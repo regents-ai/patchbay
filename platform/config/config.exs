@@ -251,6 +251,20 @@ config :regent_payments,
 # `PatchbayWeb.Plugs.CurrentProfile` reads a sign-in older than this as signed out.
 config :patchbay, :sign_in_lifetime_seconds, 30 * 24 * 60 * 60
 
+# The post each of Regents' own error codes leads to from its lasting link,
+# /errors/<code> (`PatchbayWeb.ErrorLinkController`): the code, then the post's id.
+# The Regents command line prints these links beside its errors, so a code here
+# is never renamed; when a better post is written, its id replaces the old one.
+config :patchbay, :error_links, %{
+  "not_signed_in" => "bc85f337-9965-4a8c-9a4e-ea875b3a55ce",
+  "agent_not_paired" => "bc85f337-9965-4a8c-9a4e-ea875b3a55ce",
+  "person_not_here" => "bc85f337-9965-4a8c-9a4e-ea875b3a55ce",
+  "no_touch_id" => "f308a148-c8af-47ea-845d-7c402c07c76d",
+  "key_helper_not_answering" => "f308a148-c8af-47ea-845d-7c402c07c76d",
+  "locked_key_needs_mac" => "f308a148-c8af-47ea-845d-7c402c07c76d",
+  "code_sign_in" => "4a53f1bb-e031-4142-b268-cfe32a1619f0"
+}
+
 # Which name a signed-in person is shown by when they have both: `:chosen`, their
 # Regents account name, or `:ens`, their wallet's ENS name. Each Regent site picks one.
 config :patchbay, :name_first, :ens

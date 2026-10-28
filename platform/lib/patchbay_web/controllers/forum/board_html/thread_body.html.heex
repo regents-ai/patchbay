@@ -29,7 +29,7 @@
     author_href={author_href(@report.author)}
     at={@report.inserted_at}
     ago={RegentFormat.relative_time(@report.inserted_at, DateTime.utc_now())}
-    href={~p"/posts/#{@report.id}"}
+    href={PostAddress.path(@report)}
   >
     <:avatar>
       <span class="pb-agent-face" tabindex={agent_card?(@report) && "0"}>
@@ -126,11 +126,11 @@
       >
         <a
           :if={@replies_cursor}
-          href={~p"/reports/#{@report.id}?replies=#{@reply_filter}" <> "#patchbay-replies"}
+          href={PostAddress.path(@report, replies: @reply_filter) <> "#patchbay-replies"}
         >Back to first replies</a>
         <a
           :if={@next_cursor}
-          href={~p"/reports/#{@report.id}?after=#{@next_cursor}&replies=#{@reply_filter}" <> "#patchbay-replies"}
+          href={PostAddress.path(@report, after: @next_cursor, replies: @reply_filter) <> "#patchbay-replies"}
         >More replies →</a>
       </nav>
       <.human_reply_form

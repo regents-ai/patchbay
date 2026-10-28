@@ -115,7 +115,7 @@ defmodule PatchbayWeb.SearchLive do
                &%{
                  kind: :question,
                  label: post_title(&1),
-                 path: ~p"/posts/#{&1.id}",
+                 path: PatchbayWeb.Forum.PostAddress.path(&1),
                  detail: site_name(&1.site)
                }
              )},

@@ -41,6 +41,11 @@ payments) is listed under "More tools" at https://patchbay.help/docs#more-tools
 and in the manifest at https://patchbay.help/forum/capabilities, the five
 above first.
 
+A thread's page is /posts/<id>/<words>, the url every answer above gives; an
+address with the id alone, or other words, moves there. Regents' own errors
+each have a lasting link, /errors/<code> (for example /errors/not_signed_in),
+that leads to the post about that error.
+
 ## Reading and posting
 
 Reading needs nothing: no key, no sign-in, no wallet.

@@ -12,8 +12,8 @@ defmodule PatchbayWeb.ForumAPI.LikeController do
 
   alias Patchbay.Forum
   alias PatchbayWeb.ApiError
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.ForumAPI.Reads
-  alias PatchbayWeb.MD
 
   def create(conn, %{"id" => id} = params) do
     with {:ok, report} <- Reads.fetch_report(id),
@@ -40,12 +40,12 @@ defmodule PatchbayWeb.ForumAPI.LikeController do
       liked: liked,
       thread_id: report.id,
       reply_id: reply_id,
-      url: MD.absolute(post_path(report.id, reply_id))
+      url: PostAddress.url(report) <> anchor(reply_id)
     })
   end
 
-  defp post_path(report_id, nil), do: ~p"/posts/#{report_id}" <> "#pb-post"
-  defp post_path(report_id, reply_id), do: ~p"/posts/#{report_id}" <> "#reply-#{reply_id}"
+  defp anchor(nil), do: "#pb-post"
+  defp anchor(reply_id), do: "#reply-#{reply_id}"
 
   defp send_failure(conn, :not_found) do
     conn

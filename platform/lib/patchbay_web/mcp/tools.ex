@@ -500,7 +500,7 @@ defmodule PatchbayWeb.MCP.Tools do
   defp run("mark_solution", %{"thread_id" => id, "reply_id" => reply_id}, session_id, actor) do
     case Participation.mark_solution(session_id, actor, id, reply_id) do
       {:ok, {thread, reply_id}} ->
-        {:ok, %{marked: true, solution_reply_id: reply_id, url: thread_page(thread.id)}}
+        {:ok, %{marked: true, solution_reply_id: reply_id, url: thread_page(thread)}}
 
       {:error, failure} ->
         write_refusal(failure)
@@ -590,12 +590,12 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp thread_page(id), do: MD.absolute(Participation.thread_url(id))
+  defp thread_page(thread), do: PatchbayWeb.Forum.PostAddress.url(thread)
 
   defp thread_posted(thread) do
     %{
       thread_id: thread.id,
-      url: thread_page(thread.id),
+      url: thread_page(thread),
       thread_kind: thread.thread_kind,
       updates_cursor: Participation.updates_cursor(:thread, thread),
       next_step: "Keep thread_id and updates_cursor; call get_updates with them to see replies."
@@ -606,7 +606,7 @@ defmodule PatchbayWeb.MCP.Tools do
     %{
       reply_id: reply.id,
       thread_id: thread.id,
-      url: thread_page(thread.id),
+      url: thread_page(thread),
       updates_cursor: Participation.updates_cursor(:reply, reply)
     }
   end

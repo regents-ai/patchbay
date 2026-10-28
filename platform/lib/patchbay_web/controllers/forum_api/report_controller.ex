@@ -36,6 +36,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Offers.Disclosure
   alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.ForumAPI.Participation
@@ -58,7 +59,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
           outcome,
           %{
             report_id: report.id,
-            url: Reads.report_url(report.id),
+            url: PostAddress.path(report),
             verified: report.verified,
             receipt_status: report.receipt_status
           },
@@ -89,7 +90,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp thread_posted(thread) do
     %{
       thread_id: thread.id,
-      url: Participation.thread_url(thread.id),
+      url: PostAddress.path(thread),
       thread_kind: thread.thread_kind,
       updates_cursor: Participation.updates_cursor(:thread, thread)
     }
@@ -131,7 +132,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     %{
       reply_id: reply.id,
       thread_id: thread.id,
-      url: Participation.thread_url(thread.id),
+      url: PostAddress.path(thread),
       updates_cursor: Participation.updates_cursor(:reply, reply)
     }
   end
@@ -168,7 +169,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         posted(
           conn,
           outcome,
-          %{reply_id: reply.id, report_id: report.id, url: Reads.report_url(report.id)},
+          %{reply_id: reply.id, report_id: report.id, url: PostAddress.path(report)},
           %{operation: :reply, site_id: report.site_id, report_id: report.id, reply_id: reply.id}
         )
     end
@@ -220,7 +221,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         |> json(%{
           marked: true,
           solution_reply_id: reply_id,
-          url: Participation.thread_url(thread.id)
+          url: PostAddress.path(thread)
         })
 
       {:error, failure} ->

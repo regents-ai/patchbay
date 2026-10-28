@@ -5,10 +5,12 @@ defmodule Patchbay.IndexNowTest do
   # - the list carries this site's host, key and key file, and only this site's pages;
   # - an answer that would fail again stops for good; a busy one waits.
   use PatchbayWeb.ConnCase, async: false
+
   use Oban.Testing, repo: Patchbay.Repo
 
   alias Patchbay.Forum
   alias Patchbay.IndexNow
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.SitemapController
 
   setup do
@@ -35,7 +37,7 @@ defmodule Patchbay.IndexNowTest do
 
     assert_enqueued(
       worker: IndexNow,
-      args: %{"urls" => [PatchbayWeb.Endpoint.url() <> "/posts/" <> report.id]}
+      args: %{"urls" => [PostAddress.url(report)]}
     )
   end
 

@@ -70,13 +70,15 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   ]
 
   @max_answer_bytes 16 * 1024
-  # Quote length, tools, entries for search results. Refuse a page whose
-  # remaining metadata cannot fit even with one result instead of skipping it.
+  # Quote length, tools, entries for search results: quotes are shortened as
+  # far as they go before any entry is dropped. Refuse a page whose remaining
+  # metadata cannot fit even with one result instead of skipping it.
   @bound_steps [
     {500, 20, 20},
     {300, 20, 20},
     {120, 20, 20},
     {80, 20, 20},
+    {40, 20, 20},
     {40, 10, 10},
     {40, 3, 3},
     {40, 1, 1}
@@ -764,7 +766,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp report_entry(report, audience) do
     %{
       id: report.id,
-      url: report_url(report.id),
+      url: PatchbayWeb.Forum.PostAddress.path(report),
       thread_kind: report.thread_kind,
       title: report.title,
       body_markdown: report.body_markdown,
@@ -980,10 +982,6 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   def missing?(%Ash.Error.Query.NotFound{}), do: true
   def missing?(%{errors: errors}) when is_list(errors), do: Enum.any?(errors, &missing?/1)
   def missing?(_error), do: false
-
-  # The board's own page for a report. It is a plain path rather than a verified
-  # route so the forum answers do not depend on the board's routing.
-  def report_url(id), do: "/reports/#{id}"
 
   defp presence(value) when is_binary(value) do
     case String.trim(value) do

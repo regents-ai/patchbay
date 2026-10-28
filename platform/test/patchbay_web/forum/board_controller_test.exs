@@ -6,6 +6,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   alias Patchbay.Forum.Site
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.Fixtures
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("a", 64)
@@ -97,7 +98,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       html = conn |> get(~p"/") |> html_response(200)
 
-      assert html =~ ~s(href="/posts/#{report.id}")
+      assert html =~ ~s(href="#{PostAddress.path(report)}")
       assert html =~ "shop.example"
       assert html =~ "checkout"
       assert html =~ "the cart stayed empty"
@@ -109,12 +110,12 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       busy = site!("busy.example") |> tool!(%{name: "checkout"}) |> report!(%{note: "busy note"})
 
       by_site = conn |> get(~p"/?q=busy.example") |> html_response(200) |> feed()
-      assert by_site =~ ~s(href="/posts/#{busy.id}")
-      refute by_site =~ ~s(href="/posts/#{quiet.id}")
+      assert by_site =~ ~s(href="#{PostAddress.path(busy)}")
+      refute by_site =~ ~s(href="#{PostAddress.path(quiet)}")
 
       by_tool = conn |> get(~p"/?q=search") |> html_response(200) |> feed()
-      assert by_tool =~ ~s(href="/posts/#{quiet.id}")
-      refute by_tool =~ ~s(href="/posts/#{busy.id}")
+      assert by_tool =~ ~s(href="#{PostAddress.path(quiet)}")
+      refute by_tool =~ ~s(href="#{PostAddress.path(busy)}")
     end
 
     test "a site filter lists only that site's posts", %{conn: conn} do
@@ -122,8 +123,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       there = site!("shopify.com") |> tool!(%{name: "checkout"}) |> report!(%{note: "there note"})
 
       html = conn |> get(~p"/?site=openai.com") |> html_response(200) |> feed()
-      assert html =~ ~s(href="/posts/#{here.id}")
-      refute html =~ ~s(href="/posts/#{there.id}")
+      assert html =~ ~s(href="#{PostAddress.path(here)}")
+      refute html =~ ~s(href="#{PostAddress.path(there)}")
     end
 
     test "an empty search keeps the query and offers a reset", %{conn: conn} do
@@ -483,7 +484,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert body =~ "reply 1"
       refute body =~ "reply 11"
-      assert conn |> get(~p"/reports/#{report.id}") |> html_response(200) =~ "reply 11"
+      assert conn |> get(PostAddress.path(report)) |> html_response(200) =~ "reply 11"
     end
 
     test "a tool that is not on the board is not found", %{conn: conn} do
@@ -529,7 +530,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
 
     defp next_page_path(body) do
-      case Regex.run(~r/href="(\/reports\/[^"#]*after=[^"#]*)#patchbay-replies"/, body) do
+      case Regex.run(~r/href="(\/posts\/[^"#]*after=[^"#]*)#patchbay-replies"/, body) do
         [_whole, path] -> path |> String.replace("&amp;", "&")
         nil -> nil
       end
@@ -578,7 +579,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       # Nobody has marked any reply, so the newest come first, a tie by id.
       expected = Enum.map(Enum.reverse(later) ++ Enum.sort_by(tied, & &1.id, :desc), & &1.note)
 
-      first = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      first = conn |> get(PostAddress.path(report)) |> html_response(200)
       assert notes_shown(first) == Enum.take(expected, 100)
       refute first =~ "Back to first replies"
       refute first =~ "No replies yet"
@@ -588,7 +589,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       # A reply written while someone is reading leads the thread.
       reply!(report, %{note: "reply-251"})
 
-      assert human_walk(conn, ~p"/reports/#{report.id}") == ["reply-251" | expected]
+      assert human_walk(conn, PostAddress.path(report)) == ["reply-251" | expected]
       assert api_walk(conn, report.id) == ["reply-251" | expected]
 
       # A machine continuation opens the same place on the page.
@@ -596,7 +597,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       api_cursor = api_first["pagination"]["next_cursor"]
 
       after_machine =
-        conn |> get(~p"/reports/#{report.id}?after=#{api_cursor}") |> html_response(200)
+        conn |> get(PostAddress.path(report, after: api_cursor)) |> html_response(200)
 
       assert notes_shown(after_machine) == Enum.slice(["reply-251" | expected], 20, 100)
       assert after_machine =~ "Back to first replies"
@@ -621,7 +622,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       other_cursor =
         other
-        |> then(&get(conn, ~p"/reports/#{&1.id}"))
+        |> then(&get(conn, PostAddress.path(&1)))
         |> html_response(200)
         |> next_page_path()
         |> URI.parse()
@@ -633,10 +634,10 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       tampered = <<Bitwise.bxor(first_byte, 1), rest::binary>>
 
       for bad <- ["", "not-a-cursor", tampered, other_cursor, String.duplicate("a", 2049)] do
-        body = conn |> get(~p"/reports/#{report.id}", %{"after" => bad}) |> html_response(400)
+        body = conn |> get(PostAddress.path(report), %{"after" => bad}) |> html_response(400)
 
         assert body =~ "This reply link has expired or is invalid."
-        assert body =~ ~s(href="/reports/#{report.id}#patchbay-replies")
+        assert body =~ ~s(href="#{PostAddress.path(report)}#patchbay-replies")
         refute body =~ "No replies yet"
         refute body =~ "reply-001"
       end
@@ -652,12 +653,12 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       numbered_replies!(report, 1..3)
       unreadable = PatchbayWeb.Forum.ReplyCursor.sign(report.id, "not a place in the thread")
 
-      response = get(conn, ~p"/reports/#{report.id}?after=#{unreadable}")
+      response = get(conn, PostAddress.path(report, after: unreadable))
       body = html_response(response, 503)
 
       assert body =~ "could not be loaded right now"
       assert body =~ ~s(href="#{response.request_path}?#{response.query_string}")
-      assert body =~ ~s(href="/reports/#{report.id}#patchbay-replies")
+      assert body =~ ~s(href="#{PostAddress.path(report)}#patchbay-replies")
       refute body =~ "No replies yet"
     end
 
@@ -672,7 +673,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         )
 
       past_end = PatchbayWeb.Forum.ReplyCursor.sign(report.id, placed.__metadata__.keyset)
-      body = conn |> get(~p"/reports/#{report.id}?after=#{past_end}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report, after: past_end)) |> html_response(200)
 
       refute body =~ "No replies yet"
       assert body =~ "No replies past this point."
@@ -688,7 +689,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       conn = signed_in(conn, person!("aaa"))
 
       second_path =
-        conn |> get(~p"/reports/#{report.id}") |> html_response(200) |> next_page_path()
+        conn |> get(PostAddress.path(report)) |> html_response(200) |> next_page_path()
 
       second = conn |> get(second_path) |> html_response(200)
       %{"after" => cursor} = URI.decode_query(URI.parse(second_path).query)
@@ -715,8 +716,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       # Nobody has marked a reply, so the newest leads the thread.
       landing = redirected_to(posted)
-      assert landing == "/reports/#{report.id}#patchbay-replies"
-      shown = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      assert landing == PostAddress.path(report) <> "#patchbay-replies"
+      shown = conn |> get(PostAddress.path(report)) |> html_response(200)
       assert :binary.match(shown, "my own reply") < :binary.match(shown, hd(notes_shown(shown)))
       assert hd(api_walk(conn, report.id)) == "my own reply"
     end
@@ -732,7 +733,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
           "reply" => %{"verdict" => "verified_success", "note" => "worked for me"}
         })
 
-      assert redirected_to(posted) == "/reports/#{report.id}#patchbay-replies"
+      assert redirected_to(posted) == PostAddress.path(report) <> "#patchbay-replies"
     end
 
     # A continuation minted the way the board mints them, dated in the past:
@@ -765,14 +766,14 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body =
         conn
-        |> get(~p"/reports/#{report.id}?after=#{expired_cursor(report, keyset)}")
+        |> get(PostAddress.path(report, after: expired_cursor(report, keyset)))
         |> html_response(400)
 
       assert body =~ "This reply link has expired or is invalid."
 
       fresh = dated_cursor(report, keyset, 86_000)
 
-      assert conn |> get(~p"/reports/#{report.id}?after=#{fresh}") |> html_response(200) =~
+      assert conn |> get(PostAddress.path(report, after: fresh)) |> html_response(200) =~
                "reply-002"
     end
 
@@ -796,7 +797,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "kept through the expiry"
       assert body =~ ~s(action="/reports/#{report.id}/replies")
       refute body =~ ~s(name="after")
-      assert body =~ ~s(href="/reports/#{report.id}#patchbay-replies")
+      assert body =~ ~s(href="#{PostAddress.path(report)}#patchbay-replies")
       refute body =~ ~s(href="/reports/#{report.id}/replies)
       refute body =~ "reply-001"
     end
@@ -820,7 +821,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ "Say whether the tool worked before you post."
       assert body =~ "kept through the outage"
       assert body =~ ~s(name="after" value="#{unreadable}")
-      assert body =~ ~s(href="/reports/#{report.id}?after=#{unreadable}")
+      assert body =~ ~s(href="#{PostAddress.path(report, after: unreadable)}")
       refute body =~ ~s(href="/reports/#{report.id}/replies)
       refute body =~ "No replies yet"
     end
@@ -999,7 +1000,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       reply!(report, %{note: "could not reproduce"})
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       assert body =~ "the button never changed"
       assert body =~ "cart_total_unchanged"
@@ -1016,7 +1017,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       replies =
         conn
-        |> get(~p"/reports/#{report.id}")
+        |> get(PostAddress.path(report))
         |> html_response(200)
         |> LazyHTML.from_document()
 
@@ -1030,7 +1031,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "invites a second opinion when nobody has replied", %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       assert body =~ "No replies yet"
       assert body =~ ~s(id="patchbay-replies")
@@ -1048,7 +1049,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         authorize?: false
       )
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       assert body =~ ~s(<span class="pb-badge-kind">this site</span>)
       assert body =~ "Patchbay Agent"
@@ -1065,7 +1066,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         |> tool!()
         |> report!(%{note: note, observed: %{"page" => "<img src=x onerror=y>"}})
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       refute body =~ "<script>"
       refute body =~ "<img src=x"
@@ -1085,7 +1086,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         |> tool!()
         |> report!(%{note: note, observed: %{"page" => observed}})
 
-      html = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      html = conn |> get(PostAddress.path(report)) |> html_response(200)
       document = LazyHTML.from_document(html)
       evidence = document |> LazyHTML.query("#report-evidence") |> LazyHTML.text()
       preview = document |> LazyHTML.query("h1") |> LazyHTML.text()
@@ -1150,7 +1151,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
           "previewed" => digest
         })
 
-      [_, id] = Regex.run(~r{/posts/(.+)}, redirected_to(posted))
+      [_, id] = Regex.run(~r{/posts/([^/]+)/}, redirected_to(posted))
 
       thread = Ash.load!(Ash.get!(Report, id), :pictures)
       assert thread.thread_kind == :help_needed
@@ -1160,7 +1161,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert thread.page_url == "https://checkout.example/cart"
       assert [%{id: picture_id, format: :png}] = thread.pictures
 
-      page = posted |> recycle() |> get(~p"/posts/#{id}") |> html_response(200)
+      page = posted |> recycle() |> get(redirected_to(posted)) |> html_response(200)
       assert page =~ "Where does a declined card go?"
       assert page =~ ~s(src="/post-pictures/#{picture_id}")
 
@@ -1256,7 +1257,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert conn
              |> recycle()
-             |> get(~p"/posts/#{thread.id}")
+             |> get(PostAddress.path(thread))
              |> html_response(200) =~ "It is under checkout extras."
     end
   end
@@ -1265,7 +1266,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "a report matched to a real call says so, and shows the call's receipt", %{conn: conn} do
       %{report: report, receipt: receipt} = matched_report!()
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       assert body =~ "Page record matched"
       assert body =~ receipt
@@ -1275,7 +1276,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "a report nobody could match says that instead", %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       assert body =~ "Patchbay has not matched it to a logged call"
       refute body =~ "Page record matched"
@@ -1286,7 +1287,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
          %{conn: conn} do
       %{report: report, receipt: receipt} = matched_report!()
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       evidence = body |> LazyHTML.from_document() |> LazyHTML.query("#report-evidence")
       assert evidence |> LazyHTML.text() |> String.split(receipt) |> length() == 2
@@ -1296,7 +1297,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "a report with no receipt has no stub to show", %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
 
-      body = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       refute body =~ "pb-receipt-stub"
     end
@@ -1388,7 +1389,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         conn |> get(~p"/sites") |> html_response(200),
         conn |> get(~p"/shopify.com") |> html_response(200),
         conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200),
-        conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+        conn |> get(PostAddress.path(report)) |> html_response(200)
       ]
 
       %{bodies: bodies}

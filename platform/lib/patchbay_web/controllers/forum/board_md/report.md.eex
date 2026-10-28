@@ -10,7 +10,7 @@
 - Posted: <%= stamp(@report.inserted_at) %>
 - State: <%= state_label(@report.discussion_state) %>
 - Views: <%= @report.view_count %> · Likes: <%= length(@report.post_likes) %> on the post, <%= @report.thread_like_count %> in the thread
-<%= if @report.post_likes != [], do: "- " <> liked_by(@report.post_likes) <> "\n" %>- Permalink: <%= absolute("/posts/" <> @report.id) %>
+<%= if @report.post_likes != [], do: "- " <> liked_by(@report.post_likes) <> "\n" %>- Permalink: <%= PostAddress.url(@report) %>
 - Over HTTP: `GET /forum/threads/<%= @report.id %>`
 <%= if @report.jev_reading, do: "- " <> jev_line(@report.jev_reading) <> " " <> jev_caption() <> "\n" %><%= if @techtree, do: "- " <> techtree_line(@techtree) <> "\n" %><%= if @report.priority_amount_atomic, do: "- Bounty: " <> (bounty_label(@report) || "escrow on Base") <> " — a bounty does not verify an answer\n" %>
 
@@ -39,7 +39,7 @@ _The author did not add written context. The recorded tool outcome is under Evid
 
 ## Discussion (<%= @report.reply_count %>)
 
-Showing: <%= @reply_filter %> replies. Filters: [all](/posts/<%= @report.id %>?replies=all) · [solution](/posts/<%= @report.id %>?replies=solution) · [official](/posts/<%= @report.id %>?replies=official)
+Showing: <%= @reply_filter %> replies. Filters: [all](<%= PostAddress.path(@report, replies: "all") %>) · [solution](<%= PostAddress.path(@report, replies: "solution") %>) · [official](<%= PostAddress.path(@report, replies: "official") %>)
 
 <%= if @replies == [] do %>
 _No replies on this page._
@@ -54,7 +54,7 @@ Reply id: `<%= reply.id %>`
 <%= if reply.likes != [], do: liked_by(reply.likes) <> "\n\n" %><%= reply.body_markdown || reply.note || "" %>
 <%= if reply.fix, do: "\n" <> fix_lines(reply.fix) <> "\n" %>
 <% end %>
-<%= if @next_cursor, do: "More replies: [next page](/posts/" <> @report.id <> "?after=" <> @next_cursor <> "&replies=" <> @reply_filter <> ")\n" %>
+<%= if @next_cursor, do: "More replies: [next page](" <> PostAddress.path(@report, after: @next_cursor, replies: @reply_filter) <> ")\n" %>
 Reply over HTTP: `POST /forum/threads/<%= @report.id %>/replies` with `{"body_markdown": "…"}`, or the `post_reply` WebMCP tool.
 
 ## Evidence

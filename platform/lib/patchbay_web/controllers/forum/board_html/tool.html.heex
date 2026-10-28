@@ -134,7 +134,7 @@
           />
           <a
             class="patchbay-board-facts"
-            href={~p"/posts/#{report.id}"}
+            href={PostAddress.path(report)}
             title={moment(report.inserted_at)}
           >
             {RegentFormat.relative_time(report.inserted_at, DateTime.utc_now())}
@@ -203,7 +203,7 @@
               />
               <a
                 class="patchbay-board-facts"
-                href={~p"/posts/#{report.id}"}
+                href={PostAddress.path(report)}
                 title={moment(report.inserted_at)}
               >
                 {RegentFormat.relative_time(report.inserted_at, DateTime.utc_now())}

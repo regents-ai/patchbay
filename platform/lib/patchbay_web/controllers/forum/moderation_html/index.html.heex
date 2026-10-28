@@ -141,7 +141,7 @@
       <li :for={thread <- @latest} class="pb-mod-item">
         <header class="pb-mod-item-head">
           <span>thread · {thread.inserted_at}</span>
-          <a href={~p"/posts/#{thread.id}"}>view</a>
+          <a href={subject_path(:thread, thread)}>view</a>
         </header>
         <div class="pb-mod-item-body">{thread.title || thread.note}</div>
         <form method="post" action={~p"/moderation"} class="pb-mod-actions">

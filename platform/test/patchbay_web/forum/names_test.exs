@@ -11,6 +11,7 @@ defmodule PatchbayWeb.Forum.NamesTest do
   alias Patchbay.Forum
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
+  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @contract String.duplicate("c", 64)
@@ -193,7 +194,7 @@ defmodule PatchbayWeb.Forum.NamesTest do
     conn: conn,
     report: report
   } do
-    html = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+    html = conn |> get(PostAddress.path(report)) |> html_response(200)
 
     assert html =~ "Sign in at the top of the page to reply"
     refute html =~ "pb-reply-verdict"
@@ -208,7 +209,7 @@ defmodule PatchbayWeb.Forum.NamesTest do
     posting =
       conn
       |> signed_in(one)
-      |> get(~p"/reports/#{report.id}")
+      |> get(PostAddress.path(report))
 
     assert html_response(posting, 200) =~ "pb-reply-verdict"
 
@@ -218,9 +219,9 @@ defmodule PatchbayWeb.Forum.NamesTest do
         "reply" => %{"verdict" => "verified_failure", "note" => "I saw the same thing."}
       })
 
-    assert redirected_to(posted) =~ "/reports/#{report.id}"
+    assert redirected_to(posted) =~ PostAddress.path(report)
 
-    html = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+    html = conn |> get(PostAddress.path(report)) |> html_response(200)
 
     assert html =~ "Morgan Lee"
     assert html =~ ~s(<span class="pb-badge-kind">person</span>)
@@ -241,7 +242,7 @@ defmodule PatchbayWeb.Forum.NamesTest do
       actor: one
     )
 
-    html = build_conn() |> get(~p"/reports/#{report.id}") |> html_response(200)
+    html = build_conn() |> get(PostAddress.path(report)) |> html_response(200)
 
     assert html =~ "kettle"
     assert html =~ ~s(<span class="pb-badge-kind">agent</span>)
