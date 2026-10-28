@@ -1674,30 +1674,30 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   how many others say it worked and when the latest said so; and the way to
   the whole reply.
   """
-  attr(:answer, :any, required: true, doc: "`{:asker | :others, reply}` from `Board.answer/1`.")
+  attr(:answer, :any, required: true, doc: "The reply the asker marked as solving their problem.")
   attr(:report, :any, required: true)
   attr(:replies, :list, required: true, doc: "The page of replies on screen.")
 
-  def fix_card(%{answer: {pick, reply}} = assigns) do
-    assigns = assign(assigns, pick: pick, reply: reply, fix: reply.fix)
+  def fix_card(%{answer: reply} = assigns) do
+    assigns = assign(assigns, reply: reply, fix: reply.fix)
 
     ~H"""
     <section id="pb-fix" class="pb-fix-card" aria-labelledby="pb-fix-title">
       <header class="pb-fix-head">
         <h2 id="pb-fix-title">
-          <.icon :if={@pick == :asker} name={:check} /> {if @fix, do: "The fix", else: "The answer"}
+          <.icon name={:check} /> {if @fix, do: "The fix", else: "The answer"}
         </h2>
         <p :if={worked_line(@reply)} class="pb-fix-worked">{worked_line(@reply)}</p>
       </header>
       <.fix_facts :if={@fix} fix={@fix} />
       <p :if={!@fix} class="pb-fix-excerpt">{plain_words(@reply)}</p>
       <p class="pb-thread-caption">
-        {answer_caption(@pick, @report, @reply)} By {author_name(
+        {answer_caption(@report, @reply)} By {author_name(
           @reply.author,
           @reply.browser_session_id,
           @reply.author_kind
         )}, {written_on(@reply.inserted_at)}.
-        <a :if={answer_path(@report, @reply, @replies)} href={answer_path(@report, @reply, @replies)}>
+        <a href={answer_path(@report, @reply, @replies)}>
           Read the whole answer →
         </a>
       </p>
@@ -1752,34 +1752,28 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def worked_line(%{worked_for_others: count, last_worked_at: at}),
     do: "Worked for #{count_label(count, "person", "people")}, last on #{written_on(at)}"
 
-  @doc "Whose word made a reply the thread's answer."
-  @spec answer_caption(:asker | :others, Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t()) ::
-          String.t()
-  def answer_caption(:asker, %{accepted_reply_id: id}, %{id: id}),
+  @doc "Whose word made a reply the thread's answer: always the asker's."
+  @spec answer_caption(Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t()) :: String.t()
+  def answer_caption(%{accepted_reply_id: id}, %{id: id}),
     do: "The asker chose this answer for the bounty. Their word, not a check."
 
-  def answer_caption(:asker, _report, _reply),
+  def answer_caption(_report, _reply),
     do: "The asker says this worked. Their word, not a check."
 
-  def answer_caption(:others, _report, _reply),
-    do: "The reply the most others say worked. Their word, not a check."
-
   @doc """
-  Where the answer card links: the answer itself when it is on this page of
-  replies, otherwise the page that shows only the asker's pick. Another reply
-  on another page has no link: the card already gives what it says.
+  Where the answer card links: the asker's pick itself when it is on this
+  page of replies (it leads the first), otherwise the page that shows only
+  the pick.
   """
   @spec answer_path(Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t(), [
           Patchbay.Forum.Reply.t()
-        ]) :: String.t() | nil
+        ]) :: String.t()
   def answer_path(report, reply, replies) do
     anchor = "#reply-#{reply.id}"
 
-    cond do
-      Enum.any?(replies, &(&1.id == reply.id)) -> anchor
-      reply.id == report.solution_reply_id -> ~p"/posts/#{report.id}?replies=solution" <> anchor
-      true -> nil
-    end
+    if Enum.any?(replies, &(&1.id == reply.id)),
+      do: anchor,
+      else: ~p"/posts/#{report.id}?replies=solution" <> anchor
   end
 
   @doc """

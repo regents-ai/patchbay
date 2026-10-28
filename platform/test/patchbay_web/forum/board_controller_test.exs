@@ -551,7 +551,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       report = "shopify.com" |> site!() |> tool!() |> report!()
       {tied, later} = report |> numbered_replies!(1..250) |> Enum.split(150)
       written_at_once!(tied)
-      expected = Enum.map(Enum.sort_by(tied, & &1.id) ++ later, & &1.note)
+      # Nobody has marked any reply, so the newest come first, a tie by id.
+      expected = Enum.map(Enum.reverse(later) ++ Enum.sort_by(tied, & &1.id, :desc), & &1.note)
 
       first = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
       assert notes_shown(first) == Enum.take(expected, 100)
@@ -560,11 +561,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       second_path = next_page_path(first)
       assert second_path
 
-      # A reply written while someone is reading lands at the end of the thread.
+      # A reply written while someone is reading leads the thread.
       reply!(report, %{note: "reply-251"})
 
-      assert human_walk(conn, ~p"/reports/#{report.id}") == expected ++ ["reply-251"]
-      assert api_walk(conn, report.id) == expected ++ ["reply-251"]
+      assert human_walk(conn, ~p"/reports/#{report.id}") == ["reply-251" | expected]
+      assert api_walk(conn, report.id) == ["reply-251" | expected]
 
       # A machine continuation opens the same place on the page.
       api_first = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
@@ -573,7 +574,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       after_machine =
         conn |> get(~p"/reports/#{report.id}?after=#{api_cursor}") |> html_response(200)
 
-      assert notes_shown(after_machine) == Enum.slice(expected, 20, 100)
+      assert notes_shown(after_machine) == Enum.slice(["reply-251" | expected], 20, 100)
       assert after_machine =~ "Back to first replies"
 
       # And the page's continuation reads on through the API.
@@ -655,7 +656,9 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       refute body =~ "More replies"
     end
 
-    test "a reply posted from a later page lands on the page that ends with it", %{conn: conn} do
+    test "a reply posted from a later page lands on the first page, which it leads", %{
+      conn: conn
+    } do
       report = "shopify.com" |> site!() |> tool!() |> report!()
       report |> numbered_replies!(1..130) |> written_at_once!()
       conn = signed_in(conn, person!("aaa"))
@@ -686,26 +689,12 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
           "reply" => %{"verdict" => "verified_failure", "note" => "my own reply"}
         })
 
+      # Nobody has marked a reply, so the newest leads the thread.
       landing = redirected_to(posted)
-      assert landing =~ "#patchbay-replies"
-      landing_path = String.replace(landing, "#patchbay-replies", "")
-      refute landing_path == "/reports/#{report.id}"
-
-      # The 99 replies before it, in the thread's own order, then the new one.
-      expected = api_walk(conn, report.id)
-      assert List.last(expected) == "my own reply"
-      shown = conn |> get(landing_path) |> html_response(200)
-      assert notes_shown(shown) ++ ["my own reply"] == Enum.take(expected, -100)
-      refute shown =~ Enum.at(expected, -101)
-      assert shown =~ "my own reply"
-      refute shown =~ "More replies"
-
-      # A reply that arrives afterwards does not push the person's own off the page.
-      reply!(report, %{note: "reply-131"})
-      again = conn |> get(landing_path) |> html_response(200)
-      assert again =~ "my own reply"
-      assert again =~ "More replies"
-      refute again =~ "reply-131"
+      assert landing == "/reports/#{report.id}#patchbay-replies"
+      shown = conn |> get(~p"/reports/#{report.id}") |> html_response(200)
+      assert :binary.match(shown, "my own reply") < :binary.match(shown, hd(notes_shown(shown)))
+      assert hd(api_walk(conn, report.id)) == "my own reply"
     end
 
     test "a reply on a short thread lands on its opening page", %{conn: conn} do
@@ -747,8 +736,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
     test "a continuation from more than a day ago has expired", %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
-      [first | _rest] = numbered_replies!(report, 1..3)
-      keyset = keyset_of(report, first)
+      [_oldest, _middle, newest] = numbered_replies!(report, 1..3)
+      keyset = keyset_of(report, newest)
 
       body =
         conn
@@ -924,8 +913,9 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
                agent |> agent_reply(report, reply) |> json_response(429)
 
       replies = Forum.list_replies_for_report!(report.id).results
-      assert Enum.map(replies, & &1.author_kind) == [:agent, :human]
-      assert Enum.map(replies, & &1.browser_session_id) == [agent.pairing.id, session_id]
+      # Newest first: nobody has marked either.
+      assert Enum.map(replies, & &1.author_kind) == [:human, :agent]
+      assert Enum.map(replies, & &1.browser_session_id) == [session_id, agent.pairing.id]
 
       # Another person's agent's share is its own.
       assert SignedAgent.pair!() |> agent_reply(report, reply) |> json_response(201)

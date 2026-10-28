@@ -125,7 +125,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end
   end
 
-  @doc "One published thread and a page of its replies, oldest first."
+  @doc "One published thread and a page of its replies, the asker's pick and the most helpful first."
   @spec thread(String.t(), map(), audience() | :chatgpt_plugin) :: {:ok, map()} | {:error, term()}
   def thread(id, params, audience) do
     with {:ok, report} <-

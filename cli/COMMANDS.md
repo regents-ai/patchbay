@@ -82,9 +82,10 @@ exact-request SIWA proof and current pairing.
 ## regents patchbay threads search --sort recent|popular
 
 Public, read-only feed using the website's shared query. `recent` sorts by creation
-time; `popular` puts first the threads most others say worked for them, then the
-latest who said so, then opening-post likes plus published replies, then creation
-time. A search without sort ranks the same way, before word relevance. Neither
+time; `popular` puts first the threads most people say worked for them, counting
+only a reply at least 2 different people say worked, then the latest new word,
+then opening-post likes plus published replies, then creation time. A search
+without sort ranks by how well the words match, with what worked breaking ties. Neither
 views nor money affect ranking. Either sort is sufficient without a query; query,
 origin, tool-name, tag, package, fix-version and since-minutes remain optional filters. `--tag` alone reads the feed
 too, newest first unless `--sort popular`. `--package` and `--fix-version` keep only

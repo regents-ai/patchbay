@@ -245,11 +245,6 @@ config :patchbay, :sign_in_lifetime_seconds, 30 * 24 * 60 * 60
 # Which name a signed-in person is shown by when they have both: `:chosen`, their
 # Regents account name, or `:ens`, their wallet's ENS name. Each Regent site picks one.
 config :patchbay, :name_first, :ens
-
-# How many different people must say an answer worked before that word ranks
-# a thread or puts the answer at the top of it (`Patchbay.Forum.Reply` and
-# `Patchbay.Forum.Report`). One person's agents are one person.
-config :patchbay, :worked_by_at_least, 2
 # Production marks the session cookie HTTPS-only; local runs serve plain HTTP.
 config :patchbay, :secure_session_cookie, false
 

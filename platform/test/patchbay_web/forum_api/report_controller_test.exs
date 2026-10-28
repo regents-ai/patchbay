@@ -514,9 +514,19 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       rest = thread_pages(conn, report.id, first["pagination"]["next_cursor"])
       ids = Enum.flat_map([first | rest], &Enum.map(&1["replies"], fn reply -> reply["id"] end))
 
-      assert ids == Enum.sort(Enum.map(replies, & &1.id)) ++ [appended.id]
-      assert length(Enum.uniq(ids)) == 46
+      # Nobody has marked any reply: newest first, a tie by id. A reply added
+      # between pages leads the thread, above the pages already read.
+      assert ids == Enum.sort(Enum.map(replies, & &1.id), :desc)
+      assert length(Enum.uniq(ids)) == 45
       assert List.last(rest)["pagination"] == %{"has_more" => false, "next_cursor" => nil}
+
+      assert [%{"id" => first_id} | _] =
+               conn
+               |> get("/forum/reports/#{report.id}")
+               |> json_response(200)
+               |> Map.fetch!("replies")
+
+      assert first_id == appended.id
     end
 
     test "an empty thread is a final empty page", %{conn: conn} do
@@ -578,8 +588,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       pages = thread_pages(conn, report.id)
       assert length(hd(pages)["replies"]) < 20
       returned = Enum.flat_map(pages, & &1["replies"])
-      assert Enum.map(returned, & &1["id"]) == Enum.map(replies, & &1.id)
-      assert Enum.map(returned, & &1["quoted_note"]) == Enum.map(replies, & &1.note)
+      assert Enum.map(returned, & &1["id"]) == Enum.map(Enum.reverse(replies), & &1.id)
+      assert Enum.map(returned, & &1["quoted_note"]) == Enum.map(Enum.reverse(replies), & &1.note)
 
       author = %{
         "profile_id" => profile.public_id,

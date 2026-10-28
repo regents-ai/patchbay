@@ -62,7 +62,7 @@ defmodule PatchbayWeb do
           about_patchbay?: 1,
           written_on: 1,
           worked_line: 1,
-          answer_caption: 3,
+          answer_caption: 2,
           answer_path: 3,
           updates_label: 1,
           hosted_tool_count: 0,

@@ -28,7 +28,6 @@ defmodule Patchbay.Forum.Reply do
   @max_note_bytes 500
   @max_body_bytes 16 * 1024
   @max_client_request_id_bytes 128
-  @worked_by_at_least Application.compile_env!(:patchbay, :worked_by_at_least)
 
   postgres do
     table("forum_replies")
@@ -167,6 +166,22 @@ defmodule Patchbay.Forum.Reply do
       public?(true)
     end
 
+    # How many different people say this reply did not work for them, counted
+    # the same way.
+    count :did_not_work_for_others, :answer_uses do
+      field(:principal)
+      uniq?(true)
+
+      filter(
+        expr(
+          outcome == :did_not_work and not same_author and
+            (is_nil(reply.report.principal) or principal != reply.report.principal)
+        )
+      )
+
+      public?(true)
+    end
+
     # When the latest of them first said so. Each person counts from their
     # first word: saying it again, under any task, moves nothing.
     max :last_worked_at, :answer_uses, :inserted_at do
@@ -187,6 +202,31 @@ defmodule Patchbay.Forum.Reply do
   end
 
   calculations do
+    # Whether the asker marked this reply as solving their problem.
+    calculate(
+      :asker_pick,
+      :boolean,
+      expr(not is_nil(report.solution_reply_id) and id == report.solution_reply_id)
+    )
+
+    # How helpful people say this reply is: the lower bound of the 95% Wilson
+    # score interval on those who say it worked against those who say it did
+    # not, so one person's word ranks below nine of ten. Each person counts
+    # once on each side they marked; the writer and the asker never count.
+    # Nil while nobody has marked it.
+    calculate(
+      :helpfulness,
+      :float,
+      expr(
+        fragment(
+          "(SELECT CASE WHEN m.n = 0 THEN NULL ELSE (m.w / m.n + 1.9208 / m.n - 1.96 * sqrt((m.w / m.n) * (1 - m.w / m.n) / m.n + 0.9604 / (m.n * m.n))) / (1 + 3.8416 / m.n) END FROM (SELECT ?::float AS w, (? + ?)::float AS n) AS m)",
+          worked_for_others,
+          worked_for_others,
+          did_not_work_for_others
+        )
+      )
+    )
+
     # The words a search finds a reply by: what it says and every word of the
     # fix it gives, its sources and updates too (`Patchbay.Forum.Fix`). Both
     # searches read it (`:search` and `Patchbay.Forum.Feed`), so they look at
@@ -261,37 +301,26 @@ defmodule Patchbay.Forum.Reply do
     end
 
     read :for_report do
-      description("Oldest replies first, so a thread reads in order.")
-      argument(:report_id, :uuid, allow_nil?: false)
-      filter(expr(report_id == ^arg(:report_id) and visibility == :published))
-      pagination(keyset?: true, default_limit: 50, max_page_size: 200)
-      prepare(build(sort: [inserted_at: :asc, id: :asc]))
-    end
-
-    read :most_worked do
       description("""
-      The reply on a thread the most people say worked for them, the latest
-      new word breaking a tie. None until at least `:worked_by_at_least`
-      different people, apart from its writer and the asker, have said so.
+      A thread's published replies, most helpful first: the reply the asker
+      marked as solving their problem, then the rest by `helpfulness`, a tie
+      going to the newer reply, then the replies nobody has marked, newest
+      first.
       """)
 
       argument(:report_id, :uuid, allow_nil?: false)
       filter(expr(report_id == ^arg(:report_id) and visibility == :published))
+      pagination(keyset?: true, default_limit: 50, max_page_size: 200)
 
-      # Too few people is left out after the read: ash_postgres 2.13 loses the
-      # count's column when a query both filters and sorts by it.
       prepare(
         build(
-          sort: [worked_for_others: :desc, last_worked_at: :desc_nils_last, id: :asc],
-          limit: 1,
-          load: [:worked_for_others, :last_worked_at]
+          sort: [
+            asker_pick: :desc,
+            helpfulness: :desc_nils_last,
+            inserted_at: :desc,
+            id: :desc
+          ]
         )
-      )
-
-      prepare(
-        after_action(fn _query, replies, _context ->
-          {:ok, Enum.filter(replies, &(&1.worked_for_others >= @worked_by_at_least))}
-        end)
       )
     end
 

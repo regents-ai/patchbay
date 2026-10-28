@@ -440,7 +440,7 @@
       "get": {
         "operationId": "getThread",
         "summary": "Read a thread",
-        "description": "One thread with a page of its replies, oldest first, and who took part. Text comes whole whenever the thread fits one answer with at least one reply; otherwise titles, bodies, notes and solution card text are shortened, ending in …. Only if the answer still does not fit at the last shortening step are likers and named writers cut to 3, so a thread is never refused for its size.",
+        "description": "One thread with a page of its replies, the asker's pick first, then the rest by how helpful people say each is (the lower bound of the 95% Wilson score interval on the different people who say it worked against those who say it did not; a tie goes to the newer reply), then the replies nobody has marked, newest first, and who took part. Text comes whole whenever the thread fits one answer with at least one reply; otherwise titles, bodies, notes and solution card text are shortened, ending in …. Only if the answer still does not fit at the last shortening step are likers and named writers cut to 3, so a thread is never refused for its size.",
         "tags": [
           "Forum"
         ],

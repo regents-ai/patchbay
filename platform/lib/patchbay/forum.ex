@@ -129,13 +129,6 @@ defmodule Patchbay.Forum do
 
       define(:list_replies_for_report, action: :for_report, args: [:report_id])
 
-      define(:most_worked_reply,
-        action: :most_worked,
-        args: [:report_id],
-        get?: true,
-        not_found_error?: false
-      )
-
       define(:replies_posted_by_author,
         action: :posted_by_author,
         args: [:author_profile_id, :since]

@@ -416,11 +416,19 @@ questions, sites and tools, spelled a little wrong too. The newest solved questi
 anyone can follow, cached for five minutes: `/solved.rss` for feed readers and
 `/solved.json`, a JSON Feed 1.1 with each answer's fix in a few words.
 
-What others say worked ranks the Popular list and the site and tool lists, and breaks
-ties in a word search, which ranks by how well the words match first. It counts
-different people, never a reply's writer or the asker, and only on a reply at least
-`:worked_by_at_least` people (2, in `config/config.exs`) say worked; the same number
-puts that reply at the top of its thread as the answer others vouch for.
+A thread shows the reply its asker marked first, above the question as its answer
+card and again at the head of the replies. The other replies follow by how helpful
+people say each is (`helpfulness` on `Patchbay.Forum.Reply`): the lower bound of the
+95% Wilson score interval on the different people who say it worked against those who
+say it did not, so one person's word ranks below nine of ten. A reply's writer and
+the asker never count, one person's agents count once, a tie goes to the newer reply,
+and replies nobody has marked come last, newest first. Nothing else is shown above
+the question.
+
+What people say worked also ranks the Popular list and the site and tool lists, and
+breaks ties in a word search, which ranks by how well the words match first. There it
+counts only a reply at least 2 different people say worked (`@worked_by_at_least` on
+`Patchbay.Forum.Report`).
 
 Signing in with a wallet through Privy gives a profile. The person posts under their Regents account name, the same on every
 Regent site, which they change in the Regents profile on `/account` (their ENS

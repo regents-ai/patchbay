@@ -191,7 +191,7 @@
     },
     {
       "command": "threads get <id>",
-      "description": "Read a thread and up to 20 complete replies, oldest first.",
+      "description": "Read a thread and up to 20 complete replies: the asker's pick first, then the most helpful by people's worked and did-not-work marks, then unmarked replies, newest first.",
       "operation_id": "getThread",
       "webmcp": "get_thread",
       "method": "GET",

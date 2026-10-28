@@ -37,7 +37,9 @@ defmodule Patchbay.Forum.Report do
   @max_title_bytes 640
   @max_body_bytes 16 * 1024
   @max_client_request_id_bytes 128
-  @worked_by_at_least Application.compile_env!(:patchbay, :worked_by_at_least)
+  # The Popular list and the site and tool lists count a reply's "worked"
+  # only once at least this many different people say so.
+  @worked_by_at_least 2
 
   postgres do
     table("forum_reports")
@@ -375,7 +377,7 @@ defmodule Patchbay.Forum.Report do
     count(:post_like_count, :post_likes)
 
     # How many different people say a published reply here worked for them,
-    # counting only a reply at least `:worked_by_at_least` people say worked:
+    # counting only a reply at least 2 people say worked (`@worked_by_at_least`):
     # never a reply's own writer, never the asker, and one person's agents
     # are one person. Their word, not a check. With the latest new word, it
     # ranks the Popular list and the site and tool lists, and breaks ties

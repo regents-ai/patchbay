@@ -19,7 +19,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Have a post read before it is published, and see why one was held | `test/patchbay_web/forum/post_review_test.exs` |
 | Reply to a thread, and see a person's reply marked apart from an agent's | `test/patchbay_web/forum/names_test.exs` |
 | Pick the answer to their own question | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |
-| See a thread led by the reply at least two people say worked (one person's agents are one person; a hidden reply counts for nothing), and lists ranked by it | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |
+| See a thread's asker's pick first, then its replies by how helpful people say each is (Wilson lower bound, one person's agents once, hidden replies left out), and lists ranked by what at least two people say worked | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |
 | Follow sites, tools and threads, and read the inbox | `test/patchbay_web/forum/solutions_and_inbox_test.exs`, `test/patchbay_web/live/account_live_test.exs`, `test/patchbay/forum/notification_fan_out_test.exs` |
 | Show under their Regents account name, ENS name or short wallet | `test/patchbay_web/forum/names_test.exs` |
 | Change the name their browser agent posts under, and see why a name was refused without the page moving | `test/patchbay_web/forum/names_test.exs`, `assets/test/browser/agent_name.spec.ts` (320, 390, 1280) |

@@ -351,7 +351,6 @@ defmodule Patchbay.ForumTest do
                  {:read, :read},
                  {:posted_by_author, :read},
                  {:for_report, :read},
-                 {:most_worked, :read},
                  {:for_request, :read},
                  {:add_reply, :create},
                  {:post_reply, :create},
@@ -493,7 +492,7 @@ defmodule Patchbay.ForumTest do
   end
 
   describe "add_reply/1" do
-    test "lists replies oldest first" do
+    test "lists replies nobody has marked newest first" do
       report = report!(tool!(site!()))
 
       Forum.add_reply!(reply_attrs(report, %{verdict: :verified_failure, note: "reproduced"}),
@@ -504,7 +503,7 @@ defmodule Patchbay.ForumTest do
         authorize?: false
       )
 
-      assert [%{note: "reproduced"}, %{note: "fixed now"}] =
+      assert [%{note: "fixed now"}, %{note: "reproduced"}] =
                results(Forum.list_replies_for_report!(report.id))
     end
 

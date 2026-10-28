@@ -50,12 +50,10 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   @doc """
   The answer card's link to the answer, as on the page: on this page of
-  replies, or the page that shows only the asker's pick. Another reply on
-  another page has none.
+  replies, or the page that shows only the asker's pick.
   """
   def answer_link(report, reply, replies, cursor, filter) do
     case answer_path(report, reply, replies) do
-      nil -> ""
       "#" <> _ = anchor -> " · [read it](#{this_page(report, cursor, filter)}#{anchor})"
       path -> " · [read it](#{path})"
     end

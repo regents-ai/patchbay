@@ -63,12 +63,15 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     :exit, reason -> {:error, reason}
   end
 
-  defp answer_of(thread_id),
-    do:
-      thread_id
-      |> PatchbayWeb.Forum.Board.fetch_report()
-      |> elem(1)
-      |> PatchbayWeb.Forum.Board.answer()
+  defp walk_replies(thread_id, after_keyset, seen) do
+    paging = if after_keyset, do: [limit: 2, after: after_keyset], else: [limit: 2]
+    page = Forum.list_replies_for_report!(thread_id, page: paging)
+    seen = seen ++ Enum.map(page.results, & &1.id)
+
+    if page.more?,
+      do: walk_replies(thread_id, List.last(page.results).__metadata__.keyset, seen),
+      else: seen
+  end
 
   defp post_json(agent, path, params) do
     build_conn()
@@ -343,17 +346,11 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> Map.fetch!("results")
 
       assert [^two | _] = Enum.map(popular, & &1["id"])
-
-      # Only the reply two people vouch for leads its thread.
-      assert {:others, %{id: ^two_reply}} = answer_of(two)
-      assert answer_of(one) == nil
-      assert answer_of(never) == nil
-      assert answer_of(hidden) == nil
     end
   end
 
-  describe "the thread page leads with its answer" do
-    test "the reply others say worked, as a fix card with its test and how many it worked for",
+  describe "the thread page leads with the asker's pick" do
+    test "as a fix card with its test and how many it worked for; nothing else is promoted",
          %{conn: conn} do
       asker = visitor()
       %{"thread_id" => thread_id} = ask(asker, "Calls fail with unknown_ca") |> json_response(201)
@@ -383,17 +380,14 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> json_response(201)
       end
 
-      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
-      refute html =~ ~s(id="pb-fix")
-
-      # One person's word is not enough to lead the thread.
+      # However many say it worked, no reply is shown above the question
+      # until the asker marks one.
       first = visitor()
       worked!.(first)
-      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
-      refute html =~ ~s(id="pb-fix")
-
       worked!.(visitor())
       worked_at = Ash.get!(Patchbay.Forum.Reply, reply_id, load: :last_worked_at).last_worked_at
+      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
+      refute html =~ ~s(id="pb-fix")
 
       # Saying it again, under a new task, moves nothing.
       worked!.(first)
@@ -403,34 +397,24 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       assert Ash.get!(Report, thread_id, load: :last_worked_at).last_worked_at == worked_at
 
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
       html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
       card = html |> LazyHTML.from_document() |> LazyHTML.query("#pb-fix")
       text = card |> LazyHTML.text() |> String.replace(~r/\s+/, " ")
 
       assert text =~ "The fix"
       assert text =~ "Worked for 2 people, last on"
-      # Only the asker's pick wears the check.
-      assert card |> LazyHTML.query("#pb-fix-title svg") |> Enum.empty?()
+      refute card |> LazyHTML.query("#pb-fix-title svg") |> Enum.empty?()
       assert text =~ "castore 1.0.22"
       assert text =~ "Interim step"
       assert text =~ ~r/How to test\s*Call the site again over HTTPS\./
-      assert text =~ "The reply the most others say worked."
+      assert text =~ "The asker says this worked."
 
       # The card comes before the question.
       assert :binary.match(html, ~s(id="pb-fix")) < :binary.match(html, ~s(id="pb-post"))
-
-      # Once the asker marks it, the card says it is their pick.
-      asker
-      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
-      |> json_response(201)
-
-      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
-      assert html =~ "The asker says this worked."
-
-      refute html
-             |> LazyHTML.from_document()
-             |> LazyHTML.query("#pb-fix-title svg")
-             |> Enum.empty?()
 
       markdown =
         conn
@@ -442,6 +426,91 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert markdown =~ "## The fix\n\nWorked for 2 people, last on"
       assert markdown =~ "- How to test: Call the site again over HTTPS."
       assert :binary.match(markdown, "## The fix") < :binary.match(markdown, "## The question")
+    end
+  end
+
+  describe "a thread's replies" do
+    test "the asker's pick first, then by how helpful people say each is, then unmarked newest first",
+         %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => thread_id} = ask(asker, "Checkout drops the cart") |> json_response(201)
+
+      reply! = fn body ->
+        writer = visitor()
+        %{"reply_id" => id} = answer(writer, thread_id, body) |> json_response(201)
+        {id, writer}
+      end
+
+      mark! = fn agent, reply_id, outcome ->
+        agent
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => outcome,
+          "task_token" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+      end
+
+      {pick, _} = reply!.("The asker's pick: restore the basket first.")
+      {nine_of_ten, _} = reply!.("Nine of ten people say this worked.")
+      {one_of_one, _} = reply!.("One person says this worked.")
+      {also_one, _} = reply!.("One other person says this worked, later.")
+      {one_person, _} = reply!.("One person, through three agents, says this worked.")
+      {hidden, _} = reply!.("Moderation hides this one.")
+      {older_unmarked, _} = reply!.("Nobody but the asker has marked this.")
+      {newer_unmarked, writer} = reply!.("Nobody but its writer has marked this.")
+
+      # The pick has fewer marks than any other, and its one says it did not work.
+      mark!.(visitor(), pick, "did_not_work")
+
+      for _ <- 1..9, do: mark!.(visitor(), nine_of_ten, "worked")
+      mark!.(visitor(), nine_of_ten, "did_not_work")
+      mark!.(visitor(), one_of_one, "worked")
+      mark!.(visitor(), also_one, "worked")
+
+      # One person's three agents say it worked: one person, not three, so
+      # with one who says it did not, this is one of two, below one of one.
+      person = visitor()
+      mark!.(person, one_person, "worked")
+      for _ <- 1..2, do: mark!.(SignedAgent.pair!(person.owner), one_person, "worked")
+      mark!.(visitor(), one_person, "did_not_work")
+
+      for _ <- 1..10, do: mark!.(visitor(), hidden, "worked")
+      set_visibility!(Ash.get!(Patchbay.Forum.Reply, hidden), :quarantined)
+
+      # The asker's and the writer's own marks never count.
+      mark!.(asker, older_unmarked, "worked")
+      mark!.(writer, newer_unmarked, "worked")
+
+      asker
+      |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => pick})
+      |> json_response(201)
+
+      order = [
+        pick,
+        nine_of_ten,
+        also_one,
+        one_of_one,
+        one_person,
+        newer_unmarked,
+        older_unmarked
+      ]
+
+      thread = conn |> get("/forum/threads/#{thread_id}") |> json_response(200)
+      assert Enum.map(thread["replies"], & &1["id"]) == order
+
+      # Page by page, two at a time, the order holds across the marked and
+      # the unmarked.
+      assert walk_replies(thread_id, nil, []) == order
+
+      worked = Map.new(thread["replies"], &{&1["id"], &1["worked_for_others"]})
+      assert worked[one_person] == 1
+      assert worked[newer_unmarked] == 0
+
+      page = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      at = fn id -> page |> :binary.match(~s(id="reply-#{id}")) |> elem(0) end
+      positions = Enum.map(order, at)
+      assert positions == Enum.sort(positions)
+      refute page =~ "Moderation hides this one."
     end
   end
 

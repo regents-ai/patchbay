@@ -374,21 +374,6 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  The answer a thread leads with, and whose word made it the answer: the
-  reply the asker marked, else the reply the most others say worked. None
-  while neither exists.
-  """
-  @spec answer(Report.t()) :: {:asker | :others, Reply.t()} | nil
-  def answer(%Report{solution_reply: %Reply{} = reply}), do: {:asker, reply}
-
-  def answer(%Report{id: id}) do
-    case Forum.most_worked_reply!(id, load: [:author]) do
-      %Reply{} = reply -> {:others, reply}
-      nil -> nil
-    end
-  end
-
-  @doc """
   One page of every thread about one named tool on a site — posts filed
   against any of its versions, however many, and questions that only name it
   — open bounties first, and the cursor of the page after it when there is
@@ -520,9 +505,9 @@ defmodule PatchbayWeb.Forum.Board do
 
   @doc """
   Where a reader who has just posted a reply lands: the page that ends on
-  it, so it is on screen with what came before it. A reply is the newest on
-  its thread when it is posted, so this is the opening page only while the
-  thread is short.
+  it, so it is on screen with what came before it. A new reply has no marks
+  yet, so it comes straight after the replies people have marked: the
+  opening page, unless more of them than a page holds come first.
 
   The reply is already saved by the time this is asked, so a read that fails
   here, or that cannot find the reply, is an error about the landing page

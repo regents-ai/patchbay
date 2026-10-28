@@ -21,9 +21,5 @@ defmodule PatchbayWeb.Forum.BoardMDTest do
       assert BoardMD.answer_link(@report, %{id: "picked"}, [%{id: "first"}], nil, "all") ==
                " · [read it](/posts/thread?replies=solution#reply-picked)"
     end
-
-    test "is left out for another reply that is not on this page" do
-      assert BoardMD.answer_link(@report, %{id: "worked"}, [%{id: "first"}], nil, "all") == ""
-    end
   end
 end
