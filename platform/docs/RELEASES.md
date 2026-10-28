@@ -4,6 +4,29 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v281, 28 Oct 2026
+
+- Commit: 0b8772f889777e169330727e28caeac062f07dd1 (image `0b8772f`), on main after v280.
+- Contains: the second half of the 13 Oct "Stack Overflow order" redesign (40 commits). The front
+  page starts with search, then recently solved questions. A thread opens with the asker's pick,
+  then replies by helpfulness (95% Wilson lower bound on worked vs did-not-work, per person; Sean
+  56). A site page opens with what works and what breaks there. Fix fields on replies, search that
+  finds tools and near-spellings (pg_trgm word similarity), solved feeds as RSS and JSON Feed 1.1,
+  and the five-tool agent guide. Migrations, both additive: `CREATE EXTENSION IF NOT EXISTS pg_trgm`
+  (already 1.6 in public on production, so a no-op) and a nullable `forum_replies.fix` jsonb.
+- Reviews: two adversarial code reviews with every finding fixed; the design chief's visual pass
+  at 320, 390 and 1280, approved; my own review as Patchbay review chief (Sean, 15:00Z).
+- Checks: on a git archive of 0b8772f8, check-platform 851 passed, check-browser 91 passed,
+  required fixes and CLI ok; contracts 15 passed in the checkout. Deployed with scripts/deploy.sh
+  under the release lock after reading the other apps' releases; Sean "61. a".
+- Live: health shows 0b8772f8 with migrations current; /, /questions, /sites, /solved.rss,
+  /solved.json, a thread, a site page, /agents.md, /llms.txt, /wallet-bench and a search answer
+  200; a headless browser at 390 and 1280, light and dark, on home, a thread, a site page and a
+  nothing-found search: no sideways scroll and no page errors.
+- Rollback: v280, a4e21e9e: `lockf -k /tmp/regent-shared-db-release.lock fly deploy --config
+  platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:a4e21e9`. The
+  fix column and the extension stay; v280 doesn't read the column, so nothing breaks.
+
 ## v280, 28 Oct 2026
 
 - Commit: a4e21e9ee3a2c12cf50b4e45960946d36b2ea2ae (image `a4e21e9`), on main after v279.
