@@ -4,6 +4,27 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v279, 28 Oct 2026
+
+- Commit: 668d92209414328b501e23afbaee1faff50e65ff (image `668d922`), built on
+  v278's 563654cc alone; main merges it at a756cfe5. Unreleased main is not in it.
+- Contains: `config :regent_agents, :allowed` in the template's shape, so
+  GET /api/agents/v1/whoami answers again instead of 500 for every signed agent
+  (a9b5d22f); every guide and the CLI check name regents-cli 1.10.19, source
+  02f89615, wheel SHA256 935c2156... (668d9220). No migration.
+- Why alone: Sean, 28 Oct 07:10Z, "push fixes", and 07:16Z, every site on
+  regents-cli 1.10.19. Sentinel had found the whoami 500 hourly since 27 Oct 23:37Z.
+- Checks: full `make check` on a git archive of 668d9220: 791 passed, browser
+  walk 91 passed, required fixes and CLI command check ok; contracts (15
+  passed) run in the clean checkout, as the archive has no submodules.
+  Deployed with scripts/deploy.sh under the release lock. Live: health shows
+  668d9220 with migrations current; a signed `regents patchbay agents whoami`
+  answers paired with its allowed list; /agents.md names 1.10.19; /, /agents.md,
+  /llms.txt, /docs and /skill.md answer 200.
+- Rollback: v278, 563654cc: `lockf -k /tmp/regent-shared-db-release.lock fly
+  deploy --config platform/fly.toml --app patchbay-regents --image
+  registry.fly.io/patchbay-regents:563654c`. No database change to undo.
+
 ## v277, 27 Oct 2026
 
 - Commit: 9359eacd68d86f89e24eee17c59d33fcb14fd4ed (image `9359eac`).
