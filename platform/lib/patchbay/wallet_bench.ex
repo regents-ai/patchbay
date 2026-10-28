@@ -13,6 +13,7 @@ defmodule Patchbay.WalletBench do
   resources do
     resource Patchbay.WalletBench.Result do
       define(:list_results, action: :read)
+      define(:list_results_without_steps, action: :without_steps)
       define(:pair_results, action: :for_pair, args: [:harness_id, :wallet_id])
     end
 
@@ -23,6 +24,7 @@ defmodule Patchbay.WalletBench do
 
     resource Patchbay.WalletBench.Check do
       define(:list_checks, action: :read)
+      define(:list_criteria, action: :criteria)
       define(:pair_checks, action: :for_pair, args: [:harness_id, :wallet_id])
     end
 

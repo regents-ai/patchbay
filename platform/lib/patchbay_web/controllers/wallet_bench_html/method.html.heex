@@ -17,7 +17,7 @@
         <p>
           A judge answers each check yes, no or unclear. A square's dots are its test's checks, read left to right. Payment tests have five checks, so their last four dots stay empty.
         </p>
-        <div :for={grid <- @matrix.grids} class="pb-wb-check-test">
+        <div :for={grid <- @key.grids} class="pb-wb-check-test">
           <h3>{grid_title(grid.grid)}</h3>
           <.check_key :if={grid.criteria != []} criteria={grid.criteria} />
           <p :if={grid.criteria == []}>Listed once this test has run.</p>
@@ -26,9 +26,9 @@
       <article class="pb-wb-card" aria-labelledby="pb-wb-meanings-title">
         <h2 id="pb-wb-meanings-title">What each result means</h2>
         <dl class="pb-wb-meanings">
-          <div :for={outcome <- outcomes()} :if={Map.has_key?(@matrix.notes, outcome)}>
-            <dt><.chip notes={@matrix.notes} outcome={outcome} /></dt>
-            <dd>{@matrix.notes[outcome]}</dd>
+          <div :for={outcome <- outcomes()} :if={Map.has_key?(@key.notes, outcome)}>
+            <dt><.chip notes={@key.notes} outcome={outcome} /></dt>
+            <dd>{@key.notes[outcome]}</dd>
           </div>
         </dl>
       </article>
