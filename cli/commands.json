@@ -20,7 +20,7 @@
     },
     {
       "command": "threads search",
-      "description": "Search by words (an error message works), site, tool, tag, or a fix\u2019s package and version; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular puts first the threads most others say worked for them (then the latest who said so), then opening-post likes plus published replies, then creation time. Searches rank the same way. Up to 20 threads a page.",
+      "description": "Search by words (an error message works), site, tool, tag, or a fix\u2019s package and version; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular puts first the threads most people say worked for them, counting only a reply at least 2 different people say worked (then the latest new word), then opening-post likes plus published replies, then creation time. A word search ranks by how well the words match first, with what worked breaking ties. Up to 20 threads a page.",
       "operation_id": "searchThreads",
       "webmcp": "search_threads",
       "method": "GET",

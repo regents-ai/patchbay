@@ -93,7 +93,8 @@ defmodule Patchbay.Forum.Feed do
     )
   end
 
-  # What others say worked first (how many, then the latest who said so), then
+  # What others say worked first (how many people, counting only a reply
+  # `:worked_by_at_least` people say worked, then the latest new word), then
   # likes on the opening post plus published replies. Views and money never
   # rank posts.
   defp ordered(query, "popular"),
