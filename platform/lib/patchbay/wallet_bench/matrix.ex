@@ -82,29 +82,52 @@ defmodule Patchbay.WalletBench.Matrix do
          {:ok, results} <- WalletBench.list_results_without_steps(),
          {:ok, summaries} <- WalletBench.list_sets(),
          {:ok, checks} <- WalletBench.list_checks(),
-         {:ok, criteria} <- WalletBench.list_criteria(),
          {:ok, extra_notes} <- WalletBench.list_extra_notes() do
       {:ok,
        roster
-       |> build(notes, fixed, results, summaries, checks, criteria, filters)
+       |> build(notes, fixed, results, summaries, checks, criteria(checks, results), filters)
        |> Map.put(:extra_notes, ExtraNotes.by_release(extra_notes, roster))}
     end
   end
 
   @doc """
   What the page explaining the bench shows, read now: Techtree's notes by key,
-  and each grid with its checks. It reads no run.
+  and each grid with its checks. Of the runs it reads only when each finished.
   """
   @spec key() :: {:ok, map()} | {:error, term()}
   def key do
     with {:ok, notes} <- WalletBench.list_notes(),
-         {:ok, criteria} <- WalletBench.list_criteria() do
+         {:ok, checks} <- WalletBench.list_wordings(),
+         {:ok, runs} <- WalletBench.list_finish_times() do
+      criteria = criteria(checks, runs)
+
       {:ok,
        %{
          notes: notes(notes),
-         grids: Enum.map(@grids, &%{grid: &1, criteria: criteria(criteria, &1)})
+         grids: Enum.map(@grids, &%{grid: &1, criteria: for_grid(criteria, &1)})
        }}
     end
+  end
+
+  @doc """
+  Each grid's checks once, in Techtree's order, each worded as in the newest
+  run it was judged in; of two runs that finished at the same moment, the one
+  with the larger attempt id. `checks` and `runs` are whole reads of the
+  bench, joined here rather than in the database: Techtree's views are costly
+  to look up one run at a time.
+  """
+  @spec criteria([struct()], [struct()]) :: [struct()]
+  def criteria(checks, runs) do
+    finished =
+      Map.new(runs, &{{&1.attempt_id, &1.grid}, DateTime.to_unix(&1.finished_at, :microsecond)})
+
+    checks
+    |> Enum.filter(&Map.has_key?(finished, {&1.attempt_id, &1.grid}))
+    |> Enum.group_by(&{&1.grid, &1.criterion_id})
+    |> Enum.map(fn {_check, judged} ->
+      Enum.max_by(judged, &{Map.fetch!(finished, {&1.attempt_id, &1.grid}), &1.attempt_id})
+    end)
+    |> Enum.sort_by(&{&1.grid, &1.criterion_id})
   end
 
   @doc "Techtree's notes by key."
@@ -113,8 +136,8 @@ defmodule Patchbay.WalletBench.Matrix do
 
   @doc """
   The page's grids from the views' rows. `criteria` is each grid's checks
-  once (`Check` `:criteria`), the same read the page explaining the bench
-  lists, so both name every check alike.
+  once (`criteria/2`), as the page explaining the bench lists them, so both
+  name every check alike.
   """
   @spec build(
           [struct()],
@@ -144,7 +167,7 @@ defmodule Patchbay.WalletBench.Matrix do
 
     grids =
       Enum.map(@grids, fn grid ->
-        grid_criteria = criteria(criteria, grid)
+        grid_criteria = for_grid(criteria, grid)
 
         squares =
           for h <- harnesses, w <- wallets, into: %{} do
@@ -244,8 +267,8 @@ defmodule Patchbay.WalletBench.Matrix do
     notes |> Map.fetch!(outcome) |> String.split([":", "."], parts: 2) |> hd()
   end
 
-  # A grid's checks, in Techtree's order, from `Check` `:criteria`.
-  defp criteria(criteria, grid) do
+  # A grid's checks, in Techtree's order, from `criteria/2`.
+  defp for_grid(criteria, grid) do
     criteria
     |> Enum.filter(&(&1.grid == grid))
     |> Enum.map(&%{id: &1.criterion_id, criterion: &1.criterion})

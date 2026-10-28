@@ -246,6 +246,21 @@ defmodule Patchbay.WalletBench.MatrixTest do
     end
   end
 
+  test "each check is worded as in its newest run, a same-time tie going to the larger attempt ID" do
+    first = run("wallet", @older, 1, "PASS", "T2")
+    second = run("wallet", @newer, 2, "PASS", "T2")
+    checks = [check(first, "C1", "true", "First wording"), check(second, "C1", "true", "Second")]
+
+    for runs <- [[first, second], [second, first]], checks <- [checks, Enum.reverse(checks)] do
+      assert [%{criterion: "Second"}] = Matrix.criteria(checks, runs)
+
+      later_first = %{first | finished_at: DateTime.add(@finished, 1, :microsecond)}
+
+      assert [%{criterion: "First wording"}] =
+               Matrix.criteria(checks, [later_first | List.delete(runs, first)])
+    end
+  end
+
   test "same-time install failures are compared by attempt ID, not grid-local run numbers" do
     wallet = run("wallet", @older, 80, "PASS", "T2")
     failure = run("install", @newer, 1, "FAILED_TECHNICAL", "T1b")
@@ -296,7 +311,7 @@ defmodule Patchbay.WalletBench.MatrixTest do
     Enum.find(grids, &(&1.grid == grid)).squares[{"H1", "W1"}]
   end
 
-  # Each grid's checks once, as `Check` `:criteria` reads them.
+  # Each grid's checks once, as `Matrix.criteria/2` gives them.
   defp criteria(checks) do
     checks
     |> Enum.uniq_by(&{&1.grid, &1.criterion_id})

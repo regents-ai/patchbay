@@ -2,8 +2,8 @@ defmodule Patchbay.WalletBench.Check do
   @moduledoc """
   One of the judge's checks behind a run's result, from the step that decided
   it. Each grid has its own checks, ordered by `criterion_id`. A check's
-  wording can change between runs; `:criteria` gives each check the wording of
-  its newest run, and every page that names the checks reads it.
+  wording can change between runs; every page that names the checks names
+  each by its newest run's wording (`Patchbay.WalletBench.Matrix.criteria/2`).
   """
 
   use Ash.Resource,
@@ -30,17 +30,12 @@ defmodule Patchbay.WalletBench.Check do
       prepare(build(sort: [grid: :asc, run: :asc, criterion_id: :asc]))
     end
 
-    read :criteria do
-      description("Each grid's checks once, worded as in the newest run, without any answers.")
-
-      prepare(
-        build(
-          select: [:grid, :criterion_id, :criterion],
-          distinct: [:grid, :criterion_id],
-          distinct_sort: [grid: :asc, criterion_id: :asc, finished_at: :desc],
-          sort: [grid: :asc, criterion_id: :asc]
-        )
+    read :wordings do
+      description(
+        "Every judged check's wording and the run it was judged in, without its answer."
       )
+
+      prepare(build(select: [:attempt_id, :grid, :criterion_id, :criterion]))
     end
   end
 
@@ -48,21 +43,6 @@ defmodule Patchbay.WalletBench.Check do
     # Techtree publishes the bench for anyone to read.
     policy action_type(:read) do
       authorize_if(always())
-    end
-  end
-
-  relationships do
-    has_one :run_result, Patchbay.WalletBench.Result do
-      description("The run this check was judged in.")
-      source_attribute(:attempt_id)
-      destination_attribute(:attempt_id)
-      filter(expr(grid == parent(grid)))
-    end
-  end
-
-  calculations do
-    calculate(:finished_at, :utc_datetime_usec, expr(run_result.finished_at)) do
-      description("When the run this check was judged in finished.")
     end
   end
 

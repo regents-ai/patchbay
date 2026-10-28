@@ -37,6 +37,11 @@ defmodule Patchbay.WalletBench.Result do
       description("Every run without its steps, for the board, which shows none.")
       prepare(build(deselect: [:turns]))
     end
+
+    read :finish_times do
+      description("When each run finished, and nothing else.")
+      prepare(build(select: [:attempt_id, :grid, :finished_at]))
+    end
   end
 
   policies do

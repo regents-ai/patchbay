@@ -3,11 +3,10 @@ defmodule PatchbayWeb.WalletBenchMethodTest do
 
   use PatchbayWeb.ConnCase, async: true
 
-  alias Patchbay.WalletBench
   alias Patchbay.WalletBench.Matrix
 
   # One judged check of one run, as Techtree publishes it.
-  defp check!(grid, criterion_id, criterion, attempt_id \\ Ecto.UUID.generate()) do
+  defp check!(grid, criterion_id, criterion, attempt_id) do
     Patchbay.Repo.query!(
       """
       INSERT INTO techtree_app.wallet_bench_checks
@@ -58,9 +57,10 @@ defmodule PatchbayWeb.WalletBenchMethodTest do
 
   test "lists each test's checks once, in order, and what each result means", %{conn: conn} do
     # Three runs of the install test judged on the same two checks.
-    for _run <- 1..3 do
-      check!("install", "C2", "The wallet tool reports its version.")
-      check!("install", "C1", "The agent installs the wallet tool.")
+    for day <- 1..3 do
+      run = run!(NaiveDateTime.new!(2026, 10, day, 12, 0, 0))
+      check!("install", "C2", "The wallet tool reports its version.", run)
+      check!("install", "C1", "The agent installs the wallet tool.", run)
     end
 
     Patchbay.Repo.query!(
@@ -93,8 +93,11 @@ defmodule PatchbayWeb.WalletBenchMethodTest do
     check!("install", "C1", "The wallet tool answers with its version number.", newer)
     board!()
 
-    assert {:ok, [%{criterion: "The wallet tool answers with its version number."}]} =
-             WalletBench.list_criteria()
+    {:ok, %{grids: [install | _]}} = Matrix.key()
+
+    assert install.criteria == [
+             %{id: "C1", criterion: "The wallet tool answers with its version number."}
+           ]
 
     page = conn |> get("/wallet-bench/how-it-works") |> html_response(200)
     assert page =~ "The wallet tool answers with its version number."

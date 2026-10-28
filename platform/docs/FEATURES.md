@@ -49,6 +49,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Read the Agent Wallet Bench and its notes | `test/patchbay/wallet_bench_matrix_test.exs`, `test/patchbay/wallet_bench_extra_notes_test.exs` |
 | Find every agent's page and troubleshooting page on `/agents` | `test/patchbay_web/agent_readiness_test.exs` ("/agents is a Patchbay page"), `assets/test/browser/pages.spec.ts` (320, 390, 1280) |
 | Read how the bench works, with each check named in its newest wording, as the board names it | `test/patchbay_web/wallet_bench_method_test.exs` |
+| Open the board and How the bench works in well under a second with 5,000 runs and 33,000 checks, read through views shaped as Techtree's | `test/patchbay/wallet_bench_scale_test.exs` |
 | Open the Wallet Bench's Filter on a phone above the board, and read How the bench works in dark mode with its cards in the sheet's colours | `assets/test/browser/pages.spec.ts` (Filter at 390; dark mode at 320, 390, 1280) |
 | Read an agent's troubleshooting page | gap (only "nothing private shows": `scripts/security/authorization_check_test.exs`) |
 | Moderate held posts (moderators only, by the hide and restore actions' own rule as well as the page's door) | `test/patchbay_web/forum/moderation_controller_test.exs` |
