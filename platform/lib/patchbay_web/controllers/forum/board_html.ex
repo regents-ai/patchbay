@@ -697,7 +697,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     assigns = assign(assigns, :ask_path, search_ask_path(assigns.q, assigns.matches.sites))
 
     ~H"""
-    <div class="pb-find-answers" aria-label={"What matches “#{@q}”"} role="region">
+    <div class="pb-find-answers" aria-label={"Matches for “#{@q}”"} role="region">
       <section :if={@matches.sites != []} aria-labelledby="pb-find-sites-title">
         <h2 id="pb-find-sites-title" class="pb-sidebar-label">Sites</h2>
         <ul>
@@ -717,9 +717,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </ul>
       </section>
       <p class="pb-find-ask">
-        <span :if={@matches.sites == [] and @matches.tools == []}>
-          No site or tool by that name yet.
-        </span>
         Not answered below? <a href={@ask_path}>Ask about “{@q}” <span aria-hidden="true">→</span></a>
       </p>
     </div>
@@ -1109,6 +1106,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:earned_tips, :map, required: true)
   attr(:empty, :string, required: true)
   attr(:ask, :string, default: nil, doc: "where an empty list sends the reader to ask")
+
+  attr(:offer_ask, :boolean,
+    default: true,
+    doc: "whether an empty list offers to ask; false when the page already does"
+  )
+
   slot(:marker, doc: "shown at the start of each row, given the post")
 
   @doc """
@@ -1167,7 +1170,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </li>
     </ol>
     <Regent.Primitives.empty_state :if={@posts == []} title={@empty}>
-      <:action>
+      <:action :if={@offer_ask}>
         <a class="rg-button rg-button--secondary" href={@ask || ask_path()}>
           <span class="rg-button__label">Ask a question</span>
         </a>
@@ -1442,9 +1445,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     end
   end
 
+  @doc "A post's or reply's own words as one line of plain text; empty when it has none."
+  def plain_words(post), do: post |> own_words() |> String.split() |> Enum.join(" ")
+
   @doc "One line of a post's or reply's own words, shortened; empty when it has none."
   def snippet(post) do
-    case post |> own_words() |> String.split() |> Enum.join(" ") do
+    case plain_words(post) do
       "" ->
         ""
 
@@ -1679,15 +1685,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <section id="pb-fix" class="pb-fix-card" aria-labelledby="pb-fix-title">
       <header class="pb-fix-head">
         <h2 id="pb-fix-title">
-          <.icon name={:check} /> {if @fix, do: "The fix", else: "The answer"}
+          <.icon :if={@pick == :asker} name={:check} /> {if @fix, do: "The fix", else: "The answer"}
         </h2>
-        <p class="pb-fix-worked">{worked_line(@reply)}</p>
+        <p :if={worked_line(@reply)} class="pb-fix-worked">{worked_line(@reply)}</p>
       </header>
       <.fix_facts :if={@fix} fix={@fix} />
-      <div :if={!@fix} class="pb-fix-excerpt">
-        <div :if={@reply.body_markdown} class="pb-markdown">{markdown(@reply.body_markdown)}</div>
-        <p :if={!@reply.body_markdown} class="pb-thread-prose" phx-no-format>{@reply.note}</p>
-      </div>
+      <p :if={!@fix} class="pb-fix-excerpt">{plain_words(@reply)}</p>
       <p class="pb-thread-caption">
         {answer_caption(@pick, @report, @reply)} By {author_name(
           @reply.author,
@@ -1739,12 +1742,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  @doc "How many others say a reply worked, and the day the latest said so."
-  @spec worked_line(Patchbay.Forum.Reply.t()) :: String.t()
-  def worked_line(%{worked_for_others: 0}), do: "Nobody else has said yet whether it worked"
+  @doc """
+  How many other people say a reply worked, and the day the latest first
+  said so. Nothing while nobody has.
+  """
+  @spec worked_line(Patchbay.Forum.Reply.t()) :: String.t() | nil
+  def worked_line(%{worked_for_others: 0}), do: nil
 
   def worked_line(%{worked_for_others: count, last_worked_at: at}),
-    do: "Worked for #{count_label(count, "agent", "agents")}, last on #{written_on(at)}"
+    do: "Worked for #{count_label(count, "person", "people")}, last on #{written_on(at)}"
 
   @doc "Whose word made a reply the thread's answer."
   @spec answer_caption(:asker | :others, Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t()) ::

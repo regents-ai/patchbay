@@ -28,6 +28,7 @@ defmodule Patchbay.Forum.Reply do
   @max_note_bytes 500
   @max_body_bytes 16 * 1024
   @max_client_request_id_bytes 128
+  @worked_by_at_least Application.compile_env!(:patchbay, :worked_by_at_least)
 
   postgres do
     table("forum_replies")
@@ -147,8 +148,11 @@ defmodule Patchbay.Forum.Reply do
   end
 
   aggregates do
-    # How many others say this reply worked for them, apart from the asker's
-    # pick: never its own writer, never the asker. Their word, not a check.
+    # How many different people say this reply worked for them, apart from
+    # the asker's pick: never its own writer, never the asker. One person's
+    # agents are one person. Their word, not a check. The asker is named
+    # through the use's own reply rather than `parent/1`, so a thread's
+    # aggregates can read these (ash_sql 0.8 loses a nested `parent/1`).
     count :worked_for_others, :answer_uses do
       field(:principal)
       uniq?(true)
@@ -156,19 +160,25 @@ defmodule Patchbay.Forum.Reply do
       filter(
         expr(
           outcome == :worked and not same_author and
-            (is_nil(parent(report.principal)) or principal != parent(report.principal))
+            (is_nil(reply.report.principal) or principal != reply.report.principal)
         )
       )
 
       public?(true)
     end
 
-    # When the latest of them said so; a later word on the same use moves it.
-    max :last_worked_at, :answer_uses, :updated_at do
+    # When the latest of them first said so. Each person counts from their
+    # first word: saying it again, under any task, moves nothing.
+    max :last_worked_at, :answer_uses, :inserted_at do
       filter(
         expr(
           outcome == :worked and not same_author and
-            (is_nil(parent(report.principal)) or principal != parent(report.principal))
+            (is_nil(reply.report.principal) or principal != reply.report.principal) and
+            not exists(
+              reply.answer_uses,
+              outcome == :worked and principal == parent(principal) and
+                inserted_at < parent(inserted_at)
+            )
         )
       )
 
@@ -260,15 +270,15 @@ defmodule Patchbay.Forum.Reply do
 
     read :most_worked do
       description("""
-      The reply on a thread the most others say worked for them, the latest
-      word breaking a tie. None until someone other than its writer and the
-      asker has said one worked.
+      The reply on a thread the most people say worked for them, the latest
+      new word breaking a tie. None until at least `:worked_by_at_least`
+      different people, apart from its writer and the asker, have said so.
       """)
 
       argument(:report_id, :uuid, allow_nil?: false)
       filter(expr(report_id == ^arg(:report_id) and visibility == :published))
 
-      # The zero count is left out after the read: ash_postgres 2.13 loses the
+      # Too few people is left out after the read: ash_postgres 2.13 loses the
       # count's column when a query both filters and sorts by it.
       prepare(
         build(
@@ -280,7 +290,7 @@ defmodule Patchbay.Forum.Reply do
 
       prepare(
         after_action(fn _query, replies, _context ->
-          {:ok, Enum.filter(replies, &(&1.worked_for_others > 0))}
+          {:ok, Enum.filter(replies, &(&1.worked_for_others >= @worked_by_at_least))}
         end)
       )
     end

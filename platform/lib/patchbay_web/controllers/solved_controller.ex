@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.SolvedController do
   @moduledoc """
-  The public feed of solved fixes, as JSON and as RSS: the newest threads
-  whose asker picked an answer, each with the answer's fix and how many
-  others say it worked. Anyone can read it without signing in.
+  The public feed of solved fixes, as a JSON Feed 1.1 and as RSS 2.0: the
+  newest threads whose asker picked an answer, each with the answer's fix in
+  a few words. Anyone can read it without signing in, and both are cached for
+  five minutes.
   """
 
   use PatchbayWeb, :controller
@@ -12,24 +13,40 @@ defmodule PatchbayWeb.SolvedController do
   alias PatchbayWeb.ForumAPI.Reads
 
   @items 50
+  # An item's words are shortened the way a thread's answer shortens a long
+  # reply on its first step.
+  @summary_length 500
+  @title "Solved on Patchbay"
+  @description "The newest questions with an answer the asker picked, and the fix it gives."
 
   def feed(conn, _params) do
-    threads = solved!()
+    base = PatchbayWeb.Endpoint.url()
 
-    json(conn, %{
-      title: "Solved on Patchbay",
-      home_page_url: PatchbayWeb.Endpoint.url(),
-      items: Enum.map(threads, &item/1)
-    })
+    document = %{
+      version: "https://jsonfeed.org/version/1.1",
+      title: @title,
+      description: @description,
+      home_page_url: base <> "/",
+      feed_url: base <> "/solved.json",
+      items: Enum.map(solved!(), &item/1)
+    }
+
+    conn
+    |> cached()
+    |> put_resp_content_type("application/feed+json")
+    |> json(document)
   end
 
   # Every text in the document passes through escape/1.
   # sobelow_skip ["XSS.SendResp"]
   def rss(conn, _params) do
     conn
+    |> cached()
     |> put_resp_content_type("application/rss+xml")
     |> send_resp(200, document(solved!()))
   end
+
+  defp cached(conn), do: put_resp_header(conn, "cache-control", "public, max-age=300")
 
   defp solved! do
     {:ok, threads} = Board.solved_fixes(@items)
@@ -37,21 +54,12 @@ defmodule PatchbayWeb.SolvedController do
   end
 
   defp item(thread) do
-    answer = thread.solution_reply
-
     %{
       id: thread.id,
       url: thread_url(thread),
       title: BoardHTML.post_title(thread),
-      site: thread.site && thread.site.origin,
-      last_activity_at: thread.last_activity_at,
-      answer: %{
-        reply_id: answer.id,
-        excerpt: BoardHTML.snippet(answer),
-        fix: Reads.fix_entry(answer.fix),
-        worked_for_others: answer.worked_for_others,
-        last_worked_at: answer.last_worked_at
-      }
+      content_text: summary(thread.solution_reply),
+      date_published: thread.last_activity_at
     }
   end
 
@@ -62,9 +70,9 @@ defmodule PatchbayWeb.SolvedController do
 
     ~s(<?xml version="1.0" encoding="UTF-8"?>\n) <>
       ~s(<rss version="2.0">\n<channel>\n) <>
-      "<title>Solved on Patchbay</title>\n" <>
+      "<title>#{@title}</title>\n" <>
       "<link>#{escape(base)}/</link>\n" <>
-      "<description>The newest questions with an answer the asker picked, and the fix it gives.</description>\n" <>
+      "<description>#{@description}</description>\n" <>
       Enum.map_join(threads, "\n", &rss_item/1) <>
       "\n</channel>\n</rss>\n"
   end
@@ -77,13 +85,26 @@ defmodule PatchbayWeb.SolvedController do
       "<description>#{escape(summary(thread.solution_reply))}</description></item>"
   end
 
+  # The fix's standing and the change to make, or the answer's opening words
+  # when it gives no fix.
   defp summary(%{fix: %{} = fix}),
-    do: Patchbay.Forum.Fix.status_label(fix.status) <> ". " <> fix.change
+    do:
+      Reads.shorten(
+        Patchbay.Forum.Fix.status_label(fix.status) <> ". " <> fix.change,
+        @summary_length
+      )
 
   defp summary(answer), do: BoardHTML.snippet(answer)
 
+  # XML 1.0 allows tab, newline, carriage return and the characters from
+  # space up, apart from the surrogates, U+FFFE and U+FFFF; anything else
+  # makes the whole feed unreadable, so it is dropped.
   defp escape(text) do
     text
+    |> String.replace(
+      ~r/[^\x{09}\x{0A}\x{0D}\x{20}-\x{D7FF}\x{E000}-\x{FFFD}\x{10000}-\x{10FFFF}]/u,
+      ""
+    )
     |> String.replace("&", "&amp;")
     |> String.replace("<", "&lt;")
     |> String.replace(">", "&gt;")

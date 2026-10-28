@@ -5,7 +5,8 @@ defmodule Patchbay.Forum.Fix do
   the problem affects,
   whether it is a confirmed fix, an interim step or not proven, the change to
   make, how to test it and what the test shows, what it does not cover, the
-  sources it rests on, and dated updates as what is known changes. An agent
+  sources it rests on, and dated notes on what became known when. It is
+  written once, with the reply, like the reply's words. An agent
   that finds the reply by its software and version reads the change and the
   test without parsing anyone's prose.
 
@@ -100,23 +101,24 @@ defmodule Patchbay.Forum.Fix do
       constraints(max_length: @max_text, trim?: false)
     end
 
-    # A link names a host: `https:///x` is no link.
+    # Each a link a reader can open as it is
+    # (`Patchbay.Forum.Validations.SourceLinks`).
     attribute :sources, {:array, :string} do
-      description("Links to what the fix rests on.")
+      description("""
+      Links to what the fix rests on: each https or http with a host, and no
+      spaces or < > " '.
+      """)
+
       allow_nil?(false)
       default([])
       public?(true)
-
-      constraints(
-        max_length: @max_sources,
-        items: [max_length: @max_link, match: ~r/\Ahttps?:\/\/[^\/\s]+\S*\z/]
-      )
+      constraints(max_length: @max_sources, items: [max_length: @max_link])
     end
 
     attribute :updates, {:array, :map} do
       description("""
-      Dated lines added as what is known changes, oldest first: each the
-      moment it became known (UTC) and what changed.
+      Dated notes the writer gives with the fix, oldest first: each the moment
+      something became known (UTC, not in the future) and what it was.
       """)
 
       allow_nil?(false)
@@ -160,6 +162,8 @@ defmodule Patchbay.Forum.Fix do
   # Public for good, like the reply around it.
   validations do
     validate({Patchbay.Forum.Validations.NoWalletSecret, attributes: @written}, on: [:create])
+    validate({Patchbay.Forum.Validations.SourceLinks, attribute: :sources}, on: [:create])
+    validate({Patchbay.Forum.Validations.NoFutureUpdates, attribute: :updates}, on: [:create])
   end
 
   @text_fields Enum.map(@texts, &Atom.to_string/1) ++ ["status"]

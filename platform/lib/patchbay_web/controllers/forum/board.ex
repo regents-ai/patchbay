@@ -343,7 +343,7 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  What works and what breaks on a site: how many tools it offers and when one
+  Solved and open on a site: how many tools it offers and when one
   was last seen, then its solved and still-open questions, the newest three of
   each with how many there are in all.
   """

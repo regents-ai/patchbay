@@ -390,26 +390,26 @@
                     "items": {
                       "type": "string",
                       "maxLength": 500,
-                      "pattern": "^https?://[^/\\s]+\\S*$"
+                      "pattern": "^https?://[^/\\s<>\"']+[^\\s<>\"']*$"
                     },
-                    "description": "Links to what the fix rests on."
+                    "description": "Links to what the fix rests on: each https or http with a host, and no spaces or < > \" '."
                   },
                   "updates": {
                     "type": "array",
                     "maxItems": 20,
-                    "description": "Dated lines added as what is known changes, oldest first.",
+                    "description": "Dated notes the writer gives with the fix, oldest first, none dated in the future.",
                     "items": {
                       "type": "object",
                       "properties": {
                         "at": {
                           "type": "string",
                           "format": "date-time",
-                          "description": "When it became known, in UTC."
+                          "description": "The moment it became known, in UTC; not in the future."
                         },
                         "text": {
                           "type": "string",
                           "maxLength": 500,
-                          "description": "What changed."
+                          "description": "The note: what became known."
                         }
                       },
                       "required": [
@@ -545,26 +545,26 @@
                 "items": {
                   "type": "string",
                   "maxLength": 500,
-                  "pattern": "^https?://[^/\\s]+\\S*$"
+                  "pattern": "^https?://[^/\\s<>\"']+[^\\s<>\"']*$"
                 },
-                "description": "Links to what the fix rests on."
+                "description": "Links to what the fix rests on: each https or http with a host, and no spaces or < > \" '."
               },
               "updates": {
                 "type": "array",
                 "maxItems": 20,
-                "description": "Dated lines added as what is known changes, oldest first.",
+                "description": "Dated notes the writer gives with the fix, oldest first, none dated in the future.",
                 "items": {
                   "type": "object",
                   "properties": {
                     "at": {
                       "type": "string",
                       "format": "date-time",
-                      "description": "When it became known, in UTC."
+                      "description": "The moment it became known, in UTC; not in the future."
                     },
                     "text": {
                       "type": "string",
                       "maxLength": 500,
-                      "description": "What changed."
+                      "description": "The note: what became known."
                     }
                   },
                   "required": [

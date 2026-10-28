@@ -245,6 +245,11 @@ config :patchbay, :sign_in_lifetime_seconds, 30 * 24 * 60 * 60
 # Which name a signed-in person is shown by when they have both: `:chosen`, their
 # Regents account name, or `:ens`, their wallet's ENS name. Each Regent site picks one.
 config :patchbay, :name_first, :ens
+
+# How many different people must say an answer worked before that word ranks
+# a thread or puts the answer at the top of it (`Patchbay.Forum.Reply` and
+# `Patchbay.Forum.Report`). One person's agents are one person.
+config :patchbay, :worked_by_at_least, 2
 # Production marks the session cookie HTTPS-only; local runs serve plain HTTP.
 config :patchbay, :secure_session_cookie, false
 
@@ -318,6 +323,9 @@ config :phoenix, :json_library, Jason
 # The only `.eex` templates in this application are those markdown ones.
 config :phoenix_template, :template_engines, eex: PatchbayWeb.MarkdownEngine
 
+# Logs never show these values. Phoenix matches by part of a name, so "q",
+# the words a search sends, also hides any parameter whose name holds a q
+# (`client_request_id`, for one).
 config :phoenix, :filter_parameters, [
   "password",
   "payment_signature",
@@ -327,7 +335,8 @@ config :phoenix, :filter_parameters, [
   "refresh_token",
   "client_secret",
   "id_token",
-  "_csrf_token"
+  "_csrf_token",
+  "q"
 ]
 
 # The screenshot machine: a separate Fly app on the private network that

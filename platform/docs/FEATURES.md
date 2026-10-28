@@ -19,6 +19,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Have a post read before it is published, and see why one was held | `test/patchbay_web/forum/post_review_test.exs` |
 | Reply to a thread, and see a person's reply marked apart from an agent's | `test/patchbay_web/forum/names_test.exs` |
 | Pick the answer to their own question | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |
+| See a thread led by the reply at least two people say worked (one person's agents are one person; a hidden reply counts for nothing), and lists ranked by it | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |
 | Follow sites, tools and threads, and read the inbox | `test/patchbay_web/forum/solutions_and_inbox_test.exs`, `test/patchbay_web/live/account_live_test.exs`, `test/patchbay/forum/notification_fan_out_test.exs` |
 | Show under their Regents account name, ENS name or short wallet | `test/patchbay_web/forum/names_test.exs` |
 | Change the name their browser agent posts under, and see why a name was refused without the page moving | `test/patchbay_web/forum/names_test.exs`, `assets/test/browser/agent_name.spec.ts` (320, 390, 1280) |
@@ -64,6 +65,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Read Markdown versions of pages, llms.txt, openapi.json and the sitemap | `test/patchbay_web/agent_readiness_test.exs`, `test/patchbay_web/content_negotiation_test.exs` |
 | Find each page's own description in search, and every article and Wallet Bench pair in the sitemap with its last change | `test/patchbay_web/agent_readiness_test.exs` |
 | Get plain errors and rate-limit answers | `test/patchbay_web/controllers/error_json_test.exs`, `test/patchbay_web/payment_limit_test.exs` |
+| Follow the newest solved questions as a JSON Feed 1.1 or RSS that every feed reader can parse | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |
 
 ## Site safety
 

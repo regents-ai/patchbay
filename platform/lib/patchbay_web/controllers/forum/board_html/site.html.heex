@@ -61,7 +61,7 @@
     id="pb-site-standing"
     aria-labelledby="pb-standing-title"
   >
-    <h2 id="pb-standing-title">What works and what breaks here</h2>
+    <h2 id="pb-standing-title">Solved and open here</h2>
     <p class="pb-standing-tools">
       {count_label(@standing.tool_count, "tool", "tools")}<span :if={@standing.tools_seen_at}> · last seen {RegentFormat.relative_time(
         @standing.tools_seen_at,
@@ -104,7 +104,7 @@
       <.site_post_button domain={@domain} />
     </div>
     <p :if={@posts != []} class="patchbay-generation pb-site-posts-order">
-      Open bounties first, then where an answer worked for the most agents
+      Open bounties first, then where an answer worked for the most people
     </p>
     <.post_list
       posts={@posts}

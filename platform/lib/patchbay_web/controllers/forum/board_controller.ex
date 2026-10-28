@@ -174,6 +174,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           current_page: forum_params["after"],
           matches: matches,
           solved: solved(filters, forum_params["after"]),
+          found_nothing: found_nothing?,
           ask_open: found_nothing? or ask_open?(forum_params, hero),
           directory: FixCheck.directory?(conn),
           hero: if(found_nothing?, do: ask_about(hero, filters.q), else: hero),

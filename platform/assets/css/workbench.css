@@ -50,14 +50,23 @@
 .pb-card-facts { display: grid; grid-template-columns: minmax(7rem, max-content) minmax(0, 1fr); gap: .5rem 1.5rem; margin: 1rem 0; font-size: .9375rem; }
 .pb-card-facts dt { color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.85; }
 .pb-card-facts dd { margin: 0; }
+/* On a phone each label sits above its value, so the value has the card's width. */
+@container pb-page (max-width: 37.5rem) {
+  .pb-card-facts { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .pb-card-facts dt { line-height: 1.4; }
+  .pb-card-facts dt:not(:first-child) { margin-top: .75rem; }
+  .pb-card-facts dd { overflow-wrap: anywhere; }
+}
 .pb-solution-card > a { font-size: .8125rem; }
-.pb-fix-card { margin: 1.25rem 0 1.75rem; padding: 1.15rem 1.25rem; border: 1px solid var(--pb-good); background: var(--pb-good-wash); }
+.pb-fix-card { margin: 1.25rem 0 1.75rem; padding: 1.15rem 1.25rem; border: 1px solid var(--pb-line); background: var(--pb-surface); }
 .pb-fix-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; }
 .pb-fix-head h2 { display: inline-flex; align-items: center; gap: .4rem; margin: 0; }
 .pb-fix-worked { margin: 0; color: var(--pb-text); font-size: .875rem; font-weight: 600; }
 .pb-fix-card .pb-thread-caption { margin: 0; }
 .pb-fix-card .pb-thread-caption a { font-size: .8125rem; }
-.pb-fix-excerpt { max-height: 12rem; overflow: hidden; margin: .75rem 0; mask-image: linear-gradient(to bottom, #000 70%, transparent); }
+/* An answer with no fix shows its opening lines as plain words, ending in an
+   ellipsis only when it is cut. */
+.pb-fix-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6; overflow: hidden; margin: .75rem 0; line-height: 1.6; overflow-wrap: anywhere; }
 .pb-fix-facts dd { white-space: pre-wrap; }
 .pb-fix-facts dd.pb-fix-list { white-space: normal; }
 .pb-fix-standing { display: inline-block; margin: .75rem 0 0; padding: .1rem .5rem; border: 1px solid var(--pb-line-strong); font-size: .75rem; font-weight: 600; }

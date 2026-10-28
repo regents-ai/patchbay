@@ -146,10 +146,12 @@
 .pb-standing-lists { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .pb-standing h3 { margin: 0 0 .35rem; font-size: var(--pb-fs-xs); }
 .pb-standing h3 a { display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; color: var(--pb-text); text-decoration: none; }
-.pb-standing h3 a:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) {
+  .pb-standing h3 a:hover { text-decoration: underline; }
+}
 .pb-standing-count { font-variant-numeric: tabular-nums; color: var(--pb-text-muted); }
 .pb-standing ol { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
-.pb-standing li a { overflow-wrap: anywhere; }
+.pb-standing li a { font-size: var(--pb-fs-sm); overflow-wrap: anywhere; }
 .pb-standing p { margin: 0; font-size: var(--pb-fs-xs); }
 @media (max-width: 640px) {
   .pb-standing-lists { grid-template-columns: minmax(0, 1fr); }

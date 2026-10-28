@@ -55,6 +55,21 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     {thread["report"]["solution_cards"], found["results"]}
   end
 
+  # Whether a document is well-formed XML 1.0, as a feed reader parses it.
+  defp xml_document(body) do
+    {document, _rest} = body |> :binary.bin_to_list() |> :xmerl_scan.string(quiet: true)
+    {:ok, document}
+  catch
+    :exit, reason -> {:error, reason}
+  end
+
+  defp answer_of(thread_id),
+    do:
+      thread_id
+      |> PatchbayWeb.Forum.Board.fetch_report()
+      |> elem(1)
+      |> PatchbayWeb.Forum.Board.answer()
+
   defp post_json(agent, path, params) do
     build_conn()
     |> SignedAgent.sign(agent)
@@ -251,20 +266,32 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert length(Forum.list_uses_for_reply!(reply_id)) == 2
     end
 
-    test "threads others say worked rank first in search and the Popular feed", %{conn: conn} do
+    test "a word search ranks by relevance; what at least two people say worked breaks ties and leads Popular",
+         %{conn: conn} do
       word = "zebrastripe#{System.unique_integer([:positive])}"
       asker = visitor()
 
       threads =
-        for title <- ["#{word} never tried", "#{word} worked once", "#{word} worked twice"] do
+        for title <- [
+              "#{word} never tried",
+              "#{word} one person",
+              "#{word} two people",
+              "#{word} hidden answer",
+              "#{word} #{word} #{word} closest match"
+            ] do
           %{"thread_id" => id} = ask(asker, title) |> json_response(201)
           helper = visitor()
           %{"reply_id" => reply_id} = answer(helper, id, "Try this.") |> json_response(201)
           {id, reply_id, helper}
         end
 
-      [{never, never_reply, never_helper}, {once, once_reply, _}, {twice, twice_reply, _}] =
-        threads
+      [
+        {never, never_reply, never_helper},
+        {one, one_reply, _},
+        {two, two_reply, _},
+        {hidden, hidden_reply, _},
+        {closest, _, _}
+      ] = threads
 
       use! = fn agent, reply_id ->
         agent
@@ -278,12 +305,22 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # The asker's word and the writer's own word never count.
       use!.(asker, never_reply)
       use!.(never_helper, never_reply)
-      use!.(visitor(), once_reply)
-      first = visitor()
-      use!.(first, twice_reply)
-      # The same agent twice is one agent.
-      use!.(first, twice_reply)
-      use!.(visitor(), twice_reply)
+
+      # One person, through two of their agents and twice through one, is
+      # one person: not enough.
+      person = visitor()
+      use!.(person, one_reply)
+      use!.(person, one_reply)
+      use!.(SignedAgent.pair!(person.owner), one_reply)
+
+      # Two accounts are two people.
+      use!.(visitor(), two_reply)
+      use!.(visitor(), two_reply)
+
+      # Two people on a reply moderation hides count for nothing.
+      use!.(visitor(), hidden_reply)
+      use!.(visitor(), hidden_reply)
+      set_visibility!(Ash.get!(Patchbay.Forum.Reply, hidden_reply), :quarantined)
 
       results =
         conn
@@ -291,10 +328,12 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> json_response(200)
         |> Map.fetch!("results")
 
-      assert Enum.map(results, & &1["id"]) == [twice, once, never]
-      assert Enum.map(results, & &1["worked_count"]) == [2, 1, 0]
-      assert [%{"last_worked_at" => at}, _, %{"last_worked_at" => nil}] = results
+      counts = Map.new(results, &{&1["id"], &1["worked_count"]})
+      assert counts == %{never => 0, one => 0, two => 2, hidden => 0, closest => 0}
+      assert Enum.take(Enum.map(results, & &1["id"]), 2) == [closest, two]
+      assert %{"last_worked_at" => at} = Enum.find(results, &(&1["id"] == two))
       assert is_binary(at)
+      assert Enum.all?(results, &(&1["id"] == two or is_nil(&1["last_worked_at"])))
 
       popular =
         conn
@@ -303,7 +342,13 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> json_response(200)
         |> Map.fetch!("results")
 
-      assert Enum.map(popular, & &1["id"]) == [twice, once, never]
+      assert [^two | _] = Enum.map(popular, & &1["id"])
+
+      # Only the reply two people vouch for leads its thread.
+      assert {:others, %{id: ^two_reply}} = answer_of(two)
+      assert answer_of(one) == nil
+      assert answer_of(never) == nil
+      assert answer_of(hidden) == nil
     end
   end
 
@@ -329,11 +374,8 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         })
         |> json_response(201)
 
-      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
-      refute html =~ ~s(id="pb-fix")
-
-      for _ <- 1..2 do
-        visitor()
+      worked! = fn agent ->
+        agent
         |> post_json("/forum/replies/#{reply_id}/uses", %{
           "outcome" => "worked",
           "task_token" => Ecto.UUID.generate()
@@ -341,17 +383,34 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> json_response(201)
       end
 
-      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      html = conn |> get("/posts/#{thread_id}") |> html_response(200)
+      refute html =~ ~s(id="pb-fix")
 
-      text =
-        html
-        |> LazyHTML.from_document()
-        |> LazyHTML.query("#pb-fix")
-        |> LazyHTML.text()
-        |> String.replace(~r/\s+/, " ")
+      # One person's word is not enough to lead the thread.
+      first = visitor()
+      worked!.(first)
+      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      refute html =~ ~s(id="pb-fix")
+
+      worked!.(visitor())
+      worked_at = Ash.get!(Patchbay.Forum.Reply, reply_id, load: :last_worked_at).last_worked_at
+
+      # Saying it again, under a new task, moves nothing.
+      worked!.(first)
+
+      assert Ash.get!(Patchbay.Forum.Reply, reply_id, load: :last_worked_at).last_worked_at ==
+               worked_at
+
+      assert Ash.get!(Report, thread_id, load: :last_worked_at).last_worked_at == worked_at
+
+      html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
+      card = html |> LazyHTML.from_document() |> LazyHTML.query("#pb-fix")
+      text = card |> LazyHTML.text() |> String.replace(~r/\s+/, " ")
 
       assert text =~ "The fix"
-      assert text =~ "Worked for 2 agents, last on"
+      assert text =~ "Worked for 2 people, last on"
+      # Only the asker's pick wears the check.
+      assert card |> LazyHTML.query("#pb-fix-title svg") |> Enum.empty?()
       assert text =~ "castore 1.0.22"
       assert text =~ "Interim step"
       assert text =~ ~r/How to test\s*Call the site again over HTTPS\./
@@ -368,6 +427,11 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       html = conn |> recycle() |> get("/posts/#{thread_id}") |> html_response(200)
       assert html =~ "The asker says this worked."
 
+      refute html
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("#pb-fix-title svg")
+             |> Enum.empty?()
+
       markdown =
         conn
         |> recycle()
@@ -375,7 +439,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> get("/posts/#{thread_id}")
         |> response(200)
 
-      assert markdown =~ "## The fix\n\nWorked for 2 agents, last on"
+      assert markdown =~ "## The fix\n\nWorked for 2 people, last on"
       assert markdown =~ "- How to test: Call the site again over HTTPS."
       assert :binary.match(markdown, "## The fix") < :binary.match(markdown, "## The question")
     end
@@ -405,7 +469,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> LazyHTML.query("#pb-site-standing")
         |> LazyHTML.text()
 
-      assert standing =~ "What works and what breaks here"
+      assert standing =~ "Solved and open here"
       assert standing =~ "0 tools"
       assert standing =~ ~r/Solved\s+1/
       assert standing =~ ~r/Still open\s+1/
@@ -428,13 +492,13 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> get("/example.com")
         |> response(200)
 
-      assert markdown =~ "## What works and what breaks here"
+      assert markdown =~ "## Solved and open here"
       assert markdown =~ "### Solved: 1 ([all](/?site=example.com&scope=solved))"
       assert markdown =~ "- [Checkout hangs on pay](/posts/#{solved})"
       assert markdown =~ "- [Coupon box rejects codes](/posts/#{open})"
     end
 
-    test "the site and tool lists say they lead with what worked for the most agents, and do",
+    test "the site and tool lists say they lead with what worked for the most people, and do",
          %{conn: conn} do
       site = Forum.register_site!("example.com")
 
@@ -464,12 +528,14 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       %{"reply_id" => reply_id} =
         answer(visitor(), worked, "Retry with a fresh cart.") |> json_response(201)
 
-      visitor()
-      |> post_json("/forum/replies/#{reply_id}/uses", %{
-        "outcome" => "worked",
-        "task_token" => Ecto.UUID.generate()
-      })
-      |> json_response(201)
+      for _ <- 1..2 do
+        visitor()
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "worked",
+          "task_token" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+      end
 
       # More than one page of threads, so the list shows its pager.
       for n <- 1..20 do
@@ -501,7 +567,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
             {site_list, "Another question 20"},
             {tool_list, "Coupon box rejects codes"}
           ] do
-        assert section =~ "Open bounties first, then where an answer worked for the most agents"
+        assert section =~ "Open bounties first, then where an answer worked for the most people"
         refute section =~ "Bounty amount, then newest"
         assert :binary.match(section, "Checkout hangs on pay") < :binary.match(section, newest)
       end
@@ -514,12 +580,17 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
   end
 
   describe "the public feed of solved fixes" do
-    test "lists answered threads with their fix as JSON and RSS, without signing in", %{
+    test "lists answered threads with their fix as a JSON Feed and RSS, without signing in", %{
       conn: conn
     } do
       asker = visitor()
-      %{"thread_id" => solved} = ask(asker, "Checkout <fails> & hangs") |> json_response(201)
+
+      # U+FFFE and U+FFFF are text, but no XML document may hold them.
+      %{"thread_id" => solved} =
+        ask(asker, "Checkout <fails> & hangs \u{FFFE}\u{FFFF}") |> json_response(201)
+
       %{"thread_id" => open} = ask(asker, "Still open") |> json_response(201)
+      long_change = String.duplicate("Start a fresh cart. ", 40)
 
       %{"reply_id" => reply_id} =
         visitor()
@@ -529,7 +600,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
           "fix" => %{
             "software" => "shop-cart",
             "status" => "confirmed_fix",
-            "change" => "Start a fresh cart.",
+            "change" => long_change,
             "test" => "Check out again.",
             "result" => "The order goes through."
           }
@@ -540,22 +611,39 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       |> post_json("/forum/threads/#{solved}/solution", %{"reply_id" => reply_id})
       |> json_response(201)
 
-      %{"items" => items} = conn |> get("/solved.json") |> json_response(200)
+      json = conn |> get("/solved.json")
+      assert response_content_type(json, :json) =~ "application/feed+json"
+      assert get_resp_header(json, "cache-control") == ["public, max-age=300"]
+      feed = json_response(json, 200)
 
-      assert [%{"id" => ^solved, "site" => "example.com", "answer" => answer}] = items
-      refute Enum.any?(items, &(&1["id"] == open))
-      assert answer["reply_id"] == reply_id
-      assert answer["fix"]["status"] == "confirmed_fix"
-      assert answer["fix"]["change"] == "Start a fresh cart."
-      assert answer["worked_for_others"] == 0
+      assert feed["version"] == "https://jsonfeed.org/version/1.1"
+      assert feed["title"] == "Solved on Patchbay"
+      assert feed["home_page_url"] == PatchbayWeb.Endpoint.url() <> "/"
+      assert feed["feed_url"] == PatchbayWeb.Endpoint.url() <> "/solved.json"
+      assert [item] = feed["items"]
+      refute Enum.any?(feed["items"], &(&1["id"] == open))
+
+      assert Map.keys(item) == ~w(content_text date_published id title url)
+      assert item["id"] == solved
+      assert item["url"] == PatchbayWeb.Endpoint.url() <> "/posts/" <> solved
+      assert item["title"] =~ "Checkout <fails> & hangs"
+      assert {:ok, _at, 0} = DateTime.from_iso8601(item["date_published"])
+
+      # The change is shortened the way a thread's answer shortens it.
+      expected = String.slice("Confirmed fix. " <> long_change, 0, 500) <> "…"
+      assert item["content_text"] == expected
 
       rss = conn |> recycle() |> get("/solved.rss")
       assert response_content_type(rss, :xml) =~ "application/rss+xml"
+      assert get_resp_header(rss, "cache-control") == ["public, max-age=300"]
       body = response(rss, 200)
-      assert body =~ "<title>Checkout &lt;fails&gt; &amp; hangs</title>"
+      assert body =~ "<title>Checkout &lt;fails&gt; &amp; hangs </title>"
+      refute body =~ "\u{FFFE}"
+      refute body =~ "\u{FFFF}"
       assert body =~ "/posts/#{solved}</link>"
-      assert body =~ "<description>Confirmed fix. Start a fresh cart.</description>"
+      assert body =~ "<description>#{expected}</description>"
       refute body =~ open
+      assert {:ok, _document} = xml_document(body)
     end
 
     test "a card speaks only while the reply it cites is published, however that changed", %{
@@ -665,7 +753,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # The pick stands again once moderation publishes the reply.
       assert {:ok, _} = Forum.moderate(reply, :publish, "Reviewed and safe.", moderator)
 
-      assert %{"items" => [%{"id" => ^thread_id, "answer" => %{"reply_id" => ^reply_id}}]} =
+      assert %{"items" => [%{"id" => ^thread_id, "content_text" => "Confirmed fix. Paste" <> _}]} =
                build_conn() |> get("/solved.json") |> json_response(200)
     end
   end
@@ -706,14 +794,17 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       reads = [
         {"/forum/search", "/forum/search?package=shop-cart&version=2.4.1"},
         {"/forum/search", "/forum/search?q=fresh+cart&sort=recent"},
-        {"/forum/threads/{id}", "/forum/threads/#{thread_id}"},
-        {"/solved.json", "/solved.json"}
+        {"/forum/threads/{id}", "/forum/threads/#{thread_id}"}
       ]
 
       for {route, path} <- reads do
         body = build_conn() |> get(path) |> json_response(200)
         OpenAPIShape.assert_shape(spec, OpenAPIShape.response_schema(spec, route), body, path)
       end
+
+      feed = build_conn() |> get("/solved.json") |> json_response(200)
+      schema = OpenAPIShape.response_schema(spec, "/solved.json", "application/feed+json")
+      OpenAPIShape.assert_shape(spec, schema, feed, "/solved.json")
 
       rss = build_conn() |> get("/solved.rss")
       assert response_content_type(rss, :xml) =~ "application/rss+xml"
@@ -723,7 +814,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert %{"results" => [%{"fixes" => [%{"reply_id" => ^reply_id}]}]} =
                build_conn() |> get("/forum/search?package=shop-cart") |> json_response(200)
 
-      assert %{"items" => [%{"answer" => %{"fix" => %{"sources" => [_]}}}]} =
+      assert %{"items" => [%{"content_text" => "Confirmed fix. Start a fresh cart."}]} =
                build_conn() |> get("/solved.json") |> json_response(200)
     end
   end

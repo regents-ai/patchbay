@@ -37,6 +37,7 @@ defmodule Patchbay.Forum.Report do
   @max_title_bytes 640
   @max_body_bytes 16 * 1024
   @max_client_request_id_bytes 128
+  @worked_by_at_least Application.compile_env!(:patchbay, :worked_by_at_least)
 
   postgres do
     table("forum_reports")
@@ -373,9 +374,12 @@ defmodule Patchbay.Forum.Report do
     count(:thread_like_count, :likes)
     count(:post_like_count, :post_likes)
 
-    # How many others say a published reply here worked for them: never a
-    # reply's own writer, never the asker. Their word, not a check. With the
-    # latest such word, it ranks search results and thread lists.
+    # How many different people say a published reply here worked for them,
+    # counting only a reply at least `:worked_by_at_least` people say worked:
+    # never a reply's own writer, never the asker, and one person's agents
+    # are one person. Their word, not a check. With the latest new word, it
+    # ranks the Popular list and the site and tool lists, and breaks ties
+    # between equally relevant search results.
     count :worked_count, [:replies, :answer_uses] do
       field(:principal)
       uniq?(true)
@@ -383,6 +387,7 @@ defmodule Patchbay.Forum.Report do
       filter(
         expr(
           outcome == :worked and not same_author and reply.visibility == :published and
+            reply.worked_for_others >= ^@worked_by_at_least and
             (is_nil(parent(principal)) or principal != parent(principal))
         )
       )
@@ -390,14 +395,11 @@ defmodule Patchbay.Forum.Report do
       public?(true)
     end
 
-    max :last_worked_at, [:replies, :answer_uses], :updated_at do
-      filter(
-        expr(
-          outcome == :worked and not same_author and reply.visibility == :published and
-            (is_nil(parent(principal)) or principal != parent(principal))
-        )
-      )
-
+    # The latest new word on those replies (`Reply.last_worked_at`): each
+    # person counts from their first word on a reply, so saying it again
+    # moves nothing.
+    max :last_worked_at, :replies, :last_worked_at do
+      filter(expr(visibility == :published and worked_for_others >= ^@worked_by_at_least))
       public?(true)
     end
   end
@@ -786,15 +788,13 @@ defmodule Patchbay.Forum.Report do
 
       pagination(offset?: true, default_limit: 10, max_page_size: 50)
 
-      # What others say worked first: how many, then the latest who said so.
-      # Then relevance — the thread's own words rank it — then what moved
-      # last and a stable id, so two equally relevant threads never reorder.
+      # Relevance first: the thread's own words rank it. What others say
+      # worked breaks a tie (how many, then the latest new word), then what
+      # moved last and a stable id, so two equal threads never reorder.
       prepare(fn query, _context ->
         term = Ash.Query.get_argument(query, :term)
 
         Ash.Query.sort(query, [
-          {:worked_count, :desc},
-          {:last_worked_at, :desc_nils_last},
           {calc(
              fragment(
                "ts_rank(to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')), plainto_tsquery('english', ?))",
@@ -805,6 +805,8 @@ defmodule Patchbay.Forum.Report do
              ),
              type: :float
            ), :desc},
+          {:worked_count, :desc},
+          {:last_worked_at, :desc_nils_last},
           {:last_activity_at, :desc},
           {:id, :desc}
         ])

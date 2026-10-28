@@ -81,9 +81,23 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     tools = build_conn() |> get(~p"/?q=search") |> html_response(200)
     assert tools =~ ~s(href="/?site=busyshop.com&amp;tool=search")
 
+    # Questions matched but no site or tool: the way to ask is offered once.
+    some = build_conn() |> get(~p"/?q=postcode") |> html_response(200)
+    assert some =~ ~s(href="/?goal=postcode#pb-hero")
+    refute some =~ "No site or tool by that name"
+
+    # Nothing matched: the form opens with the search as its question, and is
+    # the only way to ask on the page.
     none = build_conn() |> get(~p"/?q=nowhere-at-all") |> html_response(200)
-    assert none =~ "No site or tool by that name yet."
-    assert none =~ ~s(href="/?goal=nowhere-at-all#pb-hero")
+    doc = LazyHTML.from_document(none)
+    assert [_form] = doc |> LazyHTML.query("#pb-ask[open]") |> Enum.to_list()
+
+    assert doc |> LazyHTML.query("#pb-ask textarea, #pb-ask input") |> LazyHTML.to_html() =~
+             "nowhere-at-all"
+
+    refute none =~ "Not answered below?"
+    assert doc |> LazyHTML.query("#pb-results .rg-button") |> Enum.empty?()
+    assert none =~ "No matching questions"
   end
 
   test "the front page leads with search, then solved questions; the post form waits behind a button" do

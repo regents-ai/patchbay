@@ -1701,7 +1701,9 @@ body:has(#patchbay-home),
 .pb-site-check-tools { display: flex; flex-wrap: wrap; gap: 2px var(--space-1); flex-basis: 100%; }
 /* A site page's post window: the home page's form in a dialog, centred, with
    its close button in the corner. */
-.pb-site-post-button { flex: none; }
+/* A long site name wraps inside the button rather than widening the page. */
+.pb-site-post-button { flex: 0 1 auto; min-width: 0; white-space: normal; }
+.pb-site-post-button .pb-action-label { overflow-wrap: anywhere; }
 .pb-site-posts-order { margin: calc(-1 * var(--space-1)) 0 var(--space-1); }
 .pb-site-post-dialog { --rg-dialog-size: 44rem; }
 .pb-site-post-dialog .rg-dialog__body { padding: var(--space-3); }

@@ -713,6 +713,18 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
         nul = get(conn, "/forum/search", %{field => "a\u0000b"})
         assert %{"error" => %{"details" => [_]}} = json_response(nul, 422)
+
+        # Left out is fine; a list, a map or a number is not text.
+        assert {:ok, _found} = PatchbayWeb.ForumAPI.Reads.search(%{"tag" => "checkout"}, :free)
+
+        for bad <- [["a", "b"], %{"a" => "b"}, 42] do
+          assert {:error, {:invalid, ["#{field}: must be text."]}} ==
+                   PatchbayWeb.ForumAPI.Reads.search(%{field => bad}, :free)
+        end
+
+        listed = get(conn, "/forum/search", %{field => ["a", "b"]})
+        assert %{"error" => %{"details" => [message]}} = json_response(listed, 422)
+        assert message == "#{field}: must be text."
       end
 
       assert {:error, %Ash.Error.Invalid{}} =
@@ -1056,16 +1068,39 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       fix = %{"software" => "castore", "change" => "c", "test" => "t", "result" => "r"}
 
-      for bad <- [
-            fix,
-            Map.put(fix, "status", "fixed"),
-            Map.merge(fix, %{"status" => "not_proven", "sources" => ["not a link"]}),
-            Map.merge(fix, %{"status" => "not_proven", "sources" => ["https:///x"]}),
-            Map.merge(fix, %{
-              "status" => "not_proven",
-              "updates" => [%{"at" => "soon", "text" => "x"}]
-            })
-          ] do
+      # A source a reader cannot open as it is, or one that would end early
+      # wherever it is written into a page or a feed.
+      bad_sources =
+        for source <- [
+              "not a link",
+              "https:///x",
+              "https://notes.example/a b",
+              "https://notes.example/\tb",
+              "https://notes.example/<script>",
+              "https://notes.example/x\"onmouseover=\"y",
+              "https://notes.example/x'y",
+              "ftp://notes.example/fix",
+              "javascript://notes.example/%0Aalert(1)",
+              "https://[::1/fix",
+              "https://"
+            ],
+            do: Map.merge(fix, %{"status" => "not_proven", "sources" => [source]})
+
+      tomorrow = DateTime.utc_now() |> DateTime.add(1, :day) |> DateTime.to_iso8601()
+
+      for bad <-
+            [
+              fix,
+              Map.put(fix, "status", "fixed"),
+              Map.merge(fix, %{
+                "status" => "not_proven",
+                "updates" => [%{"at" => "soon", "text" => "x"}]
+              }),
+              Map.merge(fix, %{
+                "status" => "not_proven",
+                "updates" => [%{"at" => tomorrow, "text" => "Tomorrow's news."}]
+              })
+            ] ++ bad_sources do
         refused =
           post_json(conn, agent, "/forum/threads/#{id}/replies", %{
             "body_markdown" => "A reply with a fix that breaks a rule.",

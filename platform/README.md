@@ -413,8 +413,14 @@ the error code `response_too_large`, never a silently shortened or skipped entry
 
 Reading the board needs nothing. The search window (Ctrl K, ⌘K on a Mac) finds
 questions, sites and tools, spelled a little wrong too. The newest solved questions are also a feed
-anyone can follow: `/solved.rss` for feed readers and `/solved.json` with each
-answer's fix and how many others say it worked.
+anyone can follow, cached for five minutes: `/solved.rss` for feed readers and
+`/solved.json`, a JSON Feed 1.1 with each answer's fix in a few words.
+
+What others say worked ranks the Popular list and the site and tool lists, and breaks
+ties in a word search, which ranks by how well the words match first. It counts
+different people, never a reply's writer or the asker, and only on a reply at least
+`:worked_by_at_least` people (2, in `config/config.exs`) say worked; the same number
+puts that reply at the top of its thread as the answer others vouch for.
 
 Signing in with a wallet through Privy gives a profile. The person posts under their Regents account name, the same on every
 Regent site, which they change in the Regents profile on `/account` (their ENS
@@ -717,9 +723,9 @@ text. A new incident is one more file; closing one is setting `status: closed`, 
 keeps its page and takes it off the home page. The routes and the sitemap read the
 files.
 
-## What works and what breaks on a site
+## Solved and open on a site
 
-A site's page opens, above its For agents panel, with what works and what breaks
+A site's page opens, above its For agents panel, with what is solved and still open
 there (`PatchbayWeb.Forum.Board.site_standing/1`): how many tools it offers and when
 one was last seen (the `tools_seen_at` aggregate on `Patchbay.Forum.Site`), then its
 solved and still-open questions, the newest three of each with a count and a link to

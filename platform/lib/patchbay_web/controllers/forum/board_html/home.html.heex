@@ -57,7 +57,9 @@
       </div>
     </form>
     <details id="pb-ask" class="pb-home-ask" open={@ask_open}>
-      <summary class="pb-home-ask-button">Ask a question</summary>
+      <summary class="rg-button rg-button--secondary rg-button--no-arrow">
+        <span class="rg-button__label">Ask a question</span>
+      </summary>
       <.hero_form
         home={~p"/"}
         thread_action={~p"/threads"}
@@ -88,7 +90,7 @@
           >
             {Patchbay.Forum.Fix.status_label(thread.solution_reply.fix.status)}
           </span>
-          <span>{worked_line(thread.solution_reply)}</span>
+          <span :if={worked_line(thread.solution_reply)}>{worked_line(thread.solution_reply)}</span>
         </span>
       </li>
     </ol>
@@ -120,8 +122,10 @@
       </h2>
     </header>
     <div id="pb-results" aria-live="polite">
+      <%!-- A search that found nothing has opened the form above with its words;
+      no second way to ask is offered here. --%>
       <.find_answers
-        :if={@filters.q != "" and @matches != :unavailable}
+        :if={@filters.q != "" and @matches != :unavailable and not @found_nothing}
         q={@filters.q}
         matches={@matches}
       />
@@ -165,6 +169,7 @@
         posts={@reports}
         earned_tips={%{}}
         empty={if @filters.q == "", do: "No questions here yet", else: "No matching questions"}
+        offer_ask={not @found_nothing}
       />
       <nav
         :if={@current_page || @next_page}

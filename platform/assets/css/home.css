@@ -52,30 +52,32 @@
   /* Beside the question, the post button stays while the details are open. */
   .pb-home-hero .pb-fix-form:has(.pb-hero-details[open]) > .pb-hero-actions { display: flex; }
 }
-/* Search leads; the post form waits behind its button until it is wanted. */
+/* Search leads; the post form waits behind its button until it is wanted. On a
+   phone the field keeps the whole row and the button goes under it. */
 .pb-home-hero .pb-home-search { grid-template-columns: minmax(0, 1fr) auto; }
 .pb-home-hero .pb-home-search > .pb-fix-ask { grid-area: 1 / 1; }
 .pb-home-hero .pb-home-search > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; }
-.pb-home-ask { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 48rem; margin-top: var(--space-2); }
-.pb-home-ask > summary {
-  display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem;
-  border: 1px solid var(--pb-text); background: var(--pb-field); color: var(--pb-text);
-  clip-path: var(--pb-cut); font-weight: var(--font-weight-semibold); cursor: pointer; list-style: none;
+@container pb-page (max-width: 25rem) {
+  .pb-home-hero .pb-home-search { grid-template-columns: minmax(0, 1fr); }
+  .pb-home-hero .pb-home-search > .pb-hero-actions { grid-area: 2 / 1; }
 }
+/* The button that opens the post form is the shared secondary button. */
+.pb-home-ask { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 48rem; margin-top: var(--space-2); }
+.pb-home-ask > summary { list-style: none; }
 .pb-home-ask > summary::-webkit-details-marker { display: none; }
-.pb-home-ask > summary:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--pb-accent-deep); }
 .pb-home-ask[open] > summary { display: none; }
 .pb-home-ask > .pb-fix-form { margin-top: 0; }
 
-/* The newest solved questions, one line each, between the search and the lists. */
-.pb-solved { max-width: 64rem; margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--pb-good); background: var(--pb-good-wash); }
+/* The newest solved questions, one line each, between the search and the lists:
+   the plain sheet, as wide as the lists under it. */
+.pb-solved { margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); border: 1px solid var(--pb-line); background: var(--pb-surface); }
 .pb-solved h2 { margin: 0 0 var(--space-2); font-size: var(--pb-fs-sm); }
 .pb-solved ol { display: grid; gap: var(--space-2); margin: 0 0 var(--space-2); padding: 0; list-style: none; }
 .pb-solved li { display: grid; gap: .15rem; }
 .pb-solved li > a { font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
 .pb-solved-facts { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .6rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 .pb-solved-facts .pb-fix-standing { margin: 0; }
-.pb-solved-more { font-size: var(--pb-fs-xs); }
+.pb-solved-more { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--pb-fs-xs); }
 
 /* One quiet line under the form, for the person setting up an agent. */
 .pb-home-setup { margin: var(--space-2) 0 0; font-size: var(--pb-fs-xs); }
@@ -109,7 +111,7 @@
 }
 .pb-find-answers {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   gap: var(--space-3) var(--space-5);
   max-width: 64rem;
   margin-top: var(--space-3);
@@ -124,17 +126,9 @@
 .pb-find-ask { grid-column: 1 / -1; margin: 0; font-size: .9375rem; }
 .pb-find-ask a { font-weight: 600; }
 
-/* The fix: one boxed panel on the same hard shadow. */
-.pb-feed-home .pb-fix {
-  margin: var(--space-7) 0 var(--space-6);
-  padding: var(--space-4) var(--space-5);
-  border-color: var(--pb-text);
-  box-shadow: 4px 4px 0 var(--pb-hard-shadow);
-}
 
 @container pb-page (max-width: 899px) {
   .pb-feed-home { padding-top: var(--space-2); }
-  .pb-feed-home .pb-fix { margin: var(--space-5) 0 var(--space-4); padding: var(--space-3); }
 }
 @container pb-page (max-width: 599px) {
   .pb-find-answers { padding: var(--space-3); }

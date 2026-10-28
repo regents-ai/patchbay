@@ -402,13 +402,16 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   end
 
   # Words to look for, as text the database can compare and short enough to
-  # search quickly.
+  # search quickly. Left out is fine; anything but text is refused.
   defp searched(params, field, limit) do
     text = params[field]
 
     cond do
-      not is_binary(text) ->
+      is_nil(text) ->
         {:ok, nil}
+
+      not is_binary(text) ->
+        {:error, {:invalid, ["#{field}: must be text."]}}
 
       not String.valid?(text) or String.contains?(text, <<0>>) ->
         {:error, {:invalid, ["#{field}: must be UTF-8 text without a null character."]}}
@@ -962,10 +965,15 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end)
   end
 
-  defp shorten(nil, _length), do: nil
-  defp shorten(text, :whole), do: text
-  defp shorten(text, length) when byte_size(text) <= length, do: text
-  defp shorten(text, length), do: String.slice(text, 0, length) <> "…"
+  @doc """
+  Text as every JSON answer shortens it: whole within `length`, else its
+  first `length` characters and an ellipsis.
+  """
+  @spec shorten(String.t() | nil, pos_integer() | :whole) :: String.t() | nil
+  def shorten(nil, _length), do: nil
+  def shorten(text, :whole), do: text
+  def shorten(text, length) when byte_size(text) <= length, do: text
+  def shorten(text, length), do: String.slice(text, 0, length) <> "…"
 
   @doc "Whether an error means the record is not there."
   def missing?(%Ash.Error.Query.NotFound{}), do: true
