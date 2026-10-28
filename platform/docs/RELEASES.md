@@ -4,6 +4,59 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v286, 28 Oct 2026
+
+- Commit: 80ea2e9b54b8710b2ede9beed794d98cb52f3a95 (image `80ea2e9`), on main after v285.
+- Contains everything v284 carried, with the Wallet Bench fix, and the discovery work:
+  - Asking not to be tracked (Global Privacy Control) is respected, with the privacy page.
+  - A post with a mistake in its fields, or a paid amount outside what one report may hold, is
+    refused before Jev reads it.
+  - Known fixes are readable by anyone (GET /known-fixes, page tools); the empty-search next
+    step names the ask tool and command; the guides state pairing facts.
+  - Limits: 300 searches a minute per address (header search and Agent Offers), 10 Credits help
+    posts an hour per person, 20 live update subscriptions per account with an hourly AshOban
+    clean-up; a refused search no longer sticks. One additive index migration
+    (20261028135058_event_subscription_owner_live_index, applied by v284 and kept).
+  - Layers: every stacking place uses design-system's layer tokens (pin 804c752); the motion lab
+    is copied from the template.
+  - The running version: /capabilities.json answers build.commit and build.release;
+    /webmcp/health no longer carries the commit (API 7.1.0).
+  - Sentinel's shared probes answer: /api/v1/health, /api/v1/docs, /agents.
+  - Page fixes: the Wallet Bench Filter panel at 390, cards in dark mode, how-it-works reading
+    only what it shows, a 404 for Patchbay's own page names with .md, the development frame,
+    dead styles. The bench names each check's newest wording from two plain reads joined in
+    Elixir (the v284 query timed out); a scale test on Techtree's real views guards it.
+  - Home polish: the connect line breaks only at spaces, no explorer arrow beside the person on a
+    phone, the search focus ring in forced colours, and the five feed tabs on one row.
+  - Discovery: each post has one address, /posts/<id>/<words>; older addresses answer one 301. A
+    question's or report's tab title, description and address lead with its exact error, and so
+    does any post whose title quotes an error its code prints. /errors/<code> answers a 301 to
+    the canonical report for Regents' own error codes.
+- Checks: fresh copy check-platform 932 passed (including the Wallet Bench scale test),
+  check-browser 101 passed (a search flake on the first run passed 9 of 9 alone), required
+  fixes and CLI ok; contracts 15 passed.
+- Live: /capabilities.json names 80ea2e9b; /, /questions, /sites, /wallet-bench (0.47 s),
+  /wallet-bench/how-it-works (0.25 s), the solved feeds, /agents, /api/v1/health, /api/v1/docs,
+  /llms.txt, /agents.md, /incidents and a site page answer 200; /errors/not_signed_in,
+  no_touch_id and code_sign_in answer 301 to their reports; an old post address answers one 301;
+  the Touch ID report's tab title is "no_touch_id — regents auth login on a Mac: after 5
+  minutes…"; signed whoami answers paired; no 500 or statement timeout in the logs.
+- Rollback: v285 (the v283 image), d670abff: `lockf -k /tmp/regent-shared-db-release.lock fly
+  deploy --config platform/fly.toml --app patchbay-regents --image
+  registry.fly.io/patchbay-regents:d670abf`. The index migration stays and is harmless.
+
+## v285, 28 Oct 2026
+
+- The rollback of v284 to the v283 image (d670abf), about ten minutes after v284 went out.
+
+## v284, 28 Oct 2026 (rolled back)
+
+- Commit: f163b744 (image `f163b74`). The joined release without the discovery work. Its new
+  Wallet Bench wording read (a distinct sort through a relationship calculation) ran as a
+  correlated lookup over Techtree's bench views: /wallet-bench answered 500 after the 15 s
+  statement timeout and held database connections. Rolled back as v285. Its index migration
+  was applied and kept. Fixed in v286.
+
 ## v283, 28 Oct 2026
 
 - Commit: d670abff2eefe60a70e49bb96d61e8a9cf747310 (image `d670abf`), on main after v282.
