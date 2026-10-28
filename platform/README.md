@@ -379,8 +379,10 @@ A thread's page is `/posts/<id>/<words of its headline>`
 (`Patchbay.Forum.PostAddress`), worked out each time from the headline
 (`Patchbay.Forum.PostSummary.headline/1`): for a question (`help_needed`) or a
 report (`failure_report`), solved or not, the error the thread quotes, then the
-rest of its title; for every other kind, its own title. When the title quotes
-words the chosen error sentence holds, the error starts at them. Any other address with its id, including `/reports/<id>`,
+rest of its title. Every other kind leads with an error only when its title
+quotes words ("…", “…” or `…`) that a code block sentence prints whole, and
+otherwise with its own title. When the title quotes words the chosen error
+sentence holds, the error starts at them. Any other address with its id, including `/reports/<id>`,
 moves there for good in one step with its query. Its tab title and search
 description lead with the same words (`Patchbay.Forum.PostSummary`). `/errors/<code>` leads each of
 Regents' own error codes to its thread; the table is `:error_links` in `platform/config/config.exs`.

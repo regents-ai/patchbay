@@ -216,18 +216,22 @@ defmodule Patchbay.Forum.PostSummaryTest do
     assert PostSummary.description(post) == "The cart stayed empty."
   end
 
-  describe "only a question or a report leads with its error" do
+  describe "which posts lead with an error" do
     # The kind each of the eight is posted as on patchbay.help (read 28 Oct
-    # 2026), and the Shopify success story posted that day, word for word.
-    @live_kinds %{
-      "draft_07_output_schema" => :success_story,
-      "entra_aadsts9010010" => :success_story,
-      "keyfleet_git_401" => :success_story,
-      "keyfleet_join" => :success_story,
-      "touch_id" => :success_story,
-      "webmcp_model_context" => :success_story,
-      "x402_header_overflow" => :discussion,
-      "x402_payment_signature" => :success_story
+    # 2026), and how each is headed as posted: by the error its code prints,
+    # from the words its title quotes, or by its own title.
+    @live %{
+      "draft_07_output_schema" => {:success_story, :title},
+      "entra_aadsts9010010" => {:success_story, :title},
+      "keyfleet_git_401" => {:success_story, "Git needs a password for this fleet's code. "},
+      "keyfleet_join" =>
+        {:success_story, "not_signed_in: Sign in first: regents auth login --site keyfleet. "},
+      "touch_id" => {:success_story, :title},
+      "webmcp_model_context" => {:success_story, :title},
+      "x402_header_overflow" =>
+        {:discussion,
+         "fetch failed cause.code: UND_ERR_HEADERS_OVERFLOW (Headers Overflow Error) — "},
+      "x402_payment_signature" => {:success_story, :title}
     }
 
     defp shopify do
@@ -240,7 +244,7 @@ defmodule Patchbay.Forum.PostSummaryTest do
       %{title: title, body_markdown: String.trim(body)}
     end
 
-    test "a success story keeps its own title, though its code block holds words" do
+    test "a success story whose title quotes nothing keeps its title, though its code holds words" do
       post = shown(shopify(), :success_story)
       title = post.title
 
@@ -261,27 +265,56 @@ defmodule Patchbay.Forum.PostSummaryTest do
       end
     end
 
-    test "each of the eight, as it is posted, is headed by its own title" do
+    test "each of the eight, as it is posted, leads with the error its title quotes, or its title" do
       for report <- ErrorReports.all() do
-        post = shown(report, Map.fetch!(@live_kinds, report.name))
+        {kind, lead} = Map.fetch!(@live, report.name)
+        post = shown(report, kind)
+        headline = PostSummary.headline(post)
 
-        assert PostSummary.headline(post) == report.title, report.name
-        assert PostSummary.error(post) == nil, report.name
-        assert String.starts_with?(PostSummary.description(post), report.title), report.name
-        assert PostAddress.path(post) == "/posts/#{post.id}/#{PostAddress.slug(report.title)}"
+        case lead do
+          :title ->
+            assert headline == report.title, report.name
+            assert PostSummary.error(post) == nil, report.name
+            assert String.starts_with?(PostSummary.description(post), report.title)
+
+          words ->
+            assert String.starts_with?(headline, words), report.name
+            assert words(report.body_markdown) =~ PostSummary.error(post), report.name
+            assert String.starts_with?(PostSummary.description(post), PostSummary.error(post))
+        end
+
+        assert PostAddress.path(post) == "/posts/#{post.id}/#{PostAddress.slug(headline)}"
       end
     end
 
-    test "a discussion and a feature request keep their titles; a question and a report do not" do
-      report = ErrorReports.get!("x402_header_overflow")
+    test "any other kind leads with the error only when its title quotes words its code prints" do
+      body = "```\nTypeError: fetch failed at checkout.\n```\n\nThe cart \"hangs\" for ever."
+
+      for kind <- [:discussion, :feature_request, :success_story] do
+        quoted = %{written(body, ~s(Checkout: "fetch failed")) | thread_kind: kind}
+        ticked = %{written(body, "Checkout: `fetch failed`") | thread_kind: kind}
+        assert PostSummary.headline(quoted) == "fetch failed at checkout. Checkout"
+        assert PostSummary.headline(ticked) == "fetch failed at checkout. Checkout"
+
+        # Not quoted; quoted but only in the prose; quoted inside a longer word.
+        for title <- ["Checkout: fetch failed", ~s(Checkout "hangs"), ~s(Checkout "fetch fail")] do
+          post = %{written(body, title) | thread_kind: kind}
+          assert PostSummary.headline(post) == title, "#{kind} #{title}"
+          assert PostSummary.error(post) == nil
+        end
+      end
+    end
+
+    test "a question or a report leads with its error whatever its title quotes" do
+      report = ErrorReports.get!("entra_aadsts9010010")
+      refute report.title =~ ~s(")
 
       for kind <- [:discussion, :feature_request, :success_story] do
         assert PostSummary.headline(shown(report, kind)) == report.title, "#{kind}"
       end
 
       for kind <- [:help_needed, :failure_report] do
-        assert PostSummary.headline(shown(report, kind)) =~
-                 ~r/\Afetch failed cause.code: UND_ERR_HEADERS_OVERFLOW/,
+        assert PostSummary.headline(shown(report, kind)) =~ ~r/\Ainvalid_target AADSTS9010010: /,
                "#{kind}"
       end
     end
@@ -301,17 +334,14 @@ defmodule Patchbay.Forum.PostSummaryTest do
       assert report.title =~ ~s(regents keyfleet: "not_signed_in", then)
       assert report.body_markdown =~ "✗ sign-in  not_signed_in: Sign in first:"
 
-      for kind <- [:help_needed, :failure_report] do
+      for kind <- [:help_needed, :failure_report, :success_story, :discussion] do
         post = shown(report, kind)
 
         assert PostSummary.error(post) ==
                  "not_signed_in: Sign in first: regents auth login --site keyfleet."
 
-        assert String.starts_with?(
-                 PostSummary.headline(post),
-                 "not_signed_in: Sign in first: regents auth login --site keyfleet. " <>
-                   report.title
-               )
+        assert PostSummary.headline(post) =~
+                 ~r/\Anot_signed_in: Sign in first: regents auth login --site keyfleet\. regents keyfleet: then agent_not_paired or person_not_here\. /
 
         assert PostSummary.title(post) ==
                  "not_signed_in: Sign in first: regents auth login --site keyfleet…"

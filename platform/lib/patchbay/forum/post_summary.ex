@@ -7,8 +7,11 @@ defmodule Patchbay.Forum.PostSummary do
   A question (a help_needed thread) or a report (a failure_report thread) is
   about an error, solved or not: it quotes the error in a code block and says
   what fixed it in a paragraph that starts with a bold **Fix** label. Any
-  other kind of thread, such as a success story or a discussion, names no
-  error and is headed by its title, whatever its code blocks hold.
+  other kind of thread, such as a success story or a discussion, is about an
+  error only when its title quotes words ("…", “…” or `…`) that a sentence of
+  one of its code blocks holds whole: the error is that sentence from those
+  words on, from the first quoted words that match. Otherwise it is headed by
+  its title, whatever its code blocks hold.
 
     * The error is a sentence of the post's first code block that holds one:
       the sentence that shares the most words with the title, the earliest on
@@ -96,15 +99,34 @@ defmodule Patchbay.Forum.PostSummary do
   def about_error?(%{thread_kind: kind}), do: kind in [:help_needed, :failure_report]
 
   # The error and where it was found: in a code block (with the blocks after
-  # it), or in the title. Only a post about an error has one, so no other
-  # post's body is read for it.
+  # it), or in the title. Any other post has one only when its title quotes
+  # words a code block prints; a post whose title quotes nothing is not read.
   defp found(post, blocks) do
-    if about_error?(post), do: error_in(blocks.(), post_title(post))
+    title = post_title(post)
+
+    cond do
+      about_error?(post) -> error_in(blocks.(), title)
+      (spans = quoted(title)) != [] -> printed(blocks.(), spans)
+      true -> nil
+    end
+  end
+
+  # The first sentence of a code block that holds one of the quoted words
+  # whole, from those words on.
+  defp printed(blocks, spans) do
+    found =
+      for span <- spans,
+          {{:code, text}, index} <- Enum.with_index(blocks),
+          sentence <- sentences(text),
+          error = from_whole(sentence, span),
+          do: {error, {:code, Enum.drop(blocks, index + 1)}}
+
+    List.first(found)
   end
 
   defp error_in(blocks, title) do
     wanted = words(title)
-    in_title = quoted_words(title)
+    in_title = List.first(quoted(title))
 
     blocks
     |> Enum.with_index()
@@ -138,35 +160,44 @@ defmodule Patchbay.Forum.PostSummary do
     end
   end
 
-  # The sentence from the title's quoted words on, when it holds them whole
-  # (not inside a longer word).
+  # The sentence from the title's quoted words on, when it holds them whole.
   defp from_quoted(sentence, nil), do: sentence
+  defp from_quoted(sentence, words), do: from_whole(sentence, words) || sentence
 
-  defp from_quoted(sentence, words) do
+  # The sentence from `words` on, when it holds them whole (not inside a
+  # longer word); nil when it does not.
+  defp from_whole(sentence, words) do
     whole = ~r/(?<![\p{L}\p{N}_])#{Regex.escape(words)}(?![\p{L}\p{N}_])/u
 
     case Regex.run(whole, sentence, return: :index) do
       [{at, _length}] -> binary_part(sentence, at, byte_size(sentence) - at)
-      nil -> sentence
-    end
-  end
-
-  # The first quoted words of the title, if they hold a letter or digit.
-  defp quoted_words(title) do
-    case Regex.run(~r/["“]([^"“”]+)["”]/u, title, capture: :all_but_first) do
-      [words] -> words |> squash() |> worded()
       nil -> nil
     end
   end
 
+  # The title's quoted words, in "double quotes", “curly quotes” or
+  # `backticks`, each holding a letter or digit, in order.
+  defp quoted(title) do
+    ~r/["“]([^"“”`]+)["”]|`([^`]+)`/u
+    |> Regex.scan(title, capture: :all_but_first)
+    |> Enum.flat_map(fn groups ->
+      groups |> Enum.reject(&(&1 == "")) |> Enum.map(&squash/1) |> Enum.filter(&worded/1)
+    end)
+  end
+
   defp worded(text), do: if(text =~ ~r/[\p{L}\p{N}]/u, do: text)
 
-  # The error, then the title without its quoted copy of the error.
+  # The error, then the title without its quoted copy of the error, or of
+  # the quoted words the error starts at.
   defp headed({error, _where}, title) do
+    said = for words <- quoted(title), String.starts_with?(error, words), do: words
+
     rest =
       title
-      |> String.replace(["\"#{error}\"", "“#{error}”"], " ")
+      |> String.replace(Enum.flat_map(said, &["\"#{&1}\"", "“#{&1}”", "`#{&1}`"]), " ")
       |> squash()
+      |> String.replace(~r/\s+(?=[,;.])/u, "")
+      |> String.replace(~r/([,;:])[,;]/u, "\\1")
       |> String.replace(~r/^[\s,;:—-]+|[\s,;:—-]+$/u, "")
 
     cond do

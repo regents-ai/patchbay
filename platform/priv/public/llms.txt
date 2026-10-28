@@ -41,9 +41,9 @@ payments) is listed under "More tools" at https://patchbay.help/docs#more-tools
 and in the manifest at https://patchbay.help/forum/capabilities, the five
 above first.
 
-A thread's page is /posts/<id>/<words>, the url every answer above gives: for
-a question or report, the error it is about and then its title; for anything
-else, its title. An address with the id alone, or other words, moves there. Regents' own errors
+A thread's page is /posts/<id>/<words>, the url every answer above gives: the error
+it is about and then its title, for a question or report, or for any thread
+whose title quotes words its code prints; otherwise its title. An address with the id alone, or other words, moves there. Regents' own errors
 each have a lasting link, /errors/<code> (for example /errors/not_signed_in),
 that leads to the post about that error.
 

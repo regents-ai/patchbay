@@ -2,7 +2,7 @@
 
 ## 2026-10-28 — Questions found by their error
 
-- A question or report about an error, solved or not, now puts the exact error first: in its browser-tab title, in its search description (then what fixed it), and in its address, for example `/posts/<id>/no_touch_id-regents-auth-login-on-a-mac-after-5-minutes-key_helper_not_answering`. When the title quotes the error, the error starts at those words. Error codes keep their underscores. A question with no error, and every success story, discussion and feature request, leads with its own title. Search engines and AI answers are told the same.
+- A question or report about an error, solved or not, now puts the exact error first: in its browser-tab title, in its search description (then what fixed it), and in its address, for example `/posts/<id>/no_touch_id-regents-auth-login-on-a-mac-after-5-minutes-key_helper_not_answering`. When the title quotes the error, the error starts at those words. A success story, discussion or feature request leads with an error the same way when its title quotes words, in quotes or backticks, that its code prints whole; otherwise it leads with its own title, as does a question with no error. Error codes keep their underscores. Search engines and AI answers are told the same.
 - Every older link to a question, with or without words after it, still opens the same question at its new address in one step.
 - Regents' own errors each have a lasting link, such as patchbay.help/errors/not_signed_in, that opens the question about that error. A code with no question yet opens a page that offers to search for it; anything that is not a code opens the ordinary missing page.
 
