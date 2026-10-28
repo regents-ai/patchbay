@@ -46,6 +46,9 @@ defmodule PatchbayWeb.VisitLog do
     address itself is never written.
   - `step`: one of `steps/0`, the shared journey from first look to a paired
     agent, with the agent's harness where there is one.
+
+  A browser that sends Global Privacy Control (`Sec-GPC: 1`) writes neither, on
+  any page of its visit; its other lines are written as everyone's are.
   """
 
   @behaviour Plug
@@ -55,6 +58,8 @@ defmodule PatchbayWeb.VisitLog do
   import Plug.Conn
 
   @cookie "_visit"
+  # Set in each request's and page's process when its browser sent Global Privacy Control.
+  @gpc {__MODULE__, :gpc}
   @visit ~r/\A[A-Za-z0-9_-]{22}\z/
   @webmcp ~r/\Awebmcp\/([a-z][a-z0-9_]{0,63})\z/
   @cli ~r/\Aregents-cli\/([0-9A-Za-z.+-]{1,32}) ([a-z0-9][a-z0-9 _-]{0,63})\z/
@@ -96,8 +101,14 @@ defmodule PatchbayWeb.VisitLog do
   @doc "The names an arrival can give for where it came from, besides `site`, `other_site` and `direct`."
   def sources, do: @sources |> Map.values() |> Enum.uniq()
 
-  @doc "Writes one `step` line: one of `steps/0`, with the agent's harness where there is one."
-  def step(name, harness \\ nil) when name in @steps, do: record("step", name, harness)
+  @doc """
+  Writes one `step` line: one of `steps/0`, with the agent's harness where there
+  is one. Nothing is written for a browser that sends Global Privacy Control.
+  """
+  def step(name, harness \\ nil) when name in @steps do
+    unless Process.get(@gpc), do: record("step", name, harness)
+    :ok
+  end
 
   @doc "Writes one event line (`event/4`); its message is its name, where and outcome."
   def record(name, where, outcome \\ nil, ms \\ nil, client \\ nil) do
@@ -191,9 +202,11 @@ defmodule PatchbayWeb.VisitLog do
     {conn, visit} = visit(conn, surface)
     surface = if surface == "agent_http" and visit, do: "page", else: surface
     Logger.metadata(visit: visit, surface: surface)
+    Process.put(@gpc, gpc?(conn))
 
     conn
     |> assign(:visit, visit)
+    |> assign(:gpc, gpc?(conn))
     |> put_private(:visit_log_client, client)
     |> put_private(:visit_log_caller, caller(conn, surface))
   end
@@ -249,10 +262,13 @@ defmodule PatchbayWeb.VisitLog do
         same_site: "Lax",
         secure: conn.scheme == :https
       )
-      |> assign(:arrival, arrival(conn))
+      |> assign(:arrival, unless(gpc?(conn), do: arrival(conn)))
 
     {conn, visit}
   end
+
+  @doc "Whether the browser sent Global Privacy Control: no `arrival` or `step` lines for it."
+  def gpc?(conn), do: get_req_header(conn, "sec-gpc") == ["1"]
 
   @doc "Where a visit that starts with this request came from (see the moduledoc)."
   def arrival(conn) do
@@ -317,10 +333,11 @@ defmodule PatchbayWeb.VisitLog do
   def caller(conn), do: conn.private[:visit_log_caller]
 
   @doc """
-  What every LiveView is drawn with (`on_mount/4`): the visit, from the router's
-  live sessions and every view a page draws inside itself.
+  What every LiveView is drawn with (`on_mount/4`): the visit and whether its
+  browser sent Global Privacy Control, from the router's live sessions and every
+  view a page draws inside itself.
   """
-  def session(conn), do: %{"visit" => conn.assigns[:visit]}
+  def session(conn), do: %{"visit" => conn.assigns[:visit], "gpc" => conn.assigns[:gpc]}
 
   @doc """
   The search box's session (root.html.heex): the visit, and on the first page of
@@ -347,7 +364,9 @@ defmodule PatchbayWeb.VisitLog do
   # between pages keep the search box, so it never writes a second one.
   def on_mount(:default, _params, session, socket) do
     visit = session["visit"]
+
     Logger.metadata(visit: visit, surface: "page", actor: actor(socket.assigns[:current_profile]))
+    Process.put(@gpc, session["gpc"] == true)
     socket = Phoenix.Component.assign(socket, :visit, visit)
 
     if arrival = first_arrival(session, socket),

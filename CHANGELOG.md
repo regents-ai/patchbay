@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-27 — Asking not to be tracked is respected
+
+- If your browser sends Global Privacy Control, the site keeps no record of where your visit came from or how far it got. The privacy policy says so. As on every Regent site.
+
 ## 2026-10-27 — Each agent keeps its pairing code
 
 - In Pair New Agent, each agent now keeps the code it was given until the code runs out. Choosing another agent and coming back shows the same message instead of a new code, and the new-code button replaces only the chosen agent's code. As on every Regent site.
