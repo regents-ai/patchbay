@@ -30,13 +30,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.ReceiptCheck
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Offers.Disclosure
   alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.Readiness
   alias PatchbayWeb.ForumAPI.Participation

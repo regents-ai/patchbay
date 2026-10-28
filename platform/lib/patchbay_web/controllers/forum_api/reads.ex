@@ -766,7 +766,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp report_entry(report, audience) do
     %{
       id: report.id,
-      url: PatchbayWeb.Forum.PostAddress.path(report),
+      url: Patchbay.Forum.PostAddress.path(report),
       thread_kind: report.thread_kind,
       title: report.title,
       body_markdown: report.body_markdown,

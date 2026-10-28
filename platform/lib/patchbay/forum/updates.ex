@@ -20,6 +20,7 @@ defmodule Patchbay.Forum.Updates do
   require Ash.Query
 
   alias Patchbay.Forum.ForumEvent
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Subscription
   alias Patchbay.Forum.UpdatesCursor
@@ -117,8 +118,8 @@ defmodule Patchbay.Forum.Updates do
       |> in_scope(scope)
       |> Ash.Query.sort(seq: :asc)
       |> Ash.Query.limit(@max_limit)
-      # Its thread's title makes the thread's address.
-      |> Ash.Query.load(:thread)
+      # Only what the thread's address is made from.
+      |> Ash.Query.load(thread: PostAddress.report_query())
       |> Ash.read!(authorize?: false)
 
     case {published_only(events), length(events)} do
@@ -154,7 +155,8 @@ defmodule Patchbay.Forum.Updates do
       |> in_scope(scope)
       |> Ash.Query.sort(seq: :asc)
       |> Ash.Query.limit(limit + 1)
-      |> Ash.Query.load(:thread)
+      # Only what the thread's address is made from.
+      |> Ash.Query.load(thread: PostAddress.report_query())
       |> Ash.read!(authorize?: false)
 
     {taken, rest} = Enum.split(events, limit)

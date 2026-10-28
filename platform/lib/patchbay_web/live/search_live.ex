@@ -15,13 +15,14 @@ defmodule PatchbayWeb.SearchLive do
 
   import PatchbayWeb.Forum.BoardHTML,
     only: [
-      post_title: 1,
       site_name: 1,
       site_domain: 1,
       site_path: 1,
       tool_path: 2,
       count_label: 3
     ]
+
+  import Patchbay.Forum.PostSummary, only: [post_title: 1]
 
   import PatchbayWeb.Forum.Icon
   alias Patchbay.Forum
@@ -115,7 +116,7 @@ defmodule PatchbayWeb.SearchLive do
                &%{
                  kind: :question,
                  label: post_title(&1),
-                 path: PatchbayWeb.Forum.PostAddress.path(&1),
+                 path: Patchbay.Forum.PostAddress.path(&1),
                  detail: site_name(&1.site)
                }
              )},

@@ -364,7 +364,7 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
 
         %{
           report_id: report.id,
-          url: PatchbayWeb.Forum.PostAddress.url(report),
+          url: Patchbay.Forum.PostAddress.url(report),
           escrowed_usdc: USDC.format(report.priority_amount_atomic),
           escrow_status: report.escrow_status,
           escrow_funded_at: report.escrow_funded_at,

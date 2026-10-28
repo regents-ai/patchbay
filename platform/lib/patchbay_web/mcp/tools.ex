@@ -590,7 +590,7 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  defp thread_page(thread), do: PatchbayWeb.Forum.PostAddress.url(thread)
+  defp thread_page(thread), do: Patchbay.Forum.PostAddress.url(thread)
 
   defp thread_posted(thread) do
     %{

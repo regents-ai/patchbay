@@ -165,7 +165,7 @@ defmodule PatchbayWeb.MCP.EventDelivery do
       "data" => %{
         "thread_id" => event.thread_id,
         "reply_id" => event.resource_id,
-        "url" => PatchbayWeb.Forum.PostAddress.url(event.thread) <> "#reply-#{event.resource_id}",
+        "url" => Patchbay.Forum.PostAddress.url(event.thread) <> "#reply-#{event.resource_id}",
         "by_you" => by_you
       },
       "cursor" => UpdatesCursor.encode(event.seq, scope(subscription))

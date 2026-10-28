@@ -7,9 +7,9 @@ defmodule PatchbayWeb.ErrorLinkControllerTest do
 
   use PatchbayWeb.ConnCase, async: false
 
+  alias Patchbay.Forum.PostAddress
   alias PatchbayWeb.ErrorLinkController
   alias PatchbayWeb.ErrorReports
-  alias PatchbayWeb.Forum.PostAddress
 
   @codes ~w(not_signed_in agent_not_paired person_not_here no_touch_id
             key_helper_not_answering locked_key_needs_mac code_sign_in)
@@ -47,6 +47,32 @@ defmodule PatchbayWeb.ErrorLinkControllerTest do
       |> get("/errors/no_such_error")
       |> response(404)
 
-    assert md =~ "(/?q=no_such_error)"
+    assert md =~ "Patchbay has no post about `no_such_error` yet."
+    assert md =~ "at `#{PatchbayWeb.Endpoint.url()}/?q=no_such_error`,"
+    refute md =~ "](/?q="
+  end
+
+  test "anything that cannot be a code is the ordinary missing page, which repeats none of it",
+       %{conn: conn} do
+    for code <- [
+          "x`](https://evil.example)`",
+          "[click](https://evil.example)",
+          "<b>NOT_SIGNED_IN</b>",
+          "Not_Signed_In",
+          String.duplicate("a", 65)
+        ] do
+      path = "/errors/" <> URI.encode(code, &URI.char_unreserved?/1)
+
+      assert_error_sent(404, fn -> get(conn, path) end)
+
+      {404, _headers, md} =
+        assert_error_sent(404, fn ->
+          conn |> put_req_header("accept", "text/markdown") |> get(path)
+        end)
+
+      refute md =~ "evil.example"
+      refute md =~ "click"
+      refute md =~ code
+    end
   end
 end

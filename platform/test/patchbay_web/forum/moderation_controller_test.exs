@@ -8,8 +8,8 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.ModerationAction
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Report
-  alias PatchbayWeb.Forum.PostAddress
 
   @wallet "0x" <> String.duplicate("a", 40)
 

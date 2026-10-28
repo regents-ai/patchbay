@@ -2,8 +2,8 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
-  alias PatchbayWeb.Forum.PostAddress
 
   @contract String.duplicate("a", 64)
   @arguments String.duplicate("c", 64)

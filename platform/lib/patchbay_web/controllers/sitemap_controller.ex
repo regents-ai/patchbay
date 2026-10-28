@@ -11,10 +11,10 @@ defmodule PatchbayWeb.SitemapController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Incidents
   alias Patchbay.WalletBench
   alias PatchbayWeb.Blog
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.Troubleshooting
 
   @static ~w(/ /sites /questions /priority /start /dots /muse /grokbot /hermes /claude /agents /agent-setup /help /webmcp /docs /about /contact /privacy /terms /changelog /offers /offers/how-it-works /wallet-bench/how-it-works /incidents)

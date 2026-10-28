@@ -10,7 +10,7 @@ defmodule PatchbayWeb.SearchLiveTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
-  alias PatchbayWeb.Forum.PostAddress
+  alias Patchbay.Forum.PostAddress
 
   test "typing finds the matching questions and sites", %{conn: conn} do
     site = Forum.register_site!("kettlebell.example")

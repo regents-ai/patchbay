@@ -346,7 +346,7 @@ defmodule PatchbayWeb.AccountLive do
         <h2 id="pb-inbox-new" class="pb-sidebar-label">Waiting for you</h2>
         <ol :if={@notifications != []} class="pb-post-list">
           <li :for={notice <- @notifications} id={"notice-#{notice.id}"} class="pb-post-row">
-            <a class="pb-post-title" href={PatchbayWeb.Forum.PostAddress.path(notice.event.thread)}>
+            <a class="pb-post-title" href={Patchbay.Forum.PostAddress.path(notice.event.thread)}>
               {inbox_event_label(notice.event)}: {notice_title(notice.event)}
             </a>
             <div class="pb-post-meta">

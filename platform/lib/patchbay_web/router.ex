@@ -691,7 +691,7 @@ defmodule PatchbayWeb.Router do
     get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false
     get "/sites/:origin", BoardController, :old_site
     get "/sites/:origin/tools/:name", BoardController, :old_tool
-    # A post's address is its id and the words of its title. The id alone,
+    # A post's address is its id and the words of its headline, the error first. The id alone,
     # other words, or the earlier /reports/<id> move there for good.
     get "/posts/:id/:slug", BoardController, :post
     get "/posts/:id", BoardController, :post

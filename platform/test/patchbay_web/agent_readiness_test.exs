@@ -9,7 +9,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
-  alias PatchbayWeb.Forum.PostAddress
+  alias Patchbay.Forum.PostAddress
 
   @contract String.duplicate("a", 64)
 
@@ -556,7 +556,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
           capture: :all_but_first
         )
 
-      assert description == PatchbayWeb.Forum.PostSummary.description(report)
+      assert description == Patchbay.Forum.PostSummary.description(report)
       assert description =~ "Checkout worked"
 
       # A thread answers at its own address and names it as the one to count.
@@ -599,7 +599,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert page["@type"] == "QAPage"
       assert page["url"] == PostAddress.url(report)
-      assert question["name"] == PatchbayWeb.Forum.BoardHTML.post_title(report)
+      assert question["name"] == Patchbay.Forum.PostSummary.post_title(report)
       assert question["text"] =~ "once the cart had an item"
       assert question["datePublished"] == DateTime.to_iso8601(report.inserted_at)
       assert question["answerCount"] == 0

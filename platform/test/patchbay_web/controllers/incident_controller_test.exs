@@ -11,8 +11,8 @@ defmodule PatchbayWeb.IncidentControllerTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Incidents
-  alias PatchbayWeb.Forum.PostAddress
 
   # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
   defp ask!(site, title, tags) do

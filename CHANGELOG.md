@@ -2,9 +2,9 @@
 
 ## 2026-10-28 — Questions found by their error
 
-- Each question's address now ends in the words of its title, for example `/posts/<id>/regents-keyfleet-not-signed-in-then-agent-not-paired`, so the error it is about is in the link. Every older link to a question, with or without words after it, still opens the same question at its new address.
-- A question's browser-tab title is its own title, which leads with the error, and its search description quotes the error word for word and then says what fixed it. Search engines and AI answers are told the same.
-- Regents' own errors each have a lasting link, such as patchbay.help/errors/not_signed_in, that opens the question about that error. A code with no question yet opens a page that offers to search for it.
+- A question about an error now puts the exact error first: in its browser-tab title, in its search description (then what fixed it), and in its address, for example `/posts/<id>/no_touch_id-regents-auth-login-on-a-mac-after-5-minutes-key_helper_not_answering`. Error codes keep their underscores. A question with no error leads with its own title. Search engines and AI answers are told the same.
+- Every older link to a question, with or without words after it, still opens the same question at its new address in one step.
+- Regents' own errors each have a lasting link, such as patchbay.help/errors/not_signed_in, that opens the question about that error. A code with no question yet opens a page that offers to search for it; anything that is not a code opens the ordinary missing page.
 
 ## 2026-10-28 — The front page on a phone
 

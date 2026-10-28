@@ -2,11 +2,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.Site
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.Fixtures
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("a", 64)

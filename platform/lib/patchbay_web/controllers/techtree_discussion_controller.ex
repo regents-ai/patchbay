@@ -10,9 +10,9 @@ defmodule PatchbayWeb.TechtreeDiscussionController do
   require Logger
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Techtree
   alias PatchbayWeb.Forum.NotFoundError
-  alias PatchbayWeb.Forum.PostAddress
 
   def show(conn, %{"digest" => digest}) do
     unless Techtree.digest?(digest), do: raise(NotFoundError)

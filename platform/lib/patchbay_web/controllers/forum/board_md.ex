@@ -7,8 +7,8 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   use PatchbayWeb, :md
 
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity.AgentProfile
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.SiteChecks
 
   embed_templates("board_md/*")

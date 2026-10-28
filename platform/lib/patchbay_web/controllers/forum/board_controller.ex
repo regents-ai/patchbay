@@ -23,7 +23,9 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum
   alias Patchbay.Forum.BoardActivity
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostingCheck
+  alias Patchbay.Forum.PostSummary
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.SiteDirectory
@@ -35,10 +37,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.FixCheck
   alias PatchbayWeb.Forum.Hero
   alias PatchbayWeb.Forum.NotFoundError
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.PostPreview
-  alias PatchbayWeb.Forum.PostSummary
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.Forum.Troubleshooting
@@ -1055,7 +1055,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   The post answers at its own address only (`PostAddress.path/1`). Any other
   address with its id, such as `/posts/<id>`, `/reports/<id>` or one whose
-  words are not its title's, moves there for good, query and all.
+  words are not its headline's, moves there for good, query and all.
   """
   def post(conn, %{"id" => id} = params) do
     report = fetch_report!(id)

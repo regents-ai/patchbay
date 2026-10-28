@@ -9,9 +9,9 @@ defmodule PatchbayWeb.Forum.NamesTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @contract String.duplicate("c", 64)

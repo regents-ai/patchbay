@@ -8,9 +8,9 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.{Capabilities, Catalog}
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
   alias Patchbay.Patchbay, as: Rooms
-  alias PatchbayWeb.Forum.PostAddress
 
   @contract String.duplicate("a", 64)
   @other_contract String.duplicate("b", 64)

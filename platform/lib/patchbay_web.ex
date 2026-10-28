@@ -53,9 +53,10 @@ defmodule PatchbayWeb do
       import Phoenix.Template, only: [embed_templates: 1]
       import PatchbayWeb.MD
 
+      import Patchbay.Forum.PostSummary, only: [post_title: 1]
+
       import PatchbayWeb.Forum.BoardHTML,
         only: [
-          post_title: 1,
           site_path: 1,
           tool_path: 2,
           site_name: 1,

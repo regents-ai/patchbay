@@ -8,14 +8,17 @@ defmodule Patchbay.Forum.Changes.AnnounceThread do
 
   use Ash.Resource.Change
 
+  alias Patchbay.Forum.PostAddress
+
   @impl true
   def change(changeset, _opts, _context) do
     Ash.Changeset.after_action(changeset, fn _changeset, event ->
       if Patchbay.IndexNow.key() do
-        # The address is the thread's own, which its title's words are part of.
-        %{thread: thread} = Ash.load!(event, :thread, authorize?: false)
+        # The address is the thread's own, made from its headline's words.
+        %{thread: thread} =
+          Ash.load!(event, [thread: PostAddress.report_query()], authorize?: false)
 
-        [PatchbayWeb.Forum.PostAddress.url(thread)]
+        [PostAddress.url(thread)]
         |> Patchbay.IndexNow.submit()
         |> Oban.insert!()
       end

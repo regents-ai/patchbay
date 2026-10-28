@@ -77,16 +77,16 @@ test("How the bench works keeps its cards in the sheet's colours in dark mode", 
 })
 
 // The walk's one report (support/report.exs) is about the not_signed_in error.
-test("a report's page leads its tab title with its error, at an address in its words", async ({page}) => {
+test("a report's page leads its tab title and its address with its error", async ({page}) => {
   await page.goto("/")
   const address = (await page.getByRole("link", {name: /not_signed_in/}).first().getAttribute("href"))!
-  expect(address).toMatch(/^\/posts\/[0-9a-f-]{36}\/regents-keyfleet-not-signed-in-/)
+  expect(address).toMatch(/^\/posts\/[0-9a-f-]{36}\/sign-in-not_signed_in-sign-in-first-/)
 
   // The post's id alone moves to the same page.
   const problems = watch(page)
   const response = await page.goto(address.split("/").slice(0, 3).join("/"))
   expect(response?.status()).toBe(200)
   expect(new URL(page.url()).pathname).toBe(address)
-  await expect(page).toHaveTitle(/^regents keyfleet: "not_signed_in"/)
+  await expect(page).toHaveTitle(/^sign-in not_signed_in: Sign in first: regents auth login .* · Patchbay$/)
   await problems.expect()
 })

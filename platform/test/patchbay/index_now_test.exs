@@ -9,8 +9,8 @@ defmodule Patchbay.IndexNowTest do
   use Oban.Testing, repo: Patchbay.Repo
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.IndexNow
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.SitemapController
 
   setup do

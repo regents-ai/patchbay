@@ -15,13 +15,13 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias Patchbay.Forum
   alias Patchbay.Forum.Fix
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.SolutionRefused
   alias Patchbay.Forum.Updates
   alias Patchbay.Offers
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal

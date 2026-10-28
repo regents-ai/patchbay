@@ -12,16 +12,18 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   import PatchbayWeb.Forum.Face
   import PatchbayWeb.Forum.Icon
   import PatchbayWeb.Forum.Nameplate
+  import Patchbay.Forum.PostSummary, only: [post_title: 1]
 
   alias Patchbay.BoundedText
   alias Patchbay.Forum.Fix
+  alias Patchbay.Forum.PostAddress
+  alias Patchbay.Forum.PostSummary
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias Patchbay.Forum.Types.ThreadKind
   alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Forum.AgentArt
   alias PatchbayWeb.Forum.Board
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Forum.VersionDiff
 
   embed_templates("board_html/*")
@@ -587,27 +589,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     (assigns.current_profile && report.author_profile_id == assigns.current_profile.id) ||
       (is_binary(assigns.forum_session_id) &&
          report.browser_session_id == assigns.forum_session_id)
-  end
-
-  def post_title(report) do
-    cond do
-      is_binary(report.title) and String.trim(report.title) != "" ->
-        titled(report.title)
-
-      is_binary(report.note) and String.trim(report.note) != "" ->
-        titled(report.note)
-
-      report.tool_names != [] ->
-        "#{hd(report.tool_names)} on #{site_name(report.site)}"
-
-      true ->
-        site_name(report.site)
-    end
-  end
-
-  defp titled(text) do
-    {text, cut?} = Patchbay.BoundedText.take(String.trim(text), 160)
-    if cut?, do: text <> "…", else: text
   end
 
   @doc "The bounty a Markdown post line carries, worded as the page's own bounty link is."
@@ -1607,7 +1588,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       replies: Enum.map(replies, post),
       answer: answer && post.(answer)
     })
-    |> described(PatchbayWeb.Forum.PostSummary.description(report))
+    |> described(PostSummary.description(report))
   end
 
   # The error the thread is about and its fix, in the words of the page's

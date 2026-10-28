@@ -7,8 +7,8 @@ defmodule PatchbayWeb.MCPSessionTest do
 
   use PatchbayWeb.ConnCase, async: false
 
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Report
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.MCP.Session
   alias PatchbayWeb.SignedAgent
 

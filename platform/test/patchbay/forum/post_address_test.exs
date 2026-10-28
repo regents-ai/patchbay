@@ -1,19 +1,23 @@
-defmodule PatchbayWeb.Forum.PostAddressTest do
+defmodule Patchbay.Forum.PostAddressTest do
   @moduledoc """
-  A post's address carries the words of its title, and every other address
-  with its id moves there for good, keeping what the reader asked for.
+  A post's address carries the words of its headline, the error first, and
+  every other address with its id moves there for good in one step, keeping
+  what the reader asked for.
   """
 
   use PatchbayWeb.ConnCase, async: false
   use ExUnitProperties
 
+  alias Patchbay.Forum.PostAddress
   alias PatchbayWeb.ErrorReports
-  alias PatchbayWeb.Forum.PostAddress
 
   describe "the words of an address" do
-    test "are the title's words, lowercase and joined by hyphens" do
+    test "are the words, lowercase and joined by hyphens, with codes kept whole" do
       assert PostAddress.slug(~s(regents keyfleet: "not_signed_in", then agent_not_paired)) ==
-               "regents-keyfleet-not-signed-in-then-agent-not-paired"
+               "regents-keyfleet-not_signed_in-then-agent_not_paired"
+
+      assert PostAddress.slug("UND_ERR_HEADERS_OVERFLOW ___ _x_") ==
+               "und_err_headers_overflow-_x_"
 
       assert PostAddress.slug("Keyfleet git: \"Git needs a password for this fleet's code\"") ==
                "keyfleet-git-git-needs-a-password-for-this-fleets-code"
@@ -36,13 +40,14 @@ defmodule PatchbayWeb.Forum.PostAddressTest do
     test "are post when the title has no letters or digits it can use" do
       assert PostAddress.slug("支付失败") == "post"
       assert PostAddress.slug("…") == "post"
+      assert PostAddress.slug("__ _") == "post"
     end
 
     property "are always lowercase words and hyphens, at most 80 characters" do
       check all(title <- string(:printable, max_length: 300)) do
         slug = PostAddress.slug(title)
 
-        assert slug =~ ~r/\A[a-z0-9]+(-[a-z0-9]+)*\z/
+        assert slug =~ ~r/\A[a-z0-9_]+(-[a-z0-9_]+)*\z/
         assert String.length(slug) <= 80
       end
     end
@@ -54,25 +59,34 @@ defmodule PatchbayWeb.Forum.PostAddressTest do
       %{post: post, path: PostAddress.path(post)}
     end
 
-    test "answers at its own address", %{conn: conn, post: post, path: path} do
+    test "answers at its own address, which leads with the error", %{
+      conn: conn,
+      post: post,
+      path: path
+    } do
       assert path ==
-               "/posts/#{post.id}/regents-keyfleet-not-signed-in-then-agent-not-paired-or-person-not-here-what"
+               "/posts/#{post.id}/sign-in-not_signed_in-sign-in-first-regents-auth-login-site-keyfleet-regents"
 
       html = conn |> get(path) |> html_response(200)
       assert html =~ ~s(<link rel="canonical" href="#{PostAddress.url(post)}">)
     end
 
-    test "moves there for good from its id alone, other words and the earlier address", %{
-      conn: conn,
-      post: post,
-      path: path
-    } do
+    test "moves there for good, in one step, from its id alone, other words and earlier addresses",
+         %{
+           conn: conn,
+           post: post,
+           path: path
+         } do
       for old <- [
             "/posts/#{post.id}",
             "/posts/#{post.id}/an-older-title",
             "/posts/#{post.id}/post",
             "/posts/#{String.upcase(post.id)}/an-older-title",
-            "/reports/#{post.id}"
+            "/reports/#{post.id}",
+            # The address the post had when its words were its title's alone.
+            "/posts/#{post.id}/regents-keyfleet-not-signed-in-then-agent-not-paired-or-person-not-here-what",
+            "/posts/#{post.id}/regents-keyfleet-not_signed_in-then-agent_not_paired-or-person_not_here",
+            "/posts/#{post.id}/sign-in-not-signed-in-sign-in-first-regents-auth-login-site-keyfleet-regents"
           ] do
         moved = get(conn, old)
         assert moved.status == 301, old
@@ -95,6 +109,26 @@ defmodule PatchbayWeb.Forum.PostAddressTest do
 
       get(conn, path)
       assert Ash.load!(post, :view_count, authorize?: false).view_count == 1
+    end
+
+    test "a tool's early report is addressed by the words its page shows" do
+      site = ErrorReports.site!("tools.example")
+
+      for title <- [nil, "   "] do
+        post =
+          %Patchbay.Forum.Report{
+            id: Ash.UUID.generate(),
+            title: title,
+            note: nil,
+            tool_names: ["search_catalog"],
+            body_markdown: nil,
+            site: %Ash.NotLoaded{}
+          }
+          |> Map.put(:site_id, site.id)
+
+        assert Patchbay.Forum.PostSummary.post_title(post) == "search_catalog on tools.example"
+        assert PostAddress.path(post) == "/posts/#{post.id}/search_catalog-on-tools-example"
+      end
     end
 
     test "an id that names no post is a missing page", %{conn: conn} do

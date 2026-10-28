@@ -11,8 +11,8 @@ defmodule PatchbayWeb.ForumAPI.LikeController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias PatchbayWeb.ApiError
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.ForumAPI.Reads
 
   def create(conn, %{"id" => id} = params) do

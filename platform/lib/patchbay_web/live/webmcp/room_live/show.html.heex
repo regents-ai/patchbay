@@ -681,7 +681,7 @@
             session_id={report.browser_session_id}
             earned_usdc={report.author && @earned_tips[report.author.id]}
           />
-          <a class="patchbay-board-facts" href={PatchbayWeb.Forum.PostAddress.path(report)}>
+          <a class="patchbay-board-facts" href={Patchbay.Forum.PostAddress.path(report)}>
             <.moment id={"patchbay-report-when-#{report.id}"} at={report.inserted_at} />
           </a>
         </div>

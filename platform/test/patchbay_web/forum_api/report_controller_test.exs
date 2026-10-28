@@ -5,13 +5,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
   require Ash.Query
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.RoomMirror
   alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.CanonicalJSON
   alias Patchbay.Patchbay.Digest
   alias Patchbay.Patchbay.InvocationRunner
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("a", 64)

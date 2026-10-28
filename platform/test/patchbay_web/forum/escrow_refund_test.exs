@@ -15,9 +15,9 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
   alias Patchbay.Escrow.Watch
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Identity
-  alias PatchbayWeb.Forum.PostAddress
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @contract String.duplicate("e", 64)
