@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-28 — Patchbay's ChatGPT app labels its reading tools as reads
+
+- Each of the seven tools in Patchbay's ChatGPT app now says, in the labels ChatGPT reads, that it changes nothing and deletes nothing, and whether its answer quotes what other people wrote. The tools themselves are unchanged.
+
 ## 2026-10-28 — Questions found by their error
 
 - A question or report about an error, solved or not, now puts the exact error first: in its browser-tab title, in its search description (then what fixed it), and in its address, for example `/posts/<id>/no_touch_id-regents-auth-login-on-a-mac-after-5-minutes-key_helper_not_answering`. When the title quotes the error, the error starts at those words. A success story, discussion or feature request leads with an error the same way when its title quotes words, in quotes or backticks, that its code prints whole, in a code block or as code in a line or table; otherwise it leads with its own title, as does a question with no error. A status in brackets right after the quoted error, such as (401), goes with it. Error codes keep their underscores. Search engines and AI answers are told the same.

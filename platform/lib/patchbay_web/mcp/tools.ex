@@ -114,6 +114,7 @@ defmodule PatchbayWeb.MCP.Tools do
       tool
       |> Map.put(:description, Map.fetch!(descriptions, tool.name))
       |> Map.put(:securitySchemes, [%{type: "noauth"}])
+      |> Map.update!(:annotations, &plugin_hints/1)
       |> plugin_card()
     end)
     |> Kernel.++(identity_tools())
@@ -148,6 +149,16 @@ defmodule PatchbayWeb.MCP.Tools do
       idempotentHint: true,
       consequentialHint: true,
       untrustedContentHint: true
+    })
+  end
+
+  # OpenAI's review wants all three hints stated on every plugin tool. These
+  # reads change nothing, and a read is open-world when it answers with what
+  # strangers wrote.
+  defp plugin_hints(annotations) do
+    Map.merge(annotations, %{
+      "destructiveHint" => false,
+      "openWorldHint" => annotations["untrustedContentHint"]
     })
   end
 
