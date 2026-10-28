@@ -320,6 +320,20 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert conn |> get("/not-a-host") |> html_response(404) =~
                "There is nothing at this address."
     end
+
+    test "a name ending in .md is a missing page unless a board is under it", %{conn: conn} do
+      for path <- ["/help-me.md", "/README.md", "/github.com.md"] do
+        {404, _headers, body} = assert_error_sent(404, fn -> get(conn, path) end)
+        assert body =~ "There is nothing at this address."
+      end
+
+      site!("point.md")
+      assert conn |> get(~p"/point.md") |> html_response(200) =~ "point.md"
+
+      for path <- ["/agents.md", "/skill.md", "/incidents.md", "/llms.txt", "/robots.txt"] do
+        assert conn |> get(path) |> response(200)
+      end
+    end
   end
 
   describe "GET /:host/tools/:name" do

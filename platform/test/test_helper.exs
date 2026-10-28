@@ -49,4 +49,26 @@ CREATE TABLE IF NOT EXISTS techtree_app.wallet_bench_results (
 )
 """)
 
+Patchbay.Repo.query!("""
+CREATE TABLE IF NOT EXISTS techtree_app.wallet_bench_checks (
+  attempt_id uuid NOT NULL,
+  grid text NOT NULL,
+  criterion_id text NOT NULL,
+  harness_id text NOT NULL,
+  wallet_id text NOT NULL,
+  run integer NOT NULL,
+  criterion text NOT NULL,
+  result text,
+  reason text,
+  PRIMARY KEY (attempt_id, grid, criterion_id)
+)
+""")
+
+Patchbay.Repo.query!("""
+CREATE TABLE IF NOT EXISTS techtree_app.wallet_bench_notes (
+  key text PRIMARY KEY,
+  text text NOT NULL
+)
+""")
+
 Ecto.Adapters.SQL.Sandbox.mode(Patchbay.Repo, :manual)

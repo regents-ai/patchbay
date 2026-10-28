@@ -79,7 +79,7 @@ defmodule Patchbay.WalletBench.Matrix do
     with {:ok, roster} <- WalletBench.list_roster(),
          {:ok, notes} <- WalletBench.list_notes(),
          {:ok, fixed} <- WalletBench.list_fixed(),
-         {:ok, results} <- WalletBench.list_results(),
+         {:ok, results} <- WalletBench.list_results_without_steps(),
          {:ok, summaries} <- WalletBench.list_sets(),
          {:ok, checks} <- WalletBench.list_checks(),
          {:ok, extra_notes} <- WalletBench.list_extra_notes() do
@@ -87,6 +87,22 @@ defmodule Patchbay.WalletBench.Matrix do
        roster
        |> build(notes, fixed, results, summaries, checks, filters)
        |> Map.put(:extra_notes, ExtraNotes.by_release(extra_notes, roster))}
+    end
+  end
+
+  @doc """
+  What the page explaining the bench shows, read now: Techtree's notes by key,
+  and each grid with its checks. It reads no run.
+  """
+  @spec key() :: {:ok, map()} | {:error, term()}
+  def key do
+    with {:ok, notes} <- WalletBench.list_notes(),
+         {:ok, criteria} <- WalletBench.list_criteria() do
+      {:ok,
+       %{
+         notes: notes(notes),
+         grids: Enum.map(@grids, &%{grid: &1, criteria: criteria(criteria, &1)})
+       }}
     end
   end
 

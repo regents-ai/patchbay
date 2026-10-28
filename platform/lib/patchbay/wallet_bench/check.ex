@@ -27,6 +27,18 @@ defmodule Patchbay.WalletBench.Check do
       filter(expr(harness_id == ^arg(:harness_id) and wallet_id == ^arg(:wallet_id)))
       prepare(build(sort: [grid: :asc, run: :asc, criterion_id: :asc]))
     end
+
+    read :criteria do
+      description("Each grid's checks once, without any run's answers.")
+
+      prepare(
+        build(
+          select: [:grid, :criterion_id, :criterion],
+          distinct: [:grid, :criterion_id],
+          sort: [grid: :asc, criterion_id: :asc]
+        )
+      )
+    end
   end
 
   policies do

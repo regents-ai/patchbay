@@ -44,18 +44,20 @@ defmodule PatchbayWeb.Endpoint do
     raise_on_missing_only: code_reloading?,
     headers: @static_headers
 
-  # Everything else, error pages included, is served under the strict policy
-  # unless its pipeline sets another.
-  plug :put_reading_policy
-
   # Code reloading can be explicitly enabled under the
-  # :code_reloader configuration of your endpoint.
+  # :code_reloader configuration of your endpoint. In development the reloader
+  # puts a frame from this site into every page; it answers that frame itself,
+  # ahead of the page policy below, whose frame-ancestors 'none' would refuse it.
   if code_reloading? do
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
     plug Phoenix.Ecto.CheckRepoStatus, otp_app: :patchbay
   end
+
+  # Everything else, error pages included, is served under the strict policy
+  # unless its pipeline sets another.
+  plug :put_reading_policy
 
   plug Phoenix.LiveDashboard.RequestLogger,
     param_key: "request_logger",

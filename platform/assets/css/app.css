@@ -2109,7 +2109,6 @@ h1, h2, h3, h4, h5, h6 {
   --pb-wb-ink: var(--pb-text);
   --pb-wb-ink-soft: var(--pb-text-muted);
   --pb-wb-violet: var(--pb-accent);
-  --pb-wb-card-bg: rgb(255 255 255 / .9);
   /* Held in every run, most, some, none: green through cream to red. */
   --pb-wb-all: #4E9F64;
   --pb-wb-most: #A6D49A;
@@ -2204,7 +2203,7 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: var(--rg-layer-tip-shadow);
 }
 .pb-wb-filter label { font-size: .875rem; }
-.pb-wb-filter select { font-size: 1rem; }
+.pb-wb-filter select { font-size: 1rem; text-overflow: ellipsis; }
 .pb-wb-filter p { margin: 0; color: var(--pb-wb-ink-soft); font-size: var(--pb-fs-sm); }
 .pb-wb-filter-actions { display: flex; align-items: center; gap: var(--space-3); }
 .pb-wb-filter-actions a { color: var(--pb-wb-ink); text-decoration: underline; text-underline-offset: .2em; }
@@ -2276,11 +2275,11 @@ h1, h2, h3, h4, h5, h6 {
 .pb-wb-zoom-controls output { min-width: 3.25rem; font: 500 .875rem/1 var(--font-family-mono); text-align: center; }
 .pb-wb-hover { min-height: 2.8em; margin: 0; color: var(--pb-text-muted); font-size: .875rem; line-height: 1.4; overflow-wrap: anywhere; }
 
-/* How the bench works: the checks and what each result means, on white cards. */
+/* How the bench works: the checks and what each result means, on flat cards in the sheet's own colours. */
 .pb-wb-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .pb-wb-card {
   display: grid; align-content: start; gap: var(--space-2); min-width: 0; padding: var(--space-3);
-  border: 1px solid var(--pb-wb-rule); border-radius: .9rem; background: var(--pb-wb-card-bg);
+  border: 1px solid var(--pb-wb-rule); border-radius: .9rem; background: var(--pb-surface);
 }
 .pb-wb-card h2 { margin: 0; font: 400 var(--pb-fs-lg)/1.2 var(--font-family-title); letter-spacing: -.02em; }
 .pb-wb-card p { margin: 0; color: var(--pb-wb-ink-soft); font-size: var(--pb-fs-sm); }
@@ -2314,6 +2313,7 @@ h1, h2, h3, h4, h5, h6 {
   .pb-wb-board tbody .pb-wb-entry-name { max-width: 6.5rem; }
 }
 @container pb-page (max-width: 479px) {
+  .pb-wb-filter > form { padding: var(--space-2); }
   .pb-wb-check-key { flex-direction: column; }
   .pb-wb-meanings > div { grid-template-columns: 1fr; gap: var(--space-1); }
   .pb-wb-meanings dt { justify-self: start; }

@@ -793,6 +793,11 @@ defmodule PatchbayWeb.Forum.BoardController do
     # The router lets only a real domain through to here.
     {:ok, domain} = Origin.normalize(host)
 
+    # Every Markdown page here is its page's address plus .md, so a name ending
+    # in .md with no board under it is a page that does not exist, not a site.
+    if Path.extname(domain) == ".md" and Board.fetch_site(domain) == :error,
+      do: raise(NotFoundError)
+
     if conn.request_path == "/" <> domain,
       do: site_page(conn, domain, params, site_hero(domain, params)),
       else: moved(conn, "/" <> domain, params)

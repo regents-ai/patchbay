@@ -34,12 +34,12 @@ defmodule PatchbayWeb.WalletBenchController do
   end
 
   def method(conn, _params) do
-    {:ok, matrix} = Matrix.read()
+    {:ok, key} = Matrix.key()
 
     render(
       conn,
       :method,
-      [matrix: matrix] ++ PatchbayWeb.PublicDocuments.page("/wallet-bench/how-it-works")
+      [key: key] ++ PatchbayWeb.PublicDocuments.page("/wallet-bench/how-it-works")
     )
   end
 

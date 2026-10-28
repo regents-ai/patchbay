@@ -5,7 +5,7 @@ What each test checks, what each result means, and how Techtree runs every test.
 ## The checks
 
 A judge answers each check yes, no or unclear. A square's dots are its test's checks, read left to right. Payment tests have five checks, so their last four dots stay empty.
-<%= for grid <- @matrix.grids do %>
+<%= for grid <- @key.grids do %>
 ### <%= grid_title(grid.grid) %>
 <%= if grid.criteria == [] do %>
 Listed once this test has run.
@@ -14,7 +14,7 @@ Listed once this test has run.
 <% end %><% end %>
 ## What each result means
 
-<%= for outcome <- outcomes(), Map.has_key?(@matrix.notes, outcome) do %>- `<%= outcome %>`: <%= line(@matrix.notes[outcome]) %>
+<%= for outcome <- outcomes(), Map.has_key?(@key.notes, outcome) do %>- `<%= outcome %>`: <%= line(@key.notes[outcome]) %>
 <% end %>
 ## First survey
 

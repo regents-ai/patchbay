@@ -32,6 +32,11 @@ defmodule Patchbay.WalletBench.Result do
       filter(expr(harness_id == ^arg(:harness_id) and wallet_id == ^arg(:wallet_id)))
       prepare(build(sort: [grid: :asc, run: :asc]))
     end
+
+    read :without_steps do
+      description("Every run without its steps, for the board, which shows none.")
+      prepare(fn query, _context -> Ash.Query.deselect(query, [:turns]) end)
+    end
   end
 
   policies do
