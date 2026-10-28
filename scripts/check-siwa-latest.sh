@@ -9,19 +9,19 @@
 #   scripts/check-siwa-latest.sh <the Makefile's REGENTS_CLI_REV>
 #
 # regents-cli: the pin is the newest release's tag commit; the agent guide names
-# the release, that commit and the wheel's SHA256; every install line names the
-# release. The SIWA library: the
+# the release, that commit and the wheel's SHA256; every install line and
+# capabilities.json's cli.release name the release. The SIWA library: the
 # elixir-utils commit platform/mix.exs pins contains the newest commit that
 # changed siwa/siwa-elixir/apps/siwa on elixir-utils main. Needs `gh auth login`
 # and curl.
 set -euo pipefail
 
-# Where this site keeps them, copied from ash-template 2848406d. Patchbay's
-# /capabilities.json names no regents-cli release, so the template's third place
-# (capabilities.json's cli.release) and its check are not here; the install lines
-# are in the public files, the pages (platform/lib), the Patchbay skill and cli/.
+# Where this site keeps them. A site copying this script sets these three and keeps
+# every check below the same. Patchbay's install lines are in the public files,
+# the pages (platform/lib), the Patchbay skill and cli/.
 guide=platform/priv/public/agents.md
 install_lines=(platform/priv/public platform/lib skills cli)
+capabilities=platform/priv/capabilities.json
 
 pin=$1
 read -r latest wheel < <(curl -fsS https://pypi.org/pypi/regents-cli/json | python3 -I -c '
@@ -47,6 +47,9 @@ done
 stale=$(grep -rnoE 'regents-cli==[0-9]+(\.[0-9]+)*' "${install_lines[@]}" | grep -vE "==${latest//./\\.}\$" || true)
 [ -z "$stale" ] || fail "regents-cli $latest is the newest release: these install lines name another release:
 $stale"
+release=$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["cli"]["release"])' "$capabilities")
+[ "$release" = "$latest" ] ||
+  fail "regents-cli $latest is the newest release: $capabilities names $release as cli.release."
 
 if [ -z "$utils" ]; then
   fail "platform/mix.exs has no @elixir_utils_ref \"<40-character commit>\" line to check."

@@ -2,7 +2,9 @@ defmodule PatchbayWeb.DiscoveryController do
   @moduledoc """
   The files an agent or crawler reads to find its way around: the API
   description, the agent guide, robots.txt, the security contact, the API
-  catalog and `/capabilities.json`, which names the build this release runs.
+  catalog and `/capabilities.json`, which names the build this release runs
+  and the regents-cli release its guides install (`priv/capabilities.json`,
+  in ash-template's shape).
   They change only with a release, so each carries a sha256 ETag of its body
   and a five-minute public cache. No sign-in, no database.
   """
@@ -19,6 +21,12 @@ defmodule PatchbayWeb.DiscoveryController do
              "llms.txt",
              &String.replace(&1, "{{key_facts}}", Patchbay.About.key_facts())
            )
+
+  # The regents-cli release every install line names. make check-siwa-latest
+  # reads this file and fails when PyPI has a newer release.
+  @capabilities_path "priv/capabilities.json"
+  @external_resource @capabilities_path
+  @cli @capabilities_path |> File.read!() |> Jason.decode!() |> Map.fetch!("cli")
 
   # The release time: security.txt expires a year after it.
   @released_at DateTime.utc_now() |> DateTime.truncate(:second)
@@ -43,7 +51,8 @@ defmodule PatchbayWeb.DiscoveryController do
       Jason.encode!(%{
         site: "patchbay",
         base_url: PatchbayWeb.Endpoint.url(),
-        build: Application.fetch_env!(:patchbay, :build)
+        build: Application.fetch_env!(:patchbay, :build),
+        cli: @cli
       })
 
     conn |> cache(body) |> put_resp_content_type("application/json") |> send_resp(200, body)

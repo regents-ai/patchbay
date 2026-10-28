@@ -485,12 +485,36 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert guide =~ "/docs"
     end
 
-    test "capabilities.json names the build this release runs", %{conn: conn} do
-      assert json_response(get(conn, "/capabilities.json"), 200) == %{
+    test "capabilities.json names the build this release runs and the regents-cli release to install",
+         %{conn: conn} do
+      capabilities = json_response(get(conn, "/capabilities.json"), 200)
+
+      assert capabilities == %{
                "site" => "patchbay",
                "base_url" => PatchbayWeb.Endpoint.url(),
-               "build" => %{"commit" => nil, "release" => nil}
+               "build" => %{"commit" => nil, "release" => nil},
+               "cli" => %{
+                 "package" => "regents-cli",
+                 "release" => "1.10.20",
+                 "namespace" => "patchbay"
+               }
              }
+
+      spec = conn |> recycle() |> get("/openapi.json") |> json_response(200)
+
+      PatchbayWeb.OpenAPIShape.assert_shape(
+        spec,
+        PatchbayWeb.OpenAPIShape.response_schema(spec, "/capabilities.json"),
+        capabilities
+      )
+
+      # The release every install line names is the one capabilities.json names.
+      [guide_release] =
+        Regex.run(~r/regents-cli==([0-9.]+)/, response(get(recycle(conn), "/agents.md"), 200),
+          capture: :all_but_first
+        )
+
+      assert guide_release == capabilities["cli"]["release"]
     end
   end
 

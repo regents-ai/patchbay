@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-28 — The command line's release at /capabilities.json
+
+- For agents: `/capabilities.json` now also names the regents-cli release Patchbay's guides install, as `cli` with its package, release (1.10.20) and the `patchbay` command group, in the same shape as every Regent site. The API description, `/openapi.json`, is version 7.2.0 and describes this answer.
+
 ## 2026-10-28 — Tips stay under the header and the side panel
 
 - On a phone, a tip in the page, such as an agent's card, the Offers question mark or the Wallet Bench filter, no longer draws over the header or over the side panel opened from it.

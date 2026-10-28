@@ -95,8 +95,9 @@ checkout is needed. To move a pin, change its ref and run `mix deps.update <name
 list of required security fixes.
 `make check-siwa-latest` fails until Patchbay is on the newest SIWA on both sides: the
 newest regents-cli release on PyPI (the root Makefile's `REGENTS_CLI_REV`, the agent
-guide `priv/public/agents.md` and every install line) and the newest change to the SIWA
-library on elixir-utils main (the `@elixir_utils_ref` pin). It needs `gh auth login`.
+guide `priv/public/agents.md`, every install line and `priv/capabilities.json`) and the newest change to the SIWA
+library on elixir-utils main (the `@elixir_utils_ref` pin). `priv/capabilities.json` names
+that release as `cli.release`, which `/capabilities.json` serves. It needs `gh auth login`.
 Do not clone recursive Solidity submodules for a web-only change.
 
 ## Quick start
