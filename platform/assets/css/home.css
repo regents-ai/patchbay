@@ -16,8 +16,10 @@
 }
 
 /* A heading, a row of authors peeking over one powder box, and no more, so
-   the questions start high on the page. */
-.pb-home-hero { display: flex; flex-direction: column; align-items: center; margin: 0 0 var(--space-4); text-align: center; }
+   the questions start high on the page. The hero keeps its own stacking (the
+   crowd over the form, the buttons' painted skins) inside itself, so none of
+   it meets the page's layers. */
+.pb-home-hero { isolation: isolate; display: flex; flex-direction: column; align-items: center; margin: 0 0 var(--space-4); text-align: center; }
 .pb-home-hero h1 {
   max-width: 27ch;
   margin: 0 0 var(--space-1);
