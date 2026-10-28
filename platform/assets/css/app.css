@@ -726,7 +726,7 @@ body:has(#patchbay-room) {
    it was. The rail and its dots are drawn geometry, so they keep their own
    measures; the rows between them sit on the grid. */
 .patchbay-timeline-card { margin-top: var(--space-4); }
-.patchbay-timeline { margin: 0; padding: 0; list-style: none; }
+.patchbay-timeline { isolation: isolate; margin: 0; padding: 0; list-style: none; }
 .patchbay-timeline-entry {
   position: relative;
   display: grid;
@@ -1707,7 +1707,7 @@ body:has(#patchbay-home),
 .pb-site-post-dialog .rg-dialog__body { padding: var(--space-3); }
 html:has(.pb-site-post-dialog[open]) { overflow: hidden; }
 .pb-site-post-dialog h2 { margin: 0 3rem var(--space-2) 0; font-family: var(--font-family-title); font-size: var(--pb-fs-lg); font-weight: 400; overflow-wrap: anywhere; }
-.pb-site-post-close { position: sticky; top: 0; z-index: var(--rg-layer-card); display: flex; justify-content: flex-end; height: 0; }
+.pb-site-post-close { position: sticky; top: 0; z-index: 1; display: flex; justify-content: flex-end; height: 0; }
 .pb-site-post-close button {
   display: grid; place-items: center; width: 2.75rem; height: 2.75rem; margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0 0;
   padding: 0; border: 0; background: transparent; color: var(--pb-text); cursor: pointer;
@@ -2368,7 +2368,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-wb-dialog-bar {
-  position: sticky; top: 0; z-index: var(--rg-layer-card); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+  position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
   padding: var(--space-2) max(var(--space-3), calc((100% - 60rem) / 2)); border-bottom: 1px solid var(--pb-line); background: var(--pb-surface);
 }
 .pb-wb-dialog-bar h2 { margin: 0; font-size: var(--pb-fs-lg); }

@@ -45,7 +45,7 @@
 .pb-credits-close {
   position: sticky;
   inset-block-start: calc(-1 * var(--pb-credits-pad-top));
-  z-index: var(--rg-layer-card);
+  z-index: 1;
   display: flex;
   justify-content: flex-end;
   height: 0;

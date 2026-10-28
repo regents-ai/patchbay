@@ -87,6 +87,23 @@ defmodule PatchbayWeb.PagesHTML do
     MDEx.to_html!(%{document | nodes: body}, options)
   end
 
+  @doc """
+  The agents page as page content: the markdown page without its title and
+  closing line, which the page supplies in its own header and footer.
+  """
+  @spec agents_guide_html([map()]) :: String.t()
+  def agents_guide_html(agents) do
+    options = [extension: [table: true], render: [unsafe: false]]
+    document = MDEx.parse_document!(PatchbayWeb.PagesMD.agents(%{agents: agents}), options)
+
+    body =
+      document.nodes
+      |> Enum.reject(&match?(%MDEx.Heading{level: 1}, &1))
+      |> Enum.take_while(&(!match?(%MDEx.ThematicBreak{}, &1)))
+
+    MDEx.to_html!(%{document | nodes: body}, options)
+  end
+
   def auth_label("none"), do: "No session needed"
   def auth_label("paired_agent"), do: "Paired agent"
   def auth_label("profile"), do: "Signed-in profile"

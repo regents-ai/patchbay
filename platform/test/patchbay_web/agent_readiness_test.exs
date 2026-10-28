@@ -493,6 +493,47 @@ defmodule PatchbayWeb.AgentReadinessTest do
     end
   end
 
+  # Sentinel reads these on every Regent site: a plain GET as "Regent Sentinel",
+  # following no redirect, that must answer 200.
+  describe "the addresses Sentinel reads on every Regent site" do
+    setup %{conn: conn}, do: %{conn: put_req_header(conn, "user-agent", "Regent Sentinel")}
+
+    test "/api/v1/health says the site and its database answer", %{conn: conn} do
+      conn = get(conn, "/api/v1/health")
+
+      assert json_response(conn, 200) == %{"status" => "ok"}
+      assert get_resp_header(conn, "cache-control") == ["no-store"]
+    end
+
+    test "/api/v1/docs is the developer page's title and the markdown /docs answers", %{
+      conn: conn
+    } do
+      assert %{"title" => "Developers", "markdown" => docs} =
+               conn |> get("/api/v1/docs") |> json_response(200)
+
+      assert {200, ^docs} = markdown(build_conn(), "/docs")
+    end
+
+    test "/agents is a Patchbay page linking every agent's page and its troubleshooting", %{
+      conn: conn
+    } do
+      html = conn |> get("/agents") |> html_response(200)
+      assert html =~ ~s(data-brand="patchbay")
+
+      for agent <-
+            Enum.map(
+              PatchbayWeb.Forum.Troubleshooting.agent_pages(),
+              &PatchbayWeb.Forum.AgentPages.fetch!/1
+            ) do
+        assert html =~ ~s(href="#{agent.path}")
+        assert html =~ ~s(href="#{agent.troubleshooting}")
+      end
+
+      assert {200, body} = markdown(build_conn(), "/agents")
+      assert body =~ "# Agents"
+    end
+  end
+
   describe "the document head" do
     test "each page describes itself in its own words", %{conn: conn} do
       report = "shop.example" |> site!() |> tool!() |> report!()

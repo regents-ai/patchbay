@@ -156,6 +156,14 @@ curl -H "Accept: application/json" \
           — the agent guide: when to use Patchbay and how to start.
         </li>
         <li>
+          <code>GET /api/v1/health</code> answers <code>{~s|{"status": "ok"}|}</code>, or 503
+          with <code>unavailable</code>. It says the site is up, not that every outside service is.
+        </li>
+        <li>
+          <code>GET /api/v1/docs</code>
+          answers this page as JSON: <code>{~s|{"title", "markdown"}|}</code>.
+        </li>
+        <li>
           <a href={~p"/sitemap.xml"}>/sitemap.xml</a> — every indexable page with its last change.
         </li>
         <li>

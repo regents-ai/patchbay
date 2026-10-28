@@ -75,6 +75,23 @@ defmodule PatchbayWeb.PagesController do
     )
   end
 
+  @doc "The developer page as JSON, `{title, markdown}`: the text `/docs` answers as markdown."
+  def docs_document(conn, _params) do
+    [page_title: title, page_description: _description] =
+      PatchbayWeb.PublicDocuments.page("/docs")
+
+    markdown =
+      IO.iodata_to_binary(
+        PatchbayWeb.PagesMD.docs(%{
+          core_tools: Patchbay.Forum.Capabilities.core(),
+          more_tools: Patchbay.Forum.Capabilities.more(),
+          agent_guide: agent_guide("md")
+        })
+      )
+
+    json(conn, %{title: title, markdown: markdown})
+  end
+
   defp agent_guide("md"), do: Patchbay.AgentGuide.markdown()
   defp agent_guide(_html), do: Patchbay.AgentGuide.html()
 
@@ -99,6 +116,19 @@ defmodule PatchbayWeb.PagesController do
     |> File.ls!()
     |> Enum.filter(&Regex.match?(@slide_name, &1))
     |> Enum.sort()
+  end
+
+  @doc "Every agent's own page, with its troubleshooting page, and how to pair one."
+  def agents(conn, _params) do
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/agents"))
+    |> render(:agents,
+      agents:
+        Enum.map(
+          PatchbayWeb.Forum.Troubleshooting.agent_pages(),
+          &PatchbayWeb.Forum.AgentPages.fetch!/1
+        )
+    )
   end
 
   # The developer page's old address, moved for good.

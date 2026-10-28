@@ -8,6 +8,7 @@ const PAGES: [string, string, number][] = [
   ["The Offers page", "/offers", 200],
   ["The site directory", "/sites", 200],
   ["Claude's page", "/claude", 200],
+  ["The agents page", "/agents", 200],
   ["The changelog", "/changelog", 200],
   ["The incidents list", "/incidents", 200],
   ["The eMudhra incident's page", "/incidents/emudhra", 200],

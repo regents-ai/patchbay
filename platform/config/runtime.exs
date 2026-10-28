@@ -293,11 +293,13 @@ if config_env() == :prod do
       patchbay-regents.fly.dev
       """
 
-  # The commit the image was built from, and the Fly image this machine runs.
-  config :patchbay, :build, %{
-    commit: System.fetch_env!("SOURCE_COMMIT"),
-    release: System.fetch_env!("FLY_IMAGE_REF")
-  }
+  unless migrating? do
+    # The commit the image was built from, and the Fly image this machine runs.
+    config :patchbay, :build, %{
+      commit: System.fetch_env!("SOURCE_COMMIT"),
+      release: System.fetch_env!("FLY_IMAGE_REF")
+    }
+  end
 
   # Live inference and the deterministic demo fallback are read directly from
   # the environment by the generation path (OPENAI_API_KEY and

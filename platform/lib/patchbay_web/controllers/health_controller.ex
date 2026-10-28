@@ -1,8 +1,8 @@
 defmodule PatchbayWeb.HealthController do
   @moduledoc """
   Whether the site and its own database answer: `/healthz` in plain text for the
-  host's health check, as on every Regent site, and `/webmcp/health` in JSON for
-  agents and the command line.
+  host's health check and `/api/v1/health` in JSON for the command line, as on
+  every Regent site, and `/webmcp/health` in JSON for agents and the command line.
 
   `/webmcp/health` answers 200 only when the database responds and every
   migration has run. Everything else it reports is operational context: which
@@ -31,6 +31,24 @@ defmodule PatchbayWeb.HealthController do
     |> put_resp_header("cache-control", "no-store")
     |> put_resp_content_type("text/plain")
     |> send_resp(status, body)
+  end
+
+  def site_status(conn, _params) do
+    conn = put_resp_header(conn, "cache-control", "no-store")
+
+    if database_status() == "ok" do
+      json(conn, %{status: "ok"})
+    else
+      conn
+      |> put_status(:service_unavailable)
+      |> json(%{
+        error: %{
+          code: "unavailable",
+          message: "The site is up but its database is not answering.",
+          hint: "Try again in a minute."
+        }
+      })
+    end
   end
 
   def status(conn, _params) do

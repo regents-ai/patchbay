@@ -8,6 +8,7 @@ XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:52,71A7C0F
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:61,23F7C17
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:71,2D27C7C
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/about.html.heex:7,2F345B6
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/agents.html.heex:7,3D5C2A3
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/changelog.html.heex:15,19909C0
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/changelog.html.heex:17,4544679
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/docs.html.heex:335,5BE122D

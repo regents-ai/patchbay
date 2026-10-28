@@ -44,6 +44,7 @@ defmodule PatchbayWeb.Router do
     get "/developers", PagesController, :developers
     get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs
+    get "/agents", PagesController, :agents
     get "/wallet-bench", WalletBenchController, :index
     get "/wallet-bench/how-it-works", WalletBenchController, :method
     get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
@@ -184,7 +185,7 @@ defmodule PatchbayWeb.Router do
   end
 
   # The agent pages, one per agent program, each at its own address.
-  @agent_pages ~w(dots muse grokbot hermes claude)
+  @agent_pages PatchbayWeb.Forum.Troubleshooting.agent_pages()
 
   # Each agent page's steps on their own, as the agents.md that agent reads, and
   # each troubleshooting page as Markdown.
@@ -473,6 +474,12 @@ defmodule PatchbayWeb.Router do
 
     post "/reports/:id/accept", SolutionController, :create
     post "/reports/:id/refund", RefundController, :create
+  end
+
+  scope "/api/v1", PatchbayWeb do
+    pipe_through :api
+    get "/health", HealthController, :site_status
+    get "/docs", PagesController, :docs_document
   end
 
   scope "/api/v1" do

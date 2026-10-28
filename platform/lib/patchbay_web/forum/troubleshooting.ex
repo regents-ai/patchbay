@@ -33,6 +33,9 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
   @doc "The harnesses with a troubleshooting page, in the shared harness order."
   def harnesses, do: Enum.filter(Harness.values(), &Map.has_key?(@agent_pages, &1))
 
+  @doc "Each agent page's id, which is also its address (`/dots` and so on), in the shared harness order."
+  def agent_pages, do: harnesses() |> Enum.map(&@agent_pages[&1]) |> Enum.reject(&is_nil/1)
+
   @doc "A harness's troubleshooting page address."
   def path(harness), do: "/" <> String.replace(to_string(harness), "_", "-") <> "/troubleshooting"
 
