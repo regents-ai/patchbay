@@ -1268,6 +1268,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc """
   The connect box: a tab for each agent program, each with its line and a copy
   button. The tabs are radio buttons, so they work before any script loads.
+  Each word of a line is kept whole, so a narrow page breaks it only at its
+  spaces, never inside a flag or the address.
   """
   def connect_box(assigns) do
     assigns = assign(assigns, :options, connect_options())
@@ -1296,7 +1298,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
                 aria-label={"Copy the #{option.label} line"}
               >Copy</Regent.Primitives.copy_button>
             </div>
-            <code id={"pb-connect-#{option.id}"} class="pb-connect-line">{option.line}</code>
+            <code id={"pb-connect-#{option.id}"} class="pb-connect-line" phx-no-format><%= for {word, index} <- Enum.with_index(String.split(option.line, " ")) do %>{if index > 0, do: " "}<span>{word}</span><% end %></code>
           </div>
         <% end %>
       </fieldset>

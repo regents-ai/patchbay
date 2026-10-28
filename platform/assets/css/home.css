@@ -81,8 +81,10 @@
   border: 1px solid var(--pb-line);
   background: var(--pb-canvas, var(--color-bg));
   font: .8125rem/1.55 var(--font-family-mono);
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
 }
+/* A line breaks only at its spaces: no word, flag or address is split. */
+.pb-connect-line > span { white-space: nowrap; }
 .pb-connect-more { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
 @container pb-page (max-width: 599px) {
   .pb-connect-say .rg-copy { min-height: 44px; }
