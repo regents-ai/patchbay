@@ -29,14 +29,15 @@ defmodule PatchbayWeb.OffersLive.List do
   @page 12
 
   @impl true
-  def mount(_params, _session, socket),
+  def mount(_params, session, socket),
     do:
       {:ok,
        socket
        |> assign(PatchbayWeb.PublicDocuments.page("/offers"))
        |> assign(
          max_code_points: Patchbay.Offers.CreativeText.max_code_points(),
-         hours: div(Patchbay.Offers.Terms.duration_us(), 3_600_000_000)
+         hours: div(Patchbay.Offers.Terms.duration_us(), 3_600_000_000),
+         visitor: Map.fetch!(session, "visitor")
        )}
 
   # The address holds the search, so a reload or a reconnect shows the same page.
@@ -50,7 +51,11 @@ defmodule PatchbayWeb.OffersLive.List do
     {:noreply, push_patch(socket, to: ~p"/offers?#{query}")}
   end
 
-  def handle_event("more", _params, socket), do: {:noreply, read_sites(socket)}
+  def handle_event("more", _params, %{assigns: %{more?: true}} = socket),
+    do:
+      {:noreply, if(admitted?(socket, socket.assigns.text), do: read_sites(socket), else: socket)}
+
+  def handle_event("more", _params, socket), do: {:noreply, socket}
 
   # The same search keeps the sites already shown. Every new search reads the
   # whole page again as of one moment, so the times, prices and figures on it
@@ -61,20 +66,36 @@ defmodule PatchbayWeb.OffersLive.List do
     as_of = DateTime.utc_now()
     window = Returns.window(as_of)
 
-    socket
-    |> assign(
-      text: text,
-      as_of: as_of,
-      window: window,
-      counting_since: Returns.counting_since(),
-      global: Markets.global(window),
-      cursor: nil,
-      more?: false,
-      found: 0
-    )
-    |> stream(:sites, [], reset: true)
-    |> read_sites()
+    socket =
+      socket
+      |> assign(
+        text: text,
+        as_of: as_of,
+        window: window,
+        counting_since: Returns.counting_since(),
+        global: Markets.global(window),
+        cursor: nil,
+        more?: false,
+        found: 0,
+        limited?: false
+      )
+      |> stream(:sites, [], reset: true)
+
+    if admitted?(socket, text),
+      do: read_sites(socket),
+      else: assign(socket, limited?: true)
   end
+
+  # Each page of a search the connected page reads spends the visitor's search
+  # allowance (`Patchbay.Limits`), as in ash-template, so joining the page again
+  # with a new address is a search too. The first drawing is a request the read
+  # share already counts, and the list of every website is not a search.
+  defp admitted?(_socket, ""), do: true
+
+  defp admitted?(socket, _text),
+    do:
+      not connected?(socket) or
+        Patchbay.Limits.spend(:search_address, socket.assigns.visitor) == :ok
 
   defp read_sites(socket) do
     %{text: text, cursor: cursor, window: window} = socket.assigns

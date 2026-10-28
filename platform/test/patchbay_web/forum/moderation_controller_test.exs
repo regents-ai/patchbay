@@ -190,5 +190,33 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
       assert {:ok, %{visibility: :quarantined}} =
                Forum.moderate(reply, :quarantine, "Off topic.", moderator!())
     end
+
+    test "is refused with no one acting, and to an agent acting for a moderator" do
+      thread = thread!()
+      moderator = moderator!()
+
+      agent_for_moderator = %Patchbay.Agents.Actor{
+        id: Ash.UUID.generate(),
+        wallet_address: "0x" <> String.duplicate("c", 40),
+        privy_user_id: moderator.privy_user_id,
+        pairing_id: Ash.UUID.generate(),
+        beneficiary_profile_id: moderator.id
+      }
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Ash.update(thread, %{visibility: :quarantined}, action: :set_visibility)
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Ash.update(thread, %{visibility: :redacted},
+                 action: :set_visibility,
+                 actor: agent_for_moderator
+               )
+
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Forum.moderate(thread, :redact, "Not an agent's call.", agent_for_moderator)
+
+      assert Ash.get!(Report, thread.id).visibility == :published
+      assert Ash.read!(ModerationAction, authorize?: false) == []
+    end
   end
 end

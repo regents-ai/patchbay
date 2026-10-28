@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.SearchLiveTest do
   @moduledoc """
   The search window every page shares: what a reader types finds the
-  questions, sites and tools that match, spelled a little wrong too.
+  questions, sites and tools that match, spelled a little wrong too, up to 300
+  searches a minute from one address.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -26,7 +27,9 @@ defmodule PatchbayWeb.SearchLiveTest do
         authorize?: false
       )
 
-    {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SearchLive)
+    {:ok, view, _html} =
+      live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
+
     render_hook(view, "open", %{"recent" => []})
     render_async(view, 2_000)
 
@@ -64,7 +67,7 @@ defmodule PatchbayWeb.SearchLiveTest do
         authorize?: false
       )
 
-    {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SearchLive)
+    {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
     render_hook(view, "open", %{})
     render_async(view, 2_000)
 
@@ -84,7 +87,7 @@ defmodule PatchbayWeb.SearchLiveTest do
   test "one accented letter searches the questions and never says search is unavailable", %{
     conn: conn
   } do
-    {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SearchLive)
+    {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
     render_hook(view, "open", %{})
     render_async(view, 2_000)
 
@@ -94,4 +97,31 @@ defmodule PatchbayWeb.SearchLiveTest do
     refute html =~ "Search unavailable"
     refute html =~ "Search is unavailable"
   end
+
+  test "past the address's searches for the minute, the last results stay", %{conn: conn} do
+    site = Forum.register_site!("kettlebell.example")
+    visitor = visitor()
+
+    {:ok, view, _html} =
+      live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor})
+
+    view |> form("#shell-search-form", %{"q" => "kettlebell"}) |> render_change()
+    assert render_async(view, 2_000) =~ ~s(href="/#{site.origin}")
+
+    for _ <- 1..300, do: Patchbay.Limits.spend(:search_address, visitor)
+
+    view |> form("#shell-search-form", %{"q" => "nothing matches this"}) |> render_change()
+    html = render_async(view, 2_000)
+    assert html =~ ~s(href="/#{site.origin}")
+    refute html =~ "No results for"
+
+    # Another address searches as before.
+    {:ok, other, _html} =
+      live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
+
+    other |> form("#shell-search-form", %{"q" => "nothing matches this"}) |> render_change()
+    assert render_async(other, 2_000) =~ "No results for"
+  end
+
+  defp visitor, do: "visitor-" <> Ash.UUID.generate()
 end

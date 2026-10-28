@@ -36,6 +36,10 @@ defmodule PatchbayWeb.AnimationsLive do
 
   @items ~w(Billing Search Sign-in Calendar Checkout Settings Reports Invites Exports Help)
 
+  # The most notes the page holds, leaving ones included, so presses sent faster
+  # than notes leave cannot grow a connection without end, as in ash-template.
+  @held_notes 12
+
   # The lab's fixed copy: the presses (squish and nope are the standard ones),
   # the sliding panels, the list controls, the figure steps, the tabs and
   # their lines, and the cards.
@@ -106,6 +110,10 @@ defmodule PatchbayWeb.AnimationsLive do
   end
 
   def handle_event("reduced", _, socket), do: {:noreply, update(socket, :reduced?, &(!&1))}
+
+  def handle_event("toast", _, %{assigns: %{toasts: toasts}} = socket)
+      when length(toasts) >= @held_notes,
+      do: {:noreply, socket}
 
   def handle_event("toast", _, socket) do
     %{next_id: id, toasts: toasts} = socket.assigns

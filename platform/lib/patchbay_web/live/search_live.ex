@@ -29,8 +29,15 @@ defmodule PatchbayWeb.SearchLive do
   alias PatchbayWeb.Read
   alias Phoenix.LiveView.JS
 
-  def mount(_params, _session, socket),
-    do: {:ok, assign(socket, q: "", opened?: false, search_read: %Read{})}
+  def mount(_params, session, socket),
+    do:
+      {:ok,
+       assign(socket,
+         q: "",
+         opened?: false,
+         search_read: %Read{},
+         visitor: Map.fetch!(session, "visitor")
+       )}
 
   def handle_event("open", _params, socket) do
     if socket.assigns.opened?,
@@ -38,8 +45,15 @@ defmodule PatchbayWeb.SearchLive do
       else: {:noreply, socket |> assign(:opened?, true) |> search()}
   end
 
-  def handle_event("search", %{"q" => q}, socket),
-    do: {:noreply, socket |> assign(:q, normalize(q)) |> search()}
+  # A search spends the visitor's search allowance (`Patchbay.Limits`), as in
+  # ash-template; past it, the last results stay.
+  def handle_event("search", %{"q" => q}, socket) do
+    q = normalize(q)
+
+    if q == "" or Patchbay.Limits.spend(:search_address, socket.assigns.visitor) == :ok,
+      do: {:noreply, socket |> assign(:q, q) |> search()},
+      else: {:noreply, socket}
+  end
 
   def handle_async({Read, _, _} = name, result, socket),
     do: {:noreply, Read.settle(socket, name, result)}

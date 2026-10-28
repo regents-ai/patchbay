@@ -14,6 +14,12 @@ defmodule PatchbayWeb.MCP.Events do
   unless it is echoed. Subscribing again with the same event, filter and
   callback refreshes the subscription in place and keeps its place in the
   stream, so a refresh never skips an event still owed.
+
+  An account holds at most 20 live subscriptions, whichever of its
+  connections made them, and one callback host receives at most 100, from
+  every account together. A new subscription past either is refused before
+  its callback is sent anything, and so is bringing back one that has run
+  out; refreshing a live one is never refused.
   """
 
   alias Patchbay.Forum.EventSecret
@@ -22,7 +28,11 @@ defmodule PatchbayWeb.MCP.Events do
   alias Patchbay.Forum.Updates
   alias Patchbay.Forum.UpdatesCursor
   alias Patchbay.Repo
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.MCP.EventDelivery
+
+  import Ash.Expr, only: [expr: 1]
+  require Ash.Query
 
   # A subscription lives a day unless the subscriber asks for less, and is
   # refreshed before then to go on.
@@ -31,6 +41,11 @@ defmodule PatchbayWeb.MCP.Events do
   # How long a replaced signing secret still signs, while the subscriber
   # switches over.
   @rotation_ms 300_000
+
+  # The most live subscriptions one account holds, and one callback host
+  # receives from every account together.
+  @per_account 20
+  @per_callback_host 100
 
   @filter %{
     "type" => "object",
@@ -101,6 +116,7 @@ defmodule PatchbayWeb.MCP.Events do
          {:ok, cursor} <- cursor(params),
          {:ok, id} <- identity(identity_owner(actor), name, arguments, url),
          :ok <- secret(secret),
+         :ok <- room(existing(id), owner_id, url),
          :ok <- challenge(id, url, secret) do
       now = DateTime.utc_now()
 
@@ -115,10 +131,15 @@ defmodule PatchbayWeb.MCP.Events do
         verified_at: now
       }
 
-      {:ok, answer} = Ash.transact(EventSubscription, fn -> store(fields, cursor, now, actor) end)
-      {:ok, answer}
+      fields |> transact(cursor, now, actor) |> stored()
     end
   end
+
+  defp transact(fields, cursor, now, actor),
+    do: Ash.transact(EventSubscription, fn -> store(fields, cursor, now, actor) end)
+
+  defp stored({:ok, {:full, refusal}}), do: refusal
+  defp stored({:ok, answer}), do: {:ok, answer}
 
   @spec unsubscribe(map(), struct()) :: result()
   def unsubscribe(params, %module{} = actor)
@@ -149,49 +170,118 @@ defmodule PatchbayWeb.MCP.Events do
   defp expiry(_actor, now, ttl_ms), do: DateTime.add(now, min(ttl_ms, @lifetime_ms), :millisecond)
 
   defp remove_owned_subscription(id, actor) do
-    # This derived id names only this verified actor's beneficiary principal.
-    case Ash.get(EventSubscription, id, authorize?: false, not_found_error?: false) do
-      {:ok, nil} -> :ok
-      {:ok, subscription} -> Ash.destroy!(subscription, actor: actor)
+    case existing(id) do
+      nil -> :ok
+      subscription -> Ash.destroy!(subscription, actor: actor)
     end
   end
 
-  # One writer per subscription id at a time, so two subscribes racing for
-  # the same id refresh one row rather than colliding on its insert.
+  # One writer per account, then per callback host, at a time, always in that
+  # order: two subscribes racing for the same id refresh one row rather than
+  # colliding on its insert, and a burst of new ones cannot all count the same
+  # room and all get in.
   defp store(fields, cursor, now, actor) do
-    Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [fields.id])
+    for key <- ["owner:" <> fields.owner_id, "host:" <> callback_host(fields.url)],
+        do: Repo.query!("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [key])
 
-    case Ash.get(EventSubscription, fields.id, authorize?: false, not_found_error?: false) do
-      {:ok, nil} ->
-        {start, truncated} = start(fields, cursor)
+    existing = existing(fields.id)
 
-        subscription =
-          EventSubscription
-          |> Ash.Changeset.for_create(:subscribe, Map.put(fields, :delivered_seq, start),
-            actor: actor
-          )
-          |> Ash.create!()
-
-        answer(subscription, truncated)
-
-      {:ok, existing} ->
-        subscription =
-          existing
-          |> Ash.Changeset.for_update(
-            :refresh,
-            %{
-              expires_at: fields.expires_at,
-              verified_at: fields.verified_at,
-              secret_ciphertext: fields.secret_ciphertext,
-              rotation_ends_at: DateTime.add(now, @rotation_ms, :millisecond)
-            },
-            actor: actor
-          )
-          |> Ash.update!()
-
-        answer(subscription, false)
+    case room(existing, fields.owner_id, fields.url) do
+      :ok when is_nil(existing) -> subscribe_new(fields, cursor, actor)
+      :ok -> refresh(existing, fields, now, actor)
+      refusal -> {:full, refusal}
     end
   end
+
+  defp refresh(existing, fields, now, actor) do
+    subscription =
+      existing
+      |> Ash.Changeset.for_update(
+        :refresh,
+        %{
+          expires_at: fields.expires_at,
+          verified_at: fields.verified_at,
+          secret_ciphertext: fields.secret_ciphertext,
+          rotation_ends_at: DateTime.add(now, @rotation_ms, :millisecond)
+        },
+        actor: actor
+      )
+      |> Ash.update!()
+
+    answer(subscription, false)
+  end
+
+  defp subscribe_new(fields, cursor, actor) do
+    {start, truncated} = start(fields, cursor)
+
+    subscription =
+      EventSubscription
+      |> Ash.Changeset.for_create(:subscribe, Map.put(fields, :delivered_seq, start),
+        actor: actor
+      )
+      |> Ash.create!()
+
+    answer(subscription, truncated)
+  end
+
+  # The derived id names only this verified actor's beneficiary principal.
+  defp existing(id) do
+    {:ok, existing} = Ash.get(EventSubscription, id, authorize?: false, not_found_error?: false)
+    existing
+  end
+
+  # A live subscription refreshed always has room; a new one, or one that has
+  # run out and is brought back, needs it in both the account's share and the
+  # callback host's.
+  defp room(%EventSubscription{expires_at: expires_at}, owner_id, url) do
+    if DateTime.after?(expires_at, DateTime.utc_now()), do: :ok, else: full(owner_id, url) || :ok
+  end
+
+  defp room(nil, owner_id, url), do: full(owner_id, url) || :ok
+
+  defp full(owner_id, url) do
+    host = callback_host(url)
+
+    cond do
+      live_count(expr(owner_id == ^owner_id)) >= @per_account ->
+        refuse(
+          "too_many_subscriptions",
+          "This account already has #{@per_account} event subscriptions.",
+          "End one with events/unsubscribe, or let one run out, then subscribe again."
+        )
+
+      # The rows whose address holds the host's name, then the host each one
+      # names, read exactly.
+      live_count(expr(contains(string_downcase(url), ^host)), &(callback_host(&1.url) == host)) >=
+          @per_callback_host ->
+        refuse(
+          "callback_host_full",
+          "#{host} already receives #{@per_callback_host} event subscriptions from Patchbay.",
+          "Use a callback on another host, or end subscriptions to this one, then subscribe again."
+        )
+
+      true ->
+        nil
+    end
+  end
+
+  # The count covers every account's subscriptions, which no one actor may
+  # read, so it is the server's own read, and only the address is selected.
+  defp live_count(filter, keep \\ fn _subscription -> true end) do
+    EventSubscription
+    |> Ash.Query.do_filter(filter)
+    |> Ash.Query.filter(expires_at > now())
+    |> Ash.Query.select([:url])
+    |> Ash.read!(authorize?: false)
+    |> Enum.count(keep)
+  end
+
+  # The callback was validated as an https address with a host, so the host
+  # is there; names are compared without regard to case.
+  defp callback_host(url), do: String.downcase(URI.parse(url).host)
+
+  defp refuse(code, message, hint),
+    do: {:error, -32_000, message, ApiError.body(code, message, hint).error}
 
   # A new subscription starts where the subscriber's cursor says, or at the
   # stream's end when it brings none. A cursor that is not one of ours for

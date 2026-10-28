@@ -343,6 +343,13 @@ config :patchbay, :shots_url, "http://patchbay-shots.flycast"
 # Rate limits key on the direct peer. Production turns on Fly's client header.
 config :patchbay, :behind_fly_proxy, false
 
+# How often one person may save each kind of writing others read, and how often
+# one client address may search from a page, each window (Patchbay.Limits), as in
+# ash-template. Forum posts keep their own hourly share (PatchbayWeb.Forum.PostingBudget).
+config :patchbay, :limits,
+  credits_help_post: [limit: 10, window_seconds: 3600],
+  search_address: [limit: 300, window_seconds: 60]
+
 # The wallet paid by the Wallet Bench's paid-call test page
 # (`PatchbayWeb.Plugs.X402Test`): the Bench's own funder wallet, which
 # Techtree holds and Patchbay does not. It is not where Patchbay is paid.

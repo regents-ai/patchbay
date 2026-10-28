@@ -749,8 +749,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     |> merge_assigns(PatchbayWeb.PublicDocuments.page("/sites"))
     |> render(:sites,
       popular: popular,
-      directory_filters: Map.take(params, ~w(q category page)),
-      directory_visitor: ClientAddress.visitor_key(conn)
+      directory_filters: Map.take(params, ~w(q category page))
     )
   end
 
@@ -862,7 +861,7 @@ defmodule PatchbayWeb.Forum.BoardController do
               "tools_after" => params["tools_after"],
               "ask" => ask
             },
-            refresh_session: board.site && %{"origin" => board.site.origin, "visitor" => visitor},
+            refresh_session: board.site && %{"origin" => board.site.origin},
             standing: board.site && Board.site_standing(board.site),
             agent_offers: Patchbay.Offers.Serving.for_site(board.site),
             posts_cursor: params["posts_after"],

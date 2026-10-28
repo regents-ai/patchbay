@@ -26,6 +26,13 @@ defmodule Patchbay.CreditsHelp.Post do
       description("The actor asks the Regents team about their Credits.")
       accept([:title, :body])
       change(set_attribute(:author_profile_id, actor(:id)))
+
+      change(
+        {Patchbay.Limits.LimitWrites,
+         allowance: :credits_help_post,
+         field: :body,
+         message: "You've sent a lot of Credits help posts this hour. Try again later."}
+      )
     end
 
     read :newest do

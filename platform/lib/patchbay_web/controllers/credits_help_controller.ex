@@ -14,6 +14,7 @@ defmodule PatchbayWeb.CreditsHelpController do
 
   alias Patchbay.Checks.Moderator
   alias Patchbay.CreditsHelp
+  alias Patchbay.Limits.Spent
   alias PatchbayWeb.Forum.NotFoundError
 
   plug :keep_out_of_search
@@ -129,9 +130,15 @@ defmodule PatchbayWeb.CreditsHelpController do
   defp page(cursor) when is_binary(cursor), do: [limit: 20, after: cursor]
   defp page(_cursor), do: [limit: 20]
 
-  defp problem(:post, %Ash.Error.Invalid{}),
-    do:
-      "Give it a title of up to 140 characters and say what happened in up to 5,000, then post again."
+  defp problem(:post, %Ash.Error.Invalid{errors: errors}) do
+    case Enum.find(errors, &match?(%Spent{}, &1)) do
+      %Spent{message: message} ->
+        message
+
+      nil ->
+        "Give it a title of up to 140 characters and say what happened in up to 5,000, then post again."
+    end
+  end
 
   defp problem(:answer, %Ash.Error.Invalid{}),
     do: "Write an answer of up to 5,000 characters, then post it again."

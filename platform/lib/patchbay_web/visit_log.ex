@@ -333,11 +333,20 @@ defmodule PatchbayWeb.VisitLog do
   def caller(conn), do: conn.private[:visit_log_caller]
 
   @doc """
-  What every LiveView is drawn with (`on_mount/4`): the visit and whether its
-  browser sent Global Privacy Control, from the router's live sessions and every
-  view a page draws inside itself.
+  What every LiveView is drawn with (`on_mount/4`), from the router's live
+  sessions and every view a page draws inside itself: the visit, whether its
+  browser sent Global Privacy Control, and the visitor key of the request that
+  drew the page (`PatchbayWeb.ClientAddress.visitor_key/1`). A connected socket
+  cannot see the address the drawing request came from, so the key travels in
+  the signed session, and the page's searches and site checks count against
+  it, as in ash-template.
   """
-  def session(conn), do: %{"visit" => conn.assigns[:visit], "gpc" => conn.assigns[:gpc]}
+  def session(conn),
+    do: %{
+      "visit" => conn.assigns[:visit],
+      "gpc" => conn.assigns[:gpc],
+      "visitor" => PatchbayWeb.ClientAddress.visitor_key(conn)
+    }
 
   @doc """
   The search box's session (root.html.heex): the visit, and on the first page of

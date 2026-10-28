@@ -67,8 +67,11 @@
         />
       </li>
     </ol>
+    <Regent.Primitives.notice :if={@limited?} id="pb-offers-limited" tone="warning">
+      You're searching quickly. Wait a moment and search again.
+    </Regent.Primitives.notice>
     <Regent.Primitives.empty_state
-      :if={@found == 0 and @text != ""}
+      :if={@found == 0 and @text != "" and not @limited?}
       title={"No website matches “#{@text}”."}
     >
       <:action>
