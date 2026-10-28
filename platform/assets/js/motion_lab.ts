@@ -251,20 +251,32 @@ const LabSlides: Hook = {
       this.moving.delete(el)
       el.removeAttribute("style")
     }
+    // The shade, the drawer, the sheet and the note are popovers, lifted above
+    // the whole page, header and side panel included; the one shown last sits
+    // on top. The menu stays in the page, under the button it drops from.
+    const show = (el: HTMLElement) => {
+      el.hidden = false
+      if (el.hasAttribute("popover") && !el.matches(":popover-open")) el.showPopover()
+    }
+    const hide = (el: HTMLElement) => {
+      if (el.matches(":popover-open")) el.hidePopover()
+      el.hidden = true
+    }
 
     this.scope = scope.add(() => {
       const open = (name: string, opener: HTMLElement, animated: boolean) => {
         const el = panel(name)
         settle(el)
-        el.hidden = false
 
-        // A shade still fading out stays for the panel opening over it.
+        // A shade still fading out stays for the panel opening over it. It is
+        // shown before the panel, so the panel sits over it.
         if (PANELS[name].shade) {
           const arriving = shade().hidden
           settle(shade())
-          shade().hidden = false
+          show(shade())
           if (animated && arriving) move(shade(), play(shade(), {opacity: {from: 0}, duration: BASE, ease: EASE_OUT}))
         }
+        show(el)
         if (animated) move(el, version(name).open(el))
 
         const items = [...el.querySelectorAll("[data-item]")]
@@ -280,18 +292,18 @@ const LabSlides: Hook = {
       const close = (name: string, animated: boolean) => {
         const el = panel(name)
         const put = () => {
-          el.hidden = true
+          hide(el)
           settle(el)
         }
 
         const others = opened().some(other => other !== name && PANELS[other].shade)
         if (PANELS[name].shade && !others) {
-          const hide = () => {
-            shade().hidden = true
+          const away = () => {
+            hide(shade())
             settle(shade())
           }
-          if (animated) move(shade(), animate(shade(), {opacity: 0, duration: FAST, ease: "in(2)", onComplete: hide}))
-          else hide()
+          if (animated) move(shade(), animate(shade(), {opacity: 0, duration: FAST, ease: "in(2)", onComplete: away}))
+          else away()
         }
 
         if (animated) move(el, animate(el, {...version(name).away, duration: BASE, ease: "in(3)", onComplete: put}))

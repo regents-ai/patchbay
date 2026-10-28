@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-28 — Tips stay under the header and the side panel
+
+- On a phone, a tip in the page, such as an agent's card, the Offers question mark or the Wallet Bench filter, no longer draws over the header or over the side panel opened from it.
+- In the motion lab, the drawer, the sheet and the note still open in front of the whole page, header and side panel included. The sparks and rings a press makes now stay under the header.
+
 ## 2026-10-28 — regents-cli 1.10.20
 
 - Patchbay's guides, the home page's command-line line, the docs page, the agent sign-in steps and the Patchbay skill now install regents-cli 1.10.20 with `uv tool install --python 3.14 regents-cli==1.10.20`; it needs Python 3.14. /agents.md names its source commit and the published file's fingerprint.

@@ -1542,7 +1542,10 @@ a.patchbay-button { text-decoration: none; }
 .pb-setup-note { color: var(--pb-text-muted); }
 
 .pb-account { position: relative; }
-#pb-content { position: relative; }
+/* The page content is one place in the page's layers: a tip inside it never
+   draws over the header or the side panel. A window opened from the page is
+   lifted above everything by the browser itself (the motion lab's panels). */
+#pb-content { position: relative; isolation: isolate; }
 
 body:has(#patchbay-home),
 

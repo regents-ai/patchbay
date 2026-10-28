@@ -549,7 +549,7 @@ defmodule PatchbayWeb.AnimationsLive do
         </P.button>
       </div>
 
-      <div class="motion-lab__shade" data-shade hidden></div>
+      <div class="motion-lab__shade" data-shade popover="manual" hidden></div>
 
       <.dialog name="drawer" title="Project details">
         <p :for={line <- @drawer_lines} data-item>{line}</p>
@@ -561,7 +561,7 @@ defmodule PatchbayWeb.AnimationsLive do
         </ul>
       </.dialog>
 
-      <div id="lab-note" class="motion-lab__note" data-lab-panel="note" hidden>
+      <div id="lab-note" class="motion-lab__note" data-lab-panel="note" popover="manual" hidden>
         <p>Remember to thank the team for the launch.</p>
         <button type="button" class="motion-lab__close" data-close>Unpin</button>
       </div>
@@ -581,6 +581,7 @@ defmodule PatchbayWeb.AnimationsLive do
       data-lab-panel={@name}
       role="dialog"
       aria-labelledby={"lab-#{@name}-title"}
+      popover="manual"
       hidden
     >
       <header>
