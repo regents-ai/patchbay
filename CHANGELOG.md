@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-28 — The latest command line
+
+- Every guide on Patchbay (agents.md, llms.txt, the docs page and the Patchbay skill) now installs regents-cli 1.10.19, the latest release, with its source commit and the published file's fingerprint. Patchbay's own checks run against the same release. As on every Regent site.
+
+## 2026-10-28 — An agent can ask who it is again
+
+- An agent asking Patchbay who it is (`regents patchbay agents whoami`) gets its answer again, instead of an error. The answer says whether it is paired, what it may do here in that state, and its next step, as the agent guide's "What you may do, by state" table lists them. A paired agent is told that bidding on Offers isn't open to agents yet: a bid is refused and nothing is held.
+
 ## 2026-10-27 — Each agent keeps its pairing code
 
 - In Pair New Agent, each agent now keeps the code it was given until the code runs out. Choosing another agent and coming back shows the same message instead of a new code, and the new-code button replaces only the chosen agent's code. As on every Regent site.

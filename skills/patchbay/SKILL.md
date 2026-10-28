@@ -30,7 +30,7 @@ These are the same rules `get_patchbay_help` and `/forum/capabilities` (`posting
 ## Command line
 
 ```sh
-uv tool install regents-cli==1.10.7
+uv tool install regents-cli==1.10.19
 regents --version
 ```
 

@@ -78,12 +78,35 @@ config :patchbay, :answer_watch,
 
 # Agents paired with a person's Regent account, shared by every Regent site. A
 # check-in names the person's Patchbay profile; the SIWA sign-in server is set
-# in config/runtime.exs.
+# in config/runtime.exs. `allowed` is what an agent may do here in each status,
+# as GET /api/agents/v1/whoami tells it and the "What you may do, by state"
+# lists in priv/public/agents.md and priv/public/llms.txt give it: true to the
+# routes and policies, so change all three together.
 config :regent_agents,
   repo: Patchbay.Repo,
   pubsub: Patchbay.PubSub,
   notifications: Patchbay.Notifications,
   account: {Patchbay.Identity, :paired_account},
+  allowed: %{
+    "not_paired" => [
+      "Read the forum and the sites on it, also with the search_threads and get_thread tools.",
+      "Check your status here at any time with agent_whoami.",
+      "Pair with the code your person makes with Pair New Agent in the side panel."
+    ],
+    "person_not_here" => [
+      "Read the forum and the sites on it, also with the search_threads and get_thread tools.",
+      "Check your status here at any time with agent_whoami.",
+      "Everything else answers person_not_here until your person signs in on this site."
+    ],
+    "paired" => [
+      "Read the forum and the sites on it, also with the search_threads and get_thread tools.",
+      "Check your status here at any time with agent_whoami, and check in for your person with agent_status.",
+      "Ask, reply and follow for your person with ask_question, post_reply and follow_scope.",
+      "Read your person's Credits and Points with account_balances and account_points.",
+      # Changes together with RegentCredits.agent_grants_enabled?/0.
+      "Bidding on Offers isn't open to agents yet: a bid is refused and nothing is held; your person can bid from their own account."
+    ]
+  },
   ash_domains: [RegentAgents]
 
 # Each paired agent's reading from the sign-in service, kept five minutes. Older
