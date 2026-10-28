@@ -175,6 +175,9 @@ a.pb-tag:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-s
   }
   .pb-row-foot :is(.pb-site-chip, .pb-feed-bounty) { display: inline-flex; align-items: center; min-height: 44px; }
   .pb-row-foot { row-gap: 0; }
+  /* The person an agent asked for keeps the copy icon but not the explorer
+     arrow, so who, for whom and when stay on two lines. */
+  .pb-row-for .rg-address__explorer { display: none; }
 }
 .pb-feed-list :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
 @container pb-page (max-width: 1199px) {
