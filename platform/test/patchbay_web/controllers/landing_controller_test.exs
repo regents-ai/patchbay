@@ -1,6 +1,8 @@
 defmodule PatchbayWeb.Forum.HomeControllerTest do
   use PatchbayWeb.ConnCase, async: true
 
+  import Phoenix.LiveViewTest, only: [render_component: 2]
+
   alias PatchbayWeb.SignedAgent
 
   test "GET / is the report board", %{conn: conn} do
@@ -34,39 +36,210 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Open your repair room"
   end
 
-  test "GET / opens with the box to ask, then the question lists and their rows" do
+  test "GET / says what Patchbay is, then the posts with their count, then the board's figures" do
     visitor = visitor()
     ask(visitor, "busyshop.com", "Why does checkout ask for a postcode twice?")
     ask(visitor, "busyshop.com", "Which tool lists the opening hours?")
 
     html = build_conn() |> get(~p"/") |> html_response(200)
+    doc = LazyHTML.from_document(html)
 
     assert html =~ ~s(class="pb-workbench pb-feed-home")
-    assert html |> LazyHTML.from_document() |> LazyHTML.query("h1") |> Enum.count() == 1
+    assert doc |> LazyHTML.query("h1") |> LazyHTML.text() == "Patchbay"
 
-    [ask_at, tabs_at, list_at] =
+    # Search leads, so a phone shows it first; the intro and connect box follow.
+    [search_at, intro_at, connect_at, tabs_at, list_at, activity_at] =
       for marker <- [
-            ~s(id="pb-hero-title"),
+            ~s(id="pb-home-search"),
+            ~s(id="pb-home-title"),
+            ~s(id="pb-connect-title"),
             ~s(aria-label="Question lists"),
-            ~s(id="pb-discussions")
+            ~s(id="pb-discussions"),
+            ~s(id="pb-activity-title")
           ] do
         {at, _length} = :binary.match(html, marker)
         at
       end
 
-    assert ask_at < tabs_at and tabs_at < list_at
+    assert search_at < intro_at and intro_at < connect_at and connect_at < tabs_at and
+             tabs_at < list_at and list_at < activity_at
 
-    list = binary_part(html, list_at, byte_size(html) - list_at)
+    assert doc |> LazyHTML.query("#pb-feed-title") |> LazyHTML.text() |> String.split() ==
+             ["All", "posts", "(2)"]
+
+    list = binary_part(html, list_at, activity_at - list_at)
     assert list =~ "Which tool lists the opening hours?"
     assert list =~ ~s(href="/posts/)
     assert list =~ ~s(<a class="pb-site-chip" href="/busyshop.com">)
 
-    replies =
-      for row <- LazyHTML.query(LazyHTML.from_document(list), ".pb-row-replies") do
-        row |> LazyHTML.text() |> String.split() |> Enum.join(" ")
+    rows = LazyHTML.query(LazyHTML.from_fragment(list), ".pb-row")
+    assert Enum.count(rows) == 2
+
+    for row <- rows do
+      words = fn selector ->
+        row |> LazyHTML.query(selector) |> LazyHTML.text() |> String.split() |> Enum.join(" ")
       end
 
-    assert "0 replies" in replies
+      assert words.(".pb-row-likes") == "0 likes"
+      assert words.(".pb-row-replies") == "0 replies"
+      # The agent, the person it asked for, and when.
+      assert words.(".pb-row-by .pb-badge-kind") == "agent"
+      assert words.(".pb-row-for") =~ ~r/^for its person 0x[0-9a-f]{4}\.\.[0-9a-f]{4}/
+      # The agent's wallet and its person's are drawn as addresses, each with its copy icon.
+      assert [_] =
+               row
+               |> LazyHTML.query(".pb-row-by > .pb-badge .rg-address .rg-copy")
+               |> Enum.to_list()
+
+      assert [_] = row |> LazyHTML.query(".pb-row-for .rg-address .rg-copy") |> Enum.to_list()
+      assert [_when] = row |> LazyHTML.query(".pb-row-by time[datetime]") |> Enum.to_list()
+    end
+
+    # The list's count is said once, not the whole list again.
+    assert doc
+           |> LazyHTML.query(".pb-feed-status[role=status]")
+           |> LazyHTML.text()
+           |> String.trim() ==
+             "2 posts in this list"
+
+    assert doc |> LazyHTML.query("#pb-results[aria-live]") |> Enum.empty?()
+
+    # Signed out, the Following tab asks the reader to sign in.
+    following =
+      build_conn() |> get(~p"/?scope=following") |> html_response(200) |> LazyHTML.from_document()
+
+    assert following
+           |> LazyHTML.query(".pb-search-summary")
+           |> LazyHTML.text()
+           |> String.split()
+           |> Enum.join(" ") =~ "Sign in to follow sites, tools and threads"
+
+    assert ["/account"] =
+             following |> LazyHTML.query(".pb-search-summary a") |> LazyHTML.attribute("href")
+
+    # A tab narrows the list, and the heading and its count follow it.
+    solved = build_conn() |> get(~p"/?scope=solved") |> html_response(200)
+
+    assert solved
+           |> LazyHTML.from_document()
+           |> LazyHTML.query("#pb-feed-title")
+           |> LazyHTML.text()
+           |> String.split() ==
+             ["Solved", "(0)"]
+  end
+
+  test "the connect box gives each agent program the line Patchbay's own guides give it" do
+    doc = build_conn() |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
+    mcp = PatchbayWeb.Endpoint.url() <> "/mcp"
+
+    guides = %{
+      "claude-code" => build_conn() |> get("/claude/agents.md") |> response(200),
+      "codex" =>
+        build_conn()
+        |> put_req_header("accept", "text/markdown")
+        |> get("/codex/troubleshooting")
+        |> response(200),
+      "cli" => build_conn() |> get(~p"/docs") |> html_response(200)
+    }
+
+    assert [
+             {"claude-code", "Claude Code", "claude mcp add --transport http patchbay " <> ^mcp},
+             {"codex", "Codex", "codex mcp add patchbay --url " <> ^mcp},
+             {"cli", "Command line", "uv tool install regents-cli==" <> _version}
+           ] =
+             for(
+               option <- PatchbayWeb.Forum.BoardHTML.connect_options(),
+               do: {option.id, option.label, option.line}
+             )
+
+    for option <- PatchbayWeb.Forum.BoardHTML.connect_options() do
+      assert guides[option.id] =~ option.line
+
+      assert doc |> LazyHTML.query("#pb-connect-#{option.id}") |> LazyHTML.text() == option.line
+
+      assert [_copy] =
+               doc
+               |> LazyHTML.query(
+                 ~s(#pb-copy-#{option.id}[data-copy-target="pb-connect-#{option.id}"])
+               )
+               |> Enum.to_list()
+
+      assert [_tab] =
+               doc
+               |> LazyHTML.query(~s(label[for="pb-connect-pick-#{option.id}"]))
+               |> Enum.to_list()
+    end
+
+    # The first program's tab is open before any script runs.
+    assert ["claude-code"] =
+             doc |> LazyHTML.query(".pb-connect-pick[checked]") |> LazyHTML.attribute("value")
+
+    assert ["/docs"] = doc |> LazyHTML.query(".pb-connect-more") |> LazyHTML.attribute("href")
+  end
+
+  test "the board's figures and top agents, and what each says when there is nothing to show" do
+    figures = fn activity ->
+      render_component(&PatchbayWeb.Forum.BoardHTML.board_activity/1, activity: activity)
+      |> LazyHTML.from_fragment()
+    end
+
+    empty = figures.(%{agents: 0, posts: 0, replies: 0, solved: 0, top_agents: []})
+
+    assert empty |> LazyHTML.query(".pb-activity-figures dd") |> Enum.map(&LazyHTML.text/1) ==
+             ["0", "0", "0", "0"]
+
+    assert empty |> LazyHTML.query(".pb-top-agents") |> LazyHTML.text() =~
+             "No agents have posted yet."
+
+    agent =
+      Patchbay.Identity.upsert_from_wallet!(%{
+        wallet_address: "0x" <> String.duplicate("ab", 20)
+      })
+
+    busy =
+      figures.(%{
+        agents: 1_204,
+        posts: 12_345,
+        replies: 1,
+        solved: 7,
+        top_agents: [%{profile: agent, posts: 1, replies: 3}]
+      })
+
+    assert busy |> LazyHTML.query(".pb-activity-figures dd") |> Enum.map(&LazyHTML.text/1) ==
+             ["1,204", "12,345", "1", "7"]
+
+    assert [top] = busy |> LazyHTML.query(".pb-top-agents li") |> Enum.to_list()
+    assert top |> LazyHTML.text() |> String.split() |> Enum.join(" ") =~ "1 post · 3 replies"
+
+    assert Patchbay.Identity.AgentProfile.profile_url(agent) in (top
+                                                                 |> LazyHTML.query("a")
+                                                                 |> LazyHTML.attribute("href"))
+
+    assert [_copy] = top |> LazyHTML.query(".rg-address .rg-copy") |> Enum.to_list()
+
+    unread = figures.(:unavailable)
+    assert LazyHTML.text(unread) =~ "The figures could not be read just now."
+    assert unread |> LazyHTML.query(".pb-top-agents") |> Enum.empty?()
+  end
+
+  test "the Markdown home page carries the same sections as the page" do
+    visitor = visitor()
+    ask(visitor, "busyshop.com", "Which tool lists the opening hours?")
+
+    markdown =
+      build_conn() |> put_req_header("accept", "text/markdown") |> get(~p"/") |> response(200)
+
+    sections = Regex.scan(~r/^## (.+)$/m, markdown, capture: :all_but_first) |> List.flatten()
+    assert sections == ["Connect your agent", "All posts (1)", "Agent activity", "Top agents"]
+
+    for option <- PatchbayWeb.Forum.BoardHTML.connect_options() do
+      assert markdown =~ "```\n" <> option.line <> "\n```"
+    end
+
+    assert markdown =~ "More ways to connect: [/docs](/docs)"
+    assert markdown =~ "Which tool lists the opening hours?"
+    assert markdown =~ ~r/^- Posts: \d+$/m
+    assert markdown =~ ~r/^- Agents that posted: \d+$/m
   end
 
   test "a search on the front page names the matching sites and tools and offers the question" do
@@ -100,43 +273,11 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert none =~ "No matching questions"
   end
 
-  test "the front page leads with search, then solved questions; the post form waits behind a button" do
+  test "the post form waits behind a button until a link, a draft or an empty search opens it" do
     asker = visitor()
-    %{"thread_id" => solved} = ask(asker, "busyshop.com", "Checkout drops the postcode")
-    ask(asker, "busyshop.com", "Which tool lists the opening hours?")
+    ask(asker, "busyshop.com", "Checkout drops the postcode")
 
-    %{"reply_id" => reply_id} =
-      build_conn()
-      |> SignedAgent.sign(visitor())
-      |> post(
-        "/forum/threads/#{solved}/replies",
-        Jason.encode!(%{
-          "body_markdown" => "Send the postcode once.",
-          "client_request_id" => Ecto.UUID.generate()
-        })
-      )
-      |> json_response(201)
-
-    build_conn()
-    |> SignedAgent.sign(asker)
-    |> post("/forum/threads/#{solved}/solution", Jason.encode!(%{"reply_id" => reply_id}))
-    |> json_response(201)
-
-    html = build_conn() |> get(~p"/") |> html_response(200)
-    doc = LazyHTML.from_document(html)
-
-    assert [search_at, ask_at, solved_at, lists_at] =
-             for(
-               marker <- [
-                 ~s(id="pb-home-search"),
-                 ~s(id="pb-ask"),
-                 ~s(id="pb-solved"),
-                 ~s(aria-label="Question lists")
-               ],
-               do: html |> :binary.match(marker) |> elem(0)
-             )
-
-    assert search_at < ask_at and ask_at < solved_at and solved_at < lists_at
+    doc = build_conn() |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
 
     assert doc
            |> LazyHTML.query("#pb-home-q[placeholder='Paste your error or search']")
@@ -144,22 +285,17 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     assert doc |> LazyHTML.query("details#pb-ask[open]") |> Enum.empty?()
 
-    solved_list = doc |> LazyHTML.query("#pb-solved") |> LazyHTML.text()
-    assert solved_list =~ "Checkout drops the postcode"
-    refute solved_list =~ "opening hours"
-
     # A link that asks for the form, or names what to ask, opens it.
     for path <- [~p"/?ask=1", ~p"/?goal=Checkout"] do
       opened = build_conn() |> get(path) |> html_response(200) |> LazyHTML.from_document()
       assert opened |> LazyHTML.query("details#pb-ask[open]") |> Enum.count() == 1
     end
 
-    # A search that finds something keeps the form shut and the solved list away.
+    # A search that finds something keeps the form shut.
     found =
       build_conn() |> get(~p"/?q=postcode") |> html_response(200) |> LazyHTML.from_document()
 
     assert found |> LazyHTML.query("details#pb-ask[open]") |> Enum.empty?()
-    assert found |> LazyHTML.query("#pb-solved") |> Enum.empty?()
 
     # One that finds nothing opens the form with the search as the question.
     none =

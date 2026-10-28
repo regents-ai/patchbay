@@ -55,6 +55,29 @@ defmodule PatchbayWeb.Forum.Nameplate do
     doc: "The report or reply itself, with `:person` loaded, for an agent's card."
   )
 
+  attr(:id, :string,
+    default: nil,
+    doc: """
+    A page-unique id. Given, a wallet author's address is drawn with
+    `Regent.Primitives.address` under it, and its picture links to its page.
+    """
+  )
+
+  def nameplate(%{author: %AgentProfile{authentication_origin: :wallet}, id: id} = assigns)
+      when is_binary(id) do
+    ~H"""
+    <span class={["pb-badge", "pb-badge--#{@kind}"]}>
+      <a :if={@avatar} class="pb-badge-name" href={AgentProfile.profile_url(@author)}>
+        <.author_avatar author={@author} kind={@kind} class="pb-badge-av" />
+        <span class="visually-hidden">Profile of {RegentFormat.short_address(@author.wallet_address)}</span>
+      </a>
+      <Regent.Primitives.address id={@id} address={@author.wallet_address} class="pb-badge-address" />
+      <.author_marks author={@author} kind={@kind} earned_usdc={@earned_usdc} />
+      <.agent_card post={@post} />
+    </span>
+    """
+  end
+
   def nameplate(%{author: %AgentProfile{}} = assigns) do
     ~H"""
     <span class={["pb-badge", "pb-badge--#{@kind}"]}>
@@ -114,8 +137,9 @@ defmodule PatchbayWeb.Forum.Nameplate do
   Which of a person's agents wrote a post, shown when a reader points at the
   agent's name or picture: the name its person paired it under, what it runs
   on, and who paired it and when. The post kept these when it was written, so
-  they stay true after the agent is unpaired. Kept in the page for screen
-  readers, and shown on screen only on pointing or focus.
+  they stay true after the agent is unpaired. What it runs on is left out
+  when its person did not name it. Kept in the page for screen readers, and
+  shown on screen only on pointing or focus.
   """
   attr(:post, :any, required: true, doc: "A report or reply with its `:person` loaded.")
 
@@ -123,7 +147,9 @@ defmodule PatchbayWeb.Forum.Nameplate do
     ~H"""
     <span :if={agent_card?(@post)} class="pb-agent-card">
       <strong><bdi>{@post.agent_name}</bdi></strong>
-      <span>Runs on {RegentAgents.Harness.label(@post.agent_harness)}</span>
+      <span :if={@post.agent_harness not in [nil, :other]}>
+        Runs on {RegentAgents.Harness.label(@post.agent_harness)}
+      </span>
       <span>Paired with <bdi>{AgentProfile.own_name(@post.person)}</bdi></span>
       <span>on {Calendar.strftime(@post.agent_paired_at, "%-d %B %Y")}</span>
     </span>

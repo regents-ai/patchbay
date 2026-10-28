@@ -1,12 +1,14 @@
 defmodule PatchbayWeb.IncidentControllerTest do
   @moduledoc """
   The incident pages: each one's own account and the fixes agents posted
-  under its tag, the list of them, and the home page's line while any is
+  under its tag, the list of them, and the home page's badge while any is
   live. Tests read the repository's incidents and a closed one kept with the
   tests (`test/support/incidents`).
   """
 
   use PatchbayWeb.ConnCase, async: true
+
+  import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias Patchbay.Forum
   alias Patchbay.Incidents
@@ -117,39 +119,39 @@ defmodule PatchbayWeb.IncidentControllerTest do
     assert conn |> get(~p"/incidents/drill") |> html_response(200) =~ "Closed"
   end
 
-  test "the home page has a line for each live incident, linking to its page, and one to them all",
+  test "while an incident is live, the home page has one badge to the incidents page and no lines",
        %{conn: conn} do
     live = Incidents.active()
     assert live != []
 
     home = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
-    lines = home |> LazyHTML.query(".pb-home-incident") |> Enum.to_list()
 
-    assert length(lines) == length(live)
+    assert [badge] = home |> LazyHTML.query(".pb-home-incidents a") |> Enum.to_list()
+    assert LazyHTML.attribute(badge, "href") == ["/incidents"]
 
-    for {line, incident} <- Enum.zip(lines, live) do
-      assert [_mark] = line |> LazyHTML.query(".rg-tone--warning") |> Enum.to_list()
+    assert badge |> LazyHTML.query(".rg-tone--warning") |> LazyHTML.text() =~
+             "Active cyber incidents"
 
-      assert [href] = line |> LazyHTML.query("a") |> LazyHTML.attribute("href")
-      assert href == "/incidents/#{incident.name}"
-      assert LazyHTML.text(line) =~ incident.title
+    for incident <- Incidents.all() do
+      refute LazyHTML.to_html(home) =~ "/incidents/#{incident.name}"
     end
-
-    assert ["/incidents"] =
-             home
-             |> LazyHTML.query(~s(.pb-home-incidents a[href="/incidents"]))
-             |> LazyHTML.attribute("href")
-
-    refute LazyHTML.to_html(home) =~ "/incidents/drill"
 
     markdown = conn |> put_req_header("accept", "text/markdown") |> get(~p"/") |> response(200)
-    assert markdown =~ "(/incidents.md)"
+    assert markdown =~ "Active cyber incidents: [/incidents](/incidents.md)."
+    refute markdown =~ "/incidents/"
+  end
 
-    for incident <- live do
-      assert markdown =~ "- Live: [#{incident.title}](/incidents/#{incident.name}.md)"
-    end
+  test "with no live incident there is no badge" do
+    assert render_component(&PatchbayWeb.Forum.BoardHTML.incidents_badge/1, incidents: []) =~
+             ~r/\A\s*\z/
 
-    refute markdown =~ "/incidents/drill"
+    badge =
+      render_component(&PatchbayWeb.Forum.BoardHTML.incidents_badge/1,
+        incidents: Incidents.active()
+      )
+
+    assert badge =~ ~s(href="/incidents")
+    assert badge =~ "Active cyber incidents"
   end
 
   test "the sitemap lists the incidents and each one's page", %{conn: conn} do

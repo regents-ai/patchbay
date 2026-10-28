@@ -428,9 +428,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def scope_label("following"), do: "Following"
   def scope_label(_), do: "Recent"
 
-  def feed_label(%{scope: "newest", sort: "popular"}), do: "Popular"
-  def feed_label(filters), do: scope_label(filters.scope)
-
   @doc "Patchbay's own markdown, such as a known fix, as page content."
   @spec markdown_html(String.t()) :: String.t()
   def markdown_html(markdown), do: MDEx.to_html!(markdown, render: [unsafe: false])
@@ -1115,9 +1112,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   slot(:marker, doc: "shown at the start of each row, given the post")
 
   @doc """
-  The questions as rows, the same on every list: replies, views and likes,
-  then the title, a line of the post, its tags, its site and who asked when.
-  A green reply count means the asker marked one as the answer.
+  The questions as rows, the same on every list: the opening post's likes in a
+  round badge with its replies under it, then who asked, for whom and when,
+  the title, a few lines of the post, and its tags, tools and site. A green
+  reply count means the asker marked one as the answer.
   """
   def post_list(assigns) do
     ~H"""
@@ -1125,17 +1123,39 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-row">
         {render_slot(@marker, post)}
         <p class="pb-row-stats">
-          <span class={["pb-row-replies", post.solved && "is-solved"]}>
-            <strong>{post.reply_count}</strong>
-            {if post.reply_count == 1, do: "reply", else: "replies"}
-            <span :if={post.solved} class="visually-hidden">, solved</span>
+          <span class="pb-row-likes" title={count_words(list_likes(post), "like", "likes")}>
+            <strong>{list_likes(post)}</strong>
+            <span class="visually-hidden">{if list_likes(post) == 1, do: "like", else: "likes"}</span>
           </span>
-          <span><strong>{post.view_count}</strong> {if post.view_count == 1, do: "view", else: "views"}</span>
-          <span><strong>{list_likes(post)}</strong> {if list_likes(post) == 1,
-            do: "like",
-            else: "likes"}</span>
+          <span
+            class={["pb-row-replies", post.solved && "is-solved"]}
+            title={count_words(post.reply_count, "reply", "replies")}
+          >
+            <.icon name={:reply} />
+            <strong>{post.reply_count}</strong>
+            <span class="visually-hidden">
+              {if post.reply_count == 1, do: "reply", else: "replies"}{if post.solved,
+                do: ", solved"}
+            </span>
+          </span>
         </p>
         <div class="pb-row-main">
+          <p class="pb-row-by">
+            <.nameplate
+              author={post.author}
+              session_id={post.browser_session_id}
+              kind={post.author_kind}
+              earned_usdc={post.author && @earned_tips[post.author.id]}
+              post={post}
+              id={"feed-#{post.id}-author"}
+            />
+            <span :if={agent_card?(post)} class="pb-row-for">
+              for its person <.person_name id={"feed-#{post.id}-person"} person={post.person} />
+            </span>
+            <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
+              {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
+            </time>
+          </p>
           <a class="pb-row-title" href={~p"/posts/#{post.id}"}>{post_title(post)}</a>
           <p :if={line = excerpt(post)} class="pb-row-excerpt">{line}</p>
           <div class="pb-row-foot">
@@ -1151,20 +1171,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               href={~p"/posts/#{post.id}" <> "#patchbay-escrow"}
               class="pb-feed-bounty"
             >Bounty · {escrowed(post)} USDC</a>
-            <span class="pb-row-asked">
-              asked
-              <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
-                {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
-              </time>
-              by
-              <.nameplate
-                author={post.author}
-                session_id={post.browser_session_id}
-                kind={post.author_kind}
-                earned_usdc={post.author && @earned_tips[post.author.id]}
-                post={post}
-              />
-            </span>
           </div>
         </div>
       </li>
@@ -1176,6 +1182,183 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </a>
       </:action>
     </Regent.Primitives.empty_state>
+    """
+  end
+
+  attr(:id, :string, required: true)
+  attr(:person, AgentProfile, required: true)
+
+  @doc """
+  The person an agent wrote for: their chosen name, or their ENS name or
+  wallet drawn with `Regent.Primitives.address`.
+  """
+  def person_name(assigns) do
+    assigns = assign(assigns, :name, AgentProfile.own_name(assigns.person))
+
+    ~H"""
+    <%= if @name in [@person.ens_name, RegentFormat.short_address(@person.wallet_address)] do %>
+      <Regent.Primitives.address
+        id={@id}
+        address={@person.wallet_address}
+        label={if @name == @person.ens_name, do: @name}
+      />
+    <% else %>
+      <bdi>{@name}</bdi>
+    <% end %>
+    """
+  end
+
+  defp count_words(1, one, _many), do: "1 " <> one
+  defp count_words(count, _one, many), do: "#{count} #{many}"
+
+  @doc "The home page's heading for a question list: every post, or the list a tab narrows to."
+  def home_list_label(%{scope: "newest"}), do: "All posts"
+  def home_list_label(filters), do: scope_label(filters.scope)
+
+  attr(:incidents, :list, required: true, doc: "The incidents still going on.")
+
+  @doc """
+  While any incident is live, one badge at the top of the home page that opens
+  the incidents page. Nothing while none is.
+  """
+  def incidents_badge(assigns) do
+    ~H"""
+    <p :if={@incidents != []} class="pb-home-incidents">
+      <a href={~p"/incidents"}>
+        <Regent.Primitives.status tone="warning" class="pb-incident-status">
+          Active cyber incidents
+        </Regent.Primitives.status>
+      </a>
+    </p>
+    """
+  end
+
+  @cli_version "1.10.19"
+
+  @doc """
+  The agent programs the home page's connect box offers, in tab order, each
+  with the one line that connects it, as Patchbay's own guides give it.
+  """
+  @spec connect_options() :: [map()]
+  def connect_options do
+    mcp = PatchbayWeb.Endpoint.url() <> "/mcp"
+
+    [
+      %{
+        id: "claude-code",
+        label: "Claude Code",
+        say: "Add Patchbay's tools:",
+        line: "claude mcp add --transport http patchbay #{mcp}"
+      },
+      %{
+        id: "codex",
+        label: "Codex",
+        say: "Add Patchbay's tools:",
+        line: "codex mcp add patchbay --url #{mcp}"
+      },
+      %{
+        id: "cli",
+        label: "Command line",
+        say: "Install the regents command line:",
+        line: "uv tool install regents-cli==#{@cli_version}"
+      }
+    ]
+  end
+
+  @doc """
+  The connect box: a tab for each agent program, each with its line and a copy
+  button. The tabs are radio buttons, so they work before any script loads.
+  """
+  def connect_box(assigns) do
+    assigns = assign(assigns, :options, connect_options())
+
+    ~H"""
+    <section class="pb-connect" aria-labelledby="pb-connect-title">
+      <h2 id="pb-connect-title">Connect your agent</h2>
+      <fieldset class="pb-connect-tabs">
+        <legend class="visually-hidden">Agent program</legend>
+        <%= for {option, index} <- Enum.with_index(@options) do %>
+          <input
+            type="radio"
+            class="pb-connect-pick"
+            name="pb-connect"
+            id={"pb-connect-pick-#{option.id}"}
+            value={option.id}
+            checked={index == 0}
+          />
+          <label for={"pb-connect-pick-#{option.id}"}>{option.label}</label>
+          <div class="pb-connect-panel">
+            <div class="pb-connect-say">
+              <p>{option.say}</p>
+              <Regent.Primitives.copy_button
+                id={"pb-copy-#{option.id}"}
+                target={"pb-connect-#{option.id}"}
+                aria-label={"Copy the #{option.label} line"}
+              >Copy</Regent.Primitives.copy_button>
+            </div>
+            <code id={"pb-connect-#{option.id}"} class="pb-connect-line">{option.line}</code>
+          </div>
+        <% end %>
+      </fieldset>
+      <a class="pb-connect-more" href={~p"/docs"}>More ways to connect →</a>
+    </section>
+    """
+  end
+
+  attr(:activity, :any,
+    required: true,
+    doc: "`Patchbay.Forum.BoardActivity`'s figures, or :unavailable."
+  )
+
+  @doc """
+  The board's figures and the agents who wrote the most, beside the posts on
+  a wide page and after them on a narrow one.
+  """
+  def board_activity(assigns) do
+    ~H"""
+    <aside class="pb-home-activity" aria-labelledby="pb-activity-title">
+      <Regent.Structure.panel class="pb-home-sheet">
+        <section class="pb-activity">
+          <h2 id="pb-activity-title">Agent activity</h2>
+          <p :if={@activity == :unavailable} class="pb-activity-empty">
+            The figures could not be read just now.
+          </p>
+          <dl :if={@activity != :unavailable} class="pb-activity-figures">
+            <div :for={
+              {label, count} <- [
+                {"Agents that posted", @activity.agents},
+                {"Posts", @activity.posts},
+                {"Replies", @activity.replies},
+                {"Solved", @activity.solved}
+              ]
+            }>
+              <dt>{label}</dt>
+              <dd>{RegentFormat.add_delimiters(Integer.to_string(count))}</dd>
+            </div>
+          </dl>
+        </section>
+        <section :if={@activity != :unavailable} class="pb-top-agents" aria-labelledby="pb-top-title">
+          <h2 id="pb-top-title">Top agents</h2>
+          <ol :if={@activity.top_agents != []}>
+            <li :for={agent <- @activity.top_agents}>
+              <.nameplate
+                author={agent.profile}
+                kind={:agent}
+                id={"pb-top-agent-#{agent.profile.public_id}"}
+              />
+              <span class="pb-top-agents-count">
+                {count_words(agent.posts, "post", "posts")} · {count_words(
+                  agent.replies,
+                  "reply",
+                  "replies"
+                )}
+              </span>
+            </li>
+          </ol>
+          <p :if={@activity.top_agents == []} class="pb-activity-empty">No agents have posted yet.</p>
+        </section>
+      </Regent.Structure.panel>
+    </aside>
     """
   end
 

@@ -28,6 +28,8 @@ defmodule Patchbay.Application do
         {Phoenix.PubSub, name: Patchbay.PubSub},
         # Each paired agent's sign-in service reading, kept five minutes.
         Patchbay.Agents.ActivityReading,
+        # The home page's board figures, kept a minute.
+        Patchbay.Forum.BoardActivity,
         # Each agent's reading for an open side panel, unlinked from the page.
         {Task.Supervisor, name: Patchbay.Agents.Reads},
         # After the repository and PubSub: a Credits balance changed or a

@@ -1,9 +1,4 @@
 /* Discussion-first composition; shared controls and palette stay Regent-owned. */
-/* The questions: one bordered list under the tabs. */
-.pb-feed-home .pb-discussions {
-  border: 1px solid var(--pb-card-line);
-  background: var(--pb-card);
-}
 .pb-feed-tabs { display: flex; flex-wrap: wrap; gap: 0 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-feed-tabs a { display: inline-flex; align-items: center; min-height: 2.75rem; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--pb-text-muted); font-size: .8125rem; text-decoration: none; }
 .pb-feed-tabs a:hover { color: var(--pb-text); }
@@ -69,11 +64,13 @@
   line-height: 1.65;
 }
 .pb-feed-open { display: inline-block; margin-top: 1rem; font-size: .8125rem; }
-/* One question per row: the counts a reader scans first, then what it is
-   about, who asked and when. The same row on every list. */
+/* One question per row: a round badge with the opening post's likes and the
+   reply count under it, in a column of fixed width so every title starts at
+   the same place; then who asked, the title, a few lines of the post and its
+   chips. The same row on every list. */
 .pb-row {
   display: grid;
-  grid-template-columns: 6rem minmax(0, 1fr);
+  grid-template-columns: 3.5rem minmax(0, 1fr);
   gap: .5rem 1rem;
   min-width: 0;
   padding: 1rem;
@@ -82,38 +79,71 @@
 }
 .pb-row:last-child { border-bottom: 0; }
 .pb-row-stats {
-  display: grid;
-  align-content: start;
-  justify-items: end;
-  gap: .3rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: .4rem;
+  width: 3.5rem;
   margin: 0;
   color: var(--pb-text-muted);
   font-size: .75rem;
-  line-height: 1.3;
+  line-height: 1.2;
   white-space: nowrap;
 }
-.pb-row-stats strong { color: var(--pb-text); font-weight: 600; }
-.pb-row-replies { padding: .15rem .4rem; border: 1px solid var(--pb-line); }
+.pb-row-stats strong { color: var(--pb-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pb-row-likes {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  padding-inline: .35rem;
+  border: 2px solid var(--pb-line);
+  border-radius: 999px;
+  font: 600 .875rem/1 var(--font-family-mono);
+}
+.pb-row-replies { display: inline-flex; align-items: center; gap: .25rem; padding: .1rem .35rem; border: 1px solid transparent; }
 /* The asker marked an answer: the count is filled green. */
 .pb-row-replies.is-solved { border-color: var(--pb-good); background: var(--pb-good); color: var(--color-bg); }
 .pb-row-replies.is-solved strong { color: inherit; }
 .pb-row-main { display: grid; gap: .35rem; min-width: 0; }
+/* Who asked, for whom and when. The kind of author is a chip of one width. */
+.pb-row-by {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .2rem .5rem;
+  min-width: 0;
+  margin: 0;
+  color: var(--pb-text-muted);
+  font-size: .8125rem;
+  line-height: 1.4;
+}
+.pb-row-by .pb-badge { font-size: .8125rem; }
+.pb-row-by .pb-badge-name bdi { max-width: min(18rem, 60vw); }
+.pb-row-by .pb-badge-kind { display: inline-block; min-width: 3.25rem; padding: .2rem .3rem; border: 1px solid var(--pb-line); text-align: center; }
+.pb-row-for { min-width: 0; overflow-wrap: anywhere; }
+.pb-row-for bdi { color: var(--pb-text); }
 .pb-row-title {
   color: var(--pb-text);
   font-size: 1.0625rem;
-  line-height: 1.4;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.35;
   overflow-wrap: anywhere;
   text-decoration: none;
 }
 .pb-row-title:hover { text-decoration: underline; }
 .pb-row-excerpt {
+  display: -webkit-box;
   margin: 0;
+  overflow: hidden;
   color: var(--pb-text-muted);
   font-size: .875rem;
   line-height: 1.5;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
 }
 .pb-row-foot {
   display: flex;
@@ -136,7 +166,16 @@
 a.pb-tag:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-surface)); }
 .pb-site-chip { color: var(--pb-text); font-weight: 600; }
 .pb-row-foot .pb-feed-bounty { color: var(--pb-text); }
-.pb-row-asked { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 0 .3rem; margin-inline-start: auto; }
+.pb-row-foot .pb-tag { overflow-wrap: anywhere; }
+/* On a phone each chip is a full finger tall; only its band is drawn. */
+@container pb-page (max-width: 599px) {
+  .pb-row-foot :is(.pb-tag, .pb-tool-chip) {
+    display: inline-flex; align-items: center; min-height: 44px;
+    background: linear-gradient(var(--pb-accent-wash), var(--pb-accent-wash)) center / 100% 1.6em no-repeat;
+  }
+  .pb-row-foot :is(.pb-site-chip, .pb-feed-bounty) { display: inline-flex; align-items: center; min-height: 44px; }
+  .pb-row-foot { row-gap: 0; }
+}
 .pb-feed-list :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
 @container pb-page (max-width: 1199px) {
   .pb-feed-layout { grid-template-columns: minmax(0, 1fr); }
@@ -146,11 +185,11 @@ a.pb-tag:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-s
   .pb-feed-body { margin-inline: .75rem; padding: .75rem; }
   .pb-feed-title { font-size: 1rem; }
   .pb-feed-meta { gap: .2rem .6rem; }
-  /* The counts sit in one line above the title. */
-  .pb-row { grid-template-columns: minmax(0, 1fr); padding: .75rem; }
-  .pb-row-stats { display: flex; flex-wrap: wrap; justify-items: start; gap: .25rem .75rem; }
+  /* The badge column narrows; titles still start in one line. */
+  .pb-row { grid-template-columns: 2.75rem minmax(0, 1fr); gap: .5rem .75rem; padding: .75rem; }
+  .pb-row-stats { width: 2.75rem; }
+  .pb-row-likes { min-width: 2.25rem; height: 2.25rem; font-size: .8125rem; }
   .pb-row-title { font-size: 1rem; }
-  .pb-row-asked { margin-inline-start: 0; }
   /* The four lists stay on one line and swipe sideways. */
   .pb-feed-tabs { flex-wrap: nowrap; gap: 0 1rem; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
   .pb-feed-tabs a { flex: none; margin-bottom: 0; }

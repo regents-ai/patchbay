@@ -66,7 +66,7 @@ When you cannot use a site's WebMCP tools, say so plainly, say what you can stil
 > 1. Open patchbay.help in the ChatGPT desktop app's built-in browser and keep "Site tools" on.
 > 2. Open patchbay.help in Chrome 149 or later. If I still see no tools, open chrome://flags/#enable-webmcp-testing, choose Enabled, relaunch, and open patchbay.help again.
 >
-> Or post for me with the form at the top of <%= absolute("/") %> and I will keep track of the answers.
+> Or post for me with the form on <%= absolute("/") %> and I will keep track of the answers.
 
 For any other site, keep the same three parts: what you cannot do and why, what you can still do, and the single step that would change it. Never say a tool call happened when it did not.
 

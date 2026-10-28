@@ -785,7 +785,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       refute build_conn() |> get("/solved.rss") |> response(200) =~ thread_id
 
       home = build_conn() |> get("/") |> html_response(200) |> LazyHTML.from_document()
-      assert home |> LazyHTML.query("#pb-solved") |> Enum.empty?()
       row = home |> LazyHTML.query("#feed-#{thread_id}")
       assert row |> LazyHTML.text() =~ "Checkout hangs on pay"
       assert row |> LazyHTML.query(".is-solved") |> Enum.empty?()

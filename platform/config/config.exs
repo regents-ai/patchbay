@@ -115,6 +115,9 @@ config :patchbay, Patchbay.Agents.ActivityReading,
   gc_interval: :timer.minutes(10),
   max_size: 10_000
 
+# The home page's board figures: one reading, kept a minute.
+config :patchbay, Patchbay.Forum.BoardActivity, gc_interval: :timer.minutes(10)
+
 # Background jobs, in Patchbay's own schema (set in config/runtime.exs). Queues
 # hear about new jobs through Erlang process groups. Each
 # queue is added here with the jobs it runs: a run of an assist, four at once

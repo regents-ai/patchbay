@@ -1,10 +1,6 @@
 /* Patchbay composition; colors, typography and controls stay Regent-owned. */
 .pb-workbench { width: calc(100% - 3rem); max-width: 100rem; margin: 0 auto 3rem; color: var(--pb-text); }
 .pb-sidebar-label { font-family: var(--font-family-title); font-weight: 400; font-size: .6875rem; text-transform: uppercase; letter-spacing: .08em; margin: .75rem .4rem .45rem; color: var(--pb-text-muted); }
-.pb-discussions { min-width: 0; border-right: 1px solid var(--pb-line); }
-.pb-list-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: 1.1rem 1rem; border-bottom: 1px solid var(--pb-line); }
-.pb-list-head h2 { font-family: var(--font-family-title); font-size: .9375rem; font-weight: 400; margin: 0; }
-.pb-list-head p { font-size: .6875rem; color: var(--pb-text-muted); margin: .4rem 0 0; overflow-wrap: anywhere; }
 /* A tool's name looks like the tags beside it; only its link differs. */
 .pb-tool-chip { display: inline-block; padding: 0 .45rem; background: var(--pb-accent-wash); color: var(--pb-text); font: .75rem/1.6 var(--font-family-mono); text-decoration: none; }
 .pb-tool-chip + .pb-tool-chip { margin-left: .25rem; }
@@ -163,7 +159,6 @@
 .pb-workbench :focus-visible, .pb-thread-page :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
 @container pb-page (max-width: 899px) {
   .pb-workbench { width: calc(100% - 2rem); }
-  .pb-discussions { border-right: 0; }
   .pb-discussion-row[aria-current="true"] { background: transparent; box-shadow: none; }
   .pb-discussion-row { min-height: 5.25rem; }
   .pb-agent-intro { gap: 1.5rem; }

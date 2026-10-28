@@ -21,6 +21,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   require Logger
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.BoardActivity
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.Principal
@@ -173,7 +174,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           next_page: next_page,
           current_page: forum_params["after"],
           matches: matches,
-          solved: solved(filters, forum_params["after"]),
+          post_count: post_count(filters, following),
+          activity: section(BoardActivity.reading(), "Board figures"),
           found_nothing: found_nothing?,
           ask_open: found_nothing? or ask_open?(forum_params, hero),
           directory: FixCheck.directory?(conn),
@@ -183,12 +185,13 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # The newest solved questions lead the plain front page only: a search,
-  # a filtered list or a later page shows the list it asked for.
-  defp solved(%{q: "", site: "", tool: "", tag: "", scope: "newest", sort: "recent"}, nil),
-    do: section(Board.solved_fixes(5), "Solved questions")
+  # How many threads the list holds across its pages, beside its heading.
+  defp post_count(%{scope: "following"}, :unavailable), do: :unavailable
 
-  defp solved(_filters, _after), do: nil
+  defp post_count(filters, following) do
+    subscriptions = if following == :unavailable, do: [], else: following
+    section(Discussions.count(filters, subscriptions), "Question count")
+  end
 
   # The post form opens when a link asks for it, when it comes back with
   # what was typed, or when it was opened with a field already filled in.

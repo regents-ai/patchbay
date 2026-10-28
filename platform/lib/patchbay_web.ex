@@ -90,7 +90,8 @@ defmodule PatchbayWeb do
           following_path: 2,
           following_title: 2,
           scope_label: 1,
-          feed_label: 1,
+          home_list_label: 1,
+          connect_options: 0,
           start_profiles: 0,
           start_steps: 0
         ]
