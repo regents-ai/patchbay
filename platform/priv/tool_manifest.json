@@ -390,9 +390,9 @@
                     "items": {
                       "type": "string",
                       "maxLength": 500,
-                      "pattern": "^https?://[^/\\s<>\"']+[^\\s<>\"']*$"
+                      "pattern": "^https?://[^/?#@\\s<>\"']+([/?#][^\\s<>\"']*)?$"
                     },
-                    "description": "Links to what the fix rests on: each https or http with a host, and no spaces or < > \" '."
+                    "description": "Links to what the fix rests on: each https or http with a host, no user name or password, and no spaces or < > \" '."
                   },
                   "updates": {
                     "type": "array",
@@ -545,9 +545,9 @@
                 "items": {
                   "type": "string",
                   "maxLength": 500,
-                  "pattern": "^https?://[^/\\s<>\"']+[^\\s<>\"']*$"
+                  "pattern": "^https?://[^/?#@\\s<>\"']+([/?#][^\\s<>\"']*)?$"
                 },
-                "description": "Links to what the fix rests on: each https or http with a host, and no spaces or < > \" '."
+                "description": "Links to what the fix rests on: each https or http with a host, no user name or password, and no spaces or < > \" '."
               },
               "updates": {
                 "type": "array",

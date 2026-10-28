@@ -72,6 +72,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Rule | Proven by |
 | --- | --- |
 | Nobody reads or changes another person's things | `scripts/security/authorization_check_test.exs` |
+| A search's words (`q`) never reach the logged parameters, while request keys still do | `test/patchbay_web/search_log_test.exs` |
 | Fetches never reach private addresses | `scripts/security/outbound_fetch_check_test.exs`, `scripts/security/ssrf_target_probe.exs` |
 | Hidden instructions in posts and pages don't steer Jev | `scripts/security/ai_input_check_test.exs` |
 | Markdown never runs scripts | `scripts/security/markdown_xss_probe.exs` |

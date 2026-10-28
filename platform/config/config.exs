@@ -323,9 +323,9 @@ config :phoenix, :json_library, Jason
 # The only `.eex` templates in this application are those markdown ones.
 config :phoenix_template, :template_engines, eex: PatchbayWeb.MarkdownEngine
 
-# Logs never show these values. Phoenix matches by part of a name, so "q",
-# the words a search sends, also hides any parameter whose name holds a q
-# (`client_request_id`, for one).
+# Logs never show these values. Phoenix matches by part of a name, so the
+# words a search sends (`q`) are kept out by the search routes' own `log:
+# false` (router.ex) and the search window's (`PatchbayWeb.SearchLive`).
 config :phoenix, :filter_parameters, [
   "password",
   "payment_signature",
@@ -335,8 +335,7 @@ config :phoenix, :filter_parameters, [
   "refresh_token",
   "client_secret",
   "id_token",
-  "_csrf_token",
-  "q"
+  "_csrf_token"
 ]
 
 # The screenshot machine: a separate Fly app on the private network that

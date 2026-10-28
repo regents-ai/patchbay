@@ -1082,7 +1082,11 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
               "ftp://notes.example/fix",
               "javascript://notes.example/%0Aalert(1)",
               "https://[::1/fix",
-              "https://"
+              "https://",
+              "https://user:pw@notes.example/fix",
+              "https://token@notes.example/fix",
+              "https://notes.example@evil.example/fix",
+              "http://:pw@notes.example/"
             ],
             do: Map.merge(fix, %{"status" => "not_proven", "sources" => [source]})
 

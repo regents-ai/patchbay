@@ -105,8 +105,8 @@ defmodule Patchbay.Forum.Fix do
     # (`Patchbay.Forum.Validations.SourceLinks`).
     attribute :sources, {:array, :string} do
       description("""
-      Links to what the fix rests on: each https or http with a host, and no
-      spaces or < > " '.
+      Links to what the fix rests on: each https or http with a host, no
+      user name or password, and no spaces or < > " '.
       """)
 
       allow_nil?(false)

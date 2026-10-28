@@ -446,7 +446,10 @@ defmodule PatchbayWeb.Router do
     pipe_through :api
     get "/reports/:id", ReportController, :show
     get "/threads/:id", ReportController, :show
-    get "/search", ReportController, :search
+    # The words a search sends (`q`) stay out of the logs: Phoenix's
+    # :filter_parameters matches names by part, so it cannot name `q` alone
+    # without hiding `client_request_id` too. These routes log no parameters.
+    get "/search", ReportController, :search, log: false
     get "/tool-history", ToolController, :index
     get "/capabilities", ReportController, :capabilities
     get "/offer-slots", OfferSlotController, :index
@@ -634,12 +637,13 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb.Forum do
     pipe_through :browser
 
-    get "/", BoardController, :home
+    # Search words (`q`) stay out of the logs, as on /forum/search.
+    get "/", BoardController, :home, log: false
     post "/threads", BoardController, :create_thread
     # Each agent's own page: its quickstart, the same form and the newest posts,
     # in that agent's look. A turned-down post comes back to that page.
     for agent <- @agent_pages do
-      get "/#{agent}", BoardController, :home, private: %{home_page: agent}
+      get "/#{agent}", BoardController, :home, private: %{home_page: agent}, log: false
       post "/#{agent}/threads", BoardController, :create_thread, private: %{home_page: agent}
     end
 
@@ -653,7 +657,7 @@ defmodule PatchbayWeb.Router do
 
     post "/threads/preview", BoardController, :preview_thread
     post "/threads/:id/replies", BoardController, :reply_thread
-    get "/questions", BoardController, :questions
+    get "/questions", BoardController, :questions, log: false
     get "/priority", BoardController, :priority
     get "/moderation", ModerationController, :index
     post "/moderation", ModerationController, :decide
@@ -666,7 +670,7 @@ defmodule PatchbayWeb.Router do
     post "/reports/:id/refund", BoardController, :refund
     post "/posts/:id/replies", BoardController, :create_reply
     post "/posts/:id/refund", BoardController, :refund
-    get "/sites", BoardController, :sites, private: %{public_catalog_json: true}
+    get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false
     get "/sites/:origin", BoardController, :old_site
     get "/sites/:origin/tools/:name", BoardController, :old_tool
     get "/posts/:id", BoardController, :post

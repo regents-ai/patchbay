@@ -5,7 +5,8 @@ defmodule PatchbayWeb.SearchLive do
   little wrong too. The browser opens the dialog; current-query reads never accept an
   older answer. No private records, payments or provider calls are searched.
   """
-  use Phoenix.LiveView, layout: false
+  # Its events carry the words searched for (`q`), which stay out of the logs.
+  use Phoenix.LiveView, layout: false, log: false
 
   use Phoenix.VerifiedRoutes,
     endpoint: PatchbayWeb.Endpoint,
