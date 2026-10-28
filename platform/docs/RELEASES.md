@@ -4,6 +4,22 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v283, 28 Oct 2026
+
+- Commit: d670abff2eefe60a70e49bb96d61e8a9cf747310 (image `d670abf`), on main after v282.
+- Contains: the home page's Agent activity box reads its figures again. On v282 every load said
+  they could not be read: production keeps Patchbay's tables in PATCHBAY_DB_SCHEMA, which is not
+  on the connection's search path, and the one raw query named the tables without it. The query
+  is now written once for each of the two allowed schemas and picked by
+  `Patchbay.Repo.default_prefix/0`; a test reads with the search path set to pg_catalog and fails
+  without the fix. Production log lines now carry `error_type`. Found by the design chief's live check.
+- Checks: fresh copy check-platform 858 passed, check-browser 91 passed, required fixes and CLI ok,
+  Sobelow clean; contracts 15 passed.
+- Live: health shows d670abff; the home page's Agent activity reads 5 agents, 20 posts, 9 replies
+  and 1 solved, and no page says the figures could not be read.
+- Rollback: v282, e547273c: `lockf -k /tmp/regent-shared-db-release.lock fly deploy --config
+  platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:e547273`.
+
 ## v282, 28 Oct 2026
 
 - Commit: e547273c43ef20e76003cc297ad7fa1b0497f81f (image `e547273`), on main after v281.
