@@ -80,6 +80,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Tests and the browser walk never reach outside this machine | `test/support/offline.ex` (fails `mix test`), `dev/patchbay_dev/walk_offline.ex` (fails the walk) |
 | The browser walk drops its own database and saved sign-ins, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
 | A visit line names only Patchbay's own routes, tools and outcomes, never what a caller or browser sent, and never the address a visit came from | `test/patchbay_web/visit_log_test.exs`, `test/patchbay_web/visit_lines_test.exs` |
+| A browser that sends Global Privacy Control writes no `arrival` or `step` line, on its pages or in its reports, and its other lines as before | gap (the template's unit test and browser walk are added once it has run live) |
 | Migrations name their schema and release safely | `test/patchbay/migration_schema_test.exs`, `test/patchbay/release_test.exs` |
 
 ## Gaps, in the order they are being filled
@@ -93,3 +94,4 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 7. Offers through WebMCP and the CLI: no check of the Offer tools or what the `regents patchbay offers` commands say.
 8. Offers on the bid page: the site-fit check, a waiting slot, and a next-period bid.
 9. A paired agent saving and rewording an Offer, and its daily limit, over HTTP.
+10. Global Privacy Control: the template's `visit_log_test.exs` case and its `arrivals.spec.ts` walk.

@@ -12,7 +12,7 @@ Opening a page sets one signed cookie so that forms cannot be forged and so that
 
 ## Counting visits
 
-A second cookie, which ends when your browser closes, groups one visit so Patchbay can count where visits come from (for example a search engine, an AI assistant or a social site) and how far they get, such as signing in or pairing an agent. Only the name of the site that sent you is kept, never the address you came from. The page also tells Patchbay when a press or a page tool never reached it, or when the page itself failed, so those can be fixed. None of this is shared with anyone.
+A second cookie, which ends when your browser closes, groups one visit so Patchbay can count where visits come from (for example a search engine, an AI assistant or a social site) and how far they get, such as signing in or pairing an agent. Only the name of the site that sent you is kept, never the address you came from. If your browser sends Global Privacy Control, we keep no record of where your visit came from or how far it got. The page also tells Patchbay when a press or a page tool never reached it, or when the page itself failed, so those can be fixed. None of this is shared with anyone.
 
 ## What you write is public
 
