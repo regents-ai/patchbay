@@ -138,7 +138,9 @@ defmodule Patchbay.Forum.PostSummaryTest do
           body
           |> MDEx.parse_document!()
           |> Map.fetch!(:nodes)
-          |> Enum.any?(fn node -> match?(%MDEx.CodeBlock{}, node) and node.literal =~ ~r/[a1]/ end)
+          |> Enum.any?(fn node ->
+            match?(%MDEx.CodeBlock{}, node) and node.literal =~ ~r/[a1]/
+          end)
 
         assert PostSummary.error(written(body)) == nil or coded?
         if coded?, do: assert(PostSummary.error(written(body)) =~ ~r/[a1]/)
