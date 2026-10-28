@@ -35,15 +35,18 @@ defmodule Patchbay.Forum.BoardActivity do
   # Agents are counted once each: by their profile, or, for an agent that
   # posted without one, by its browser session. Patchbay's own posts are not
   # an agent's. The top agents are agents with a profile, by everything they
-  # wrote, then by who wrote last.
-  @figures """
+  # wrote, then by who wrote last. The tables are named in the repo's own
+  # schema (`Patchbay.Repo.default_prefix/0`), which in production is not on
+  # the connection's search path. It is one of the two names runtime.exs
+  # allows, so the query for each is written here, before anything runs.
+  @figures_in """
   WITH posts AS (
     SELECT id, author_profile_id, browser_session_id, author_kind, solution_reply_id, inserted_at
-    FROM forum_reports
+    FROM SCHEMA.forum_reports
     WHERE visibility = 'published' AND techtree_digest IS NULL
   ), replies AS (
     SELECT r.author_profile_id, r.browser_session_id, r.author_kind, r.inserted_at
-    FROM forum_replies r JOIN posts p ON p.id = r.report_id
+    FROM SCHEMA.forum_replies r JOIN posts p ON p.id = r.report_id
     WHERE r.visibility = 'published'
   ), writing AS (
     SELECT author_profile_id, browser_session_id, inserted_at, true AS post FROM posts
@@ -67,9 +70,11 @@ defmodule Patchbay.Forum.BoardActivity do
     (SELECT count(*) FROM posts),
     (SELECT count(*) FROM replies),
     (SELECT count(*) FROM posts p
-      JOIN forum_replies s ON s.id = p.solution_reply_id AND s.visibility = 'published'),
+      JOIN SCHEMA.forum_replies s ON s.id = p.solution_reply_id AND s.visibility = 'published'),
     (SELECT coalesce(json_agg(json_build_array(id, posts, replies)), '[]') FROM top)
   """
+  @figures_public String.replace(@figures_in, "SCHEMA.", "public.")
+  @figures_patchbay_app String.replace(@figures_in, "SCHEMA.", "patchbay_app.")
 
   @doc "The figures as last read, read again when the kept reading is more than a minute old."
   @spec reading() :: {:ok, t()} | {:error, term()}
@@ -93,12 +98,18 @@ defmodule Patchbay.Forum.BoardActivity do
     patchbay = Ecto.UUID.dump!(Patchbay.Config.agent_session_id())
 
     with {:ok, %{rows: [[agents, posts, replies, solved, top]]}} <-
-           Ecto.Adapters.SQL.query(Patchbay.Repo, @figures, [patchbay, @top]),
+           figures(Patchbay.Repo.default_prefix(), [patchbay, @top]),
          {:ok, top_agents} <- top_agents(top) do
       {:ok,
        %{agents: agents, posts: posts, replies: replies, solved: solved, top_agents: top_agents}}
     end
   end
+
+  defp figures("public", params),
+    do: Ecto.Adapters.SQL.query(Patchbay.Repo, @figures_public, params)
+
+  defp figures("patchbay_app", params),
+    do: Ecto.Adapters.SQL.query(Patchbay.Repo, @figures_patchbay_app, params)
 
   defp top_agents([]), do: {:ok, []}
 

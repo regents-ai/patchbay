@@ -4,6 +4,14 @@ defmodule Patchbay.Forum.BoardActivityTest do
   alias Patchbay.Forum.BoardActivity
   alias PatchbayWeb.SignedAgent
 
+  # Production keeps Patchbay's tables in their own schema, which is not on
+  # the connection's search path, so the figures name it on every table.
+  test "the figures read the repo's own schema, whatever the search path is" do
+    Patchbay.Repo.query!("SET search_path TO pg_catalog")
+
+    assert {:ok, %{posts: 0, replies: 0}} = BoardActivity.read()
+  end
+
   test "an empty board has no agents, posts, replies or solved questions" do
     assert {:ok, %{agents: 0, posts: 0, replies: 0, solved: 0, top_agents: []}} =
              BoardActivity.read()

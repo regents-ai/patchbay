@@ -266,10 +266,12 @@ case config_env() do
 end
 
 if config_env() == :prod do
-  # One JSON object a line, which Fly Sentinel reads, carrying only the visit
-  # fields (PatchbayWeb.VisitLog). Release commands write the same shape.
+  # One JSON object a line, which Fly Sentinel reads, carrying the visit fields
+  # (PatchbayWeb.VisitLog) and, on a warning about a failed read, the kind of
+  # error it was. Release commands write the same shape.
   config :logger, :default_handler,
-    formatter: LoggerJSON.Formatters.Basic.new(metadata: PatchbayWeb.VisitLog.fields())
+    formatter:
+      LoggerJSON.Formatters.Basic.new(metadata: PatchbayWeb.VisitLog.fields() ++ [:error_type])
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
   # A default value is used in config/dev.exs and config/test.exs but you
