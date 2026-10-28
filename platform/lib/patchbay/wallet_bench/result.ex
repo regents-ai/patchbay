@@ -35,7 +35,7 @@ defmodule Patchbay.WalletBench.Result do
 
     read :without_steps do
       description("Every run without its steps, for the board, which shows none.")
-      prepare(fn query, _context -> Ash.Query.deselect(query, [:turns]) end)
+      prepare(build(deselect: [:turns]))
     end
   end
 

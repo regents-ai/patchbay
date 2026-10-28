@@ -82,10 +82,11 @@ defmodule Patchbay.WalletBench.Matrix do
          {:ok, results} <- WalletBench.list_results_without_steps(),
          {:ok, summaries} <- WalletBench.list_sets(),
          {:ok, checks} <- WalletBench.list_checks(),
+         {:ok, criteria} <- WalletBench.list_criteria(),
          {:ok, extra_notes} <- WalletBench.list_extra_notes() do
       {:ok,
        roster
-       |> build(notes, fixed, results, summaries, checks, filters)
+       |> build(notes, fixed, results, summaries, checks, criteria, filters)
        |> Map.put(:extra_notes, ExtraNotes.by_release(extra_notes, roster))}
     end
   end
@@ -110,11 +111,22 @@ defmodule Patchbay.WalletBench.Matrix do
   @spec notes([struct()]) :: %{String.t() => String.t()}
   def notes(notes), do: Map.new(notes, &{&1.key, &1.text})
 
-  @doc "The page's grids from the views' rows."
-  @spec build([struct()], [struct()], [struct()], [struct()], [struct()], [struct()]) :: map()
-  @spec build([struct()], [struct()], [struct()], [struct()], [struct()], [struct()], map()) ::
+  @doc """
+  The page's grids from the views' rows. `criteria` is each grid's checks
+  once (`Check` `:criteria`), the same read the page explaining the bench
+  lists, so both name every check alike.
+  """
+  @spec build(
+          [struct()],
+          [struct()],
+          [struct()],
+          [struct()],
+          [struct()],
+          [struct()],
+          [struct()],
           map()
-  def build(roster, notes, fixed, results, summaries, checks, filters \\ %{}) do
+        ) :: map()
+  def build(roster, notes, fixed, results, summaries, checks, criteria, filters \\ %{}) do
     options = Sets.options(results)
     results = Sets.filter(results, filters)
     roster = Enum.sort_by(roster, & &1.id)
@@ -132,7 +144,7 @@ defmodule Patchbay.WalletBench.Matrix do
 
     grids =
       Enum.map(@grids, fn grid ->
-        criteria = criteria(checks, grid)
+        grid_criteria = criteria(criteria, grid)
 
         squares =
           for h <- harnesses, w <- wallets, into: %{} do
@@ -142,14 +154,14 @@ defmodule Patchbay.WalletBench.Matrix do
 
             square =
               sets
-              |> shown_square(fixed, criteria, found)
+              |> shown_square(fixed, grid_criteria, found)
               |> Map.put(:stopped, stopped(grid, sets, fixed, runs))
               |> Map.merge(presentation(grid, sets, fixed, runs, published))
 
             {{h.id, w.id}, square}
           end
 
-        %{grid: grid, criteria: criteria, squares: squares}
+        %{grid: grid, criteria: grid_criteria, squares: squares}
       end)
 
     visible_wallets =
@@ -232,12 +244,10 @@ defmodule Patchbay.WalletBench.Matrix do
     notes |> Map.fetch!(outcome) |> String.split([":", "."], parts: 2) |> hd()
   end
 
-  # A grid's checks, in Techtree's order.
-  defp criteria(checks, grid) do
-    checks
+  # A grid's checks, in Techtree's order, from `Check` `:criteria`.
+  defp criteria(criteria, grid) do
+    criteria
     |> Enum.filter(&(&1.grid == grid))
-    |> Enum.uniq_by(& &1.criterion_id)
-    |> Enum.sort_by(& &1.criterion_id)
     |> Enum.map(&%{id: &1.criterion_id, criterion: &1.criterion})
   end
 

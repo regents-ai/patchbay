@@ -55,8 +55,10 @@ defmodule PatchbayWeb.Endpoint do
     plug Phoenix.Ecto.CheckRepoStatus, otp_app: :patchbay
   end
 
-  # Everything else, error pages included, is served under the strict policy
-  # unless its pipeline sets another.
+  # Everything else is served under the strict policy unless its pipeline sets
+  # another. Error pages carry it too, except in development, where the
+  # debugger answers them (`debug_errors`, on by default there) and drops
+  # the policy from its page.
   plug :put_reading_policy
 
   plug Phoenix.LiveDashboard.RequestLogger,

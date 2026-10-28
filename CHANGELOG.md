@@ -5,7 +5,8 @@
 - On a phone, the Wallet Bench's open Filter panel now stays above the board instead of the board's top row covering it, and a version name too long for its box ends in "…" instead of being cut off under the arrow.
 - In dark mode, the two cards on How the bench works now take the page's dark colours instead of staying white.
 - How the bench works opens about four times faster: it reads only each test's checks and what each result means, instead of every run on the board. The board itself no longer reads each run's steps, which it never shows, so it opens faster too.
-- An address ending in .md that no page or site board is under, such as patchbay.help/help-me.md, now says there is nothing at this address instead of opening an empty site page. A site whose own name ends in .md keeps its page once it has a board, and every guide and file Patchbay serves answers as before.
+- Patchbay's own page names with .md on the end, such as patchbay.help/docs.md or patchbay.help/help-me.md, now say there is nothing at this address instead of opening an empty site page. Sites whose own name ends in .md, such as 999.md or point.md, keep their pages, and every guide and file Patchbay serves answers as before.
+- When Techtree rewords one of a test's checks, the board and How the bench works both name it in its newest wording.
 
 ## 2026-10-28 — Web server security update
 

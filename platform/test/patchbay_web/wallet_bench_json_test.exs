@@ -44,10 +44,12 @@ defmodule PatchbayWeb.WalletBenchJSONTest do
         }
       end
 
+    criteria = Enum.uniq_by(checks, & &1.criterion_id)
+
     matrix =
       harnesses
       |> Kernel.++(wallets)
-      |> Matrix.build([], [], runs, Enum.map(runs, &summary/1), checks)
+      |> Matrix.build([], [], runs, Enum.map(runs, &summary/1), checks, criteria)
       |> Map.put(:extra_notes, [])
 
     board =

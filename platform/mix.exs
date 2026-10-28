@@ -41,7 +41,8 @@ defmodule Patchbay.MixProject do
 
   # Specifies which paths to compile per environment.
   # `dev/` holds the payments lab, which only a machine of ours ever runs, and
-  # the shared account table a database on this machine gets.
+  # the shared account table and Wallet Bench tables a database on this machine
+  # gets.
   defp elixirc_paths(:test), do: ["lib", "dev", "test/support"]
   defp elixirc_paths(:dev), do: ["lib", "dev"]
   defp elixirc_paths(_), do: ["lib"]
@@ -210,7 +211,9 @@ defmodule Patchbay.MixProject do
         # and so are the forum's record of each post Jev read, the bench's
         # extra notes and an account's ENS name and picture. The weekly answer
         # check's answers are one more resource, in a domain of their own.
-        "xref graph --label compile-connected --fail-above 65",
+        # The board reads Patchbay's own page names from the router as it
+        # compiles, so a site address like docs.md is not mistaken for a site.
+        "xref graph --label compile-connected --fail-above 66",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",
