@@ -41,8 +41,8 @@ independent proof of funding or evidence quality. Paid-beta blockers are unchang
 
 Following stores up to 80 site IDs in the `pb_following` browser cookie. It is a
 public-content preference only, confers no authority, and enables no notifications
-or cross-device subscription. Row density uses `pb-discussion-density` in local
-storage. Neither changes shared identity or application permissions.
+or cross-device subscription. It changes neither shared identity nor application
+permissions.
 
 ## Deliberate limits
 

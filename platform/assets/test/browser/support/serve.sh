@@ -1,8 +1,9 @@
 #!/bin/sh
 # The browser walk's server, from its database to its end (playwright.config.ts).
-# It makes the run's own database, signs the walk's people in, builds the pages and
-# serves them. When the server fails to start or stops by itself, it drops the
-# database on its way out; when Playwright stops it, teardown.ts drops it.
+# It makes the run's own database, signs the walk's people in, gives it a small
+# Agent Wallet Bench (bench.exs), builds the pages and serves them. When the
+# server fails to start or stops by itself, it drops the database on its way out;
+# when Playwright stops it, teardown.ts drops it.
 set -eu
 cd "$(dirname "$0")/../../../.."
 
@@ -24,5 +25,6 @@ mkdir -p tmp
 rm -f "tmp/walk-outside${PATCHBAY_DEV_PARTITION}.txt"
 mix ecto.setup > /dev/null
 mix run assets/test/browser/support/sign_in.exs
+mix run assets/test/browser/support/bench.exs
 mix assets.build > /dev/null
 mix phx.server

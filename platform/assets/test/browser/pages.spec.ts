@@ -45,3 +45,33 @@ test("a site's forum, opened from the site directory, loads and fits the screen"
   expect(response?.status()).toBe(200)
   await problems.expect()
 })
+
+test("the Wallet Bench's open Filter panel sits above the board on a phone", async ({page}, info) => {
+  test.skip(info.project.name !== "phone", "checked at 390 wide")
+  const problems = watch(page)
+  expect((await page.goto("/wallet-bench"))?.status()).toBe(200)
+  await page.locator("#pb-wb-filter > summary").click()
+  const panel = page.locator("#pb-wb-filter > form")
+  await expect(panel).toBeVisible()
+
+  // The board's sticky headings sit under the panel; at its centre the panel is what shows.
+  const onTop = await panel.evaluate(form => {
+    const box = form.getBoundingClientRect()
+    const hit = document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+    return hit !== null && form.contains(hit)
+  })
+  expect(onTop, "the open Filter panel is topmost at its centre").toBe(true)
+  await problems.expect()
+})
+
+test("How the bench works keeps its cards in the sheet's colours in dark mode", async ({page}) => {
+  await page.emulateMedia({colorScheme: "dark"})
+  const problems = watch(page)
+  expect((await page.goto("/wallet-bench/how-it-works"))?.status()).toBe(200)
+  const background = (selector: string) =>
+    page.locator(selector).first().evaluate(element => getComputedStyle(element).backgroundColor)
+
+  expect(await page.locator(".pb-wb-card").count()).toBe(2)
+  expect(await background(".pb-wb-card")).toBe(await background(".pb-wb-sheet"))
+  await problems.expect()
+})

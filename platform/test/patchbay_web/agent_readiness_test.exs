@@ -657,7 +657,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       }
 
       dataset =
-        Patchbay.WalletBench.Matrix.build(roster, [], [], results, [summary], [])
+        Patchbay.WalletBench.Matrix.build(roster, [], [], results, [summary], [], [])
         |> PatchbayWeb.WalletBenchHTML.dataset()
 
       assert dataset["@type"] == "Dataset"
@@ -674,7 +674,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
              ]
 
       # An empty board has no newest run, so it names none.
-      empty = Patchbay.WalletBench.Matrix.build(roster, [], [], [], [], [])
+      empty = Patchbay.WalletBench.Matrix.build(roster, [], [], [], [], [], [])
       refute Map.has_key?(PatchbayWeb.WalletBenchHTML.dataset(empty), "dateModified")
     end
 

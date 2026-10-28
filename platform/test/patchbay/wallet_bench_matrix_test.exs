@@ -42,7 +42,8 @@ defmodule Patchbay.WalletBench.MatrixTest do
         }
       end
 
-    %{grids: grids} = Matrix.build(roster, [], [], [reached, never], [summary], checks)
+    %{grids: grids} =
+      Matrix.build(roster, [], [], [reached, never], [summary], checks, criteria(checks))
 
     assert Enum.map(grids, & &1.grid) == ~w(install wallet refund paid_call patchbay)
 
@@ -62,7 +63,7 @@ defmodule Patchbay.WalletBench.MatrixTest do
   end
 
   test "an empty board still has nine positions without inventing check names or outcomes" do
-    %{grids: grids} = Matrix.build(@roster, [], [], [], [], [])
+    %{grids: grids} = Matrix.build(@roster, [], [], [], [], [], [])
 
     for grid <- grids do
       square = grid.squares[{"H1", "W1"}]
@@ -199,7 +200,15 @@ defmodule Patchbay.WalletBench.MatrixTest do
     end
 
     matrix =
-      Matrix.build(@roster, [], [], [wallet, failure], summaries([wallet, failure]), checks)
+      Matrix.build(
+        @roster,
+        [],
+        [],
+        [wallet, failure],
+        summaries([wallet, failure]),
+        checks,
+        criteria(checks)
+      )
 
     assert Enum.map(matrix.options["protocol"], & &1.label) == ["independent-v2", "legacy"]
     assert Enum.map(matrix.options["model"], & &1.label) == ["model-a", "model-b"]
@@ -213,7 +222,7 @@ defmodule Patchbay.WalletBench.MatrixTest do
       |> Map.merge(%{set_id: "known-set", set_versions: %{"protocol" => "independent-v2"}})
 
     matrix =
-      Matrix.build(@roster, [], [], [unknown, known], summaries([unknown, known]), [], %{
+      Matrix.build(@roster, [], [], [unknown, known], summaries([unknown, known]), [], [], %{
         "protocol" => Sets.token(nil)
       })
 
@@ -273,9 +282,25 @@ defmodule Patchbay.WalletBench.MatrixTest do
 
   defp build_square(grid, runs, checks, set_summaries \\ nil, filters \\ %{}) do
     %{grids: grids} =
-      Matrix.build(@roster, [], [], runs, set_summaries || summaries(runs), checks, filters)
+      Matrix.build(
+        @roster,
+        [],
+        [],
+        runs,
+        set_summaries || summaries(runs),
+        checks,
+        criteria(checks),
+        filters
+      )
 
     Enum.find(grids, &(&1.grid == grid)).squares[{"H1", "W1"}]
+  end
+
+  # Each grid's checks once, as `Check` `:criteria` reads them.
+  defp criteria(checks) do
+    checks
+    |> Enum.uniq_by(&{&1.grid, &1.criterion_id})
+    |> Enum.sort_by(&{&1.grid, &1.criterion_id})
   end
 
   defp summaries(runs) do

@@ -321,15 +321,24 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
                "There is nothing at this address."
     end
 
-    test "a name ending in .md is a missing page unless a board is under it", %{conn: conn} do
-      for path <- ["/help-me.md", "/README.md", "/github.com.md"] do
+    test "a Patchbay page name ending in .md is a missing page", %{conn: conn} do
+      for path <- ["/help-me.md", "/docs.md", "/wallet-bench.md", "/blog.md", "/jev-answers.md"] do
         {404, _headers, body} = assert_error_sent(404, fn -> get(conn, path) end)
         assert body =~ "There is nothing at this address."
       end
+    end
 
+    test "a real .md domain keeps its site page, with or without a board", %{conn: conn} do
       site!("point.md")
       assert conn |> get(~p"/point.md") |> html_response(200) =~ "point.md"
 
+      for domain <- ["999.md", "simpals.md"] do
+        assert conn |> get("/" <> domain) |> html_response(200) =~
+                 "Be the first to post about #{domain}"
+      end
+    end
+
+    test "every Markdown file Patchbay serves still answers", %{conn: conn} do
       for path <- ["/agents.md", "/skill.md", "/incidents.md", "/llms.txt", "/robots.txt"] do
         assert conn |> get(path) |> response(200)
       end

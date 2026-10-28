@@ -785,6 +785,13 @@ defmodule PatchbayWeb.Forum.BoardController do
   ending is a missing page. `goal` and `error` in the address fill in the
   post form, and `page` names the exact page the visitor was on.
 
+  A name ending in `.md` is a missing page when the part before `.md` is one
+  of Patchbay's own page names (`/docs.md`, `/wallet-bench.md`) or one of them
+  with more after a hyphen (`/help-me.md`, from `/help`): every Markdown page
+  here is its page's address plus `.md`, so these name a page, not a site.
+  Any other `.md` domain (`999.md`, `point.md`) has its site page like every
+  other site.
+
   Opening the page asks for the site's check when one is due, within the
   visitor's share (`PatchbayWeb.Forum.SiteChecks`). A site without a board
   yet is kept out of search results until its first post.
@@ -793,14 +800,26 @@ defmodule PatchbayWeb.Forum.BoardController do
     # The router lets only a real domain through to here.
     {:ok, domain} = Origin.normalize(host)
 
-    # Every Markdown page here is its page's address plus .md, so a name ending
-    # in .md with no board under it is a page that does not exist, not a site.
-    if Path.extname(domain) == ".md" and Board.fetch_site(domain) == :error,
-      do: raise(NotFoundError)
+    if page_name_md?(domain), do: raise(NotFoundError)
 
     if conn.request_path == "/" <> domain,
       do: site_page(conn, domain, params, site_hero(domain, params)),
       else: moved(conn, "/" <> domain, params)
+  end
+
+  # The first word of every fixed address the router answers, read from the
+  # router once as this module compiles.
+  @page_names PatchbayWeb.Router
+              |> Phoenix.Router.routes()
+              |> Enum.map(&(&1.path |> String.split("/", trim: true) |> List.first()))
+              |> Enum.reject(&(is_nil(&1) or String.starts_with?(&1, [":", "*"])))
+              |> Enum.uniq()
+
+  defp page_name_md?(domain) do
+    stem = Path.rootname(domain, ".md")
+
+    stem != domain and
+      Enum.any?(@page_names, &(stem == &1 or String.starts_with?(stem, &1 <> "-")))
   end
 
   @doc "A site's page at its earlier address, `/sites/<domain or slug>`, moved for good."
