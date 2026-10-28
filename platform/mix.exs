@@ -128,7 +128,7 @@ defmodule Patchbay.MixProject do
       {:ex_secp256k1, "~> 0.8.0"},
       {:finch, "~> 0.19"},
       {:dns_cluster, "~> 0.3.0"},
-      {:bandit, "~> 1.14"},
+      {:bandit, "~> 1.14 and >= 1.14.1"},
       {:hammer, "~> 7.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
