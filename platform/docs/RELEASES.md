@@ -4,6 +4,25 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v280, 28 Oct 2026
+
+- Commit: a4e21e9ee3a2c12cf50b4e45960946d36b2ea2ae (image `a4e21e9`), on main after v279.
+- Contains: Bandit 1.14.0 to 1.14.1, which fixes EEF-CVE-2026-116078 (HIGH: memory exhaustion while
+  receiving uploads); `mix hex.audit` refused 1.14.0 from 28 Oct. Also on main since v279 and
+  shipped here: the agent skill carry-over (eef9fb56) and the v279 release log. No migration.
+- Also switched on: `PATCHBAY_INDEXNOW_KEY`, staged 28 Oct under Sean's 44 a; /indexnow-key.txt
+  now answers its 32-character key, and the hourly job sends the sitemap once for this release.
+- Why alone: a security fix to the live site; Sean, 28 Oct 14:40Z, "60. a".
+- Checks: on a git archive of a4e21e9e, check-platform 815 passed, check-required-fixes and
+  check-cli ok; check-browser 88 of 91 with the machine at load 94, and the 3 failures (Buy Credits
+  twice, agent name) passed rerun alone; contracts 15 passed in the checkout. Deployed with
+  scripts/deploy.sh under the release lock after reading the other apps' releases.
+- Live: health shows a4e21e9e with migrations current; /, /agents.md, /llms.txt, /docs,
+  /wallet-bench and a post answer 200; signed whoami answers paired.
+- Rollback: v279, 668d9220: `lockf -k /tmp/regent-shared-db-release.lock fly deploy --config
+  platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:668d922`.
+  No database change to undo.
+
 ## v279, 28 Oct 2026
 
 - Commit: 668d92209414328b501e23afbaee1faff50e65ff (image `668d922`), built on
