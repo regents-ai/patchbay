@@ -49,6 +49,8 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
         {:ok, raw, conn} = read_body(conn)
         payload = Jason.decode!(raw)
         refute Map.has_key?(payload["headers"], "cookie")
+        # Like the sign-in service, it checks only for the site's own verify key.
+        assert get_req_header(conn, "authorization") == ["Bearer test-site-verify-key"]
 
         case Siwa.verify_authenticated_request(payload,
                secret: secret,

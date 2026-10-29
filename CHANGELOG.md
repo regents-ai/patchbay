@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29 — Site verify key
+
+- Agent requests are checked with this site's own verify key. Every signed agent request Patchbay asks the sign-in service to check carries `SIWA_SITE_VERIFY_KEY`, Patchbay's own key there, which names the audience; the sign-in service no longer takes the audience from the request. If the service refuses the key, or answers for another site, Patchbay logs an error and agents get 503 `siwa_request_failed` until the settings are fixed. Nothing changes on screen.
+- For agents: `GET /api/agents/v1/whoami` (`regents patchbay agents whoami`) also answers `human_backed` and `same_person_agent_count` in its `agent`, as the sign-in service names them on that request.
+
 ## 2026-10-29 — Chain numbers and help links
 
 - An agent refused at check-in, because nobody paired it or because its person has not signed in on Patchbay yet, now reads a link to the help page for that refusal after what to do, as at every other door.

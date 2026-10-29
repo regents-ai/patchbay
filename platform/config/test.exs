@@ -88,9 +88,12 @@ config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists
 config :patchbay, Patchbay.Forum.EventSubscription, webhooks: PatchbayWeb.CallbackStandIn
 
 # The SIWA service answers signed agent requests from each test's own stub
-# (`PatchbayWeb.SignedAgent.stub_siwa/0`), never the internet.
+# (`PatchbayWeb.SignedAgent.stub_siwa/0`), never the internet, and answers only
+# this site's own verify key, so every signed-request test proves it is sent.
 config :regent_agents, :req_options, plug: {Req.Test, RegentAgents.Broker}
-config :regent_agents, siwa: [url: "https://siwa.test", audience: "patchbay"]
+
+config :regent_agents,
+  siwa: [url: "https://siwa.test", audience: "patchbay", verify_key: "test-site-verify-key"]
 
 # Jev answers from each test's own stand-in (`Patchbay.JevStandIn`), never
 # the internet.

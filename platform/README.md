@@ -579,6 +579,7 @@ site's own reader key:
 
 | Setting | Required | What it does |
 | --- | --- | --- |
+| `SIWA_SITE_VERIFY_KEY` | Yes in production | This site's own key at the sign-in service, the `patchbay` entry of its `SIWA_SITE_VERIFY_KEYS`. It goes with every signed agent request Patchbay asks the service to check, and it names the audience the service checks it for. If the service refuses it, Patchbay logs an error and agents get 503 `siwa_request_failed` until it is fixed. Development uses the sign-in service's development key (`config/dev.exs`), which only a sign-in service run on this machine accepts. |
 | `SIWA_ACTIVITY_READ_TOKEN` | No | The reader key for the sign-in service's agent activity, which gives the account menu each agent's last active site and time. `Patchbay.Agents.ActivityReading` keeps each agent's reading for five minutes. Unset, or without an https `PATCHBAY_SIWA_URL`, the menu lists the agents with no activity line. |
 
 A reading that worked is kept for five minutes and a failed one for one minute, so a

@@ -5,7 +5,8 @@ defmodule PatchbayWeb.SignedAgent do
 
   `stub_siwa/0` stands in for the SIWA service: it accepts a request carrying
   this module's fixture proof as signed by the wallet the proof names, for
-  audience patchbay, and refuses anything else as the service would.
+  audience patchbay, and refuses anything else as the service would, a request
+  without this site's own verify key included.
   `pair!/1` makes the person (a local Patchbay profile and the shared Regent
   account) and pairs an agent wallet with them. `sign/2` puts that agent's
   proof and a JSON content type on a request.
@@ -66,38 +67,45 @@ defmodule PatchbayWeb.SignedAgent do
 
   defp wallet, do: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
 
+  # Like the sign-in service, this answers only the site's own verify key
+  # (config/test.exs); any other key leaves every signed request at 503.
   defp verify(conn) do
     {:ok, body, conn} = read_body(conn)
 
-    case Jason.decode!(body)["headers"]["x-siwa-signature"] do
-      "fixture-proof:" <> wallet ->
-        Req.Test.json(conn, %{
-          code: "http_envelope_valid",
-          data: %{
-            verified: true,
-            walletAddress: wallet,
-            chainId: 8453,
-            agentRegistration: nil,
-            agentBook: nil,
-            principal: %{
-              kind: "wallet",
-              wallet_address: wallet,
-              chain_id: 8453,
-              audience: "patchbay"
-            }
-          }
-        })
+    if get_req_header(conn, "authorization") == ["Bearer test-site-verify-key"],
+      do: verdict(conn, Jason.decode!(body)["headers"]["x-siwa-signature"]),
+      else:
+        conn |> put_status(401) |> Req.Test.json(%{error: %{code: "site_verify_unauthorized"}})
+  end
 
-      _unsigned ->
-        conn
-        |> put_status(401)
-        |> Req.Test.json(%{
-          error: %{
-            code: "http_headers_missing",
-            message: "Signed agent proof required",
-            hint: "Sign with SIWA"
-          }
-        })
-    end
+  defp verdict(conn, "fixture-proof:" <> wallet) do
+    Req.Test.json(conn, %{
+      code: "http_envelope_valid",
+      data: %{
+        verified: true,
+        walletAddress: wallet,
+        chainId: 8453,
+        agentRegistration: nil,
+        agentBook: nil,
+        principal: %{
+          kind: "wallet",
+          wallet_address: wallet,
+          chain_id: 8453,
+          audience: "patchbay"
+        }
+      }
+    })
+  end
+
+  defp verdict(conn, _unsigned) do
+    conn
+    |> put_status(401)
+    |> Req.Test.json(%{
+      error: %{
+        code: "http_headers_missing",
+        message: "Signed agent proof required",
+        hint: "Sign with SIWA"
+      }
+    })
   end
 end

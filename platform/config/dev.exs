@@ -12,6 +12,11 @@ config :patchbay, Patchbay.Repo,
   show_sensitive_data_on_connection_error: true,
   pool_size: String.to_integer(System.get_env("POOL_SIZE", "10"))
 
+# The sign-in service's development key for this site, from its `config/dev.exs`,
+# so a sign-in service run on this machine (PATCHBAY_SIWA_URL) checks agents'
+# signed requests. https://siwa.regents.sh refuses it.
+config :regent_agents, :siwa, verify_key: "siwa-dev-patchbay-site-verify-key-000001"
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #

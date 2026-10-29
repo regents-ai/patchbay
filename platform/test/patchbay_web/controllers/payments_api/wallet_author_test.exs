@@ -95,7 +95,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
 
     for invalid <- [
           Map.delete(data, "principal"),
-          put_in(data, ["principal", "audience"], "regents"),
           put_in(data, ["principal", "kind"], "agent"),
           Map.put(data, "verified", false),
           put_in(data, ["principal", "chain_id"], 1),

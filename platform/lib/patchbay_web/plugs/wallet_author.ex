@@ -107,8 +107,10 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
   defp permitted_request?(_conn), do: false
 
+  # The sign-in service checks the request with this site's own verify key, the
+  # one RegentAgents.Broker sends too; the key names the audience.
   @impl Siwa.AgentAuthPlug.Client
-  def verify_http_request(payload, _opts) do
+  def verify_http_request(payload) do
     config = Application.get_env(:patchbay, :wallet_author, [])
 
     case broker_origin(config[:broker_url]) do
@@ -116,7 +118,8 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
         Siwa.AgentAuthPlug.BrokerClient.verify_http_request(payload,
           http: __MODULE__,
           base_url: base_url,
-          audience: "patchbay",
+          verify_key:
+            :regent_agents |> Application.fetch_env!(:siwa) |> Keyword.fetch!(:verify_key),
           connect_timeout_ms: 3_000,
           receive_timeout_ms: 5_000
         )
@@ -146,6 +149,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
 
   defp broker_origin(_value), do: :error
 
+  # The shared plug has already refused a verdict for another site's audience.
   @impl Siwa.AgentAuthPlug.Hooks
   def accept(
         conn,
@@ -153,12 +157,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
           "verified" => true,
           "walletAddress" => address,
           "chainId" => 8453,
-          "principal" => %{
-            "kind" => "wallet",
-            "wallet_address" => address,
-            "chain_id" => 8453,
-            "audience" => "patchbay"
-          },
+          "principal" => %{"kind" => "wallet", "wallet_address" => address, "chain_id" => 8453},
           "agentRegistration" => registration,
           "agentBook" => book
         },

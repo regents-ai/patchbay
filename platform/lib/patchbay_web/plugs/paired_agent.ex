@@ -55,18 +55,14 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
     }
   end
 
+  # The shared plug has already refused a verdict for another site's audience.
   @impl Siwa.AgentAuthPlug.Hooks
   def accept(
         conn,
         %{
           "verified" => true,
           "walletAddress" => address,
-          "principal" => %{
-            "kind" => "wallet",
-            "wallet_address" => address,
-            "chain_id" => 8453,
-            "audience" => "patchbay"
-          }
+          "principal" => %{"kind" => "wallet", "wallet_address" => address, "chain_id" => 8453}
         },
         _context
       )

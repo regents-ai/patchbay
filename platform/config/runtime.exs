@@ -294,6 +294,10 @@ if config_env() == :prod do
       """
 
   unless migrating? do
+    # This site's own key at the sign-in service, which names the audience it checks
+    # agents' signed requests for (RegentAgents.Broker, PatchbayWeb.Plugs.WalletAuthor).
+    config :regent_agents, :siwa, verify_key: System.fetch_env!("SIWA_SITE_VERIFY_KEY")
+
     # The commit the image was built from, and the Fly image this machine runs.
     config :patchbay, :build, %{
       commit: System.fetch_env!("SOURCE_COMMIT"),

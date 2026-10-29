@@ -27,6 +27,7 @@ defmodule PatchbayWeb.Plugs.HelloProof do
     WalletAuthor.validate_signed_request(conn, permitted?)
   end
 
+  # The shared plug has already refused a verdict for another site's audience.
   @impl Siwa.AgentAuthPlug.Hooks
   def accept(
         conn,
@@ -34,12 +35,7 @@ defmodule PatchbayWeb.Plugs.HelloProof do
           "verified" => true,
           "walletAddress" => address,
           "chainId" => 8453,
-          "principal" => %{
-            "kind" => "wallet",
-            "wallet_address" => address,
-            "chain_id" => 8453,
-            "audience" => "patchbay"
-          }
+          "principal" => %{"kind" => "wallet", "wallet_address" => address, "chain_id" => 8453}
         },
         _context
       )
