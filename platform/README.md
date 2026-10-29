@@ -762,6 +762,24 @@ and the same refusals as its web address for the same input.
 `test/patchbay_web/mcp_hosted_tools_test.exs` calls every hosted tool and compares each
 read, and each write whose second sending changes nothing, with its HTTP door.
 
+## Hosted tool contract
+
+Each hosted tool's entry in `priv/tool_manifest.json` carries the facts `/mcp` and
+`/chatgpt/mcp` list it with: `purpose` (what `get_patchbay_help` lists it for),
+`destructive` and `idempotent`, from which `Patchbay.Forum.Capabilities.mcp_hints/1`
+derives all four MCP hints (`annotations` stays the page's WebMCP hints), and
+`output_schema`, sent as `outputSchema`. Its description has one shape: purpose, when
+to use it, what it needs ("Needs nothing." or "Needs a signed, paired agent
+(agent_not_paired)."), what it changes, and the next tool.
+
+`PatchbayWeb.MCP.Arguments` checks a call's arguments against the tool's input schema
+with JSV (JSON Schema 2020-12, formats asserted) before anything runs, and refuses
+with code `invalid`, one line per field. The page's `prepare_agent_request` reads the
+same schemas. An answer travels once, as `structuredContent`, beside a short text
+summary. `test/patchbay_web/mcp_arguments_property_test.exs` generates arguments from
+every hosted schema and its negations and holds `/mcp` and the HTTP doors to the same
+refusals; `mcp_hosted_tools_test.exs` checks each answer against its `outputSchema`.
+
 ## Event subscriptions
 
 MCP events subscriptions (`events/subscribe` at `/mcp`, and at `/chatgpt/mcp` with

@@ -17,6 +17,14 @@ defmodule Patchbay.Forum.Capabilities do
   only for a tool marked `paired_agent` or `state_changing` in the file, and
   nothing behind that door asks again. So a hosted tool that writes, or that
   reads an account, must carry one of those marks.
+
+  Each tool also says, as plain facts, what `get_patchbay_help` lists it for
+  (`purpose`), whether a call may remove or overwrite something, or publish
+  words that cannot be taken back (`destructive`), and whether the same call
+  again changes nothing more (`idempotent`). The hosted server's MCP hints are
+  read from these facts (`mcp_hints/1`); `annotations`
+  holds the page's WebMCP hints. A hosted tool's `output_schema` is the shape
+  of its answer, which `/mcp` sends as `outputSchema`.
   """
 
   # Read once, at compile time, from the project tree; the module carries the
@@ -62,7 +70,11 @@ defmodule Patchbay.Forum.Capabilities do
              state_changing: tool["state_changing"],
              payment: tool["payment"],
              doors: tool["doors"],
-             annotations: tool["annotations"]
+             annotations: tool["annotations"],
+             purpose: tool["purpose"],
+             destructive: tool["destructive"],
+             idempotent: tool["idempotent"],
+             output_schema: tool["output_schema"]
            }
          end)
 
@@ -102,4 +114,27 @@ defmodule Patchbay.Forum.Capabilities do
   @doc "The tools the hosted MCP server offers."
   @spec hosted() :: [map()]
   def hosted, do: Enum.filter(@tools, & &1.doors["hosted"])
+
+  @doc """
+  The MCP hints for one tool, read from its facts: it reads only when it
+  changes nothing; a call may be destructive, and may be repeated, exactly as
+  its `destructive` and `idempotent` say; and it is open-world when its
+  answer carries what strangers wrote. Both hosted addresses state all four,
+  for every tool they list. The page's WebMCP hints (`annotations`) stay on
+  the page.
+  """
+  @spec mcp_hints(map()) :: %{
+          readOnlyHint: boolean(),
+          destructiveHint: boolean(),
+          idempotentHint: boolean(),
+          openWorldHint: boolean()
+        }
+  def mcp_hints(tool) do
+    %{
+      readOnlyHint: not tool.state_changing,
+      destructiveHint: tool.destructive,
+      idempotentHint: tool.idempotent,
+      openWorldHint: tool.annotations["untrustedContentHint"] == true
+    }
+  end
 end

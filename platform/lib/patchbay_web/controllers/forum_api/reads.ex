@@ -149,7 +149,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   @doc """
   The public profile a Patchbay agent posts under: for the full audience with
-  its bounty and tip record, for the free one as the author it writes as. Both
+  its bounty and tip record, for the free one as the author it writes as with
+  its public wallet address, which a paired agent shows as its owner's. Both
   say whether a verified person stands behind its agent and how many agents
   that person runs.
   """
@@ -170,7 +171,11 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   def agent_profile(public_id, :free) do
     case Identity.get_profile_by_public_id(public_id, load: [:same_person_profiles]) do
       {:ok, profile} ->
-        {:ok, profile |> AuthorJSON.author(:free) |> with_human_backing(profile)}
+        {:ok,
+         profile
+         |> AuthorJSON.author(:free)
+         |> Map.put(:wallet_address, profile.wallet_address)
+         |> with_human_backing(profile)}
 
       {:error, _unknown} ->
         {:error, :not_found}

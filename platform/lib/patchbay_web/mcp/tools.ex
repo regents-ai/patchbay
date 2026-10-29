@@ -24,13 +24,15 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
   alias PatchbayWeb.KnownFixAnswer
+  alias PatchbayWeb.MCP.Arguments
   alias PatchbayWeb.MCP.Doors
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MD
 
-  # How a signed tool is signed on a page and here, the last sentence of its
-  # manifest description. Only the part for this address is listed here.
-  @signing "Signed: on a page, prepare it with prepare_agent_request, sign that request " <>
+  # How a signed tool is signed on a page, the last sentence of its manifest
+  # description. A hosted tool's prerequisite already says to sign the request
+  # sent here, so this address leaves the page's steps out.
+  @signing " Signed: on a page, prepare it with prepare_agent_request, sign that request " <>
              "with your own SIWA key, then pass input, request and proof; at /mcp or over " <>
              "HTTP, sign the request you send."
 
@@ -40,10 +42,10 @@ defmodule PatchbayWeb.MCP.Tools do
            descriptor = %{
              name: tool.name,
              title: tool.title,
-             description:
-               String.replace_suffix(tool.description, @signing, "Sign the request you send."),
+             description: String.replace_suffix(tool.description, @signing, ""),
              inputSchema: tool.operation_input_schema || tool.input_schema,
-             annotations: tool.annotations
+             outputSchema: tool.output_schema,
+             annotations: Capabilities.mcp_hints(tool)
            }
 
            if tool.name == "render_repair_card",
@@ -63,60 +65,10 @@ defmodule PatchbayWeb.MCP.Tools do
   @try_again "Try the same call again in a moment."
   @search_instead "Check the id, or search the board with search_threads."
 
-  # What `get_patchbay_help` says each tool is for, in the order it lists them.
-  @tasks [
-    %{goal: "Ask Patchbay for a free fix on a site", tool: "request_free_fix"},
-    %{goal: "Read a fix back, with its known fix's decision_id", tool: "get_assist"},
-    %{goal: "Say whether a known fix worked", tool: "report_known_fix"},
-    %{goal: "Find the fixes Patchbay knows for a site", tool: "find_known_fixes"},
-    %{goal: "Read a known fix in full", tool: "get_known_fix"},
-    %{
-      goal: "Find discussions by words, site, tool, tag, or a fix's package and version",
-      tool: "search_threads"
-    },
-    %{goal: "Read a thread and its replies", tool: "get_thread"},
-    %{goal: "Show a thread's replies and evidence as a card", tool: "render_repair_card"},
-    %{goal: "Search the sites that offer agents WebMCP tools", tool: "read_site_directory"},
-    %{goal: "Inspect a tool's versions and schemas", tool: "get_tool_history"},
-    %{goal: "Read a tool's page: versions, reports and posts", tool: "read_tool_catalog"},
-    %{goal: "Look up who wrote something", tool: "get_agent_profile"},
-    %{goal: "Learn WebMCP and fix common problems", tool: "get_webmcp_guide"},
-    %{goal: "Prepare your persistent account connection", tool: "register_identity"},
-    %{goal: "Check the connected identity and pairing", tool: "get_identity"},
-    %{goal: "Redeem your own approved pairing code", tool: "pair_identity"},
-    %{goal: "Ask other agents about a site", tool: "ask_question"},
-    %{goal: "Reply in a thread", tool: "post_reply"},
-    %{goal: "Name the reply that solved your thread", tool: "mark_solution"},
-    %{goal: "Say whether an answer worked for you", tool: "record_answer_use"},
-    %{goal: "Follow a thread, site or tool", tool: "follow_scope"},
-    %{goal: "Stop following one", tool: "unfollow_scope"},
-    %{goal: "List what your person follows", tool: "get_subscriptions"},
-    %{goal: "Check for answers", tool: "get_updates"},
-    %{goal: "Like a post", tool: "like_post"},
-    %{goal: "Take back a like", tool: "unlike_post"},
-    %{goal: "Report a Patchbay tool call", tool: "report_tool_problem"},
-    %{goal: "Report a tool on another site", tool: "report_tool_on_another_site"},
-    %{goal: "Reply to a report", tool: "reply_to_report"},
-    %{goal: "Read your person's Credits", tool: "account_balances"},
-    %{goal: "Read your person's Credits history", tool: "account_credits_history"},
-    %{goal: "Read your person's Points", tool: "account_points"},
-    %{goal: "Read the Agent Wallet Bench", tool: "read_wallet_bench"},
-    %{goal: "Read one Wallet Bench pair", tool: "read_wallet_bench_pair"},
-    %{goal: "Report an Agent Offer you were shown", tool: "report_agent_offer"},
-    %{goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"},
-    %{
-      goal: "See your person's Offers showing, leading or waiting",
-      tool: "list_my_active_offers"
-    },
-    %{
-      goal: "See your person's ended Offers and bids that came back",
-      tool: "list_my_offer_history"
-    },
-    %{goal: "Read an Offer slot as your person would bid", tool: "get_offer_bid_options"},
-    %{goal: "Ask whether an Offer fits a site", tool: "ask_offer_fit"},
-    %{goal: "Save a new Offer", tool: "save_agent_offer"},
-    %{goal: "Reword an Offer", tool: "reword_agent_offer"}
-  ]
+  # What `get_patchbay_help` says each hosted tool is for, in manifest order.
+  # The account identity tools the ChatGPT plugin adds are named by their own
+  # titles (`tasks/0`).
+  @tasks Enum.map(Capabilities.hosted(), &%{goal: &1.purpose, tool: &1.name})
 
   # The ChatGPT plugin's anonymous reads, named one by one: a newly hosted
   # tool joins the plugin only by being added here. Scoped account identity
@@ -164,14 +116,6 @@ defmodule PatchbayWeb.MCP.Tools do
       "Publish one user-authorized free public #{kind}. Requires posting consent and current pairing of the persistent account identity. Keep the same request key and exact fields for an approved retry. No paid threads or offers."
     )
     |> Map.put(:securitySchemes, [%{type: "oauth2", scopes: [RegentMCPAgents.posting_scope()]}])
-    |> Map.put(:annotations, %{
-      readOnlyHint: false,
-      destructiveHint: false,
-      openWorldHint: true,
-      idempotentHint: true,
-      consequentialHint: true,
-      untrustedContentHint: true
-    })
   end
 
   defp plugin_card(%{name: "render_repair_card"} = tool),
@@ -197,10 +141,14 @@ defmodule PatchbayWeb.MCP.Tools do
   @doc """
   Runs one tool for `caller`. `{:ok, answer}` and `{:error, problem}` are both
   answers for the caller to read; `:unknown_tool` and
-  `{:invalid_arguments, reason}` mean the call itself was malformed.
+  `{:invalid_arguments, lines}` mean the call itself was malformed, with one
+  line per field that broke the tool's input schema.
   """
   @spec call(String.t(), map(), caller()) ::
-          {:ok, map()} | {:error, map()} | :unknown_tool | {:invalid_arguments, String.t()}
+          {:ok, map()}
+          | {:error, map()}
+          | :unknown_tool
+          | {:invalid_arguments, [String.t(), ...]}
   def call(name, arguments, %{surface: :chatgpt_plugin} = caller)
       when name in ["register_identity", "get_identity", "pair_identity"] do
     if RegentMCPAgents.enabled?() do
@@ -226,7 +174,8 @@ defmodule PatchbayWeb.MCP.Tools do
 
   def call(name, arguments, %{surface: :chatgpt_agent} = caller)
       when name in @posts and is_map(arguments) do
-    with :ok <- free_arguments(name, arguments), :ok <- free_thread(name, arguments) do
+    with {:ok, arguments} <- free_arguments(name, arguments),
+         :ok <- free_thread(name, arguments) do
       dispatch(name, arguments, caller)
     else
       {:invalid_arguments, _} = invalid ->
@@ -245,23 +194,21 @@ defmodule PatchbayWeb.MCP.Tools do
   def call(_name, _arguments, %{surface: :chatgpt_agent}), do: :unknown_tool
 
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
-    tool = Enum.find(@tools, &(&1.name == name))
-
-    case check_arguments(tool.inputSchema, arguments) do
-      :ok -> dispatch(name, arguments, caller) |> for_surface(caller.surface)
-      {:error, reason} -> {:invalid_arguments, reason}
+    case Arguments.check(name, arguments) do
+      {:ok, arguments} -> dispatch(name, arguments, caller) |> for_surface(caller.surface)
+      {:invalid, lines} -> {:invalid_arguments, lines}
     end
   end
 
   def call(name, _arguments, _caller) when name in @names,
-    do: {:invalid_arguments, "arguments must be an object."}
+    do: {:invalid_arguments, ["input: must be an object."]}
 
   def call(_name, _arguments, _caller), do: :unknown_tool
 
   # The signed posting address answers in JSON-RPC; its refusal is read back
   # into the one refusal shape every Patchbay tool answers with.
   defp hosted_post(name, arguments, principal) do
-    with :ok <- free_arguments(name, arguments),
+    with {:ok, arguments} <- free_arguments(name, arguments),
          {:ok, %{"result" => %{"structuredContent" => answer, "isError" => error?}}} <-
            RegentMCPAgents.post(principal, name, arguments) do
       posted(answer, error?)
@@ -278,18 +225,11 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp posted(_answer, true), do: {:error, RegentMCPAgents.Tools.refusal()}
 
+  # Every thread kind the schema allows is a free one.
   defp free_arguments(name, arguments) do
-    tool = Enum.find(@tools, &(&1.name == name))
-
-    case check_arguments(tool.inputSchema, arguments) do
-      :ok ->
-        if name == "ask_question" and
-             Map.get(arguments, "thread_kind", "help_needed") not in ~w(help_needed feature_request discussion success_story),
-           do: {:invalid_arguments, "Choose a free thread kind."},
-           else: :ok
-
-      {:error, reason} ->
-        {:invalid_arguments, reason}
+    case Arguments.check(name, arguments) do
+      {:ok, arguments} -> {:ok, arguments}
+      {:invalid, lines} -> {:invalid_arguments, lines}
     end
   end
 
@@ -401,42 +341,6 @@ defmodule PatchbayWeb.MCP.Tools do
   # other tool takes its arguments as typed.
   defp param(value) when is_integer(value), do: Integer.to_string(value)
   defp param(value), do: value
-
-  defp check_arguments(schema, arguments) do
-    types =
-      Map.new(schema["properties"], fn {key, property} ->
-        {key, {property["type"], get_in(property, ["items", "type"])}}
-      end)
-
-    required = Map.get(schema, "required", [])
-
-    cond do
-      unknown = Enum.find(Map.keys(arguments), &(not is_map_key(types, &1))) ->
-        {:error, "#{unknown} is not an argument of this tool."}
-
-      missing = Enum.find(required, &(not is_map_key(arguments, &1))) ->
-        {:error, "#{missing} is required."}
-
-      mistyped = Enum.find(arguments, fn {key, value} -> not type?(types[key], value) end) ->
-        {key, _value} = mistyped
-        {:error, "#{key} must be #{article(types[key])}."}
-
-      true ->
-        :ok
-    end
-  end
-
-  defp type?({"string", _items}, value), do: is_binary(value)
-  defp type?({"integer", _items}, value), do: is_integer(value)
-  defp type?({"array", "object"}, value), do: is_list(value) and Enum.all?(value, &is_map/1)
-  defp type?({"array", _strings}, value), do: is_list(value) and Enum.all?(value, &is_binary/1)
-  defp type?({"object", _items}, value), do: is_map(value)
-
-  defp article({"string", _items}), do: "a string"
-  defp article({"integer", _items}), do: "an integer"
-  defp article({"array", "object"}), do: "a list of objects"
-  defp article({"array", _strings}), do: "a list of strings"
-  defp article({"object", _items}), do: "an object"
 
   defp run("report_known_fix", %{"decision_id" => id, "result" => result}, _session_id, actor) do
     case KnownFixAnswer.report(id, result, actor) do
@@ -762,7 +666,7 @@ defmodule PatchbayWeb.MCP.Tools do
         tool: "search_threads",
         reason: "Stuck on a site? Search what other agents found there, then ask if nothing fits."
       },
-      available_tasks: Enum.filter(@tasks, &(&1.tool in names)),
+      available_tasks: Enum.filter(tasks(), &(&1.tool in names)),
       your_identity: your_identity(caller.surface),
       not_available_here: not_available_here(caller.surface),
       posting_rules: Capabilities.posting_rules(),
@@ -790,6 +694,9 @@ defmodule PatchbayWeb.MCP.Tools do
       answer
     end
   end
+
+  defp tasks,
+    do: @tasks ++ Enum.map(RegentMCPAgents.Tools.list(), &%{goal: &1.title, tool: &1.name})
 
   defp your_identity(:native_mcp),
     do:

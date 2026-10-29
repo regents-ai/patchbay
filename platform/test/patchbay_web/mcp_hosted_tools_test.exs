@@ -66,7 +66,30 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
         conn |> tools_call(asker, name, arguments) |> json_response(200) |> Map.fetch!("result")
 
       answered(name, result, expectation, conn, asker)
+      shaped(name, result)
     end
+  end
+
+  # An answer, as opposed to a refusal, has the shape its tool's outputSchema
+  # in tools/list promises, so a client that checks it accepts it. It travels
+  # once: the text beside it is a short summary, never a second copy.
+  defp shaped(_name, %{"isError" => true}), do: :ok
+
+  defp shaped(name, %{"structuredContent" => answer, "content" => [%{"text" => text} | _]}) do
+    schema = Map.fetch!(output_schemas(), name)
+
+    assert {:ok, _} = JSV.validate(answer, JSV.build!(schema)),
+           "#{name} answered outside its outputSchema: #{inspect(answer, limit: 8)}"
+
+    assert byte_size(text) < 600 and text =~ "structuredContent", "#{name}: #{text}"
+
+    for {key, id} when is_binary(id) <- answer, String.ends_with?(key, "_id") do
+      assert text =~ id, "#{name}'s summary leaves out #{key}"
+    end
+  end
+
+  defp output_schemas do
+    Map.new(PatchbayWeb.MCP.Tools.list(:native_mcp), &{&1.name, &1.outputSchema})
   end
 
   # What each hosted tool is called with, in an order where a write that
@@ -261,10 +284,10 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
 
   # The hosted tools are free, so their reads leave out what money a post,
   # reply or author holds (`PatchbayWeb.ForumAPI.Reads`, the `:free`
-  # audience), and a profile's money record and the wallet its tips settle
-  # to (`PatchbayWeb.AuthorJSON.profile/2`); the HTTP doors carry them.
-  # Nothing else may differ.
-  @money ~w(escrowed_usdc reward_eligibility can_receive_usdc wallet_address bounties_posted
+  # audience), and a profile's money record (`PatchbayWeb.AuthorJSON.profile/2`);
+  # the HTTP doors carry them. A profile's public wallet address is in both:
+  # a paired agent shows its owner's. Nothing else may differ.
+  @money ~w(escrowed_usdc reward_eligibility can_receive_usdc bounties_posted
             answers_accepted tips_given tips_given_usdc tips_received tips_received_usdc)
 
   defp free(answer), do: drop(answer, @money)

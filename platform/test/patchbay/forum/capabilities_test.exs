@@ -28,13 +28,50 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     assert hosted == listed
   end
 
-  # A model at /mcp is told only how to sign there, never the page's steps.
-  test "a hosted signed tool says to sign the request, without the page's steps" do
-    signed = for tool <- Capabilities.hosted(), tool.requires == "paired_agent", do: tool.name
+  # Every hosted description has one shape: purpose first, then when to use
+  # it, what it needs (with the refusal for a caller without it), what it
+  # changes and the next tool. The two parts help and a model rely on are
+  # held here: a purpose to list it under, and the prerequisite its
+  # admission really applies. A model at /mcp is never told the page's steps.
+  test "every hosted tool states its purpose and its prerequisite" do
+    needs = %{
+      "none" => "Needs nothing.",
+      "paired_agent" => "Needs a signed, paired agent (agent_not_paired)."
+    }
 
-    for tool <- PatchbayWeb.MCP.Tools.list(:native_mcp), tool.name in signed do
-      assert String.ends_with?(tool.description, ". Sign the request you send."), tool.name
+    purposes = Map.new(Capabilities.hosted(), &{&1.name, &1.purpose})
+    requires = Map.new(Capabilities.hosted(), &{&1.name, &1.requires})
+
+    for tool <- PatchbayWeb.MCP.Tools.list(:native_mcp) do
+      assert is_binary(purposes[tool.name]) and purposes[tool.name] != "", tool.name
+      assert tool.description =~ Map.fetch!(needs, requires[tool.name]), tool.name
       refute tool.description =~ "prepare_agent_request", tool.name
+    end
+  end
+
+  # Both addresses state all four MCP hints on every tool they list, each read
+  # from the manifest's facts, and keep the page's WebMCP hints to the page.
+  test "every hosted tool at both addresses states the four MCP hints its facts give" do
+    facts = Map.new(Capabilities.hosted(), &{&1.name, &1})
+
+    for surface <- [:native_mcp, :chatgpt_plugin],
+        tool <- PatchbayWeb.MCP.Tools.list(surface),
+        fact = facts[tool.name] do
+      assert tool.annotations == %{
+               readOnlyHint: not fact.state_changing,
+               destructiveHint: fact.destructive,
+               idempotentHint: fact.idempotent,
+               openWorldHint: fact.annotations["untrustedContentHint"] == true
+             },
+             "#{surface} #{tool.name}"
+
+      refute tool.annotations.readOnlyHint and tool.annotations.destructiveHint, tool.name
+    end
+
+    # Each post and report is keyed by its client_request_id, so sending it
+    # again is safe; a published post cannot be taken back.
+    for name <- ~w(ask_question post_reply report_tool_problem reply_to_report) do
+      assert %{idempotent: true, destructive: true} = facts[name], name
     end
   end
 
@@ -48,6 +85,9 @@ defmodule Patchbay.Forum.CapabilitiesTest do
              tool.name
 
       assert tool.payment in ~w(none moves_usdc holds_credits), tool.name
+
+      assert is_boolean(tool.destructive) and is_boolean(tool.idempotent), tool.name
+      refute tool.destructive and not tool.state_changing, "#{tool.name} reads yet destroys"
 
       assert tool.doors["page"] or tool.doors["hosted"] or tool.doors["http"] != [],
              "#{tool.name} has no door"

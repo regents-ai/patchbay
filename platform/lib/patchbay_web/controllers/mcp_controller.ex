@@ -42,7 +42,9 @@ defmodule PatchbayWeb.MCPController do
 
   # Newest first. A client naming one of these is answered in it; any other
   # client is offered the newest and decides for itself whether to go on.
-  @protocol_versions ~w(2025-11-25 2025-06-18 2025-03-26)
+  # Each carries a tool's answer as structured content, which is how every
+  # answer here is sent.
+  @protocol_versions ~w(2025-11-25 2025-06-18)
 
   # Every version a client may name in the MCP-Protocol-Version header: the
   # ones above, and MCP 2.0, which discovery offers.
@@ -360,8 +362,8 @@ defmodule PatchbayWeb.MCPController do
         {:error, -32_602, "Unknown tool: #{name}. Call tools/list."}
 
       # A tool error, not a protocol one, so the model can correct the call.
-      {:invalid_arguments, reason} ->
-        {:ok, tool_result(ApiError.invalid([reason]), true)}
+      {:invalid_arguments, lines} ->
+        {:ok, tool_result(ApiError.invalid(lines), true)}
     end
   end
 
@@ -380,10 +382,11 @@ defmodule PatchbayWeb.MCPController do
       else: @chatgpt_read_instructions
   end
 
-  # The answer travels twice, as the protocol suggests: as text for a model to
-  # read, and as the same object for a client that wants the fields. A refusal
-  # is the one `error` object every door answers with; its text is the words
-  # and the hint, which is all a model needs to act on it.
+  # The answer travels once, as structured content in the tool's
+  # `outputSchema`, beside a short text a model reads first: how many of each
+  # list it holds, the ids it names, and the next step. A refusal is the one
+  # `error` object every door answers with; its text is the words and the
+  # hint, which is all a model needs to act on it.
   defp tool_result(refusal, true), do: Refusal.tool_result(refusal)
 
   # Agent Offers after a new post travel once as their own text block, under
@@ -395,7 +398,7 @@ defmodule PatchbayWeb.MCPController do
 
     %{
       "content" => [
-        %{"type" => "text", "text" => Jason.encode!(result)},
+        %{"type" => "text", "text" => summary(result)},
         %{"type" => "text", "text" => Disclosure.text(offers)}
       ],
       "structuredContent" => Disclosure.append(result, Disclosure.references(offers)),
@@ -405,10 +408,34 @@ defmodule PatchbayWeb.MCPController do
 
   defp tool_result(answer, false) do
     %{
-      "content" => [%{"type" => "text", "text" => Jason.encode!(answer)}],
+      "content" => [%{"type" => "text", "text" => summary(answer)}],
       "structuredContent" => answer,
       "isError" => false
     }
+  end
+
+  defp summary(answer) do
+    fields = Enum.map(answer, fn {key, value} -> {to_string(key), value} end)
+
+    counts = for {key, list} when is_list(list) <- fields, do: "#{length(list)} #{key}"
+
+    ids =
+      for {key, id} when is_binary(id) <- fields,
+          key == "id" or String.ends_with?(key, "_id") or key == "updates_cursor",
+          do: "#{key} #{id}"
+
+    more =
+      case Map.new(fields)["pagination"] do
+        %{has_more: true} -> "More on the next page: see pagination."
+        %{"has_more" => true} -> "More on the next page: see pagination."
+        _last -> nil
+      end
+
+    facts = if counts ++ ids == [], do: nil, else: Enum.join(counts ++ ids, ", ") <> "."
+
+    [facts, more, Map.new(fields)["next_step"], "The whole answer is in structuredContent."]
+    |> Enum.reject(&is_nil/1)
+    |> Enum.join(" ")
   end
 
   defp reply({:ok, result}, id), do: %{jsonrpc: "2.0", id: id, result: result}

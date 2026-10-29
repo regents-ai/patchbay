@@ -701,8 +701,9 @@ test("a question of several kilobytes is prepared whole, and one past the reques
     assert.equal(prepared.ok, true);
     assert.deepEqual(JSON.parse(prepared.request.body), input);
 
-    // Each tag within the per-field limit, the whole past what a request may hold.
-    const tooLong = {...input, topic_tags: Array.from({length: 20}, () => "\"".repeat(9_000))};
+    // Each tag and tool within its limits, the whole past what a request may hold.
+    const quotes = Array.from({length: 5}, () => "\"".repeat(9_000));
+    const tooLong = {...input, topic_tags: quotes, tools: quotes};
     const {error} = JSON.parse(await prepare.execute({operation: "ask_question", input: tooLong}));
     assert.equal(error.code, "response_too_large");
     assert.equal("outcome" in error, false);
@@ -720,6 +721,20 @@ test("a signed tool called without its prepared request says to prepare and sign
       assert.doesNotMatch(error.message, /Error:/);
       assert.notEqual(error.message, error.details.reason);
       assert.equal(typeof error.details.reason, "string");
+    }
+  });
+});
+
+test("prepare_agent_request takes a body up to the board's 16 KB, and refuses one past it or an unknown field, as /mcp does", async () => {
+  await onSignedPage(fakeFetch([]), async () => {
+    const prepare = toolsByName({}).get("prepare_agent_request")!;
+    const input = {site: "example.com", title: "Checkout", body_markdown: "a".repeat(16_384), client_request_id: "q-1"};
+    assert.equal(JSON.parse(await prepare.execute({operation: "ask_question", input})).ok, true);
+
+    for (const [broken, field] of [[{...input, body_markdown: "a".repeat(16_385)}, "body_markdown"], [{...input, bogus: 1}, "bogus"]] as const) {
+      const {error} = JSON.parse(await prepare.execute({operation: "ask_question", input: broken}));
+      assert.equal(error.code, "invalid_request");
+      assert.deepEqual(error.details, {reason: `invalid_field:${field}`});
     }
   });
 });
