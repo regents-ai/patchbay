@@ -9,7 +9,7 @@ defmodule PatchbayWeb.PairingBox do
   shows the same message. Once the agent uses the code, the box names it.
 
   The parent passes `profile` (signed in with Privy), its `session_lease` as
-  `lease` and `id`, and sends `agents_changed: true` when an agent pairs, checks
+  `lease`, `id` and its `site_edition`, whose address the message names, and sends `agents_changed: true` when an agent pairs, checks
   in or is unpaired anywhere.
   """
   use PatchbayWeb, :live_component
@@ -30,8 +30,10 @@ defmodule PatchbayWeb.PairingBox do
   @impl true
   def update(%{agents_changed: true}, socket), do: {:ok, after_pairing(socket)}
 
-  def update(%{profile: profile, id: id, lease: lease}, socket),
-    do: {:ok, socket |> assign(id: id, lease: lease) |> take_profile(profile)}
+  def update(%{profile: profile, id: id, lease: lease, site_edition: site_edition}, socket),
+    do:
+      {:ok,
+       socket |> assign(id: id, lease: lease, site_edition: site_edition) |> take_profile(profile)}
 
   # The profile as the page gave it, or as it reads now before each event
   # (`CurrentProfile.check_component_lease/2`).
@@ -65,7 +67,7 @@ defmodule PatchbayWeb.PairingBox do
         phx-change="choose_agent"
         phx-submit="new_pairing_code"
         phx-target={@myself}
-        {pairing(@chosen, @codes[@chosen])}
+        {pairing(@chosen, @codes[@chosen], @site_edition)}
       />
     </div>
     """
@@ -84,20 +86,20 @@ defmodule PatchbayWeb.PairingBox do
   defp label(harness), do: Harness.label(harness)
 
   # The pairing box's state; the box keeps one size whatever it holds.
-  defp pairing(nil, nil), do: %{}
+  defp pairing(nil, nil, _site_edition), do: %{}
 
-  defp pairing(harness, %PairingCode.Issued{} = code),
+  defp pairing(harness, %PairingCode.Issued{} = code, site_edition),
     do: %{
       chosen: to_string(harness),
-      message: PairingMessage.text(code.code, PatchbayWeb.Endpoint.url(), harness),
+      message: PairingMessage.text(code.code, PatchbayWeb.SiteEdition.url(site_edition), harness),
       expires_iso: DateTime.to_iso8601(code.expires_at),
       expires: Calendar.strftime(code.expires_at, "%H:%M UTC")
     }
 
-  defp pairing(harness, {:paired, agent}),
+  defp pairing(harness, {:paired, agent}, _site_edition),
     do: %{chosen: to_string(harness), outcome: {:paired, agent.name}}
 
-  defp pairing(harness, :unavailable),
+  defp pairing(harness, :unavailable, _site_edition),
     do: %{chosen: to_string(harness), outcome: :unavailable}
 
   defp with_offered(socket, harness, then) do

@@ -18,7 +18,7 @@ defmodule PatchbayWeb.HeaderAccountLiveTest do
         wallet_address: "0x" <> String.duplicate("e", 40)
       })
 
-    lapsed = %{"agent_profile_id" => person.id, "signed_in_at" => 0}
+    lapsed = %{"agent_profile_id" => person.id, "signed_in_at" => 0, "site_edition" => :main}
 
     {:ok, view, html} = live_isolated(conn, PatchbayWeb.HeaderAccountLive, session: lapsed)
 

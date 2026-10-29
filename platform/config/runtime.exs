@@ -293,6 +293,18 @@ if config_env() == :prod do
       patchbay-regents.fly.dev
       """
 
+  # The same site with nothing about money, crypto or wallets on it, where
+  # ChatGPT connects (PatchbayWeb.SiteEdition).
+  open_host =
+    System.get_env("PATCHBAY_OPEN_HOST") ||
+      raise """
+      environment variable PATCHBAY_OPEN_HOST is missing.
+      It must be the open address's public hostname, for example:
+      open.patchbay.help
+      """
+
+  config :patchbay, :open_host, open_host
+
   unless migrating? do
     # The commit the image was built from, and the Fly image this machine runs.
     config :patchbay, :build, %{
@@ -317,6 +329,7 @@ if config_env() == :prod do
 
   config :patchbay, PatchbayWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
+    check_origin: ["https://#{host}", "https://#{open_host}"],
     http: [
       # Enable IPv6 and bind on all interfaces.
       # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.

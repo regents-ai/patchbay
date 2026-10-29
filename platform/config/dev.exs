@@ -112,6 +112,10 @@ config :patchbay, PatchbayWeb.Endpoint,
 # Enable dev routes for dashboard and mailbox
 config :patchbay, dev_routes: true
 
+# The open address (PatchbayWeb.SiteEdition), served by the same server at
+# http://open.localhost:4000.
+config :patchbay, :open_host, "open.localhost"
+
 # The payments lab at /dev/lab/payments: a stand-in wallet app and payment
 # service over a copy of Base on this machine (see `PatchbayDev.PaymentsLab`).
 config :patchbay, :payments_lab, %{rpc_url: "http://127.0.0.1:58611"}

@@ -20,9 +20,13 @@ config :patchbay, Patchbay.Repo,
 config :patchbay, PatchbayWeb.Endpoint,
   url: [host: "127.0.0.1", port: browser_port],
   http: [ip: {127, 0, 0, 1}, port: browser_port],
-  check_origin: ["http://127.0.0.1:#{browser_port}"],
+  check_origin: ["http://127.0.0.1:#{browser_port}", "http://open.patchbay.test:#{browser_port}"],
   secret_key_base: "veQzbAXuIb79+jLk5QWx2Jq4Gy/5WzZbQRfCk77MHXxP2IUiKWLI5vDOixz/wQlP",
   server: false
+
+# The open address (PatchbayWeb.SiteEdition). A test reaches it by setting a
+# request's host to this.
+config :patchbay, :open_host, "open.patchbay.test"
 
 # In test we don't send emails
 config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test

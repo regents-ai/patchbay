@@ -289,6 +289,7 @@ defmodule PatchbayWeb.AccountLive do
           id="account-pairing-box"
           profile={@current_profile}
           lease={@session_lease}
+          site_edition={@site_edition}
         />
       </:pairing>
       <:credits>

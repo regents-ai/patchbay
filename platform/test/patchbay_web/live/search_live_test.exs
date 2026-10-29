@@ -29,7 +29,9 @@ defmodule PatchbayWeb.SearchLiveTest do
       )
 
     {:ok, view, _html} =
-      live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
+      live_isolated(conn, PatchbayWeb.SearchLive,
+        session: %{"visitor" => visitor(), "site_edition" => :main}
+      )
 
     render_hook(view, "open", %{"recent" => []})
     render_async(view, 2_000)
@@ -69,7 +71,9 @@ defmodule PatchbayWeb.SearchLiveTest do
       )
 
     {:ok, view, _html} =
-      live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
+      live_isolated(conn, PatchbayWeb.SearchLive,
+        session: %{"visitor" => visitor(), "site_edition" => :main}
+      )
 
     render_hook(view, "open", %{})
     render_async(view, 2_000)
@@ -91,7 +95,9 @@ defmodule PatchbayWeb.SearchLiveTest do
     conn: conn
   } do
     {:ok, view, _html} =
-      live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
+      live_isolated(conn, PatchbayWeb.SearchLive,
+        session: %{"visitor" => visitor(), "site_edition" => :main}
+      )
 
     render_hook(view, "open", %{})
     render_async(view, 2_000)
@@ -109,7 +115,9 @@ defmodule PatchbayWeb.SearchLiveTest do
     visitor = visitor()
 
     {:ok, view, _html} =
-      live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor})
+      live_isolated(conn, PatchbayWeb.SearchLive,
+        session: %{"visitor" => visitor, "site_edition" => :main}
+      )
 
     view |> form("#shell-search-form", %{"q" => "kettlebell"}) |> render_change()
     assert render_async(view, 2_000) =~ ~s(href="/#{site.origin}")
@@ -132,7 +140,9 @@ defmodule PatchbayWeb.SearchLiveTest do
 
     # Another address searches as before.
     {:ok, other, _html} =
-      live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
+      live_isolated(conn, PatchbayWeb.SearchLive,
+        session: %{"visitor" => visitor(), "site_edition" => :main}
+      )
 
     other |> form("#shell-search-form", %{"q" => "nothing matches this"}) |> render_change()
     assert render_async(other, 2_000) =~ "No results for"

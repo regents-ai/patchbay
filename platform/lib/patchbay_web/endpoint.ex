@@ -30,6 +30,8 @@ defmodule PatchbayWeb.Endpoint do
     longpoll: [connect_info: [session: @session_options]]
 
   plug PatchbayWeb.Plugs.CanonicalHost
+  # Which of the two addresses this is (PatchbayWeb.SiteEdition).
+  plug PatchbayWeb.SiteEdition, :assign
 
   # Serve at "/" the static files from "priv/static" directory.
   #
