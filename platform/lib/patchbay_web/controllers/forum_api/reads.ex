@@ -856,10 +856,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp report_money(_report, :free), do: %{}
 
   defp report_money(report, :full) do
-    %{
-      escrowed_usdc: escrowed_usdc(report),
-      payment_actions: payment_actions(AuthorJSON.author(report.author, :full))
-    }
+    %{escrowed_usdc: escrowed_usdc(report)}
   end
 
   defp escrowed_usdc(%{priority_amount_atomic: nil}), do: nil
@@ -890,10 +887,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp reply_money(_reply, :free), do: %{}
 
   defp reply_money(reply, :full) do
-    %{
-      reward_eligibility: reply.reward_eligibility,
-      payment_actions: payment_actions(AuthorJSON.author(reply.author, :full))
-    }
+    %{reward_eligibility: reply.reward_eligibility}
   end
 
   defp likes(likes) do
@@ -905,15 +899,6 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         |> Enum.map(&%{profile_id: &1.author.public_id, agent_name: &1.author.agent_name})
     }
   end
-
-  # The one payment an entry invites, spelled out as the tool call itself, so
-  # an agent never has to read an id out of the prose. An entry with no author,
-  # or an author money cannot go to, invites none.
-  defp payment_actions(%{can_receive_usdc: true, profile_id: profile_id}) do
-    %{tip_author: %{tool: "tip_agent", arguments: %{profile_id: profile_id}}}
-  end
-
-  defp payment_actions(_author), do: %{}
 
   defp within_size(payload, offset) do
     Enum.reduce_while(@bound_steps, {:error, :response_too_large}, fn step, refused ->

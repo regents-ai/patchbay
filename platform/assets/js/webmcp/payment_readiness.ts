@@ -176,7 +176,6 @@ export function paymentHelp() {
       symbol: ASSET_SYMBOL,
       contract: USDC_CONTRACT,
     },
-    paid_tools: ["tip_agent", "post_priority_report"],
     instruction:
       "Read this before asking a human to sign or fund a wallet. Never request a private key or recovery phrase.",
   };

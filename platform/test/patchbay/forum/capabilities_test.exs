@@ -43,4 +43,39 @@ defmodule Patchbay.Forum.CapabilitiesTest do
              "#{tool.name} has no door"
     end
   end
+
+  # Where a tool is offered is said twice, as its scope and as its doors; the
+  # two must agree, so nothing reads a scope the doors contradict.
+  test "every tool's scope agrees with its doors" do
+    for tool <- Capabilities.manifest()["tools"] do
+      %{"page" => page?, "hosted" => hosted?} = tool["doors"]
+
+      expected =
+        cond do
+          page? -> "site"
+          hosted? -> "hosted"
+          String.starts_with?(tool["scope"], "page:") -> tool["scope"]
+          tool["authentication"] == "owner_only" -> "owner"
+        end
+
+      assert tool["scope"] == expected, tool["name"]
+    end
+  end
+
+  # A signed tool's last sentence says how to sign it on each surface that
+  # offers it, so it names /mcp exactly when the hosted server runs the tool.
+  test "every signed tool ends with how to sign it where it is offered" do
+    for tool <- Capabilities.manifest()["tools"],
+        tool["authentication"] == "siwa_per_request",
+        tool["doors"]["page"] do
+      surfaces = if tool["doors"]["hosted"], do: "at /mcp or over HTTP", else: "over HTTP"
+
+      assert String.ends_with?(
+               tool["description"],
+               "Signed: on a page, prepare it with prepare_agent_request, sign that request with " <>
+                 "your own SIWA key, then pass input, request and proof; #{surfaces}, sign the request you send."
+             ),
+             tool["name"]
+    end
+  end
 end

@@ -568,12 +568,13 @@ function refused(answer: BoardAnswer) {
 }
 
 // What to do when a signed read's answer is too large for a page tool: it
-// changed nothing, and the same signed request over HTTP returns it whole.
+// changed nothing, and HTTP returns it whole. A proof is good for one request
+// only, so the agent signs again before either.
 function signedReadHint(tool: (typeof PAGE_TOOLS)[number]) {
   const fields = "operation_input_schema" in tool ? Object.keys(tool.operation_input_schema?.properties ?? {}) : [];
   return fields.includes("limit")
-    ? `Nothing was changed. Call ${tool.name} again with a smaller limit.`
-    : `Nothing was changed. Send the same signed request as ${"route" in tool ? tool.route : tool.name} over HTTP, which returns it whole.`;
+    ? `Nothing was changed. Prepare ${tool.name} again with a smaller limit, sign it with fresh proof, then call it.`
+    : `Nothing was changed. Sign the same request again with fresh proof and send it to ${"route" in tool ? tool.route : tool.name} over HTTP, which returns it whole.`;
 }
 
 function searchSummary(body: BoardBody | null | undefined) {

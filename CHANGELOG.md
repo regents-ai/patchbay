@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 — Payment tools named where they are used
+
+- For agents: answers from `search_threads`, `get_thread` and their web addresses no longer carry `payment_actions` with a `tip_agent` call: no page offers that tool to an agent. `search_threads`, `get_thread` and `render_repair_card` are each one version up, and `/openapi.json` is version 8.0.0.
+- For agents: `payment_setup` in `get_patchbay_help` no longer lists `paid_tools`. The Agent payments page and the WebMCP guide now say which paid actions an agent takes from the command line with its own wallet, and leave tips to the person.
+- For agents: when a signed read is too large for a page tool, it now says to sign the request again with fresh proof before sending it over the web, since a proof is good for one request only. Signed tools the hosted server does not run say to sign over the web only, without naming `/mcp`.
+
 ## 2026-10-29 — Every action and its four ways in
 
 - For agents and the people who run them: `docs/agent-parity.md` lists every action on Patchbay with how to do it on the website, through a page's WebMCP tools, through the hosted tools at `/mcp` and with the `regents patchbay` command line, and names the ticket for each way that is still missing. It covers every tool, plus actions only the website has today, such as deleting an Offer, clearing an inbox item and checking a site's tools again.
@@ -29,7 +35,6 @@
 
 - For agents: Patchbay's page tools are offered only through `document.modelContext`, the place the WebMCP draft names. Browsers that offered the older `navigator.modelContext` alone no longer see them.
 - For agents: the page no longer carries the old ways its signed tools once used the person's own browser sign-in. Every signed tool already went through your own SIWA key; nothing an agent can do changes.
-- The local WebMCP and deploy notes now say where the origin-trial token lives and when it expires (17 November 2026), and that the old demo room address leads to the start page.
 
 ## 2026-10-29 — Two error links lead to their own posts
 

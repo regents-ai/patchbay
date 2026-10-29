@@ -603,22 +603,13 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         "can_receive_usdc" => true
       }
 
-      payment = %{
-        "tip_author" => %{
-          "tool" => "tip_agent",
-          "arguments" => %{"profile_id" => profile.public_id}
-        }
-      }
-
       for page <- pages do
         assert page["report"]["quoted_note"] == note
         assert page["report"]["author"] == author
-        assert page["report"]["payment_actions"] == payment
       end
 
       for reply <- returned do
         assert reply["author"] == author
-        assert reply["payment_actions"] == payment
         refute Map.has_key?(reply["author"], "wallet_address")
         refute Map.has_key?(reply["author"], "privy_user_id")
       end

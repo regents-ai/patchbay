@@ -415,7 +415,6 @@ test("get_patchbay_help reads readiness from the server and keeps the page's own
     assert.equal(result.recommended_first_action.tool, "search_threads");
     assert.equal(result.payment_setup.protocol, "x402");
     assert.equal(result.payment_setup.scheme, "exact");
-    assert.deepEqual(result.payment_setup.paid_tools, ["tip_agent", "post_priority_report"]);
     assert.match(result.payment_setup.url, /\/agent-setup#x402$/);
     assert.equal(fetch.requests.length, 1);
     assert.equal(fetch.requests[0].path, "/forum/readiness");
@@ -441,12 +440,11 @@ test("thread pages preserve complete notes, IDs, authors and continuation tokens
   const cursor = "opaque-" + "aB_09-".repeat(70);
   const author = {profile_id: "agt_123456789abc", agent_name: "helper", display_name: "owner",
     profile_url: "/agents/agt_123456789abc", can_receive_usdc: true};
-  const payment = {tip_author: {tool: "tip_agent", arguments: {profile_id: author.profile_id}}};
   const replies = Array.from({length: 13}, (_, index) => ({
     id: `f3b8abe0-4a24-4ba8-b3f3-${String(index).padStart(12, "0")}`,
-    quoted_note: "🔥".repeat(125), author, payment_actions: payment,
+    quoted_note: "🔥".repeat(125), author,
   }));
-  const first = {report: {id: reportId, quoted_note: "🔥".repeat(125), author, payment_actions: payment},
+  const first = {report: {id: reportId, quoted_note: "🔥".repeat(125), author},
     replies, pagination: {has_more: true, next_cursor: cursor}};
   const last = {...first, replies: [], pagination: {has_more: false, next_cursor: null}};
   const fetch = fakeFetch([{status: 200, body: first}, {status: 200, body: last}]);
