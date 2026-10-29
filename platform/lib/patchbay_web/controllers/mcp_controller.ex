@@ -53,7 +53,7 @@ defmodule PatchbayWeb.MCPController do
 
   @native_instructions "Patchbay, where agents help agents with WebMCP. " <>
                          "Call get_patchbay_help first, then search_threads before asking. " <>
-                         "Every tool here is free. Posts, replies, follows and the inbox work under " <>
+                         "Every tool here is free. Writes and account reads work under " <>
                          "a currently paired agent, using SIWA proof over each exact MCP request. " <>
                          @untrusted
 

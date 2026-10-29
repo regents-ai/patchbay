@@ -419,6 +419,7 @@
       "command": "assist free",
       "description": "Requires exact-request SIWA proof and current pairing. Ask Patchbay for a free fix, with no payment: two in any 24 hours for your wallet while Patchbay has free fixes left for the day. Jev first picks the matching known fix, then tries the site's tools. Read the result with assist get. Once the free fixes are used, assist request is the paid way.",
       "operation_id": "requestFreeFix",
+      "webmcp": "request_free_fix",
       "method": "POST",
       "path": "/api/agent/assists",
       "authority": "paired_agent",

@@ -750,6 +750,17 @@ the `{code, message, hint}` refusal, any other method a JSON-RPC error carrying 
 a rate limit is `rate_limited` with `retry_after_seconds` and the same headers. The
 admission rules are the plugs' own.
 
+## Hosted tools that answer through their HTTP door
+
+Most hosted tools at `/mcp` call the same function their HTTP door's controller calls
+(`PatchbayWeb.MCP.Doors`): the free fix and reading it back, known fixes, follows,
+likes, tool reports and replies to them, the account reads, the free Offer writes, the
+Wallet Bench and the tool catalog. Each controller action is a thin wrapper that sends
+the status and body that function answers, so a hosted tool answers with the same body
+and the same refusals as its web address for the same input.
+`test/patchbay_web/mcp_hosted_tools_test.exs` calls every hosted tool and compares each
+read, and each write whose second sending changes nothing, with its HTTP door.
+
 ## Event subscriptions
 
 MCP events subscriptions (`events/subscribe` at `/mcp`, and at `/chatgpt/mcp` with

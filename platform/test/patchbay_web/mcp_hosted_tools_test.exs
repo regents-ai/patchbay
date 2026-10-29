@@ -7,8 +7,10 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
     call is refused at admission, as a tool result with `isError`, and runs
     nothing;
   - every hosted tool answers a signed, paired agent from its own code;
-  - a tool whose HTTP door is a read answers with the same body that door
-    does for the same input, refusals included.
+  - a tool answers with the same body its HTTP door does for the same
+    input, refusals included: every read, and each write whose second
+    sending changes nothing (a like, a saved Offer under its request key,
+    a refused report).
 
   Each hosted tool needs a row in `calls/1`, so a new tool cannot be hosted
   without being called here.
@@ -70,12 +72,16 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   # What each hosted tool is called with, in an order where a write that
   # needs another's result follows it, and what it must answer:
   #
-  #   * `{:http, method, path}`: the same body as that HTTP door;
+  #   * `{:http, method, path}` or `{:http, method, path, body}`: the same
+  #     body as that HTTP door;
+  #   * `{:http_error, status, path}`: the same body as the error page that
+  #     HTTP door raises to, for an address that names nothing;
   #   * `:ok`: an answer, not a refusal;
   #   * `{:refused, code}`: the tool's own refusal for an input it cannot act
   #     on (an id that names nothing), which still shows the call reached it.
   defp calls(world) do
-    %{thread: thread, reply: reply, key: key, profile: profile} = world
+    %{thread: thread, reply: reply, key: key, profile: profile, run: run} = world
+    offer_key = Ecto.UUID.generate()
 
     [
       {"get_patchbay_help", %{}, :ok},
@@ -113,21 +119,110 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
          "placement_id" => Ecto.UUID.generate(),
          "creative_version_id" => Ecto.UUID.generate(),
          "reason" => "misleading"
-       }, :answered}
+       }, :answered},
+      # The fix `world!/3` opened is still running, so a second is refused
+      # with it, at either door.
+      {"request_free_fix", %{"args" => free_fix()},
+       {:http, :post, "/api/agent/assists", %{"args" => free_fix()}}},
+      {"get_assist", %{"run_id" => run}, {:http, :get, "/api/agent/assists/#{run}"}},
+      {"find_known_fixes", %{"site" => "patchbay.help"},
+       {:http, :get, "/known-fixes?site=patchbay.help"}},
+      {"get_known_fix", %{"fix_id" => known_fix()}, {:http, :get, "/known-fixes/#{known_fix()}"}},
+      {"get_subscriptions", %{}, {:http, :get, "/forum/subscriptions"}},
+      {"like_post", %{"thread_id" => thread, "reply_id" => reply},
+       {:http, :post, "/forum/threads/#{thread}/likes", %{"reply_id" => reply}}},
+      {"unlike_post", %{"thread_id" => thread},
+       {:http, :delete, "/forum/threads/#{thread}/likes", %{}}},
+      {"report_tool_problem", %{"receipt" => "not-a-receipt", "client_request_id" => key},
+       {:http, :post, "/forum/reports",
+        %{"receipt" => "not-a-receipt", "client_request_id" => key}}},
+      {"report_tool_on_another_site", other_site_report(), :ok},
+      # The report above put amend_reservation on example.net's board.
+      {"read_tool_catalog", %{"host" => "example.net", "name" => "amend_reservation"},
+       {:http, :get, "/example.net/tools/amend_reservation"}},
+      {"reply_to_report",
+       %{
+         "report_id" => thread,
+         "verdict" => "verified_success",
+         "client_request_id" => Ecto.UUID.generate()
+       }, :ok},
+      {"account_balances", %{}, {:http, :get, "/tools/account/balances"}},
+      {"account_credits_history", %{}, {:http, :post, "/tools/account/credits/history", %{}}},
+      {"account_points", %{}, {:http, :get, "/tools/account/points"}},
+      {"get_offer_bid_options", %{"slot" => 1},
+       {:http, :post, "/forum/offer-bid-options", %{"slot" => 1}}},
+      {"ask_offer_fit", %{"origin" => "quiet.example.net", "version_id" => Ecto.UUID.generate()},
+       {:http, :post, "/forum/offer-fit-checks",
+        %{"origin" => "quiet.example.net", "version_id" => Ecto.UUID.generate()}}},
+      {"save_agent_offer", offer(offer_key),
+       {:http, :post, "/forum/my-offers", offer(offer_key)}},
+      {"reword_agent_offer", reword(thread),
+       {:http, :post, "/forum/my-offers/#{thread}/versions",
+        Map.delete(reword(thread), "creative_id")}},
+      {"read_wallet_bench", %{}, {:http, :get, "/api/wallet-bench"}},
+      {"read_wallet_bench_pair", %{"harness_id" => "H999999", "wallet_id" => "W999999"},
+       {:http_error, 404, "/api/wallet-bench/H999999/W999999"}}
     ]
   end
 
-  defp answered(name, result, {:http, method, path}, conn, agent) do
+  defp free_fix,
+    do: %{
+      "goal" => "Amend a booking.",
+      "site_url" => "https://quiet.example.net",
+      "sign_in" => "none"
+    }
+
+  defp known_fix, do: hd(Patchbay.Assist.KnownFixes.all()).id
+
+  defp other_site_report do
+    %{
+      "origin" => "https://quiet.example.net/bookings",
+      "tool_name" => "amend_reservation",
+      "arguments" => %{"booking" => "B-1"},
+      "verdict" => "verified_failure",
+      "note" => "The tool said it worked but the booking kept its old date.",
+      "client_request_id" => Ecto.UUID.generate()
+    }
+  end
+
+  defp offer(key),
+    do: %{
+      "label" => "Booking help",
+      "text" => "Bookings amended in one call.",
+      "request_key" => key
+    }
+
+  defp reword(creative_id),
+    do: %{
+      "creative_id" => creative_id,
+      "text" => "Bookings amended fast.",
+      "request_key" => "reword-#{creative_id}"
+    }
+
+  defp answered(name, result, {:http, method, path}, conn, agent),
+    do: answered(name, result, {:http, method, path, nil}, conn, agent)
+
+  defp answered(name, result, {:http, method, path, body}, conn, agent) do
     over_http =
       conn
       |> recycle()
       |> SignedAgent.sign(agent)
       |> put_req_header("accept", "application/json")
-      |> dispatch(PatchbayWeb.Endpoint, method, path)
+      |> dispatch(PatchbayWeb.Endpoint, method, path, body && Jason.encode!(body))
 
     assert comparable(result["structuredContent"]) ==
              over_http.resp_body |> Jason.decode!() |> free() |> comparable(),
            "#{name} answered differently from #{method} #{path}"
+  end
+
+  defp answered(name, result, {:http_error, status, path}, conn, _agent) do
+    {^status, _headers, body} =
+      assert_error_sent(status, fn ->
+        conn |> recycle() |> put_req_header("accept", "application/json") |> get(path)
+      end)
+
+    assert result["isError"] and result["structuredContent"] == Jason.decode!(body),
+           "#{name} answered differently from GET #{path}"
   end
 
   defp answered(name, result, :ok, _conn, _agent),
@@ -196,9 +291,16 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       |> json_response(200)
       |> Map.fetch!("result")
 
+    %{"structuredContent" => %{"run_id" => run}} =
+      conn
+      |> tools_call(asker, "request_free_fix", %{"args" => free_fix()})
+      |> json_response(200)
+      |> Map.fetch!("result")
+
     %{
       thread: thread,
       reply: reply,
+      run: run,
       key: question["client_request_id"],
       profile: Patchbay.Forum.Report |> Ash.get!(thread) |> Map.fetch!(:author_profile_id)
     }

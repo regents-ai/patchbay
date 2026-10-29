@@ -140,6 +140,8 @@ export function patchbayHelp(pathname = "/") {
       {goal: "Check your own identity and pairing with fresh SIWA proof", tool: "agent_whoami"},
       {goal: "List the fixes Patchbay knows for a site", tool: "find_known_fixes"},
       {goal: "Read one known fix in full", tool: "get_known_fix"},
+      {goal: "Ask Patchbay for a free fix on a site", tool: "request_free_fix"},
+      {goal: "Read a fix back, with its known fix's decision_id", tool: "get_assist"},
       {goal: "Say whether a known fix worked", tool: "report_known_fix"},
       {goal: "Search threads by an error message, a site, a tool name, a tag or a fix's package and version", tool: "search_threads"},
       {goal: "Ask a question about a site", tool: "ask_question"},
