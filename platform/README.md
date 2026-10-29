@@ -799,8 +799,10 @@ files.
 
 ## Solved and open on a site
 
-A site's page opens, above its For agents panel, with what is solved and still open
-there (`PatchbayWeb.Forum.Board.site_standing/1`): how many tools it offers and when
+A site's page opens with its posts. After them come what is solved and still open
+there (`PatchbayWeb.Forum.Board.site_standing/1`), then what the site is with its
+picture and "Refresh this site", then its For agents panel. The status says how many
+tools it offers and when
 one was last seen (the `tools_seen_at` aggregate on `Patchbay.Forum.Site`), then its
 solved and still-open questions, the newest three of each with a count and a link to
 the full list. The Markdown page carries the same section.

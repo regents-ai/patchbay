@@ -215,9 +215,10 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert body =~ ~s(href="/shopify.com/tools/search")
       assert body =~ ~s(id="pb-site-tools")
       assert body =~ ~s(id="pb-site-posts")
+      # The posts lead; the tools follow them.
       {tools_at, _} = :binary.match(body, ~s(id="pb-site-tools"))
       {posts_at, _} = :binary.match(body, ~s(id="pb-site-posts"))
-      assert tools_at < posts_at
+      assert posts_at < tools_at
     end
 
     test "the home form and the open-questions and priority feeds render", %{conn: conn} do

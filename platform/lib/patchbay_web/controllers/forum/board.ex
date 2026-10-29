@@ -55,6 +55,8 @@ defmodule PatchbayWeb.Forum.Board do
     :site,
     tool: [:site]
   ]
+  # A site's own page puts the site on its posts itself (`on_site/2`).
+  @site_post_loads (@post_loads -- [:site, tool: [:site]]) ++ [:tool]
 
   @tool_loads [
     :report_count,
@@ -156,10 +158,15 @@ defmodule PatchbayWeb.Forum.Board do
     Ash.Query.aggregate(query, name, :count, :reports, query: [filter: filter])
   end
 
-  @doc "The site filed under a domain, if the board has one."
+  @doc """
+  The site filed under a domain, if the board has one, with when its tools
+  were last seen, which its page shows.
+  """
   @spec fetch_site(String.t()) :: {:ok, Site.t()} | :error
   def fetch_site(origin) do
-    case Forum.get_site_by_origin(origin, query: site_summary()) do
+    case Forum.get_site_by_origin(origin,
+           query: Ash.Query.load(site_summary(), :tools_seen_at)
+         ) do
       {:ok, site} -> {:ok, site}
       {:error, _no_such_site} -> :error
     end
@@ -349,8 +356,6 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec site_standing(Site.t()) :: map()
   def site_standing(%Site{} = site) do
-    site = Ash.load!(site, :tools_seen_at)
-
     %{
       tool_count: site.tool_count,
       tools_seen_at: site.tools_seen_at,
@@ -366,11 +371,10 @@ defmodule PatchbayWeb.Forum.Board do
     page =
       Forum.list_feed_reports!(
         query: Patchbay.Forum.Feed.query(filters),
-        page: [limit: 3, count: true],
-        load: [:site]
+        page: [limit: 3, count: true]
       )
 
-    %{count: page.count, threads: page.results}
+    %{count: page.count, threads: on_site(page.results, site)}
   end
 
   @doc """
@@ -400,9 +404,23 @@ defmodule PatchbayWeb.Forum.Board do
           {:ok, [Report.t()], String.t() | nil} | {:error, :invalid_posts_cursor}
   def site_threads(%Site{} = site, cursor \\ nil) do
     site.id
-    |> Forum.list_ranked_threads_for_site(load: @post_loads, page: post_page(cursor))
+    |> Forum.list_ranked_threads_for_site(load: @site_post_loads, page: post_page(cursor))
     |> post_page_result()
+    |> case do
+      {:ok, posts, next} -> {:ok, on_site(posts, site), next}
+      invalid -> invalid
+    end
   end
+
+  # Every post on a site's page is filed under that site, and so is any tool
+  # it names, so the site the page already holds is put on each rather than
+  # read again for every page.
+  defp on_site(posts, site), do: Enum.map(posts, &put_site(&1, site))
+
+  defp put_site(%Report{tool: %Tool{} = tool} = post, site),
+    do: %{post | site: site, tool: %{tool | site: site}}
+
+  defp put_site(%Report{} = post, site), do: %{post | site: site}
 
   defp post_page(nil), do: [limit: @ranked_posts]
   defp post_page(cursor), do: [limit: @ranked_posts, after: cursor]

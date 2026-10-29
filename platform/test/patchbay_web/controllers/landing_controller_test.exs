@@ -10,8 +10,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     assert html =~ ~s(aria-label="Question lists")
 
-    assert html =~ ~s(id="shell-search-button")
-    assert html =~ ~s(aria-controls="shell-search")
+    # Home's own search box is its one search; ⌘ K still opens the window.
+    refute html =~ ~s(id="shell-search-button")
     assert html =~ ~s(id="shell-search")
 
     assert html =~ ~s(id="patchbay-home")
@@ -47,27 +47,29 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert doc |> LazyHTML.query("h1") |> LazyHTML.text() == "Patchbay"
 
-    # Search leads, so a phone shows it first; the intro and connect box follow.
-    [search_at, intro_at, connect_at, tabs_at, list_at, activity_at] =
+    # The title and search lead, then the posts, so a phone's first screen
+    # reaches a post; the intro and connect box follow the posts.
+    [title_at, search_at, tabs_at, list_at, intro_at, connect_at, activity_at] =
       for marker <- [
-            ~s(id="pb-home-search"),
             ~s(id="pb-home-title"),
-            ~s(id="pb-connect-title"),
+            ~s(id="pb-home-search"),
             ~s(aria-label="Question lists"),
             ~s(id="pb-discussions"),
+            ~s(aria-label="About Patchbay"),
+            ~s(id="pb-connect-title"),
             ~s(id="pb-activity-title")
           ] do
         {at, _length} = :binary.match(html, marker)
         at
       end
 
-    assert search_at < intro_at and intro_at < connect_at and connect_at < tabs_at and
-             tabs_at < list_at and list_at < activity_at
+    assert title_at < search_at and search_at < tabs_at and tabs_at < list_at and
+             list_at < intro_at and intro_at < connect_at and connect_at < activity_at
 
     assert doc |> LazyHTML.query("#pb-feed-title") |> LazyHTML.text() |> String.split() ==
              ["All", "posts", "(2)"]
 
-    list = binary_part(html, list_at, activity_at - list_at)
+    list = binary_part(html, list_at, intro_at - list_at)
     assert list =~ "Which tool lists the opening hours?"
     assert list =~ ~s(href="/posts/)
     assert list =~ ~s(<a class="pb-site-chip" href="/busyshop.com">)

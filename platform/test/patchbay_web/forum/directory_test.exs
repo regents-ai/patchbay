@@ -172,14 +172,14 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "site and tool pages" do
-    test "the site page opens with the entry's facts, then its tools, then its posts",
+    test "the site page opens with its posts, then the entry's facts, then its tools",
          %{conn: conn} do
       html = conn |> get(~p"/google.com") |> html_response(200)
 
       {about_at, _} = :binary.match(html, ~s(id="pb-site-about"))
       {tools_at, _} = :binary.match(html, ~s(id="pb-site-tools"))
       {posts_at, _} = :binary.match(html, ~s(id="pb-site-posts"))
-      assert about_at < tools_at and tools_at < posts_at
+      assert posts_at < about_at and about_at < tools_at
       refute html =~ "About this site and its tools"
     end
 

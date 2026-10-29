@@ -9,6 +9,9 @@ defmodule PatchbayWeb.Forum.Discussions do
   alias PatchbayWeb.Endpoint
 
   @salt "discussion-pages-v1"
+  # Ten rows a page keeps the home page short on a phone; older posts are a
+  # link away.
+  @page_size 10
   @scopes ~w(newest unanswered solved following)
   @loads [
     :author,
@@ -111,7 +114,7 @@ defmodule PatchbayWeb.Forum.Discussions do
          {:ok, page} <-
            Forum.list_feed_reports(
              query: Patchbay.Forum.Feed.query(filters, subscriptions),
-             page: if(keyset, do: [limit: 20, after: keyset], else: [limit: 20])
+             page: if(keyset, do: [limit: @page_size, after: keyset], else: [limit: @page_size])
            ),
          {:ok, page} <- Ash.load(page, @loads) do
       {:ok, page.results, continuation(page, context)}
