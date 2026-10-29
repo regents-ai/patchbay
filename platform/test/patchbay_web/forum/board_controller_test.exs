@@ -158,6 +158,26 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert Enum.empty?(LazyHTML.query(document, "#pb-hero"))
     end
 
+    test "each catalog picture in the gallery offers its small copy, and the copy is there",
+         %{conn: conn} do
+      document = conn |> get(~p"/sites") |> html_response(200) |> LazyHTML.from_document()
+      static = Path.join(:code.priv_dir(:patchbay), "static")
+
+      sets =
+        document
+        |> LazyHTML.query(".pb-showcase-tile img[src^='/images/home-sites/']")
+        |> LazyHTML.attribute("srcset")
+
+      assert length(sets) == 8
+
+      for set <- sets do
+        [small, full] = String.split(set, ", ")
+        assert [path, "640w"] = String.split(small)
+        assert File.exists?(Path.join(static, path)), "#{path} is missing"
+        assert [_full, "1280w"] = String.split(full)
+      end
+    end
+
     test "carries the contract a repair room is currently offering", %{conn: conn} do
       room = Rooms.create_seeded_room!("room-one")
       [v1] = Rooms.list_tool_revisions!(query: [filter: [room_id: room.id]])

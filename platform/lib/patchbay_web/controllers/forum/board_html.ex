@@ -993,6 +993,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             :if={url = site_screenshot_url(site)}
             class="pb-showcase-shot"
             src={url}
+            srcset={showcase_srcset(url)}
+            sizes={if showcase_srcset(url), do: "(max-width: 760px) min(72vw, 20rem), 25vw"}
             alt=""
             width="1600"
             height="1000"
@@ -1012,6 +1014,16 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     </section>
     """
   end
+
+  # The catalog's own pictures (`priv/static/images/home-sites/NAME.jpg`) each
+  # have a 640-wide copy beside them (`NAME-640.webp`), which is all a gallery
+  # tile draws even on a sharp phone screen; the full picture stays for the
+  # site's own page. A picture Patchbay took itself has only its own size.
+  defp showcase_srcset("/images/home-sites/" <> file) do
+    "/images/home-sites/#{Path.rootname(file)}-640.webp 640w, /images/home-sites/#{file} 1280w"
+  end
+
+  defp showcase_srcset(_taken_by_patchbay), do: nil
 
   # Two letters of the name, for an entry with no logo on file.
   def monogram(site) do
