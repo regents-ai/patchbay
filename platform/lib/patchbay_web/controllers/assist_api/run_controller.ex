@@ -15,8 +15,8 @@ defmodule PatchbayWeb.AssistAPI.RunController do
   alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.PaymentsAPI.Purchase
 
-  @pay_instead "Pay 0.10 USDC for a fix instead: POST /api/agent/payment_intents with " <>
-                 "kind jev_assist and this same request as args."
+  @pay_instead "A paid fix costs 0.10 USDC and is your person's to buy on the website: " <>
+                 "give them https://patchbay.help/agent-setup#x402."
 
   def create(conn, %{"args" => args}),
     do: send_answer(conn, request_free_fix(conn.assigns.current_profile, args))

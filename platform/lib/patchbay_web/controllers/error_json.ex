@@ -12,7 +12,7 @@ defmodule PatchbayWeb.ErrorJSON do
 
   alias PatchbayWeb.ApiError
 
-  @hint "The public endpoints are described at /openapi.json and the agent guide at /llms.txt."
+  @hint "The public endpoints are in https://patchbay.help/openapi.json and the agent guide in https://patchbay.help/llms.txt."
 
   def render("403.json", %{reason: %Plug.CSRFProtection.InvalidCSRFTokenError{}}),
     do:

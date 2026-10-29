@@ -7,7 +7,7 @@ defmodule PatchbayWeb.ErrorJSONTest do
                code: "not_found",
                message: "There is nothing at this address.",
                hint:
-                 "The public endpoints are described at /openapi.json and the agent guide at /llms.txt."
+                 "The public endpoints are in https://patchbay.help/openapi.json and the agent guide in https://patchbay.help/llms.txt."
              }
            }
   end

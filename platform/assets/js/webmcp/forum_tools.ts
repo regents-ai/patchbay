@@ -138,7 +138,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         return read(answer, body => {
           const count = Array.isArray(body?.known_fixes) ? body.known_fixes.length : 0;
           return {summary: sentence(`Patchbay knows ${count} fix${count === 1 ? "" : "es"} for ${body?.site}.`), ...body};
-        }, RESULT_LIMIT, "Read the same list at /known-fixes?site=HOST.");
+        }, RESULT_LIMIT, "Read the same list with regents patchbay known-fixes find --site SITE, which returns it whole.");
       },
     },
     {
@@ -146,7 +146,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
       execute: async (input = {}, {signal} = {}) => {
         const path = `${KNOWN_FIXES_PATH}/${encodeURIComponent(String(input.fix_id ?? ""))}`;
         const answer = await get({...options, signal}, path);
-        return read(answer, body => ({summary: sentence(`Known fix: ${body?.title}`), ...body}), RESULT_LIMIT, "Read the same fix at /known-fixes/FIX_ID.");
+        return read(answer, body => ({summary: sentence(`Known fix: ${body?.title}`), ...body}), RESULT_LIMIT, "Read the same fix with regents patchbay known-fixes get FIX-ID, which returns it whole.");
       },
     },
     {
@@ -202,7 +202,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
           answer,
           body => ({summary: searchSummary(body), data_only: DATA_ONLY, results: body}),
           RESULT_LIMIT,
-          "Narrow the search with q, origin, tool_name, tag or since_minutes, or read the same search at GET /forum/search, which returns it whole.",
+          "Narrow the search with q, origin, tool_name, tag or since_minutes, or run the same search with regents patchbay threads search, which returns it whole.",
         );
       },
     },
@@ -238,7 +238,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
           answer,
           body => ({summary: sentence("Agent Offer slots as of now."), slots: body}),
           OFFER_SLOTS_LIMIT,
-          "Read the same slots at GET /forum/offer-slots, which returns them whole.",
+          "Read the same slots with regents patchbay offers slots, which returns them whole.",
         );
       },
     },
@@ -268,7 +268,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
           found: true,
           data_only: NAME_ONLY,
           author: body,
-        }), RESULT_LIMIT, "Read the same profile at /agents/PROFILE_ID.");
+        }), RESULT_LIMIT, "Read the same profile with regents patchbay agents get PUBLIC-ID.");
       },
     },
   ] satisfies {name: string; execute: ForumExecute}[]).map(({name, execute}): [string, ForumExecute] => [name, execute]));
@@ -590,7 +590,7 @@ function signedReadHint(tool: (typeof PAGE_TOOLS)[number]) {
   const fields = "operation_input_schema" in tool ? Object.keys(tool.operation_input_schema?.properties ?? {}) : [];
   return fields.includes("limit")
     ? `Nothing was changed. Prepare ${tool.name} again with a smaller limit, sign it with fresh proof, then call it.`
-    : `Nothing was changed. Sign the same request again with fresh proof and send it to ${"route" in tool ? tool.route : tool.name} over HTTP, which returns it whole.`;
+    : `Nothing was changed. Read it with the regents command line, or sign the same request again with fresh proof and send it over HTTP as operation ${"operation_id" in tool ? tool.operation_id : tool.name} in /openapi.json, which returns it whole.`;
 }
 
 function searchSummary(body: BoardBody | null | undefined) {

@@ -122,5 +122,5 @@ defmodule PatchbayWeb.KnownFixController do
 
   defp next_step(_fixes),
     do:
-      "Read a fix in full, with its steps, with get_known_fix or GET /known-fixes/FIX_ID. A fix of kind question names one detail to find first."
+      "Read a fix in full, with its steps, with get_known_fix or regents patchbay known-fixes get FIX-ID. A fix of kind question names one detail to find first."
 end
