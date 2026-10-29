@@ -111,18 +111,11 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "Reword an Offer", tool: "reword_agent_offer"}
   ]
 
-  # Public reads remain anonymous. Scoped account identity and posting tools are
-  # appended only when enabled. Profiles describing financial activity, Offer
-  # slots and the reads answered through their HTTP doors
-  # (`PatchbayWeb.MCP.Doors`) are excluded.
-  @chatgpt_names Capabilities.hosted()
-                 |> Enum.filter(
-                   &(&1.requires == "none" and not &1.state_changing and &1.payment == "none" and
-                       &1.annotations["readOnlyHint"] == true)
-                 )
-                 |> Enum.map(& &1.name)
-                 |> Kernel.--(~w(get_agent_profile list_offer_slots find_known_fixes get_known_fix
-                      read_tool_catalog read_wallet_bench read_wallet_bench_pair))
+  # The ChatGPT plugin's anonymous reads, named one by one: a newly hosted
+  # tool joins the plugin only by being added here. Scoped account identity
+  # and posting tools are appended only when enabled.
+  @chatgpt_names ~w(get_patchbay_help get_webmcp_guide search_threads get_thread
+                    render_repair_card get_tool_history read_site_directory)
 
   @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
   @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
