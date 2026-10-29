@@ -146,10 +146,15 @@ defmodule Patchbay.OperatorWallet do
   end
 
   # Ethereumex sends one JSON-RPC call, or a batch of them.
-  defp method(body) do
-    case body |> IO.iodata_to_binary() |> Jason.decode!() do
-      %{"method" => method} -> method
-      [_ | _] -> "batch"
+  # Never raises: a handler that raises is detached for good, and the
+  # operator wallet's failures would stop being counted until the next boot.
+  defp method(body) when is_binary(body) or is_list(body) do
+    case body |> IO.iodata_to_binary() |> Jason.decode() do
+      {:ok, %{"method" => method}} when is_binary(method) -> method
+      {:ok, [_ | _]} -> "batch"
+      _unreadable -> "unreadable"
     end
   end
+
+  defp method(_no_body), do: "unreadable"
 end

@@ -1,7 +1,6 @@
 defmodule PatchbayWeb.AgentCheckInTest do
   # An agent that checks in unpaired, or paired to someone who has never signed
-  # in here, is refused the way /openapi.json documents it, with the Patchbay
-  # help page for its code.
+  # in here, is refused the way /openapi.json documents it.
   use PatchbayWeb.ConnCase, async: true
 
   alias PatchbayWeb.SignedAgent
@@ -10,17 +9,15 @@ defmodule PatchbayWeb.AgentCheckInTest do
     SignedAgent.stub_siwa()
   end
 
-  test "an agent nobody paired is refused as documented, with its help page", %{conn: conn} do
+  test "an agent nobody paired is refused as documented", %{conn: conn} do
     stranger = %{wallet: wallet()}
 
     body = conn |> SignedAgent.sign(stranger) |> get("/api/agents/v1/me") |> json_response(403)
 
     assert body == documented("agentNotPaired")
-    assert body["error"]["hint"] =~ "Help: https://patchbay.help/errors/agent_not_paired"
   end
 
-  test "an agent whose person has never signed in here is refused as documented, with its help page",
-       %{conn: conn} do
+  test "an agent whose person has never signed in here is refused as documented", %{conn: conn} do
     wallet = wallet()
 
     person = %RegentAgents.Person{
@@ -40,7 +37,6 @@ defmodule PatchbayWeb.AgentCheckInTest do
       |> json_response(403)
 
     assert body == documented("personNotHere")
-    assert body["error"]["hint"] =~ "Help: https://patchbay.help/errors/person_not_here"
   end
 
   defp documented(example) do

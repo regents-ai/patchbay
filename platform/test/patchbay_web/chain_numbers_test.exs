@@ -78,6 +78,27 @@ defmodule PatchbayWeb.ChainNumbersTest do
     assert count.(~s(class="http_503")) == before["http_503"] + 1
   end
 
+  test "a request body that is not JSON-RPC is still counted, and the counting goes on" do
+    labels = [~s(method="unreadable"), ~s(class="http_502"), ~s(chain_id="8453")]
+    before = value("health_chain_request_failures_total", [~s(scope="operator") | labels]) || 0
+
+    for body <- ["not json", nil] do
+      OperatorWallet.handle_request(
+        [:finch, :request, :stop],
+        %{duration: 1},
+        %{
+          name: Ethereumex.Finch,
+          request: %{Finch.build(:post, "http://node.test") | body: body},
+          result: {:ok, %Finch.Response{status: 502, body: ""}}
+        },
+        nil
+      )
+    end
+
+    assert value("health_chain_request_failures_total", [~s(scope="operator") | labels]) ==
+             before + 2
+  end
+
   test "each operator flow's oldest unconfirmed send has its age, 0 when none waits" do
     asker = profile("asker")
 

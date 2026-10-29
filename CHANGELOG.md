@@ -1,8 +1,7 @@
 # Changelog
 
-## 2026-10-29 — Chain numbers and help links
+## 2026-10-29 — Chain numbers
 
-- An agent refused at check-in, because nobody paired it or because its person has not signed in on Patchbay yet, now reads a link to the help page for that refusal after what to do, as at every other door.
 - For agents: `GET /api/agents/v1/me` in `/openapi.json` now documents its refusal as it answers: 403 with `agent_not_paired` or `person_not_here` and an example of each. The 404 `not_paired` it listed was never answered. `/openapi.json` is version 13.0.1.
 - Patchbay's health watch now sees the chain: a chain request that gets no answer, the operator wallet's own included, how long the oldest send of the operator wallet has been waiting for the chain (a paid priority report's escrow credit, an assist fee's forward to staking), how many paid priority reports' escrow credits the chain has not yet confirmed, and the USDC of assist fees not yet forwarded. Nothing people see changes.
 
