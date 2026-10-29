@@ -4,15 +4,16 @@ defmodule Patchbay.Forum.Actions.UnsubscribeFromEvents do
   address. The subscription is named by the same derived id `:subscribe`
   makes, so an actor can only ever end its own. Ending one that does not
   exist, or has already gone, succeeds and changes nothing.
-  """
 
-  use Ash.Resource.Actions.Implementation
+  `EventSubscription`'s `:unsubscribe` runs it by a function reference, so the
+  resource does not depend on this module at compile time.
+  """
 
   alias Patchbay.Forum.Changes.DeriveEventSubscription
   alias Patchbay.Forum.EventSubscriptionRefused
 
-  @impl true
-  def run(input, _opts, %{actor: actor}) do
+  @spec run(Ash.ActionInput.t(), map()) :: :ok | {:error, term()}
+  def run(input, %{actor: actor}) do
     case Regent.MCPEvents.subscription_id(
            DeriveEventSubscription.identity_owner(actor),
            input.arguments.name,

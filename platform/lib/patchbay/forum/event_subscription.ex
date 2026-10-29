@@ -173,7 +173,7 @@ defmodule Patchbay.Forum.EventSubscription do
       argument(:name, :string, allow_nil?: false)
       argument(:arguments, :map, allow_nil?: false)
       argument(:url, :string, allow_nil?: false)
-      run(Patchbay.Forum.Actions.UnsubscribeFromEvents)
+      run(&Patchbay.Forum.Actions.UnsubscribeFromEvents.run/2)
     end
 
     update :deliver do
