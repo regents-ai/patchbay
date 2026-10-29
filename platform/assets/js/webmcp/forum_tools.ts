@@ -101,7 +101,8 @@ const NAME_ONLY =
 
 // The tools the page registers: every manifest tool with a page door, in
 // manifest order. Titles, descriptions, schemas and annotations come from
-// the manifest; only the executors live here.
+// the manifest; only the executors live here. Owner-only rows have no page
+// door: an agent cannot run them, so the page does not offer them.
 const PAGE_TOOLS = manifest.tools.filter(tool => tool.doors.page);
 
 export const FORUM_TOOL_NAMES = PAGE_TOOLS.map(tool => tool.name);
@@ -348,9 +349,6 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         try {
           return boundedJson({ok: true, request: signedTransport().prepare(String(input.operation), input.input as Record<string, unknown>)});
         } catch (error) { return boundedJson(refusal("invalid_preparation", String(error), "Read /agents.md and use an available operation.")); }
-      }
-      if ("authentication" in tool && tool.authentication === "owner_only") {
-        return boundedJson(refusal("owner_action_required", "Use the owner interface for this action.", "An agent cannot use an owner's cookie or wallet as its authority."));
       }
       if ("authentication" in tool && tool.authentication === "siwa_per_request") {
         try {

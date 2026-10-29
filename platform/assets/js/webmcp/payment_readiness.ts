@@ -233,7 +233,7 @@ export function mapBalanceHttp(answer: BalanceAnswer): BalanceReadout {
       error: refused ?? {
         code: "refused",
         message: `Your balance could not be read: Patchbay gave status ${answer?.status ?? 0}.`,
-        hint: "Call get_my_usdc_balance again in a moment.",
+        hint: "Read the balance again in a moment.",
       },
     };
   }
@@ -245,7 +245,7 @@ export function mapBalanceHttp(answer: BalanceAnswer): BalanceReadout {
     return refusal(
       "unreadable",
       "Your balance could not be read: the page got an unreadable amount.",
-      "Call get_my_usdc_balance again in a moment.",
+      "Read the balance again in a moment.",
     );
   }
 

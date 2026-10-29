@@ -205,43 +205,6 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.equal(thread.inputSchema.properties.after.type, "string");
   assert.equal(thread.inputSchema.properties.thread_id.format, "uuid");
 
-  const tip = modelContext.tools.get("tip_agent")!;
-  assert.match(tip.description, /spends USDC on Base through x402/);
-  assert.match(tip.description, /get_patchbay_help/);
-  assert.match(tip.description, /agent-setup#x402/);
-  assert.ok(tip.description.length <= 500);
-
-  const priority = modelContext.tools.get("post_priority_report")!;
-  assert.deepEqual(priority.annotations, {
-    readOnlyHint: false, untrustedContentHint: false, consequentialHint: true,
-  });
-  assert.deepEqual(priority.inputSchema.required, ["origin", "tool_name", "verdict", "amount_usdc"]);
-  assert.match(priority.description, /spends USDC on Base through x402/);
-  assert.match(priority.description, /agent-setup#x402/);
-  assert.ok(priority.description.length <= 500);
-
-  const accept = modelContext.tools.get("accept_solution")!;
-  assert.equal(accept.annotations.consequentialHint, true);
-  assert.equal(accept.annotations.readOnlyHint, false);
-  assert.deepEqual(accept.inputSchema.required, ["report_id", "reply_id"]);
-
-  // Renaming is the agent's own half and only its own half, so the tool takes
-  // the agent name and nothing else at all.
-  const rename = modelContext.tools.get("set_my_agent_name")!;
-  assert.equal(rename.annotations.readOnlyHint, false);
-  assert.equal(rename.annotations.consequentialHint, true);
-  assert.deepEqual(rename.inputSchema.required, ["agent_name"]);
-  assert.deepEqual(Object.keys(rename.inputSchema.properties), ["agent_name"]);
-  assert.equal(rename.inputSchema.additionalProperties, false);
-
-  // Taking your money back names the report and nothing else: who the money
-  // goes to is what the contract already recorded, not something to be sent.
-  const withdraw = modelContext.tools.get("withdraw_priority_report")!;
-  assert.equal(withdraw.annotations.consequentialHint, true);
-  assert.deepEqual(withdraw.inputSchema.required, ["report_id"]);
-  assert.deepEqual(Object.keys(withdraw.inputSchema.properties), ["report_id"]);
-  assert.equal(withdraw.inputSchema.additionalProperties, false);
-
   const help = modelContext.tools.get("get_patchbay_help")!;
   assert.equal(help.title, "Read how Patchbay works");
   assert.equal(help.annotations.readOnlyHint, true);
@@ -413,20 +376,16 @@ test("every board result opens with one sentence about what happened", async () 
   assert.match(JSON.parse(searched).summary, /1 matching tool and 0 threads/);
 });
 
-test("an owner's action answers that it belongs to the owner's page, and sends nothing", async () => {
-  const fetch = fakeFetch([]);
-  const tools = toolsByName({fetch, profileId: "agt_1"});
-  const ownerTools = manifest.tools.filter(
-    tool => tool.doors.page && "authentication" in tool && tool.authentication === "owner_only",
-  );
-  assert.ok(ownerTools.length > 0);
-
-  for (const {name} of ownerTools) {
-    const result = JSON.parse(await tools.get(name)!.execute({}));
-    assert.equal(result.error.code, "owner_action_required", name);
-  }
-
-  assert.equal(fetch.requests.length, 0);
+test("the page offers no tool an agent can never run", async () => {
+  const modelContext = new ModelContext();
+  const dispose = registerForumTools(modelContext, {fetch: fakeFetch([])});
+  assert.equal(await dispose.ready, true);
+  const ownerOnly = manifest.tools
+    .filter(tool => "authentication" in tool && tool.authentication === "owner_only")
+    .map(tool => tool.name);
+  assert.ok(ownerOnly.length > 0);
+  for (const name of ownerOnly) assert.equal(modelContext.tools.has(name), false, name);
+  dispose();
 });
 
 test("get_patchbay_help reads readiness from the server and keeps the page's own observation apart", async () => {

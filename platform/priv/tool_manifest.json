@@ -816,7 +816,7 @@
       "state_changing": true,
       "payment": "none",
       "doors": {
-        "page": true,
+        "page": false,
         "hosted": false,
         "http": [
           {
@@ -1993,7 +1993,7 @@
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
-        "consequentialHint": true
+        "consequentialHint": false
       },
       "scope": "site",
       "authentication": "siwa_per_request",
@@ -2519,7 +2519,7 @@
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
-        "consequentialHint": true
+        "consequentialHint": false
       },
       "scope": "site",
       "authentication": "siwa_per_request",
@@ -2616,7 +2616,7 @@
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
-        "consequentialHint": true
+        "consequentialHint": false
       },
       "scope": "site",
       "authentication": "siwa_per_request",
@@ -2722,7 +2722,7 @@
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
-        "consequentialHint": true
+        "consequentialHint": false
       },
       "scope": "site",
       "authentication": "siwa_per_request",
@@ -2958,7 +2958,7 @@
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
-        "consequentialHint": true
+        "consequentialHint": false
       },
       "scope": "site",
       "authentication": "siwa_per_request",
@@ -3044,7 +3044,7 @@
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
-        "consequentialHint": true
+        "consequentialHint": false
       },
       "scope": "site",
       "authentication": "siwa_per_request",
@@ -3208,7 +3208,7 @@
       "state_changing": false,
       "payment": "none",
       "doors": {
-        "page": true,
+        "page": false,
         "hosted": false,
         "http": [
           {
@@ -3247,7 +3247,7 @@
       "state_changing": true,
       "payment": "none",
       "doors": {
-        "page": true,
+        "page": false,
         "hosted": false,
         "http": [
           {
@@ -3293,7 +3293,7 @@
       "state_changing": true,
       "payment": "moves_usdc",
       "doors": {
-        "page": true,
+        "page": false,
         "hosted": false,
         "http": [
           {
@@ -3390,7 +3390,7 @@
       "state_changing": true,
       "payment": "moves_usdc",
       "doors": {
-        "page": true,
+        "page": false,
         "hosted": false,
         "http": [
           {
@@ -3485,7 +3485,7 @@
       "state_changing": true,
       "payment": "moves_usdc",
       "doors": {
-        "page": true,
+        "page": false,
         "hosted": false,
         "http": [
           {
@@ -3526,7 +3526,7 @@
       "state_changing": true,
       "payment": "moves_usdc",
       "doors": {
-        "page": true,
+        "page": false,
         "hosted": false,
         "http": [
           {
@@ -3984,7 +3984,6 @@
         "readOnlyHint": false,
         "untrustedContentHint": true
       },
-      "consequential": true,
       "authentication": "siwa_per_request",
       "availability": "available",
       "requires": "paired_agent",
@@ -4085,7 +4084,6 @@
         "readOnlyHint": false,
         "untrustedContentHint": true
       },
-      "consequential": true,
       "authentication": "siwa_per_request",
       "availability": "available",
       "requires": "paired_agent",
@@ -4186,7 +4184,6 @@
         "readOnlyHint": false,
         "untrustedContentHint": true
       },
-      "consequential": true,
       "authentication": "siwa_per_request",
       "availability": "available",
       "requires": "paired_agent",
@@ -4277,7 +4274,6 @@
         "readOnlyHint": false,
         "untrustedContentHint": true
       },
-      "consequential": true,
       "authentication": "siwa_per_request",
       "availability": "available",
       "requires": "paired_agent",
