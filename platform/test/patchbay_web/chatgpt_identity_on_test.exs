@@ -1,11 +1,12 @@
-defmodule PatchbayWeb.ChatGPTAccountLimitTest do
+defmodule PatchbayWeb.ChatGPTIdentityOnTest do
   @moduledoc """
-  A connected account's share of identity and posting calls a minute at the
-  ChatGPT address, counted before the hosted signer is asked to sign for it.
-  Reads stay uncounted.
+  The ChatGPT address with identities on: every tool states its three review
+  hints, and a connected account has a share of identity and posting calls a
+  minute, counted before the hosted signer is asked to sign for it. Reads
+  stay uncounted.
   """
 
-  # It switches ChatGPT identities on and lowers the signed share for the
+  # It switches ChatGPT identities on and lowers the account share for the
   # whole site while it runs.
   use PatchbayWeb.ConnCase, async: false
 
@@ -60,7 +61,7 @@ defmodule PatchbayWeb.ChatGPTAccountLimitTest do
       )
     )
 
-    put_env(:patchbay, :chatgpt_account_per_minute, 2)
+    put_env(:patchbay, :chatgpt_account_per_minute, 5)
 
     put_env(
       :regent_oauth,
@@ -87,34 +88,48 @@ defmodule PatchbayWeb.ChatGPTAccountLimitTest do
     %{client: client}
   end
 
+  test "every tool states whether it reads, destroys and reaches the open world" do
+    tools = PatchbayWeb.MCP.Tools.list(:chatgpt_plugin)
+
+    assert length(tools) == 12
+
+    for tool <- tools do
+      hints = tool.annotations |> Jason.encode!() |> Jason.decode!()
+
+      for hint <- ~w(readOnlyHint destructiveHint openWorldHint),
+          do: assert(is_boolean(hints[hint]), "#{tool.name} #{hint}")
+    end
+  end
+
   test "an account's identity and posting calls past its share are refused without asking the hosted signer",
        %{conn: conn, client: client} do
     bearer = account!(client)
 
-    first = call_tool(conn, bearer, "register_identity", %{})
-    assert json_response(first, 200)["result"]["isError"] == false
-    assert ratelimit(first) =~ ~s("signed";r=1;t=)
+    calls = [
+      {"register_identity", %{}},
+      {"get_identity", %{}},
+      {"pair_identity", %{"code" => "ABCD-1234", "name" => "Chat"}},
+      {"ask_question", question()},
+      {"post_reply", reply()}
+    ]
+
+    for {{name, arguments}, left} <- Enum.zip(calls, 4..0//-1) do
+      assert ratelimit(call_tool(conn, bearer, name, arguments)) =~ ~s("account";r=#{left};t=)
+    end
+
     assert_received {:hosted_signer_asked, "register"}
+    drain_signer()
 
-    second = call_tool(conn, bearer, "ask_question", question())
-    assert json_response(second, 200)["result"]["isError"] == true
-    assert ratelimit(second) =~ ~s("signed";r=0;t=)
-    assert_received {:hosted_signer_asked, "sign"}
+    refused = call_tool(conn, bearer, "register_identity", %{})
 
-    refused = call_tool(conn, bearer, "pair_identity", %{"code" => "ABCD-1234", "name" => "Chat"})
+    assert %{"isError" => true, "structuredContent" => %{"error" => error}} =
+             json_response(refused, 200)["result"]
 
-    assert json_response(refused, 429) ==
-             %{
-               "error" => %{
-                 "code" => "too_many_requests",
-                 "message" => "Too Many Requests",
-                 "hint" =>
-                   "Wait the number of seconds in Retry-After, then send the request again."
-               }
-             }
-
-    assert get_resp_header(refused, "ratelimit-policy") |> hd() =~ ~s("signed";q=2;w=60)
-    assert ratelimit(refused) =~ ~s("signed";r=0;t=)
+    assert error["code"] == "too_many_requests"
+    assert error["message"] =~ "5 identity and posting calls"
+    assert error["hint"] =~ ~r/^Wait \d+ seconds/
+    assert get_resp_header(refused, "ratelimit-policy") |> hd() =~ ~s("account";q=5;w=60)
+    assert ratelimit(refused) =~ ~s("account";r=0;t=)
     assert [seconds] = get_resp_header(refused, "retry-after")
     assert String.to_integer(seconds) in 1..60
     refute_received {:hosted_signer_asked, _operation}
@@ -123,12 +138,12 @@ defmodule PatchbayWeb.ChatGPTAccountLimitTest do
   test "another account keeps a share of its own", %{conn: conn, client: client} do
     spent = account!(client)
 
-    for _call <- 1..2, do: call_tool(conn, spent, "register_identity", %{})
-    assert call_tool(conn, spent, "register_identity", %{}).status == 429
+    for _call <- 1..5, do: call_tool(conn, spent, "register_identity", %{})
+    assert refused?(call_tool(conn, spent, "register_identity", %{}))
 
     other = call_tool(conn, account!(client), "register_identity", %{})
     assert json_response(other, 200)["result"]["isError"] == false
-    assert ratelimit(other) =~ ~s("signed";r=1;t=)
+    assert ratelimit(other) =~ ~s("account";r=4;t=)
   end
 
   test "reads are not counted", %{conn: conn, client: client} do
@@ -137,15 +152,15 @@ defmodule PatchbayWeb.ChatGPTAccountLimitTest do
     for _read <- 1..3 do
       read = call_tool(conn, bearer, "search_threads", %{"q" => "booking"})
       assert json_response(read, 200)["result"]["isError"] == false
-      refute ratelimit(read) =~ "signed"
+      refute ratelimit(read) =~ "account"
     end
 
-    for left <- [1, 0] do
+    for left <- 4..0//-1 do
       assert ratelimit(call_tool(conn, bearer, "register_identity", %{})) =~
-               ~s("signed";r=#{left};t=)
+               ~s("account";r=#{left};t=)
     end
 
-    assert call_tool(conn, bearer, "register_identity", %{}).status == 429
+    assert refused?(call_tool(conn, bearer, "register_identity", %{}))
     assert json_response(call_tool(conn, bearer, "get_patchbay_help", %{}), 200)
   end
 
@@ -175,6 +190,27 @@ defmodule PatchbayWeb.ChatGPTAccountLimitTest do
       "body_markdown" => "The booking tool takes a date but I cannot find a way to move it.",
       "client_request_id" => Ecto.UUID.generate()
     }
+  end
+
+  defp reply do
+    %{
+      "thread_id" => Ecto.UUID.generate(),
+      "body_markdown" => "Moving the date worked once I picked the booking from the list first.",
+      "client_request_id" => Ecto.UUID.generate()
+    }
+  end
+
+  defp refused?(conn),
+    do:
+      json_response(conn, 200)["result"]["structuredContent"]["error"]["code"] ==
+        "too_many_requests"
+
+  defp drain_signer do
+    receive do
+      {:hosted_signer_asked, _operation} -> drain_signer()
+    after
+      0 -> :ok
+    end
   end
 
   defp call_tool(conn, bearer, name, arguments) do

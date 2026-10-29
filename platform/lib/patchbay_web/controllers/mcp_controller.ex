@@ -32,6 +32,7 @@ defmodule PatchbayWeb.MCPController do
   alias PatchbayWeb.MCP.Session
   alias PatchbayWeb.MCP.Tools
   alias PatchbayWeb.VisitLog
+  alias RegentAgentAccess.RateLimit
 
   # Every method `handle/3` answers, and the notification a client sends after
   # initialize, so a visit line names only these.
@@ -98,14 +99,32 @@ defmodule PatchbayWeb.MCPController do
   # account, and all of them reach it from Patchbay itself, so each is counted
   # for the account first, never for an address or a session. The share is
   # small because every account draws on the one signing allowance Patchbay
-  # has, and a person approves each post.
+  # has, and a person approves each post. Past it, the answer is a tool
+  # refusal, as the OAuth check's is, so the model reads how long to wait.
   defp count_for_account(%{halted: true} = conn), do: conn
 
   defp count_for_account(conn) do
-    PatchbayWeb.Plugs.SignedBudget.call(conn,
-      key: &{:account, &1.assigns.mcp_agent_principal.subject},
-      limit: Application.get_env(:patchbay, :chatgpt_account_per_minute, @account_per_minute)
-    )
+    limit = Application.get_env(:patchbay, :chatgpt_account_per_minute, @account_per_minute)
+    subject = conn.assigns.mcp_agent_principal.subject
+
+    case PatchbayWeb.ReadLimit.admit({"account", subject}, limit, 60) do
+      {:ok, budget} ->
+        RateLimit.put_headers(conn, "account", budget)
+
+      {:error, :rate_limited, budget} ->
+        refusal =
+          ApiError.body(
+            "too_many_requests",
+            "This account has used its #{limit} identity and posting calls for this minute.",
+            "Wait #{budget.reset} seconds, then try again."
+          )
+
+        conn
+        |> RateLimit.put_headers("account", budget)
+        |> put_resp_header("retry-after", Integer.to_string(budget.reset))
+        |> json(reply({:ok, tool_result(refusal, true)}, conn.body_params["id"]))
+        |> halt()
+    end
   end
 
   @doc "Only free participation may enter the SIWA-protected plugin door."

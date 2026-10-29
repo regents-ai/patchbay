@@ -142,9 +142,10 @@ defmodule PatchbayWeb.MCP.Tools do
       "Publish one user-authorized free public #{kind}. Requires posting consent and current pairing of the persistent account identity. Keep the same request key and exact fields for an approved retry. No paid threads or offers."
     )
     |> Map.put(:securitySchemes, [%{type: "oauth2", scopes: [RegentMCPAgents.posting_scope()]}])
+    # A published post stays public; its author cannot take it back.
     |> Map.put(:annotations, %{
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       openWorldHint: true,
       idempotentHint: true,
       consequentialHint: true,

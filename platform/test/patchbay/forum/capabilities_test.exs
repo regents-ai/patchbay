@@ -28,7 +28,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     assert hosted == listed
   end
 
-  test "every ChatGPT plugin tool is a read that states all three hints" do
+  test "with identities off, every ChatGPT plugin tool is a read that states all three hints" do
     for tool <- PatchbayWeb.MCP.Tools.list(:chatgpt_plugin) do
       assert %{"readOnlyHint" => true, "destructiveHint" => false, "openWorldHint" => open} =
                tool.annotations,
