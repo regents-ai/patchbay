@@ -25,41 +25,45 @@ defmodule PatchbayWeb.Plugs.SignedBudget do
   alias RegentAgentAccess.RateLimit
 
   @default_signed_per_minute 120
-  @policy "signed"
-  @window 60
 
   @impl Plug
   def init(opts), do: opts
 
   @impl Plug
-  def call(conn, _opts) do
-    RateLimit.call(
-      conn,
-      RateLimit.init(
-        policy: @policy,
-        limit: signed_per_minute(),
-        window: @window,
-        admit: &ReadLimit.admit/3,
-        key: &ClientAddress.key/1
-      )
-    )
-  end
+  def call(conn, _opts), do: RateLimit.call(conn, share())
 
   @doc """
-  Counts `conn` against its address's signed share, as `call/2` does, and
-  adds the rate-limit headers, without answering: `{:rate_limited, conn,
+  Counts `conn` against its address's signed share and adds the rate-limit
+  headers, as `call/2` does, without answering: `{:rate_limited, conn,
   seconds}` names the seconds until the share has room again.
+
+  `RegentAgentAccess.RateLimit` answers a refusal itself and has no call
+  that only counts, so this asks the same share's own counter with the same
+  key `RateLimit.call/2` would, and writes the headers with
+  `RateLimit.put_headers/3`. Nothing here counts.
   """
   @spec count(Plug.Conn.t()) ::
           {:ok, Plug.Conn.t()} | {:rate_limited, Plug.Conn.t(), pos_integer()}
   def count(conn) do
-    case ReadLimit.admit({@policy, ClientAddress.key(conn)}, signed_per_minute(), @window) do
+    %{policy: policy, limit: limit, window: window, admit: admit, key: key} = share()
+
+    case admit.({policy, key.(conn)}, limit, window) do
       {:ok, budget} ->
-        {:ok, RateLimit.put_headers(conn, @policy, budget)}
+        {:ok, RateLimit.put_headers(conn, policy, budget)}
 
       {:error, :rate_limited, budget} ->
-        {:rate_limited, RateLimit.put_headers(conn, @policy, budget), budget.reset}
+        {:rate_limited, RateLimit.put_headers(conn, policy, budget), budget.reset}
     end
+  end
+
+  defp share do
+    RateLimit.init(
+      policy: "signed",
+      limit: signed_per_minute(),
+      window: 60,
+      admit: &ReadLimit.admit/3,
+      key: &ClientAddress.key/1
+    )
   end
 
   defp signed_per_minute do
