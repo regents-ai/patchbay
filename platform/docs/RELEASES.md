@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v291, 29 Oct 2026
+
+- Commit: c2ba076d8dff7070fe0cae259b9db56a12b6d499 (image `c2ba076`), on main after v290. Machine d8d0edec6d5608, one machine.
+- The account menu replaces the side panel (shared rollout 2026-10-28-account-menu, Sean "1. a" 05:20:03Z): HeaderAccountLive, Regent.Account.menu and Regent.Account.layout, Pair New Agent only on /account, the phone header's Menu dialog, the 320px Credits row; design-system pin 3134bab0. Rollout steps 1 and 5 are partial: elixir-utils stays 48a2e1c7 until PB-20, so /api/agents/v1 hints still say "side panel".
+- Page fixes: /docs fits phones; /agent-setup without operator notes; Offers and Wallet Bench tab rows on one line with an edge fade; header Questions opens /; /questions, /test-me, /jev and /runtime removed (404); the theme switch stays off phones (Sean 6a).
+- Checks: make check on a git-archive copy of 30199431 (c2ba076d adds only this file's v290 row), 937 ExUnit (12 properties), 169 walk steps, required fixes, CLI contract, SIWA latest. Adversarial review; fixes in 9c58b4c6, 30199431.
+- Live: /, /offers, /wallet-bench, /docs, /agent-setup, /account at 1280, 390 and 320, light and dark, 200 with no sideways scroll; the theme switch shows at 1280 only; /questions and /test-me 404; /capabilities.json build.commit c2ba076d.
+- Rollback: v290, image `2f7453a`.
+
 ## v290, 29 Oct 2026
 
 - Commit: 2f7453adcb2b93fb8d611bf16b4f516d123bde4a (image `2f7453a`), on main after v289. Machine d89520dc913748, one machine.
