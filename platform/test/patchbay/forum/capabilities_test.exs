@@ -1,24 +1,87 @@
 defmodule Patchbay.Forum.CapabilitiesTest do
   @moduledoc """
-  The manifest promises doors; this holds each promise against the code that
-  serves it, so the manifest can never name an HTTP address the API reference
-  does not describe or a hosted tool the server does not run.
+  The manifest, the capability rows, the API reference and the command list
+  agree, and the hosted server runs exactly the tools the manifest says it does.
   """
 
   use ExUnit.Case, async: true
 
   alias Patchbay.Forum.Capabilities
+  alias Patchbay.Forum.Capabilities.Contract
 
-  test "every HTTP door the manifest names is in the API reference" do
-    reference = "priv/public/openapi.json" |> File.read!() |> Jason.decode!()
+  @files %{
+    capabilities: "priv/capabilities.json",
+    manifest: "priv/tool_manifest.json",
+    openapi: "priv/public/openapi.json",
+    commands: "../cli/commands.json"
+  }
 
-    for tool <- Capabilities.tools(),
-        %{"method" => method, "path" => path} <- tool.doors["http"] do
-      operation = get_in(reference, ["paths", path, String.downcase(method)])
+  defp files,
+    do: Map.new(@files, fn {name, path} -> {name, path |> File.read!() |> Jason.decode!()} end)
 
-      assert is_map(operation),
-             "#{tool.name} names #{method} #{path}, which openapi.json does not describe"
+  test "the four contract files agree" do
+    assert Contract.problems(files()) == []
+  end
+
+  # The module refuses to compile on any of these; each edit is drift the
+  # check exists to stop.
+  test "drift between the manifest, the rows, OpenAPI and the commands is a problem" do
+    files = files()
+    tool = fn files, name -> Enum.find_index(files.manifest["tools"], &(&1["name"] == name)) end
+
+    command = fn files, words ->
+      Enum.find_index(files.commands["commands"], &(&1["command"] == words))
     end
+
+    drift = [
+      put_in(
+        files,
+        [:manifest, "tools", Access.at(tool.(files, "get_thread")), "operation_id"],
+        "getNothing"
+      ),
+      put_in(
+        files,
+        [:manifest, "tools", Access.at(tool.(files, "post_reply")), "route"],
+        "POST /forum/threads"
+      ),
+      put_in(
+        files,
+        [:manifest, "tools", Access.at(tool.(files, "like_post")), "annotations", "readOnlyHint"],
+        true
+      ),
+      put_in(
+        files,
+        [:commands, "commands", Access.at(command.(files, "threads create")), "effect"],
+        "read"
+      ),
+      put_in(
+        files,
+        [:commands, "commands", Access.at(command.(files, "threads get <id>")), "webmcp"],
+        "search_threads"
+      ),
+      update_in(files, [:capabilities, "operations"], &tl/1),
+      update_in(
+        files,
+        [:openapi, "paths"],
+        &Map.put(&1, "/new", %{"get" => %{"operationId" => "newRead"}})
+      )
+    ]
+
+    for files <- drift, do: assert(Contract.problems(files) != [])
+  end
+
+  test "/capabilities.json has a row for every OpenAPI operation, with how an agent reaches it" do
+    operations = Capabilities.operations()
+    assert length(operations) == map_size(Contract.operations(files().openapi))
+
+    for row <- operations do
+      assert row.agent_use ==
+               if(row.authority in ~w(owner_only wallet), do: "hand_to_person", else: "run")
+    end
+
+    search = Enum.find(operations, &(&1.operation == "searchThreads"))
+    assert search.interfaces.browser_tools == ["search_threads"]
+    assert search.interfaces.commands == ["regents patchbay threads search"]
   end
 
   test "every hosted tool is one the hosted server lists" do
@@ -35,12 +98,12 @@ defmodule Patchbay.Forum.CapabilitiesTest do
   # admission really applies. A model at /mcp is never told the page's steps.
   test "every hosted tool states its purpose and its prerequisite" do
     needs = %{
-      "none" => "Needs nothing.",
+      "public" => "Needs nothing.",
       "paired_agent" => "Needs a signed, paired agent (agent_not_paired)."
     }
 
     purposes = Map.new(Capabilities.hosted(), &{&1.name, &1.purpose})
-    requires = Map.new(Capabilities.hosted(), &{&1.name, &1.requires})
+    requires = Map.new(Capabilities.hosted(), &{&1.name, &1.authority})
 
     for tool <- PatchbayWeb.MCP.Tools.list(:native_mcp) do
       assert is_binary(purposes[tool.name]) and purposes[tool.name] != "", tool.name
@@ -58,7 +121,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
         tool <- PatchbayWeb.MCP.Tools.list(surface),
         fact = facts[tool.name] do
       assert tool.annotations == %{
-               readOnlyHint: not fact.state_changing,
+               readOnlyHint: Capabilities.read_only?(fact),
                destructiveHint: fact.destructive,
                idempotentHint: fact.idempotent,
                openWorldHint: fact.open_world
@@ -84,37 +147,14 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     for tool <- Capabilities.tools() do
       assert is_integer(tool.version) and tool.version >= 1, "#{tool.name} has no version"
 
-      assert tool.requires in ~w(none browser_session paired_agent profile wallet_signed),
+      assert tool.scope in ~w(site hosted owner) or String.starts_with?(tool.scope, "page:"),
              tool.name
-
-      assert tool.payment in ~w(none moves_usdc holds_credits), tool.name
 
       assert is_boolean(tool.destructive) and is_boolean(tool.idempotent) and
                is_boolean(tool.open_world),
              tool.name
 
-      refute tool.destructive and not tool.state_changing, "#{tool.name} reads yet destroys"
-
-      assert tool.doors["page"] or tool.doors["hosted"] or tool.doors["http"] != [],
-             "#{tool.name} has no door"
-    end
-  end
-
-  # Where a tool is offered is said twice, as its scope and as its doors; the
-  # two must agree, so nothing reads a scope the doors contradict.
-  test "every tool's scope agrees with its doors" do
-    for tool <- Capabilities.manifest()["tools"] do
-      %{"page" => page?, "hosted" => hosted?} = tool["doors"]
-
-      expected =
-        cond do
-          page? -> "site"
-          hosted? -> "hosted"
-          String.starts_with?(tool["scope"], "page:") -> tool["scope"]
-          tool["authentication"] == "owner_only" -> "owner"
-        end
-
-      assert tool["scope"] == expected, tool["name"]
+      refute tool.destructive and Capabilities.read_only?(tool), "#{tool.name} reads yet destroys"
     end
   end
 
@@ -123,8 +163,8 @@ defmodule Patchbay.Forum.CapabilitiesTest do
   test "every signed tool ends with how to sign it where it is offered" do
     for tool <- Capabilities.manifest()["tools"],
         tool["authentication"] == "siwa_per_request",
-        tool["doors"]["page"] do
-      surfaces = if tool["doors"]["hosted"], do: "at /mcp or over HTTP", else: "over HTTP"
+        tool["scope"] == "site" do
+      surfaces = if tool["hosted"], do: "at /mcp or over HTTP", else: "over HTTP"
 
       assert String.ends_with?(
                tool["description"],

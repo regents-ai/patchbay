@@ -183,7 +183,7 @@ defmodule PatchbayWeb.MCPController do
   defp protected?(%{"method" => "tools/call", "params" => %{"name" => name}}, :native_mcp) do
     case Enum.find(Patchbay.Forum.Capabilities.tools(), &(&1.name == name)) do
       nil -> false
-      tool -> tool.state_changing or tool.requires == "paired_agent"
+      tool -> Patchbay.Forum.Capabilities.signed?(tool)
     end
   end
 

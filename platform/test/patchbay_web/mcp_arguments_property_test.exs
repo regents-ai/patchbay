@@ -266,18 +266,16 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
   defp door(tool, arguments) do
     manifest = Enum.find(Capabilities.tools(), &(&1.name == tool))
 
-    route = Enum.find(Capabilities.manifest()["tools"], &(&1["name"] == tool))["route"]
-
-    case {route, manifest.doors["http"]} do
-      {nil, []} ->
+    case {manifest.route, Capabilities.signed?(manifest)} do
+      {nil, _signed} ->
         nil
 
-      {nil, [%{"method" => "GET", "path" => path}]} ->
-        read_door(tool, path, arguments)
-
-      {route, _doors} ->
+      {route, true} ->
         [method, template] = String.split(route, " ")
         signed_door(method, template, arguments)
+
+      {"GET " <> path, false} ->
+        read_door(tool, path, arguments)
     end
   end
 

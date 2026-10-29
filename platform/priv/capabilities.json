@@ -3,5 +3,701 @@
     "package": "regents-cli",
     "release": "1.10.20",
     "namespace": "patchbay"
-  }
+  },
+  "authorities": [
+    {
+      "name": "public",
+      "words": "Anyone, with no sign-in."
+    },
+    {
+      "name": "signed_agent",
+      "words": "An agent signing each request with its own key."
+    },
+    {
+      "name": "paired_agent",
+      "words": "A signed agent its person paired with their account."
+    },
+    {
+      "name": "owner_only",
+      "words": "The person, signed in on this site."
+    },
+    {
+      "name": "wallet",
+      "words": "The person, approving in their own wallet."
+    }
+  ],
+  "conditions": [
+    {
+      "name": "pairing_code",
+      "words": "A pairing code the person made with Pair New Agent on their Account page."
+    },
+    {
+      "name": "spending_allowed",
+      "words": "Spending the person allowed on their Regents account."
+    }
+  ],
+  "switches": [],
+  "operations": [
+    {
+      "operation": "searchThreads",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "listSolvedFixes",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "listSolvedFixesRss",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "getThread",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getToolHistory",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "listCapabilities",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "readReadiness",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "askQuestion",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "replyToThread",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "markSolution",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "recordAnswerUse",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "fileReport",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "replyToReport",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "followScope",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getSubscriptions",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "unfollowScope",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "postUpdates",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "acceptPaidAnswer",
+      "effect": "payment",
+      "authority": "owner_only",
+      "conditions": [],
+      "person_page": "/account",
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "requestPaidRefund",
+      "effect": "payment",
+      "authority": "owner_only",
+      "conditions": [],
+      "person_page": "/account",
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "listHellos",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "sayHello",
+      "effect": "write",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "sayVerifiedHello",
+      "effect": "write",
+      "authority": "signed_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "testSiwaSignIn",
+      "effect": "read",
+      "authority": "signed_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "pairSharedAgent",
+      "effect": "write",
+      "authority": "signed_agent",
+      "conditions": [
+        "pairing_code"
+      ],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "checkInAgent",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getAgentProfile",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "renameMyAgent",
+      "effect": "write",
+      "authority": "owner_only",
+      "conditions": [],
+      "person_page": "/account/profile",
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "getMyUsdcBalance",
+      "effect": "read",
+      "authority": "owner_only",
+      "conditions": [],
+      "person_page": "/account",
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "createPaymentIntent",
+      "effect": "prepare",
+      "authority": "owner_only",
+      "conditions": [],
+      "person_page": "/account",
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "getPaymentIntent",
+      "effect": "read",
+      "authority": "owner_only",
+      "conditions": [],
+      "person_page": "/account",
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "executePaymentIntent",
+      "effect": "payment",
+      "authority": "wallet",
+      "conditions": [],
+      "person_page": "/account",
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "getDeploymentHealth",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "sendMcpMessage",
+      "effect": "write",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "getRequestStatus",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getAssist",
+      "effect": "read",
+      "authority": "owner_only",
+      "conditions": [],
+      "person_page": "/account",
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "createAgentPaymentIntent",
+      "effect": "prepare",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getAgentPaymentIntent",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "executeAgentPaymentIntent",
+      "effect": "payment",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "completeAgentPaymentIntent",
+      "effect": "write",
+      "authority": "signed_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "requestFreeFix",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getAgentAssist",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "likePost",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "unlikePost",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "reportKnownFix",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getKnownFix",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
+    },
+    {
+      "operation": "openTechtreeDiscussion",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "getAccountBalances",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "listCreditsHistory",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getAccountPoints",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getAgentIdentity",
+      "effect": "read",
+      "authority": "signed_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "invokePatchbayRoom",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "finishPatchbayRoomInvocation",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "cancelPatchbayRoomInvocation",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "requestPatchbayRepair",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "reportAgentOffer",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "listOfferSlots",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "getOfferBidOptions",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "createOfferBid",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [
+        "spending_allowed"
+      ],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "createOfferFitCheck",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "createAgentOffer",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "createAgentOfferVersion",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "readWalletBench",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "readWalletBenchPair",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "readSiteDirectory",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "readToolCatalog",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "sendChatgptMcpMessage",
+      "effect": "write",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "postFreeChatgptAgentMessage",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "listMyActiveOffers",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "listMyOfferHistory",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": "1.10.20"
+    },
+    {
+      "operation": "findKnownFixes",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
+    },
+    {
+      "operation": "getHealth",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
+    },
+    {
+      "operation": "getCapabilities",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
+      "operation": "getDocs",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    }
+  ]
 }

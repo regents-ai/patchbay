@@ -1,0 +1,139 @@
+defmodule Patchbay.Forum.Capabilities.Contract do
+  @moduledoc """
+  Where the four files of the agent contract disagree, in words: the
+  capability rows (`priv/capabilities.json`), the tool manifest
+  (`priv/tool_manifest.json`), the OpenAPI document and `cli/commands.json`.
+  `Patchbay.Forum.Capabilities` runs it when it compiles and refuses to
+  compile while any problem stands, so drift between them fails the build.
+  """
+
+  @agents ~w(signed_agent paired_agent)
+  @to_person ~w(owner_only wallet)
+  @changes_nothing ~w(read quote)
+
+  @typedoc "The four decoded files."
+  @type files :: %{capabilities: map(), manifest: map(), openapi: map(), commands: map()}
+
+  @doc "Every disagreement between the four files, one line each; empty when they agree."
+  @spec problems(files()) :: [String.t()]
+  def problems(files) do
+    openapi = operations(files.openapi)
+    rows = Map.new(files.capabilities["operations"], &{&1["operation"], &1})
+
+    listed(files.capabilities, rows, openapi) ++
+      Enum.flat_map(files.capabilities["operations"], &row_problems(&1, files.capabilities)) ++
+      Enum.flat_map(files.manifest["tools"], &tool_problems(&1, rows, openapi)) ++
+      Enum.flat_map(files.commands["commands"], &command_problems(&1, rows, openapi, files)) ++
+      released_without_command(files)
+  end
+
+  @doc "Every OpenAPI operation, by id, as `METHOD /path`."
+  @spec operations(map()) :: %{String.t() => String.t()}
+  def operations(openapi) do
+    for {path, methods} <- openapi["paths"],
+        {method, %{"operationId" => id}} <- methods,
+        into: %{},
+        do: {id, "#{String.upcase(method)} #{path}"}
+  end
+
+  defp listed(capabilities, rows, openapi) do
+    missing = Map.keys(openapi) -- Map.keys(rows)
+    unknown = Map.keys(rows) -- Map.keys(openapi)
+    twice = length(capabilities["operations"]) - map_size(rows)
+
+    Enum.map(missing, &"#{&1} is in OpenAPI but has no row in priv/capabilities.json") ++
+      Enum.map(unknown, &"#{&1} in priv/capabilities.json is not an OpenAPI operation") ++
+      if(twice > 0, do: ["priv/capabilities.json lists an operation twice"], else: [])
+  end
+
+  defp row_problems(row, capabilities) do
+    names = fn key -> Enum.map(capabilities[key], & &1["name"]) end
+
+    [
+      row["authority"] not in names.("authorities") && "an unknown authority",
+      not Enum.all?(row["conditions"], &(&1 in names.("conditions"))) && "an unknown condition",
+      row["switch"] && row["switch"] not in names.("switches") && "an unknown switch"
+    ]
+    |> Enum.filter(&is_binary/1)
+    |> Enum.map(&"#{row["operation"]} in priv/capabilities.json has #{&1}")
+  end
+
+  defp tool_problems(tool, rows, openapi) do
+    row = rows[tool["operation_id"]]
+    signed? = tool["authentication"] == "siwa_per_request"
+    read_only? = tool["annotations"]["readOnlyHint"] == true
+
+    problem =
+      cond do
+        is_nil(tool["operation_id"]) ->
+          (signed? or not read_only?) && "no operation_id, yet it signs or changes something"
+
+        is_nil(row) ->
+          "an operation_id OpenAPI does not have"
+
+        address(tool["route"]) != address(openapi[row["operation"]]) ->
+          "a route other than its operation's"
+
+        signed? != row["authority"] in @agents ->
+          "a signature its operation's authority does not ask for"
+
+        tool["authentication"] == "owner_only" != row["authority"] in @to_person ->
+          "an owner door its operation's authority does not have"
+
+        read_only? != row["effect"] in @changes_nothing ->
+          "a read-only hint its operation's effect contradicts"
+
+        true ->
+          false
+      end
+
+    if problem, do: ["#{tool["name"]} in priv/tool_manifest.json has #{problem}"], else: []
+  end
+
+  defp command_problems(command, rows, openapi, files) do
+    row = rows[command["operation_id"]]
+    runs = Map.new(files.manifest["tools"], &{&1["name"], &1["operation_id"]})
+
+    problem =
+      cond do
+        is_nil(row) ->
+          "an operation_id OpenAPI does not have"
+
+        "#{command["method"]} #{command["path"]}" != openapi[row["operation"]] ->
+          "a route other than its operation's"
+
+        command["effect"] != row["effect"] ->
+          "an effect other than its operation's"
+
+        command["authority"] != row["authority"] ->
+          "an authority other than its operation's"
+
+        command["webmcp"] && runs[command["webmcp"]] != row["operation"] ->
+          "a browser tool that runs another operation"
+
+        not released?(row) ->
+          "no cli_release or cli_pending in priv/capabilities.json"
+
+        true ->
+          false
+      end
+
+    if problem, do: ["`#{command["command"]}` in cli/commands.json has #{problem}"], else: []
+  end
+
+  defp released_without_command(files) do
+    commanded = MapSet.new(files.commands["commands"], & &1["operation_id"])
+
+    for row <- files.capabilities["operations"],
+        released?(row),
+        row["operation"] not in commanded,
+        do: "#{row["operation"]} in priv/capabilities.json names a release but has no command"
+  end
+
+  defp released?(row), do: is_binary(row["cli_release"]) or row["cli_pending"] == true
+
+  # A route's parameters are named for the field that fills them in the
+  # manifest and for the record in OpenAPI; the address is the same.
+  defp address(nil), do: nil
+  defp address(route), do: String.replace(route, ~r/\{[^}]+\}/, "{}")
+end

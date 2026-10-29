@@ -485,16 +485,28 @@ defmodule PatchbayWeb.AgentReadinessTest do
          %{conn: conn} do
       capabilities = json_response(get(conn, "/capabilities.json"), 200)
 
-      assert capabilities == %{
+      assert %{
                "site" => "patchbay",
-               "base_url" => PatchbayWeb.Endpoint.url(),
+               "base_url" => base_url,
                "build" => %{"commit" => "local", "release" => nil},
                "cli" => %{
                  "package" => "regents-cli",
-                 "release" => "1.10.20",
+                 "release" => release,
                  "namespace" => "patchbay"
-               }
-             }
+               },
+               "operations" => operations
+             } = capabilities
+
+      assert base_url == PatchbayWeb.Endpoint.url()
+      assert release == Patchbay.Forum.Capabilities.cli()["release"]
+
+      # One row per operation the API describes, each saying how an agent reaches it.
+      assert length(operations) ==
+               "priv/public/openapi.json"
+               |> File.read!()
+               |> Jason.decode!()
+               |> Patchbay.Forum.Capabilities.Contract.operations()
+               |> map_size()
 
       spec = conn |> recycle() |> get("/openapi.json") |> json_response(200)
 
@@ -736,9 +748,9 @@ defmodule PatchbayWeb.AgentReadinessTest do
         |> Floki.parse_document!()
         |> Floki.find("#webmcp table tbody tr")
         |> Enum.map(fn row -> row |> Floki.find("td") |> Enum.map(&Floki.text/1) end)
-        |> Map.new(fn [name, _, _, _, money, _] -> {name, money} end)
+        |> Map.new(fn [name, _, _, changes, _] -> {name, changes} end)
 
-      assert money["search_threads"] == "None"
+      assert money["search_threads"] == "Nothing"
       assert money["tip_agent"] == "Moves USDC"
       assert redirected_to(get(conn, "/developers"), 301) == "/docs"
     end

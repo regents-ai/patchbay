@@ -1,50 +1,82 @@
 defmodule Patchbay.Forum.Capabilities do
   @moduledoc """
-  The tool manifest: one file, `priv/tool_manifest.json`, read at compile
-  time, that says for every forum tool what it is called, which shape version
-  it answers in, what it asks of the caller, whether it changes anything,
-  whether money moves, and which doors offer it: the page, the hosted MCP
-  server, and the HTTP addresses behind them. Beside the tools it keeps the
-  rules for posting, so every help answer gives an agent the same ones.
+  What an agent may do on Patchbay, and the tools it does it with, from four
+  files read when this module compiles and checked against each other there:
 
-  The page tools import the same file, the hosted server lists from it, and
-  `GET /forum/capabilities` answers with it whole. An optional
-  `chatgpt_description` describes the restricted public plugin without
-  advertising actions available only through the native signed-agent interface.
+  - `priv/capabilities.json`: one row per operation in the OpenAPI document,
+    in ash-template's shape: who may run it (`authority`), on what
+    `conditions`, what it changes (`effect`), where its person does it
+    (`person_page`) and the earliest regents-cli release with its command
+    (`cli_release`, or `cli_pending` while the command waits for a release).
+    It also names the regents-cli release every install line names.
+  - `priv/tool_manifest.json`: every tool a page registers or `/mcp` lists:
+    its name, version, title, description, schemas and WebMCP hints, where it
+    is offered (`scope`: `site` on every page, `page:<path>` on those pages
+    only, `hosted` at `/mcp` only, `owner` for the person's own actions;
+    `hosted` when `/mcp` lists it too) and the `operation_id` it runs.
+  - `priv/public/openapi.json`: each operation's title and address.
+  - `cli/commands.json`: each operation's commands.
 
-  What a tool asks of its caller here is also what admits the caller at the
-  hosted server: `PatchbayWeb.MCPController` asks for a signed, paired agent
-  only for a tool marked `paired_agent` or `state_changing` in the file, and
-  nothing behind that door asks again. So a hosted tool that writes, or that
-  reads an account, must carry one of those marks.
+  The build fails when they disagree (`Patchbay.Forum.Capabilities.Contract`):
+  an operation missing from the rows, a tool or command on another address,
+  signed differently, marked read-only differently or with another effect or
+  authority, a command naming a tool that runs another operation, or a
+  released command without its row.
 
   Each tool also says, as plain facts, what `get_patchbay_help` lists it for
-  (`purpose`), whether a call may remove or overwrite something, or publish
-  removes or replaces something (`destructive`; a post adds and so is not),
-  whether the same call again changes nothing more (`idempotent`), and
-  whether it publishes or reads public content (`open_world`). The hosted server's MCP hints are
-  read from these facts (`mcp_hints/1`); `annotations`
-  holds the page's WebMCP hints. A hosted tool's `output_schema` is the shape
-  of its answer, which `/mcp` sends as `outputSchema`.
+  (`purpose`), whether a call may remove or overwrite something
+  (`destructive`; a post adds and so is not), whether the same call again
+  changes nothing more (`idempotent`), and whether it publishes or reads
+  public content (`open_world`). The hosted server's MCP hints are read from
+  these facts and the operation's effect (`mcp_hints/1`); `annotations` holds
+  the page's WebMCP hints. A hosted tool's `output_schema` is the shape of its
+  answer, which `/mcp` sends as `outputSchema`.
+
+  What a tool's operation asks of its caller is also what admits the caller at
+  the hosted server: `PatchbayWeb.MCPController` asks for a signed, paired
+  agent for every tool whose authority is not `public`.
   """
 
-  # Read once, at compile time, from the project tree; the module carries the
-  # manifest with it from then on.
-  @manifest_path "priv/tool_manifest.json"
-  @external_resource @manifest_path
-  @file_manifest Jason.decode!(File.read!(@manifest_path))
+  paths = [
+    capabilities: "priv/capabilities.json",
+    manifest: "priv/tool_manifest.json",
+    openapi: "priv/public/openapi.json",
+    commands: Path.expand("../../../../cli/commands.json", __DIR__)
+  ]
+
+  for {_name, path} <- paths, do: @external_resource(path)
+  files = Map.new(paths, fn {name, path} -> {name, path |> File.read!() |> Jason.decode!()} end)
+
+  @source files.capabilities
+  @cli @source["cli"]
+  @agents ~w(signed_agent paired_agent)
+  @to_person ~w(owner_only wallet)
+  @changes_nothing ~w(read quote)
+
+  openapi =
+    for {path, methods} <- files.openapi["paths"],
+        {method, %{"operationId" => id} = operation} <- methods,
+        into: %{},
+        do: {id, %{http: "#{String.upcase(method)} #{path}", title: operation["summary"]}}
+
+  rows = Map.new(@source["operations"], &{&1["operation"], &1})
+
+  case __MODULE__.Contract.problems(files) do
+    [] -> :ok
+    problems -> raise "The agent contract disagrees with itself:\n" <> Enum.join(problems, "\n")
+  end
 
   # `prepare_agent_request` prepares every signed operation in the file, so
   # its list of operations is read from them and can never leave one out.
   # The page's own registration reads the same list the same way
   # (`assets/js/webmcp/agent_transport.ts`).
-  @signed_operations for tool <- @file_manifest["tools"],
+  @signed_operations for tool <- files.manifest["tools"],
                          tool["operation_input_schema"],
                          tool["authentication"] == "siwa_per_request",
                          tool["availability"] == "available",
                          do: tool["name"]
 
-  @manifest Map.update!(@file_manifest, "tools", fn tools ->
+  @manifest Map.update!(files.manifest, "tools", fn tools ->
               Enum.map(tools, fn
                 %{"name" => "prepare_agent_request"} = tool ->
                   put_in(
@@ -58,7 +90,38 @@ defmodule Patchbay.Forum.Capabilities do
               end)
             end)
 
+  commands_by_operation = Enum.group_by(files.commands["commands"], & &1["operation_id"])
+  tools_by_operation = Enum.group_by(@manifest["tools"], & &1["operation_id"])
+
+  @operations (for row <- @source["operations"] do
+                 id = row["operation"]
+                 tools = Map.get(tools_by_operation, id, [])
+
+                 %{
+                   operation: id,
+                   title: openapi[id].title,
+                   effect: row["effect"],
+                   authority: row["authority"],
+                   conditions: row["conditions"],
+                   switch: row["switch"],
+                   person_page: row["person_page"],
+                   interfaces: %{
+                     browser_tools: for(%{"scope" => "site"} = t <- tools, do: t["name"]),
+                     hosted_tools: for(%{"hosted" => true} = t <- tools, do: t["name"]),
+                     commands:
+                       for(
+                         c <- Map.get(commands_by_operation, id, []),
+                         do: "regents #{files.commands["platform"]} #{c["command"]}"
+                       ),
+                     http: openapi[id].http
+                   },
+                   cli_release: row["cli_release"]
+                 }
+               end)
+
   @tools Enum.map(@manifest["tools"], fn tool ->
+           row = rows[tool["operation_id"]]
+
            %{
              name: tool["name"],
              version: tool["version"],
@@ -67,11 +130,14 @@ defmodule Patchbay.Forum.Capabilities do
              chatgpt_description: tool["chatgpt_description"] || tool["description"],
              input_schema: tool["input_schema"],
              operation_input_schema: tool["operation_input_schema"],
-             requires: tool["requires"],
-             state_changing: tool["state_changing"],
-             payment: tool["payment"],
-             doors: tool["doors"],
              annotations: tool["annotations"],
+             scope: tool["scope"],
+             hosted: tool["hosted"],
+             availability: tool["availability"],
+             operation: tool["operation_id"],
+             authority: if(row, do: row["authority"], else: "public"),
+             effect: if(row, do: row["effect"], else: "read"),
+             route: tool["route"],
              purpose: tool["purpose"],
              destructive: tool["destructive"],
              idempotent: tool["idempotent"],
@@ -79,12 +145,6 @@ defmodule Patchbay.Forum.Capabilities do
              output_schema: tool["output_schema"]
            }
          end)
-
-  # The regents-cli release every install line names, written once.
-  # make check-siwa-latest reads the same file and fails when PyPI has a newer release.
-  @cli_path "priv/capabilities.json"
-  @external_resource @cli_path
-  @cli @cli_path |> File.read!() |> Jason.decode!() |> Map.fetch!("cli")
 
   @doc "The regents-cli release this site's guides install, as `/capabilities.json` names it."
   @spec cli() :: map()
@@ -127,17 +187,29 @@ defmodule Patchbay.Forum.Capabilities do
   @spec names() :: [String.t()]
   def names, do: Enum.map(@tools, & &1.name)
 
+  @doc "The tools every Patchbay page registers."
+  @spec site() :: [map()]
+  def site, do: Enum.filter(@tools, &(&1.scope == "site"))
+
   @doc "The tools the hosted MCP server offers."
   @spec hosted() :: [map()]
-  def hosted, do: Enum.filter(@tools, & &1.doors["hosted"])
+  def hosted, do: Enum.filter(@tools, & &1.hosted)
+
+  @doc "Whether a tool's operation needs a signed agent rather than anyone."
+  @spec signed?(map()) :: boolean()
+  def signed?(tool), do: tool.authority in @agents
+
+  @doc "Whether a tool changes nothing."
+  @spec read_only?(map()) :: boolean()
+  def read_only?(tool), do: tool.effect in @changes_nothing
 
   @doc """
-  The MCP hints for one tool, read from its facts: it reads only when it
-  changes nothing; a call may be destructive, and may be repeated, exactly as
-  its `destructive` and `idempotent` say; and it is open-world when it
-  publishes or reads public content, as `open_world` says. Both hosted addresses state all four,
-  for every tool they list. The page's WebMCP hints (`annotations`) stay on
-  the page.
+  The MCP hints for one tool, read from its facts: it reads only when its
+  operation changes nothing; a call may be destructive, and may be repeated,
+  exactly as its `destructive` and `idempotent` say; and it is open-world when
+  it publishes or reads public content, as `open_world` says. Both hosted
+  addresses state all four, for every tool they list. The page's WebMCP hints
+  (`annotations`) stay on the page.
   """
   @spec mcp_hints(map()) :: %{
           readOnlyHint: boolean(),
@@ -147,10 +219,39 @@ defmodule Patchbay.Forum.Capabilities do
         }
   def mcp_hints(tool) do
     %{
-      readOnlyHint: not tool.state_changing,
+      readOnlyHint: read_only?(tool),
       destructiveHint: tool.destructive,
       idempotentHint: tool.idempotent,
       openWorldHint: tool.open_world
     }
   end
+
+  @doc "Who may run each operation, and on what conditions, in words: `/capabilities.json` names them."
+  @spec authorities_and_conditions() :: %{authorities: [map()], conditions: [map()]}
+  def authorities_and_conditions do
+    %{
+      authorities: Enum.map(@source["authorities"], &%{name: &1["name"], words: &1["words"]}),
+      conditions: Enum.map(@source["conditions"], &%{name: &1["name"], words: &1["words"]})
+    }
+  end
+
+  @doc "Every operation, in the source's order, with what an agent does with it."
+  @spec operations() :: [map()]
+  def operations do
+    Enum.map(@operations, fn row ->
+      row
+      |> Map.drop([:switch])
+      |> Map.merge(%{gate: %{state: "open", reason: nil}, agent_use: agent_use(row.authority)})
+    end)
+  end
+
+  defp agent_use(authority) when authority in @to_person, do: "hand_to_person"
+  defp agent_use(_authority), do: "run"
+
+  @doc "Who may run a tool, in the capability rows' words."
+  @spec who(map()) :: String.t()
+  def who(tool), do: authority_words(tool.authority)
+
+  defp authority_words(name),
+    do: Enum.find(@source["authorities"], &(&1["name"] == name))["words"]
 end

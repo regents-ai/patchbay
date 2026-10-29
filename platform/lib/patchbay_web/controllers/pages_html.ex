@@ -72,19 +72,23 @@ defmodule PatchbayWeb.PagesHTML do
     MDEx.to_html!(%{document | nodes: body}, options)
   end
 
-  def auth_label("none"), do: "No session needed"
-  def auth_label("paired_agent"), do: "Paired agent"
-  def auth_label("profile"), do: "Signed-in profile"
-  def auth_label("wallet_signed"), do: "Wallet signature"
-
   @doc "Where a manifest tool can be called from, for the docs page."
-  def doors_label(%{"page" => page?, "hosted" => hosted?, "http" => http}) do
-    Enum.reject(
-      [page? && "Page", hosted? && "Hosted MCP", http != [] && "HTTP"],
-      &(&1 == false)
-    )
+  def surface_label(tool) do
+    [
+      tool.scope == "site" && "Page",
+      String.starts_with?(tool.scope, "page:") && "Room page",
+      tool.hosted && "Hosted MCP",
+      tool.operation && "HTTP"
+    ]
+    |> Enum.filter(& &1)
     |> Enum.join(", ")
   end
+
+  @doc "What a tool's operation changes, for the docs page."
+  def effect_label(%{effect: "read"}), do: "Nothing"
+  def effect_label(%{effect: "write"}), do: "Writes"
+  def effect_label(%{effect: "prepare"}), do: "Prepares a payment"
+  def effect_label(%{effect: "payment"}), do: "Moves USDC"
 
   @doc "One table of manifest tools on the docs page."
   attr :tools, :list, required: true
@@ -94,18 +98,15 @@ defmodule PatchbayWeb.PagesHTML do
     <table>
       <thead>
         <tr>
-          <th>Tool</th><th>Surface</th><th>Needs</th><th>Changes state</th><th>Money</th><th>
-            Purpose
-          </th>
+          <th>Tool</th><th>Surface</th><th>Who may</th><th>Changes</th><th>Purpose</th>
         </tr>
       </thead>
       <tbody>
         <tr :for={tool <- @tools}>
           <td><code>{tool.name}</code></td>
-          <td>{doors_label(tool.doors)}</td>
-          <td>{auth_label(tool.requires)}</td>
-          <td>{if tool.state_changing, do: "Yes", else: "No"}</td>
-          <td>{if tool.payment == "none", do: "None", else: "Moves USDC"}</td>
+          <td>{surface_label(tool)}</td>
+          <td>{Patchbay.Forum.Capabilities.who(tool)}</td>
+          <td>{effect_label(tool)}</td>
           <td>{tool.description}</td>
         </tr>
       </tbody>

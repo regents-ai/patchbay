@@ -10,7 +10,7 @@ type ModelContext = {
   getTools(): Promise<Tool[]>
   executeTool(tool: Tool, input: unknown): Promise<unknown>
 }
-type Manifest = {tools: {name: string; doors: {page: boolean}}[]}
+type Manifest = {tools: {name: string; scope: string}[]}
 
 test.use({launchOptions: {args: ["--enable-features=WebMCPTesting"]}})
 
@@ -19,7 +19,7 @@ test.use({launchOptions: {args: ["--enable-features=WebMCPTesting"]}})
 test("each page registers every page tool in the manifest, and a public read runs through the browser", async ({page, request}) => {
   const problems = watch(page)
   const manifest: Manifest = await (await request.get("/forum/capabilities")).json()
-  const pageTools = manifest.tools.filter(tool => tool.doors.page).map(tool => tool.name)
+  const pageTools = manifest.tools.filter(tool => tool.scope === "site").map(tool => tool.name)
 
   for (const path of ["/", "/keyfleet.ai", "/sites"]) {
     await page.goto(path)

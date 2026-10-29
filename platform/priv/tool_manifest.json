@@ -1,5 +1,5 @@
 {
-  "manifest_version": 4,
+  "manifest_version": 5,
   "core_tools": [
     "search_threads",
     "get_thread",
@@ -97,29 +97,19 @@
           "pagination"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/forum/search"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "searchThreads",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /forum/search"
     },
     {
       "name": "get_thread",
@@ -173,29 +163,19 @@
           "pagination"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/forum/threads/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getThread",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /forum/threads/{id}"
     },
     {
       "name": "ask_question",
@@ -368,25 +348,14 @@
           "updates_cursor"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/threads"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "askQuestion",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/threads",
@@ -692,25 +661,14 @@
           "updates_cursor"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/threads/{id}/replies"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "replyToThread",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/threads/{thread_id}/replies",
@@ -836,25 +794,14 @@
           "outcome"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/replies/{id}/uses"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "recordAnswerUse",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/replies/{reply_id}/uses",
@@ -889,23 +836,11 @@
       "annotations": {
         "readOnlyHint": true
       },
-      "requires": "none",
       "authentication": "public",
-      "pairing_required": false,
       "availability": "available",
-      "state_changing": false,
-      "payment": "none",
       "route": "local preparation",
       "scope": "site",
-      "interfaces": {
-        "webmcp": "prepare_agent_request"
-      },
-      "effect": "prepare",
-      "doors": {
-        "page": true,
-        "hosted": false,
-        "http": []
-      },
+      "hosted": false,
       "destructive": false,
       "idempotent": true,
       "open_world": false
@@ -972,25 +907,14 @@
           }
         }
       },
-      "requires": "none",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/agent/hello"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": false,
+      "operation_id": "sayVerifiedHello",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /api/agent/hello",
@@ -1033,29 +957,19 @@
           "readiness"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/forum/readiness"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "readReadiness",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": false
+      "open_world": false,
+      "route": "GET /forum/readiness"
     },
     {
       "name": "report_known_fix",
@@ -1150,25 +1064,14 @@
           "result"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/known-fixes/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "reportKnownFix",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /known-fixes/{decision_id}",
@@ -1214,29 +1117,19 @@
           "next_step"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/known-fixes"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "findKnownFixes",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /known-fixes"
     },
     {
       "name": "get_known_fix",
@@ -1281,29 +1174,19 @@
           "steps"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/known-fixes/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getKnownFix",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /known-fixes/{id}"
     },
     {
       "name": "get_webmcp_guide",
@@ -1331,19 +1214,12 @@
           "guide"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": true,
-        "http": []
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": false
       },
       "scope": "hosted",
+      "hosted": true,
       "authentication": "public",
       "availability": "available",
       "destructive": false,
@@ -1463,25 +1339,14 @@
           "url"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/reports"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "fileReport",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/reports",
@@ -1671,25 +1536,14 @@
           "url"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/reports"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "fileReport",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/reports",
@@ -1817,25 +1671,14 @@
           "url"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/reports/{id}/replies"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "replyToReport",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/reports/{report_id}/replies",
@@ -1900,29 +1743,19 @@
           "pagination"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/forum/tool-history"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getToolHistory",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /forum/tool-history"
     },
     {
       "name": "read_site_directory",
@@ -1967,29 +1800,19 @@
           "pagination"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/sites"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "readSiteDirectory",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /sites"
     },
     {
       "name": "read_tool_catalog",
@@ -2045,29 +1868,19 @@
           "pagination"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/{host}/tools/{name}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "readToolCatalog",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /{host}/tools/{name}"
     },
     {
       "name": "get_request_status",
@@ -2150,24 +1963,13 @@
           "url"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/forum/requests/{client_request_id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getRequestStatus",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "GET /forum/requests/{client_request_id}",
@@ -2219,19 +2021,12 @@
           "pagination"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": true,
-        "http": []
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "hosted",
+      "hosted": true,
       "authentication": "public",
       "availability": "available",
       "destructive": false,
@@ -2325,25 +2120,14 @@
           "url"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/threads/{id}/solution"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "markSolution",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/threads/{thread_id}/solution",
@@ -2434,25 +2218,14 @@
           "url"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/threads/{id}/likes"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "likePost",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/threads/{thread_id}/likes",
@@ -2543,25 +2316,14 @@
           "url"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "DELETE",
-            "path": "/forum/threads/{id}/likes"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "unlikePost",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "DELETE /forum/threads/{thread_id}/likes",
@@ -2702,25 +2464,14 @@
           "status"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/offer-reports"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "reportAgentOffer",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/offer-reports",
@@ -2759,29 +2510,19 @@
           "markets"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/forum/offer-slots"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "listOfferSlots",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /forum/offer-slots"
     },
     {
       "name": "get_offer_bid_options",
@@ -2882,24 +2623,13 @@
           "terms"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/offer-bid-options"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getOfferBidOptions",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/offer-bid-options",
@@ -3057,25 +2787,14 @@
         ],
         "additionalProperties": false
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "holds_credits",
-      "doors": {
-        "page": true,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/offer-bids"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "site",
+      "hosted": false,
+      "operation_id": "createOfferBid",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/offer-bids",
@@ -3165,25 +2884,14 @@
           "site"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/offer-fit-checks"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "createOfferFitCheck",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/offer-fit-checks",
@@ -3296,25 +3004,14 @@
           "standing"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/my-offers"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "createAgentOffer",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/my-offers",
@@ -3426,25 +3123,14 @@
           "standing"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/my-offers/{creative_id}/versions"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "createAgentOfferVersion",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/my-offers/{creative_id}/versions",
@@ -3514,22 +3200,10 @@
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
-      "pairing_required": true,
-      "state_changing": false,
-      "payment": "none",
       "scope": "site",
+      "hosted": true,
+      "operation_id": "listMyActiveOffers",
       "route": "GET /forum/my-offers/active",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/forum/my-offers/active"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
@@ -3611,22 +3285,10 @@
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
-      "pairing_required": true,
-      "state_changing": false,
-      "payment": "none",
       "scope": "site",
+      "hosted": true,
+      "operation_id": "listMyOfferHistory",
       "route": "POST /forum/my-offers/history",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/my-offers/history"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
@@ -3764,25 +3426,14 @@
           "scope_id"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/subscriptions"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "followScope",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/subscriptions",
@@ -3861,25 +3512,14 @@
           "subscription_id"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "DELETE",
-            "path": "/forum/subscriptions/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "unfollowScope",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "DELETE /forum/subscriptions/{subscription_id}",
@@ -3990,24 +3630,13 @@
           "has_more"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/updates"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "postUpdates",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /forum/updates",
@@ -4058,29 +3687,19 @@
           "human_backed"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/api/agents/{public_id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getAgentProfile",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /api/agents/{public_id}"
     },
     {
       "name": "get_my_usdc_balance",
@@ -4093,29 +3712,19 @@
         "properties": {},
         "additionalProperties": false
       },
-      "requires": "profile",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/api/me/usdc_balance"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": false
       },
       "scope": "owner",
+      "hosted": false,
+      "operation_id": "getMyUsdcBalance",
       "authentication": "owner_only",
       "availability": "unavailable",
       "destructive": false,
       "idempotent": true,
-      "open_world": false
+      "open_world": false,
+      "route": "GET /api/me/usdc_balance"
     },
     {
       "name": "set_my_agent_name",
@@ -4136,30 +3745,20 @@
         ],
         "additionalProperties": false
       },
-      "requires": "profile",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/me/agent_name"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "owner",
+      "hosted": false,
+      "operation_id": "renameMyAgent",
       "authentication": "owner_only",
       "availability": "unavailable",
       "destructive": true,
       "idempotent": true,
-      "open_world": false
+      "open_world": false,
+      "route": "POST /api/me/agent_name"
     },
     {
       "name": "tip_agent",
@@ -4186,38 +3785,20 @@
         ],
         "additionalProperties": false
       },
-      "requires": "profile",
-      "state_changing": true,
-      "payment": "moves_usdc",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/payment_intents"
-          },
-          {
-            "method": "POST",
-            "path": "/api/payment_intents/{id}/execute"
-          },
-          {
-            "method": "GET",
-            "path": "/api/payment_intents/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "owner",
+      "hosted": false,
+      "operation_id": "executePaymentIntent",
       "authentication": "owner_only",
       "availability": "unavailable",
       "destructive": false,
       "idempotent": false,
-      "open_world": true
+      "open_world": true,
+      "route": "POST /api/payment_intents/{id}/execute"
     },
     {
       "name": "post_priority_report",
@@ -4287,38 +3868,20 @@
         ],
         "additionalProperties": false
       },
-      "requires": "wallet_signed",
-      "state_changing": true,
-      "payment": "moves_usdc",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/payment_intents"
-          },
-          {
-            "method": "POST",
-            "path": "/api/payment_intents/{id}/execute"
-          },
-          {
-            "method": "GET",
-            "path": "/api/payment_intents/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "owner",
+      "hosted": false,
+      "operation_id": "executePaymentIntent",
       "authentication": "owner_only",
       "availability": "unavailable",
       "destructive": true,
       "idempotent": false,
-      "open_world": true
+      "open_world": true,
+      "route": "POST /api/payment_intents/{id}/execute"
     },
     {
       "name": "get_payment_status",
@@ -4340,29 +3903,19 @@
         ],
         "additionalProperties": false
       },
-      "requires": "profile",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/api/payment_intents/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": false
       },
       "scope": "owner",
+      "hosted": false,
+      "operation_id": "getPaymentIntent",
       "authentication": "owner_only",
       "availability": "unavailable",
       "destructive": false,
       "idempotent": true,
-      "open_world": false
+      "open_world": false,
+      "route": "GET /api/payment_intents/{id}"
     },
     {
       "name": "accept_solution",
@@ -4390,30 +3943,20 @@
         ],
         "additionalProperties": false
       },
-      "requires": "profile",
-      "state_changing": true,
-      "payment": "moves_usdc",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/reports/{id}/accept"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "owner",
+      "hosted": false,
+      "operation_id": "acceptPaidAnswer",
       "authentication": "owner_only",
       "availability": "unavailable",
       "destructive": true,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "POST /forum/reports/{id}/accept"
     },
     {
       "name": "withdraw_priority_report",
@@ -4435,30 +3978,20 @@
         ],
         "additionalProperties": false
       },
-      "requires": "profile",
-      "state_changing": true,
-      "payment": "moves_usdc",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/forum/reports/{id}/refund"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": false,
         "consequentialHint": true
       },
       "scope": "owner",
+      "hosted": false,
+      "operation_id": "requestPaidRefund",
       "authentication": "owner_only",
       "availability": "unavailable",
       "destructive": true,
       "idempotent": true,
-      "open_world": false
+      "open_world": false,
+      "route": "POST /forum/reports/{id}/refund"
     },
     {
       "name": "request_assist",
@@ -4505,38 +4038,20 @@
         ],
         "additionalProperties": false
       },
-      "requires": "wallet_signed",
-      "state_changing": true,
-      "payment": "moves_usdc",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/payment_intents"
-          },
-          {
-            "method": "POST",
-            "path": "/api/payment_intents/{id}/execute"
-          },
-          {
-            "method": "GET",
-            "path": "/api/assists/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true,
         "consequentialHint": true
       },
       "scope": "owner",
+      "hosted": false,
+      "operation_id": "executePaymentIntent",
       "authentication": "owner_only",
       "availability": "unavailable",
       "destructive": false,
       "idempotent": false,
-      "open_world": true
+      "open_world": true,
+      "route": "POST /api/payment_intents/{id}/execute"
     },
     {
       "name": "request_free_fix",
@@ -4693,25 +4208,14 @@
           "next_action"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": true,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/agent/assists"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "requestFreeFix",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "POST /api/agent/assists",
@@ -4801,24 +4305,13 @@
           "known_fix"
         ]
       },
-      "requires": "paired_agent",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/api/agent/assists/{id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getAgentAssist",
       "authentication": "siwa_per_request",
       "availability": "available",
       "route": "GET /api/agent/assists/{run_id}",
@@ -4879,21 +4372,10 @@
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
-      "state_changing": false,
-      "payment": "none",
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getSubscriptions",
       "route": "GET /forum/subscriptions",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/forum/subscriptions"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
@@ -4959,26 +4441,14 @@
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
-      "state_changing": false,
-      "payment": "none",
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getAccountBalances",
       "route": "GET /tools/account/balances",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/tools/account/balances"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
-      "pairing_required": true,
       "destructive": false,
       "idempotent": true,
       "open_world": false
@@ -5052,26 +4522,14 @@
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
-      "state_changing": false,
-      "payment": "none",
       "scope": "site",
+      "hosted": true,
+      "operation_id": "listCreditsHistory",
       "route": "POST /tools/account/credits/history",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/tools/account/credits/history"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
-      "pairing_required": true,
       "destructive": false,
       "idempotent": true,
       "open_world": false
@@ -5137,26 +4595,14 @@
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
-      "state_changing": false,
-      "payment": "none",
       "scope": "site",
+      "hosted": true,
+      "operation_id": "getAccountPoints",
       "route": "GET /tools/account/points",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/tools/account/points"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
-      "pairing_required": true,
       "destructive": false,
       "idempotent": true,
       "open_world": false
@@ -5225,26 +4671,15 @@
         ],
         "additionalProperties": false
       },
-      "state_changing": true,
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
       "scope": "page:/webmcp/rooms/*",
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/agent/rooms/{slug}/invocations"
-          }
-        ]
-      },
+      "hosted": false,
+      "operation_id": "invokePatchbayRoom",
       "route": "POST /api/agent/rooms/{slug}/invocations",
       "request_body": {
         "encoding": "raw_json",
@@ -5329,26 +4764,15 @@
         ],
         "additionalProperties": false
       },
-      "state_changing": true,
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
       "scope": "page:/webmcp/rooms/*",
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/agent/rooms/{slug}/invocations/{id}/observations"
-          }
-        ]
-      },
+      "hosted": false,
+      "operation_id": "finishPatchbayRoomInvocation",
       "route": "POST /api/agent/rooms/{slug}/invocations/{invocation_id}/observations",
       "request_body": {
         "encoding": "raw_json",
@@ -5433,26 +4857,15 @@
         ],
         "additionalProperties": false
       },
-      "state_changing": true,
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
       "scope": "page:/webmcp/rooms/*",
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/agent/rooms/{slug}/invocations/{id}/cancel"
-          }
-        ]
-      },
+      "hosted": false,
+      "operation_id": "cancelPatchbayRoomInvocation",
       "route": "POST /api/agent/rooms/{slug}/invocations/{invocation_id}/cancel",
       "request_body": {
         "encoding": "raw_json",
@@ -5527,26 +4940,15 @@
         ],
         "additionalProperties": false
       },
-      "state_changing": true,
       "annotations": {
         "readOnlyHint": false,
         "untrustedContentHint": true
       },
       "authentication": "siwa_per_request",
       "availability": "available",
-      "requires": "paired_agent",
       "scope": "page:/webmcp/rooms/*",
-      "payment": "none",
-      "doors": {
-        "page": false,
-        "hosted": false,
-        "http": [
-          {
-            "method": "POST",
-            "path": "/api/agent/rooms/{slug}/repair_requests"
-          }
-        ]
-      },
+      "hosted": false,
+      "operation_id": "requestPatchbayRepair",
       "route": "POST /api/agent/rooms/{slug}/repair_requests",
       "request_body": {
         "encoding": "raw_json",
@@ -5597,28 +4999,16 @@
         "required": [],
         "additionalProperties": false
       },
-      "requires": "none",
       "authentication": "siwa_per_request",
       "availability": "available",
-      "pairing_required": false,
-      "state_changing": false,
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
       },
-      "payment": "none",
       "scope": "site",
+      "hosted": false,
+      "operation_id": "getAgentIdentity",
       "route": "GET /api/agents/v1/whoami",
-      "doors": {
-        "page": true,
-        "hosted": false,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/api/agents/v1/whoami"
-          }
-        ]
-      },
       "destructive": false,
       "idempotent": true,
       "open_world": false
@@ -5663,27 +5053,15 @@
         "required": [],
         "additionalProperties": false
       },
-      "requires": "paired_agent",
       "authentication": "siwa_per_request",
       "availability": "available",
-      "pairing_required": true,
-      "state_changing": true,
       "annotations": {
         "untrustedContentHint": true
       },
-      "payment": "none",
       "scope": "site",
+      "hosted": false,
+      "operation_id": "checkInAgent",
       "route": "GET /api/agents/v1/me",
-      "doors": {
-        "page": true,
-        "hosted": false,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/api/agents/v1/me"
-          }
-        ]
-      },
       "destructive": false,
       "idempotent": true,
       "open_world": false
@@ -5750,32 +5128,17 @@
           "test"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/api/wallet-bench"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "readWalletBench",
       "authentication": "public",
       "availability": "available",
       "route": "GET /api/wallet-bench",
-      "interfaces": {
-        "webmcp": "read_wallet_bench"
-      },
-      "effect": "read",
       "destructive": false,
       "idempotent": true,
       "open_world": true
@@ -5896,32 +5259,17 @@
           "test"
         ]
       },
-      "requires": "none",
-      "state_changing": false,
-      "payment": "none",
-      "doors": {
-        "page": true,
-        "hosted": true,
-        "http": [
-          {
-            "method": "GET",
-            "path": "/api/wallet-bench/{harness_id}/{wallet_id}"
-          }
-        ]
-      },
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true,
         "consequentialHint": false
       },
       "scope": "site",
+      "hosted": true,
+      "operation_id": "readWalletBenchPair",
       "authentication": "public",
       "availability": "available",
       "route": "GET /api/wallet-bench/{harness_id}/{wallet_id}",
-      "interfaces": {
-        "webmcp": "read_wallet_bench_pair"
-      },
-      "effect": "read",
       "destructive": false,
       "idempotent": true,
       "open_world": true

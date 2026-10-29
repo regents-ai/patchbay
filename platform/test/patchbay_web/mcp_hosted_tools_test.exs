@@ -30,8 +30,10 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   end
 
   test "every tool that writes, or reads an account, refuses an unsigned call", %{conn: conn} do
-    for tool <- Capabilities.hosted(), tool.state_changing or tool.requires == "paired_agent" do
-      assert tool.requires == "paired_agent", "#{tool.name} writes but asks nothing of its caller"
+    for tool <- Capabilities.hosted(),
+        not Capabilities.read_only?(tool) or Capabilities.signed?(tool) do
+      assert tool.authority == "paired_agent",
+             "#{tool.name} writes but asks nothing of its caller"
 
       %{"result" => result} = tools_call(conn, nil, tool.name, %{}) |> json_response(200)
 
@@ -42,7 +44,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   end
 
   test "a public read answers an unsigned call", %{conn: conn} do
-    for tool <- Capabilities.hosted(), not tool.state_changing, tool.requires == "none" do
+    for tool <- Capabilities.hosted(), tool.authority == "public" do
       %{"result" => result} =
         tools_call(conn, nil, tool.name, %{}) |> json_response(200)
 

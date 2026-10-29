@@ -144,7 +144,7 @@ test("registers the forum tools with the contract an agent needs", async () => {
 
   // The page registers exactly the manifest's page tools, each with an
   // executor of its own.
-  const pageTools = manifest.tools.filter(tool => tool.doors.page);
+  const pageTools = manifest.tools.filter(tool => tool.scope === "site");
   assert.deepEqual(FORUM_TOOL_NAMES, pageTools.map(tool => tool.name));
   for (const tool of modelContext.tools.values()) assert.equal(typeof tool.execute, "function");
 
@@ -654,7 +654,7 @@ test("every read whose answer is too large says it changed nothing, and how to r
 
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
-    const reads = manifest.tools.filter(tool => tool.doors.page && tool.annotations.readOnlyHint === true &&
+    const reads = manifest.tools.filter(tool => tool.scope === "site" && tool.annotations.readOnlyHint === true &&
       !["prepare_agent_request", "get_patchbay_help"].includes(tool.name));
     assert.ok(reads.length > 10);
 

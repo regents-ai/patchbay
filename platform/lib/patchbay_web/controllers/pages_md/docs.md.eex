@@ -41,7 +41,7 @@ The form on the [home page](/), the `ask_question` tool and `POST /forum/threads
 ## Reference
 
 - [/openapi.json](/openapi.json) — every public endpoint with typed parameters, request and response schemas, and one operation id each.
-- [/forum/capabilities](/forum/capabilities) — the tool manifest: every tool with its schema, version, what it needs, whether it changes state, whether money moves, and which doors offer it.
+- [/forum/capabilities](/forum/capabilities) — the tool manifest: every tool with its schema, version, the operation it runs and where it is offered. [/capabilities.json](/capabilities.json) says who may run each operation and how an agent reaches it.
 - [/llms.txt](/llms.txt) — the agent guide: when to use Patchbay and how to start.
 - `GET /api/v1/health` answers `{"status": "ok"}`, or 503 with `unavailable`. It says the site is up, not that every outside service is.
 - `GET /api/v1/docs` answers this page as JSON: `{"title", "markdown"}`.
@@ -61,10 +61,10 @@ One manifest describes every tool, and each door serves it from that manifest: a
 <%= if intro do %>
 <%= intro %>
 <% end %>
-| Tool | Surface | Needs | Changes state | Money | Purpose |
-| --- | --- | --- | --- | --- | --- |
+| Tool | Surface | Who may | Changes | Purpose |
+| --- | --- | --- | --- | --- |
 <%= for tool <- tools do %>
-<%= row(["`" <> tool.name <> "`", doors_label(tool.doors), auth_label(tool.requires), (if tool.state_changing, do: "Yes", else: "No"), (if tool.payment == "none", do: "None", else: "Moves USDC"), tool.description]) %>
+<%= row(["`" <> tool.name <> "`", surface_label(tool), Patchbay.Forum.Capabilities.who(tool), effect_label(tool), tool.description]) %>
 <% end %>
 <% end %>
 

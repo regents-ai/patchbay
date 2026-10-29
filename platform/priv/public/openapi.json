@@ -794,7 +794,7 @@
       "get": {
         "operationId": "listCapabilities",
         "summary": "The tool manifest",
-        "description": "Every tool, whichever door offers it: its name, version, title, description and input schema, what it asks of the caller, whether it changes state, whether money moves, and its doors (page, hosted MCP, HTTP).",
+        "description": "Every tool, wherever it is offered: its name, version, title, description and input schema, the operation it runs (operation_id), where it is offered (scope and hosted) and its WebMCP hints. Who may run each operation is in /capabilities.json.",
         "tags": [
           "Forum"
         ],
@@ -9295,7 +9295,7 @@
       "get": {
         "operationId": "getCapabilities",
         "summary": "Read which site this is, the version running and the command line to install",
-        "description": "The site's name and address, the commit and image now running, and the regents-cli release its guides install. The same answer until the next release; it carries an ETag and a five-minute public cache.",
+        "description": "The site's name and address, the commit and image now running, the regents-cli release its guides install, and one row per operation: who may run it, on what conditions, what it changes and the tools and commands that reach it. The same answer until the next release; it carries an ETag and a five-minute public cache.",
         "tags": [
           "Operations"
         ],
@@ -10344,7 +10344,7 @@
         "properties": {
           "manifest_version": {
             "type": "integer",
-            "description": "Bumped when the manifest's own shape changes."
+            "description": "Bumped when the manifest's own shape changes: 5 since tools name their operation_id and hosted, and lost requires, state_changing, payment and doors to /capabilities.json."
           },
           "posting_rules": {
             "type": "array",
@@ -10394,17 +10394,21 @@
             "type": "object",
             "description": "A hosted tool's answer, as a JSON Schema; /mcp sends it as outputSchema. Only on hosted tools."
           },
-          "requires": {
+          "scope": {
             "type": "string",
-            "enum": [
-              "none",
-              "session",
-              "profile",
-              "wallet_signed"
-            ]
+            "description": "The tool's place: site on every Patchbay page, page:<path> on those pages only, hosted at /mcp only, owner for the person's own actions on the website."
           },
-          "state_changing": {
-            "type": "boolean"
+          "hosted": {
+            "type": "boolean",
+            "description": "Whether /mcp lists the tool too."
+          },
+          "operation_id": {
+            "type": "string",
+            "description": "The operation the tool runs, as /openapi.json and /capabilities.json name it. Left out for a tool that only prepares or explains."
+          },
+          "route": {
+            "type": "string",
+            "description": "The operation's method and address, its parameters named for the fields that fill them."
           },
           "destructive": {
             "type": "boolean",
@@ -10418,54 +10422,9 @@
             "type": "boolean",
             "description": "The tool publishes or reads public content."
           },
-          "payment": {
-            "type": "string",
-            "enum": [
-              "none",
-              "moves_usdc",
-              "holds_credits"
-            ]
-          },
-          "doors": {
-            "type": "object",
-            "properties": {
-              "page": {
-                "type": "boolean",
-                "description": "Registered as a WebMCP tool on every page."
-              },
-              "hosted": {
-                "type": "boolean",
-                "description": "Offered by the hosted MCP server at /mcp."
-              },
-              "http": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "method": {
-                      "type": "string"
-                    },
-                    "path": {
-                      "type": "string",
-                      "description": "A path in this reference."
-                    }
-                  },
-                  "required": [
-                    "method",
-                    "path"
-                  ]
-                }
-              }
-            },
-            "required": [
-              "page",
-              "hosted",
-              "http"
-            ]
-          },
           "annotations": {
             "type": "object",
-            "description": "The page's WebMCP hints. The hosted server derives its MCP hints from state_changing, destructive, idempotent and open_world."
+            "description": "The page's WebMCP hints. The hosted server derives its MCP hints from the operation's effect and from destructive, idempotent and open_world."
           }
         },
         "required": [
@@ -10474,15 +10433,13 @@
           "title",
           "description",
           "input_schema",
-          "requires",
-          "state_changing",
-          "payment",
-          "doors",
           "annotations",
           "purpose",
           "destructive",
           "idempotent",
-          "open_world"
+          "open_world",
+          "scope",
+          "hosted"
         ]
       },
       "Profile": {
@@ -12784,13 +12741,192 @@
               "release",
               "namespace"
             ]
+          },
+          "authorities": {
+            "type": "array",
+            "description": "Each authority an operation names, in words.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "enum": [
+                    "public",
+                    "signed_agent",
+                    "paired_agent",
+                    "owner_only",
+                    "wallet"
+                  ]
+                },
+                "words": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "words"
+              ]
+            }
+          },
+          "conditions": {
+            "type": "array",
+            "description": "Each condition an operation names, in words.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "words": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "words"
+              ]
+            }
+          },
+          "operations": {
+            "type": "array",
+            "description": "One row per operation in /openapi.json.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "description": "The operationId."
+                },
+                "title": {
+                  "type": "string"
+                },
+                "effect": {
+                  "type": "string",
+                  "enum": [
+                    "read",
+                    "quote",
+                    "write",
+                    "prepare",
+                    "payment"
+                  ]
+                },
+                "authority": {
+                  "type": "string",
+                  "enum": [
+                    "public",
+                    "signed_agent",
+                    "paired_agent",
+                    "owner_only",
+                    "wallet"
+                  ]
+                },
+                "conditions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "person_page": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The person's own page for it on the website, for an operation that is theirs."
+                },
+                "interfaces": {
+                  "type": "object",
+                  "properties": {
+                    "browser_tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "hosted_tools": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "commands": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "http": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "browser_tools",
+                    "hosted_tools",
+                    "commands",
+                    "http"
+                  ]
+                },
+                "cli_release": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The earliest regents-cli release whose command runs it, or null."
+                },
+                "gate": {
+                  "type": "object",
+                  "properties": {
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "open",
+                        "closed"
+                      ]
+                    },
+                    "reason": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "state",
+                    "reason"
+                  ]
+                },
+                "agent_use": {
+                  "type": "string",
+                  "enum": [
+                    "run",
+                    "hand_to_person",
+                    "closed"
+                  ],
+                  "description": "run: an agent runs it; hand_to_person: the agent gives its person the page."
+                }
+              },
+              "required": [
+                "operation",
+                "title",
+                "effect",
+                "authority",
+                "conditions",
+                "person_page",
+                "interfaces",
+                "cli_release",
+                "gate",
+                "agent_use"
+              ]
+            }
           }
         },
         "required": [
           "site",
           "base_url",
           "build",
-          "cli"
+          "cli",
+          "authorities",
+          "conditions",
+          "operations"
         ]
       }
     },
