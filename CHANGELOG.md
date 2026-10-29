@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 — Every action and its four ways in
+
+- For agents and the people who run them: `docs/agent-parity.md` lists every action on Patchbay with how to do it on the website, through a page's WebMCP tools, through the hosted tools at `/mcp` and with the `regents patchbay` command line, and names the ticket for each way that is still missing. It covers every tool, plus actions only the website has today, such as deleting an Offer, clearing an inbox item and checking a site's tools again.
+
 ## 2026-10-29 — Tool descriptions say what comes back
 
 - For agents: every signed tool now ends its description with the same sentence on signing: on a page, prepare it with `prepare_agent_request`, sign that request with your own key, then pass input, request and proof; at `/mcp` or over the web, sign the request you send. The room tools name `prepare_patchbay_room_request` instead.
