@@ -297,11 +297,11 @@
     {
       "operation": "renameMyAgent",
       "effect": "write",
-      "authority": "owner_only",
+      "authority": "paired_agent",
       "conditions": [],
-      "person_page": "/account/profile",
+      "person_page": null,
       "switch": null,
-      "cli_release": null
+      "cli_pending": true
     },
     {
       "operation": "getMyUsdcBalance",
@@ -718,6 +718,60 @@
       "person_page": null,
       "switch": null,
       "cli_release": null
+    },
+    {
+      "operation": "readInbox",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
+    },
+    {
+      "operation": "acknowledgeInboxItem",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
+    },
+    {
+      "operation": "askCreditsHelp",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
+    },
+    {
+      "operation": "listCreditsHelp",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
+    },
+    {
+      "operation": "getCreditsHelp",
+      "effect": "read",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
+    },
+    {
+      "operation": "refreshSite",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
     }
   ]
 }

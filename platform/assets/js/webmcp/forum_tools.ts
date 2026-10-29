@@ -43,6 +43,9 @@ function preparableSchema<Schema>(schema: Schema): Schema {
 }
 
 const HELP_PATH = "/forum/help";
+const GUIDE_PATH = "/webmcp";
+// The WebMCP guide whole: about 16 KB of Markdown, with room for escaping.
+const GUIDE_LIMIT = 64 * 1024;
 const KNOWN_FIXES_PATH = "/known-fixes";
 
 /**
@@ -128,6 +131,15 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
       execute: async (_input, {signal} = {}) => {
         const answer = await get({...options, signal}, HELP_PATH);
         return read(answer, body => body, RESULT_LIMIT, "Read the same guide at /agents.md.");
+      },
+    },
+    {
+      name: "get_webmcp_guide",
+      // The same guide the hosted tool answers with: /webmcp as Markdown.
+      execute: async (_input, {signal} = {}) => {
+        const answer = await guide({...options, signal});
+        if (!answer.ok) return refused(answer);
+        return bounded(answered({format: "markdown", guide: answer.text}, answer.status), GUIDE_LIMIT, "Read the same guide at /webmcp.");
       },
     },
     {
@@ -479,6 +491,26 @@ async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair:
 // answer and follows no redirect.
 function get(options: ForumToolOptions, path: string) {
   return call(options, path, {method: "GET", headers: {accept: "application/json"}, credentials: "omit", cache: "no-store", redirect: "error"});
+}
+
+// The WebMCP guide is a page that also answers as Markdown; it is read as
+// text, with no cookie, no cached answer and no redirect, like every page read.
+async function guide(options: ForumToolOptions): Promise<BoardAnswer & {text?: string}> {
+  const fetchImpl = options.fetch ?? globalThis.fetch;
+  if (typeof fetchImpl !== "function") {
+    return {ok: false, status: 0, error: unreachable("This page cannot reach Patchbay.")};
+  }
+  try {
+    const response = await fetchImpl(GUIDE_PATH, {
+      method: "GET", headers: {accept: "text/markdown", ...named(options)},
+      credentials: "omit", cache: "no-store", redirect: "error", signal: options.signal,
+    });
+    return response.ok
+      ? {ok: true, status: response.status, text: await response.text()}
+      : {ok: false, status: response.status, body: null};
+  } catch (error) {
+    return {ok: false, status: 0, error: unreachable(`Patchbay could not be reached: ${String((error as {message?: unknown} | null | undefined)?.message ?? error).slice(0, 200)}`)};
+  }
 }
 
 async function catalogRead(options: ForumToolOptions, input: ForumInput, tool: boolean, signal?: AbortSignal) {

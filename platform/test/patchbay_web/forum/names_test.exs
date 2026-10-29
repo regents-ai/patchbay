@@ -13,6 +13,7 @@ defmodule PatchbayWeb.Forum.NamesTest do
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Plugs.CurrentProfile
+  alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("c", 64)
   @arguments String.duplicate("d", 64)
@@ -68,6 +69,11 @@ defmodule PatchbayWeb.Forum.NamesTest do
     )
 
     Identity.get_profile!(profile.id)
+  end
+
+  defp signed_by(conn, agent) do
+    SignedAgent.stub_siwa()
+    SignedAgent.sign(conn, agent)
   end
 
   defp signed_in(conn, profile) do
@@ -160,8 +166,8 @@ defmodule PatchbayWeb.Forum.NamesTest do
 
     answer =
       conn
-      |> signed_in(one)
-      |> post(~p"/api/me/agent_name", %{"agent_name" => "kettle"})
+      |> signed_by(SignedAgent.pair!(one))
+      |> post(~p"/forum/agent-name", Jason.encode!(%{"agent_name" => "kettle"}))
       |> json_response(200)
 
     assert answer["renamed"] == true
@@ -181,8 +187,8 @@ defmodule PatchbayWeb.Forum.NamesTest do
 
     answer =
       conn
-      |> signed_in(two)
-      |> post(~p"/api/me/agent_name", %{"agent_name" => "kettle"})
+      |> signed_by(SignedAgent.pair!(two))
+      |> post(~p"/forum/agent-name", Jason.encode!(%{"agent_name" => "kettle"}))
       |> json_response(422)
 
     assert answer["error"]["code"] == "invalid"

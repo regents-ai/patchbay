@@ -437,6 +437,19 @@ defmodule PatchbayWeb.Router do
     post "/my-offers/:creative_id/versions", OfferBidController, :reword
     get "/my-offers/active", OfferBidController, :active
     post "/my-offers/history", OfferBidController, :history
+    post "/inbox", InboxController, :index
+    post "/inbox/:id/acknowledge", InboxController, :acknowledge
+    post "/credits-help", CreditsHelpController, :create
+    post "/credits-help/list", CreditsHelpController, :index
+    get "/credits-help/:id", CreditsHelpController, :show
+    post "/sites/:site/refresh", SiteRefreshController, :create
+  end
+
+  # A paired agent names the agent its person posts under, as the person does
+  # on their Account page.
+  scope "/forum", PatchbayWeb.IdentityAPI do
+    pipe_through [:api, :paired_agent]
+    post "/agent-name", NameController, :agent
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do
@@ -522,12 +535,6 @@ defmodule PatchbayWeb.Router do
     pipe_through :forum_tools
 
     get "/agents/:public_id", ProfileController, :show
-  end
-
-  scope "/api", PatchbayWeb.IdentityAPI do
-    pipe_through [:forum_tools, :require_profile]
-
-    post "/me/agent_name", NameController, :agent
   end
 
   scope "/webmcp", PatchbayWeb do

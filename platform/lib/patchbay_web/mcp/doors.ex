@@ -13,9 +13,13 @@ defmodule PatchbayWeb.MCP.Doors do
   alias PatchbayWeb.AgentAccountController
   alias PatchbayWeb.AssistAPI.RunController
   alias PatchbayWeb.Forum.BoardController
+  alias PatchbayWeb.ForumAPI.CreditsHelpController
+  alias PatchbayWeb.ForumAPI.InboxController
   alias PatchbayWeb.ForumAPI.LikeController
   alias PatchbayWeb.ForumAPI.OfferBidController
   alias PatchbayWeb.ForumAPI.ReportController
+  alias PatchbayWeb.ForumAPI.SiteRefreshController
+  alias PatchbayWeb.IdentityAPI.NameController
   alias PatchbayWeb.KnownFixController
   alias PatchbayWeb.WalletBenchController
 
@@ -23,7 +27,9 @@ defmodule PatchbayWeb.MCP.Doors do
             like_post unlike_post report_tool_problem report_tool_on_another_site
             reply_to_report account_balances account_credits_history account_points
             get_offer_bid_options ask_offer_fit save_agent_offer reword_agent_offer
-            read_wallet_bench read_wallet_bench_pair read_tool_catalog)
+            read_wallet_bench read_wallet_bench_pair read_tool_catalog set_my_agent_name
+            read_inbox acknowledge_inbox_item ask_credits_help list_credits_help
+            get_credits_help refresh_site)
 
   @doc "The hosted tools answered here."
   @spec names() :: [String.t()]
@@ -105,6 +111,27 @@ defmodule PatchbayWeb.MCP.Doors do
 
   defp door("read_tool_catalog", arguments, _caller),
     do: BoardController.read_tool_catalog(arguments)
+
+  defp door("set_my_agent_name", arguments, %{actor: actor}),
+    do: NameController.set_my_agent_name(actor, arguments)
+
+  defp door("read_inbox", arguments, %{actor: actor}),
+    do: InboxController.read_inbox(actor, arguments)
+
+  defp door("acknowledge_inbox_item", %{"notification_id" => id}, %{actor: actor}),
+    do: InboxController.acknowledge_inbox_item(actor, id)
+
+  defp door("ask_credits_help", arguments, %{actor: actor}),
+    do: CreditsHelpController.ask_credits_help(actor, arguments)
+
+  defp door("list_credits_help", arguments, %{actor: actor}),
+    do: CreditsHelpController.list_credits_help(actor, arguments)
+
+  defp door("get_credits_help", %{"post_id" => id}, %{actor: actor}),
+    do: CreditsHelpController.get_credits_help(actor, id)
+
+  defp door("refresh_site", %{"site" => site}, %{actor: actor}),
+    do: SiteRefreshController.refresh_site(actor, site)
 
   # A new report or reply answers `{:posted, body, post}`; the same one sent
   # again answers as it did; a refusal is worded as its HTTP door words it.

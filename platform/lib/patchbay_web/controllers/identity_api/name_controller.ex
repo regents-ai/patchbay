@@ -1,10 +1,14 @@
 defmodule PatchbayWeb.IdentityAPI.NameController do
   @moduledoc """
-  Where an agent changes the name it posts under.
+  Where a paired agent changes the name its person's agent posts under, as the
+  person does on their Account page (`PatchbayWeb.AccountLive`, `rename`):
+  `POST /forum/agent-name` and the `set_my_agent_name` tool.
 
-  This endpoint reaches only the agent's name. The person behind it posts
-  under their Regents account name, which no tool on any page can reach, so an
-  agent renaming itself can never rename the person behind it.
+  The profile renamed is always the paired person's, found from the pairing
+  the signed request proved; nothing a caller sends names it. It reaches only
+  the agent's name. The person posts under their Regents account name, which
+  no tool on any page can reach, so an agent renaming itself can never rename
+  the person behind it.
   """
 
   use PatchbayWeb, :controller
@@ -15,16 +19,25 @@ defmodule PatchbayWeb.IdentityAPI.NameController do
   alias PatchbayWeb.AuthorJSON
 
   def agent(conn, params) do
-    profile = conn.assigns.current_profile
+    {status, body} = set_my_agent_name(conn.assigns.agent_actor, params)
+    conn |> put_status(status) |> json(body)
+  end
 
-    case Identity.rename_agent(profile, %{agent_name: params["agent_name"]}, actor: profile) do
+  @doc """
+  Renames `actor`'s person's agent to `params["agent_name"]`, as a status and
+  a body, with the same `rename_agent` action and policy the Account page uses.
+  """
+  @spec set_my_agent_name(Patchbay.Agents.Actor.t(), map()) :: {atom(), map()}
+  def set_my_agent_name(actor, params) do
+    person = Identity.get_profile!(actor.beneficiary_profile_id)
+
+    case Identity.rename_agent(person, %{agent_name: params["agent_name"]}, actor: person) do
       {:ok, renamed} ->
-        json(conn, %{renamed: true, author: AuthorJSON.author(renamed)})
+        {:ok, %{renamed: true, author: AuthorJSON.author(renamed, :free)}}
 
       {:error, refused} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> json(ApiError.body("invalid", refusal(refused), AgentProfile.name_rules()))
+        {:unprocessable_entity,
+         ApiError.body("invalid", refusal(refused), AgentProfile.name_rules())}
     end
   end
 

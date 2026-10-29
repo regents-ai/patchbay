@@ -70,6 +70,18 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
     end
   end
 
+  # The page's get_webmcp_guide reads /webmcp as Markdown, so the guide it
+  # answers with is the hosted tool's.
+  test "the WebMCP guide a page reads at /webmcp is the hosted one", %{conn: conn} do
+    %{"result" => %{"structuredContent" => %{"guide" => guide}}} =
+      conn |> tools_call(nil, "get_webmcp_guide", %{}) |> json_response(200)
+
+    page = conn |> recycle() |> put_req_header("accept", "text/markdown") |> get("/webmcp")
+
+    assert page.status == 200
+    assert page.resp_body == guide
+  end
+
   # An answer has the shape its tool's outputSchema in tools/list promises,
   # so a client that checks it accepts it, and its text is the same answer as
   # JSON for a client that reads only text. A refusal carries no structured
@@ -113,10 +125,12 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   #   * `{:refused, code}`: the tool's own refusal for an input it cannot act
   #     on (an id that names nothing), which still shows the call reached it.
   defp calls(world) do
-    %{thread: thread, reply: reply, key: key, profile: profile, run: run} = world
+    %{thread: thread, reply: reply, key: key, profile: profile, run: run, taken: taken} = world
     offer_key = Ecto.UUID.generate()
     # A wording that is not the person's: refused alike at both doors.
     fit = %{"origin" => "quiet.example.net", "version_id" => Ecto.UUID.generate()}
+    # An id that names nothing of the asker's.
+    missing = Ecto.UUID.generate()
 
     [
       {"get_patchbay_help", %{}, :ok},
@@ -198,6 +212,19 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       {"reword_agent_offer", reword(thread),
        {:http, :refusal, :post, "/forum/my-offers/#{thread}/versions",
         Map.delete(reword(thread), "creative_id")}},
+      # The helper's person's agent name, which no other profile may take:
+      # refused alike at both doors.
+      {"set_my_agent_name", %{"agent_name" => taken},
+       {:http, :refusal, :post, "/forum/agent-name", %{"agent_name" => taken}}},
+      {"read_inbox", %{}, {:http, :answer, :post, "/forum/inbox", %{}}},
+      {"acknowledge_inbox_item", %{"notification_id" => missing},
+       {:http, :refusal, :post, "/forum/inbox/#{missing}/acknowledge", %{}}},
+      {"ask_credits_help", credits_help(), :ok},
+      {"list_credits_help", %{}, {:http, :answer, :post, "/forum/credits-help/list", %{}}},
+      {"get_credits_help", %{"post_id" => missing},
+       {:http, :refusal, :get, "/forum/credits-help/#{missing}"}},
+      {"refresh_site", %{"site" => "nowhere.example.org"},
+       {:http, :refusal, :post, "/forum/sites/nowhere.example.org/refresh", %{}}},
       {"read_wallet_bench", %{}, {:http, :answer, :get, "/api/wallet-bench"}},
       {"read_wallet_bench_pair", %{"harness_id" => "H901", "wallet_id" => "W901"},
        {:http, :answer, :get, "/api/wallet-bench/H901/W901"}},
@@ -212,6 +239,9 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       "site_url" => "https://quiet.example.net",
       "sign_in" => "none"
     }
+
+  defp credits_help,
+    do: %{"title" => "Credits went missing", "body" => "A top-up shows on Base but not here."}
 
   defp known_fix, do: hd(Patchbay.Assist.KnownFixes.all()).id
 
@@ -357,6 +387,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       reply: reply,
       run: run,
       key: question["client_request_id"],
+      taken: Patchbay.Identity.get_profile!(helper.owner.id).agent_name,
       profile:
         Patchbay.Forum.Report
         |> Ash.get!(thread)

@@ -325,13 +325,23 @@ defmodule Patchbay.Forum do
   @doc """
   A principal's receipt for the notifications it handled: every named id the
   principal actually owns is marked acknowledged; ids it does not own are
-  quietly not.
+  quietly not. Answers how many it marked.
   """
+  @spec acknowledge_notifications([String.t()], [String.t()]) ::
+          {:ok, non_neg_integer()} | {:error, [term()]}
   def acknowledge_notifications(principals, ids) do
     # Same as above: the query itself confines the write to the caller's own
     # unacknowledged mail, so policy adds nothing to it.
     Patchbay.Forum.Notification
     |> Ash.Query.filter(id in ^ids and recipient in ^principals and is_nil(acknowledged_at))
-    |> Ash.bulk_update(:acknowledge, %{}, authorize?: false, return_records?: false)
+    |> Ash.bulk_update(:acknowledge, %{},
+      authorize?: false,
+      return_records?: true,
+      return_errors?: true
+    )
+    |> case do
+      %Ash.BulkResult{status: :success, records: records} -> {:ok, length(records)}
+      %Ash.BulkResult{errors: errors} -> {:error, errors}
+    end
   end
 end

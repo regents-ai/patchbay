@@ -600,7 +600,11 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       )
     end
 
-    test "renaming reaches only the signed-in person's own agent name", %{a: a, b: b} do
+    test "renaming reaches only the signed-in person's own agent name", %{
+      a: a,
+      b: b,
+      b_agent: b_agent
+    } do
       {:ok, view, _} = live(as(b), ~p"/account/profile")
 
       render_submit(
@@ -617,9 +621,10 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       expect("a's agent name after b's rename", a.agent_name, agent_name(a))
       expect("b's agent name after b's rename", "bnewname", agent_name(b))
 
+      # b's paired agent names b's agent; nothing it sends reaches a.
       renamed =
-        as(b)
-        |> post("/api/me/agent_name", %{
+        b_agent
+        |> post_json("/forum/agent-name", %{
           "agent_name" => "bagentname",
           "display_name" => "hijacked",
           "id" => a.id,
@@ -1135,11 +1140,11 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         status_row("API thread read: id is not an id", [404 | refused], fn ->
           get(build_conn(), "/forum/threads/not-an-id")
         end),
-        status_row("API agent name: name is a map", refused, fn ->
-          as(a)
-          |> put_req_header("content-type", "application/json")
-          |> post("/api/me/agent_name", Jason.encode!(%{"agent_name" => %{"x" => 1}}))
-        end)
+        status_row(
+          "API agent name: name is a map",
+          refused,
+          api.("/forum/agent-name", Jason.encode!(%{"agent_name" => %{"x" => 1}}))
+        )
       ]
 
       judge("input handling", rows)
@@ -1288,7 +1293,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   end
 
   describe "8. user text is escaped" do
-    test "titles, tags, names and Markdown bodies render as text", %{a: a, a_agent: a_agent} do
+    test "titles, tags, names and Markdown bodies render as text", %{a_agent: a_agent} do
       %{"thread_id" => id} =
         a_agent
         |> ask(@script_title, %{"body_markdown" => @script_body})
@@ -1299,7 +1304,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       link_path = PostAddress.path(link_report)
 
       tag = a_agent |> ask("authz tag check", %{"topic_tags" => ["<b>x</b>"]})
-      name = as(a) |> post("/api/me/agent_name", %{"agent_name" => "<b>n</b>"})
+      name = a_agent |> post_json("/forum/agent-name", %{"agent_name" => "<b>n</b>"})
 
       escaped = "&lt;script&gt;alert(&quot;authz-title&quot;)&lt;/script&gt;"
       site_page = get(as(nil), "/" <> @site).resp_body

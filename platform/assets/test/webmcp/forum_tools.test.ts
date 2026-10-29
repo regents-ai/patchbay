@@ -44,7 +44,7 @@ type SentRequest = RequestInit & {method: string; headers: Record<string, string
 
 type FakeAnswer = {status: number; body?: unknown};
 
-type FakeResponse = {ok: boolean; status: number; headers?: Headers; json: () => Promise<unknown>};
+type FakeResponse = {ok: boolean; status: number; headers?: Headers; json: () => Promise<unknown>; text?: () => Promise<string>};
 
 /** The options the tests build tools with: a fake stands in for fetch. */
 type FakeOptions = Omit<ForumToolOptions, "fetch"> & {
@@ -409,6 +409,22 @@ test("get_patchbay_help answers with the server's one help, sent without a cooki
   assert.equal(failed.error.code, "unavailable");
 });
 
+test("get_webmcp_guide answers with /webmcp as Markdown, sent without a cookie, as /mcp does", async () => {
+  const markdown = "# WebMCP\n\nTurn it on in chrome://flags.\n";
+  const requests: {path: string; request: SentRequest}[] = [];
+  const fetch = (path: string, request: SentRequest) => {
+    requests.push({path, request});
+    return Promise.resolve({ok: true, status: 200, json: async () => null, text: async () => markdown});
+  };
+
+  assert.deepEqual(asAnswer(await toolsByName({fetch}).get("get_webmcp_guide")!.execute()),
+    {ok: true, status: 200, data: {format: "markdown", guide: markdown}});
+  assert.equal(requests[0].path, "/webmcp");
+  assert.equal(requests[0].request.headers.accept, "text/markdown");
+  assert.equal(requests[0].request.credentials, "omit");
+  assert.equal(requests[0].request.redirect, "error");
+});
+
 test("thread pages preserve complete notes, IDs, authors and continuation tokens", async () => {
   const reportId = "f3b8abe0-4a24-4ba8-b3f3-a56cb4045c91";
   const cursor = "opaque-" + "aB_09-".repeat(70);
@@ -626,7 +642,7 @@ test("every read whose answer is too large says it changed nothing, and how to r
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
     const reads = manifest.tools.filter(tool => tool.scope === "site" && tool.annotations.readOnlyHint === true &&
-      !["prepare_agent_request", "get_patchbay_help"].includes(tool.name));
+      !["prepare_agent_request", "get_patchbay_help", "get_webmcp_guide"].includes(tool.name));
     assert.ok(reads.length > 10);
 
     for (const entry of reads) {

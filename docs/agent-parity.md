@@ -68,7 +68,7 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Say whether a known fix worked | `report_known_fix` | Worked buttons on `/fixes/:id` (FixLive `report_known_fix`) | `report_known_fix` | `report_known_fix` | `known-fixes report` |
 | Read the Wallet Bench | `read_wallet_bench`, `read_wallet_bench_pair` | `/wallet-bench` | `read_wallet_bench`, `read_wallet_bench_pair` | `read_wallet_bench`, `read_wallet_bench_pair` | `bench matrix`, `bench pair` |
 | Read Patchbay's help | `get_patchbay_help` | `/agent-setup`, `/docs` | `get_patchbay_help` | `get_patchbay_help` | GAP PB-29 (regents-cli) |
-| Read the WebMCP guide | `get_webmcp_guide` | `/webmcp` | GAP PB-27 (Patchbay) | `get_webmcp_guide` | GAP PB-29 (regents-cli) |
+| Read the WebMCP guide | `get_webmcp_guide` | `/webmcp` | `get_webmcp_guide` | `get_webmcp_guide` | GAP PB-29 (regents-cli) |
 | Read Offer slots | `list_offer_slots` | `/offers` | `list_offer_slots` | `list_offer_slots` | `offers slots` |
 | Read an Offer slot to bid on | `get_offer_bid_options` | `/offers/bid` | `get_offer_bid_options` | `get_offer_bid_options` | `offers bid-options` |
 | Ask whether an Offer fits a site | `ask_offer_fit` | `/offers/bid` (OffersLive.Bid `ask_fit`) | `ask_offer_fit` | `ask_offer_fit` | `offers ask-fit` |
@@ -84,9 +84,9 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Check identity and pairing | `agent_whoami` | Agents on `/account` and in the account menu | `agent_whoami` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself and answers unpaired agents, which /mcp does not admit | `agents whoami` |
 | Check in as a paired agent | `agent_status` | none: the person sees the check-in time on `/account` | `agent_status` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself | `agents status` |
 | Prepare a signed request | `prepare_agent_request` | n/a: how a page tool is signed | `prepare_agent_request` | n/a: at /mcp the agent signs the request it sends | n/a: the CLI signs the request it sends |
-| Say hello | `say_hello` | none: POST /hello takes the person's session as JSON; no page button | `say_hello` | GAP PB-27 (Patchbay): a hello is signed but needs no pairing, and /mcp admits paired agents only | GAP PB-29 (regents-cli): sayVerifiedHello has no command |
+| Say hello | `say_hello` | none: POST /hello takes the person's session as JSON; no page button | `say_hello` | GAP PB-27 (Patchbay): a hello needs only a signature, and /mcp admits a call only as a paired agent; admitting signed but unpaired callers there is a second admission door, left for its own change. An unpaired agent says hello on a page or at POST /api/agent/hello | GAP PB-29 (regents-cli): sayVerifiedHello has no command |
 | Read your USDC balance | `get_my_usdc_balance` | USDC Balance card on `/account/profile` | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected |
-| Rename your agent | `set_my_agent_name` | `/account/profile` (AccountLive `rename`) | GAP PB-27 (Patchbay): no signed door; `set_my_agent_name` is listed for the person only | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
+| Rename your agent | `set_my_agent_name` | `/account/profile` (AccountLive `rename`) | `set_my_agent_name` | `set_my_agent_name` | `agents rename` |
 | Tip an agent | `tip_agent` | none: no page offers a tip yet | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected |
 | Post a paid priority report | `post_priority_report` | none: no page takes the payment yet | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected | `payments prepare`, `payments execute`, `payments complete` |
 | Read a payment | `get_payment_status` | none: GET /api/payment_intents/:id answers JSON only | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected | `payments get` |
@@ -102,14 +102,15 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Unpair an agent | | Agents panel (AgentsPanel `unpair_agent`) | GAP PB-28 (template), protected | GAP PB-28 (template), protected | GAP PB-28 (template), protected |
 | Read an agent's last actions | | Agents in the account menu (MenuAgents `read_last_actions`) | GAP PB-28 (template) | GAP PB-28 (template) | GAP PB-28 (template) |
 | Change the public name | | `/account/profile` (AccountLive `public_name_saved`, through the shared profile page tools) | GAP PB-28 (template): the page's profile_update acts on the person's session and is being removed (PB-18) | GAP PB-28 (template) | GAP PB-28 (template) |
-| Clear an inbox item | | `/account/inbox` (AccountLive `acknowledge`) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
+| Read the inbox | `read_inbox` | Waiting on `/account/inbox` | `read_inbox` | `read_inbox` | `inbox read` |
+| Clear an inbox item | `acknowledge_inbox_item` | Acknowledge on `/account/inbox` (AccountLive `acknowledge`) | `acknowledge_inbox_item` | `acknowledge_inbox_item` | `inbox acknowledge` |
 | Buy Credits | | Credits panel, by card or onchain (CreditsPanel `prepare_and_send`, `step_sent`) | GAP PB-28 (template), protected | GAP PB-28 (template), protected | GAP PB-28 (template), protected |
-| Ask for Credits help | | `/credits-help` (POST /credits-help, POST /credits-help/:id/answers) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
-| Delete an Offer | | `/offers/create` (OffersLive.Create `delete`) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
-| Check a site's tools again | | Update on a site page and on `/sites` (SiteRefreshLive `refresh`, SiteDirectoryLive `update`) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
-| Approve or reject a room repair | | The room page (RoomLive `approve_repair`, `reject_repair`) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
-| Change a room's Skill | | The room page (RoomLive `upload_skill`, `update_source`, `retry_original_goal`) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
-| Reset or keep a room | | The room page (RoomLive `reset_demo`, `keep_room`) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
+| Ask for Credits help | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `/credits-help` (POST /credits-help) and `/credits-help/:id` | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `credits-help ask`, `credits-help list`, `credits-help get` |
+| Delete an Offer | | `/offers/create` (OffersLive.Create `delete`) | GAP PB-27 (Patchbay), protected: it deletes the Offer with every wording and screening for good (it holds no Credits: an Offer ever bid with cannot be deleted) | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected |
+| Check a site's tools again | `refresh_site` | Refresh this site on a site page, Update on `/sites` (SiteRefreshLive `refresh`, SiteDirectoryLive `update`) | `refresh_site` | `refresh_site` | `sites refresh` |
+| Approve or reject a room repair | | The room page (RoomLive `approve_repair`, `reject_repair`) | GAP PB-27 (Patchbay): waits for Sean, since the room's rule is that no agent approves or publishes a repair (RoomLive, RepairApprovalService) and an approval publishes new tool code into the room; an agent-owned room overturns that rule | GAP PB-27 (Patchbay): as WebMCP | GAP PB-27 (Patchbay): as WebMCP |
+| Change a room's Skill | | The room page (RoomLive `upload_skill`, `update_source`, `retry_original_goal`) | GAP PB-27 (Patchbay): held with the repair decision above, since the room's Skill is what its tool is built from, so an agent changing it sets the code the room's page runs; once decided it is a room page tool, signed as the room's owner, and a retry stays on the page because it needs the open page's browser session | GAP PB-27 (Patchbay): as WebMCP; a Skill change needs no open page, so it can be hosted too | GAP PB-27 (Patchbay): as /mcp |
+| Reset a room | | The room page (RoomLive `ask_reset_demo`, then `reset_demo`; `keep_room` answers no and changes nothing) | GAP PB-27 (Patchbay), protected: a reset throws away the room's whole record for good | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected |
 | Approve an app's connection | | `/oauth/authorize` (POST /oauth/authorize) | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected |
 | Revoke an app's connection | | POST /oauth/connections/revoke | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected |
 
@@ -122,4 +123,8 @@ the same; the door for each tool is its `operation_id` and `route` in
 - **Moderation** (`/moderation`, `/admin/offers`: ModerationController `decide`,
   OfferModerationLive `decide`, `block`, `remove`, `retry`): Patchbay staff, not an
   account owner.
+- **Answering Credits help** (POST /credits-help/:id/answers, moderators only) and reading
+  other people's Credits help posts: Patchbay staff, not an account owner. The Credits help
+  tools read and ask only for the paired person's own posts, even when that person is a
+  moderator, so a moderator's agent key never carries staff reach.
 - **The motion lab** (`/animations`) and the visit log (POST /visit-log): page tooling.

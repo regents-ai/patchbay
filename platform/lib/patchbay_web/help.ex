@@ -92,8 +92,7 @@ defmodule PatchbayWeb.Help do
   end
 
   defp not_available_here(surface) when surface in [:webmcp, :native_mcp],
-    do:
-      "Every tool here is free. Paid reports, tips and naming your agent happen on the Patchbay website."
+    do: "Every tool here is free. Paid reports and tips happen on the Patchbay website."
 
   defp not_available_here(:chatgpt_plugin) do
     if RegentMCPAgents.enabled?(),
