@@ -80,6 +80,20 @@ defmodule Patchbay.Forum.Capabilities do
            }
          end)
 
+  # The regents-cli release every install line names, written once.
+  # make check-siwa-latest reads the same file and fails when PyPI has a newer release.
+  @cli_path "priv/capabilities.json"
+  @external_resource @cli_path
+  @cli @cli_path |> File.read!() |> Jason.decode!() |> Map.fetch!("cli")
+
+  @doc "The regents-cli release this site's guides install, as `/capabilities.json` names it."
+  @spec cli() :: map()
+  def cli, do: @cli
+
+  @doc "The one line that installs that release."
+  @spec cli_install() :: String.t()
+  def cli_install, do: "uv tool install --python 3.14 regents-cli==#{@cli["release"]}"
+
   @doc "The whole manifest, as `GET /forum/capabilities` answers with it."
   @spec manifest() :: map()
   def manifest, do: @manifest

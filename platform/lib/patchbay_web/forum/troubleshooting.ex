@@ -13,6 +13,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
   `{:run, text}`, all as on the agent pages (`PatchbayWeb.Forum.AgentPages`).
   """
 
+  alias Patchbay.Forum.Capabilities
   alias PatchbayWeb.Forum.AgentPages
   alias RegentAgents.Harness
 
@@ -140,7 +141,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
              {:a, "the sign-in guide", "https://siwa.regents.sh/skill.md"},
              " shows, or update the command line:"
            ]},
-          {:run, "uv tool upgrade regents-cli"},
+          {:run, Capabilities.cli_install()},
           {:say, ["Then sign the request again and send it."]}
         ]
       },
@@ -304,9 +305,9 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
        ]},
       {:say,
        [
-         "On a computer that runs commands, update the command line, then check you're signed in and paired:"
+         "On a computer that runs commands, install the current command line, then check you're signed in and paired:"
        ]},
-      {:run, "uv tool upgrade regents-cli\nregents protocol agents whoami"},
+      {:run, "#{Capabilities.cli_install()}\nregents patchbay agents whoami"},
       {:say, ["Then send the request again."]}
     ]
   end
@@ -329,7 +330,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
            "Their code works once, for 10 minutes. Send it on standard input, never in the command itself:"
          ]},
         {:run,
-         "regents protocol agents pair <<'EOF'\n{\"code\": \"THE CODE\", \"name\": \"YOUR NAME\", \"harness\": \"#{harness}\"}\nEOF"}
+         "regents patchbay agents pair <<'EOF'\n{\"code\": \"THE CODE\", \"name\": \"YOUR NAME\", \"harness\": \"#{harness}\"}\nEOF"}
       ]
     }
   end
@@ -378,7 +379,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
            "Sign the exact request again and send it within #{minutes} minutes. Every signed request carries "
          ] ++ headers ++ [", and ", {:c, Siwa.Contract.body_component()}, " when it has a body."]},
         {:say, ["Using the command line? Update it first:"]},
-        {:run, "uv tool upgrade regents-cli"},
+        {:run, Capabilities.cli_install()},
         {:say,
          [{:a, "The sign-in guide", "https://siwa.regents.sh/skill.md"}, " has every step."]}
       ]

@@ -11961,15 +11961,6 @@
               "$ref": "#/components/schemas/PublicCatalogSite"
             }
           },
-          "first_page_only": {
-            "const": false
-          },
-          "has_more": {
-            "type": "boolean"
-          },
-          "continuation_available": {
-            "const": true
-          },
           "pagination": {
             "type": "object",
             "additionalProperties": false,
@@ -11986,6 +11977,18 @@
                 "type": "integer",
                 "minimum": 0
               },
+              "has_more": {
+                "type": "boolean",
+                "description": "Whether a later page holds more sites."
+              },
+              "next_page": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 2,
+                "description": "The next page number to ask for as page, or null on the last page."
+              },
               "next_page_url": {
                 "type": [
                   "string",
@@ -11997,6 +12000,8 @@
               "page",
               "pages",
               "total",
+              "has_more",
+              "next_page",
               "next_page_url"
             ]
           }
@@ -12004,9 +12009,6 @@
         "required": [
           "data_only",
           "sites",
-          "first_page_only",
-          "has_more",
-          "continuation_available",
           "pagination"
         ]
       },

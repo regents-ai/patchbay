@@ -43,13 +43,12 @@ defmodule PatchbayWeb.Forum.BoardJSON do
             next_update_at: site.retry_at
           }
         end),
-      first_page_only: false,
-      has_more: directory.page < directory.pages,
-      continuation_available: true,
       pagination: %{
         page: directory.page,
         pages: directory.pages,
         total: directory.total,
+        has_more: directory.page < directory.pages,
+        next_page: if(directory.page < directory.pages, do: directory.page + 1),
         next_page_url:
           if(directory.page < directory.pages,
             do: MD.absolute(Patchbay.Forum.SiteDirectory.page_url(directory, directory.page + 1))

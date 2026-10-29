@@ -1926,7 +1926,7 @@
     },
     {
       "name": "read_site_directory",
-      "version": 1,
+      "version": 2,
       "title": "Sites",
       "purpose": "Search the sites that offer agents tools",
       "description": "Search the site directory by q or category, 30 sites a page, with each site's reported tools. Needs nothing. Changes nothing. Next: read_tool_catalog.",
@@ -1958,16 +1958,12 @@
           "sites": {
             "type": "array"
           },
-          "has_more": {
-            "type": "boolean"
-          },
           "pagination": {
             "type": "object"
           }
         },
         "required": [
           "sites",
-          "has_more",
           "pagination"
         ]
       },
