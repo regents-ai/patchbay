@@ -323,6 +323,9 @@ if config_env() == :prod do
 
   config :patchbay, PatchbayWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
+    # Pages at both addresses keep their live connection. Sobelow cannot read
+    # these two origins before they are built, so its websocket finding on the
+    # endpoint's sockets is recorded in .sobelow-skips.
     check_origin: ["https://#{host}", "https://#{open_host}"],
     http: [
       # Enable IPv6 and bind on all interfaces.
