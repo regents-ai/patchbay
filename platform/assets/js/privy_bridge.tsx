@@ -10,7 +10,7 @@ import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
 import {providerConfig} from "./privy/provider.ts"
 import {handOver, stateWaiters} from "./privy/sign_in.ts"
 import type {Proof, Refusal} from "./privy/sign_in.ts"
-import {linkedWallets, sendingWallet} from "./privy/wallet_choice.ts"
+import {sendingWallet} from "./privy/wallet_choice.ts"
 import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
@@ -303,12 +303,21 @@ export async function addFundsByCard(appId: string): Promise<{ok: true, status: 
   }
 }
 
-// The account's own wallet the page was drawn for (`data-account-wallet`), which
+// Every wallet the account links as Patchbay verified it at sign-in
+// (`data-account-wallets`), the same list the server lets pay, so the page never
+// sends from a wallet the server would refuse, such as a Privy wallet made after
+// this sign-in handed over.
+function accountWallets(): string[] {
+  const listed = document.querySelector<HTMLElement>("#pb-account")?.dataset.accountWallets ?? ""
+  return listed.split(" ").filter(Boolean).map(address => address.toLowerCase())
+}
+
+// The account's main wallet the page was drawn for (`data-account-wallet`), which
 // sends when this tab holds several of the account's wallets and Privy names none.
 function accountWallet(): string | null {
   return document.querySelector<HTMLElement>("#pb-account")?.dataset.accountWallet?.toLowerCase() ?? null
 }
 
-function signedInWallet({activeWallet: active, wallets, user}: BridgeState): ConnectedWallet | null {
-  return sendingWallet(active, wallets, linkedWallets(user), accountWallet())
+function signedInWallet({activeWallet: active, wallets}: BridgeState): ConnectedWallet | null {
+  return sendingWallet(active, wallets, accountWallets(), accountWallet())
 }

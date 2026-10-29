@@ -1,13 +1,4 @@
-import type {User} from "@privy-io/react-auth"
-
 type Wallet = {address: string; type?: string}
-
-/** The Ethereum wallets the signed-in Privy account links, lowercased. */
-export function linkedWallets(user: Pick<User, "linkedAccounts"> | null | undefined): string[] {
-  return (user?.linkedAccounts ?? []).flatMap(account =>
-    account.type === "wallet" && account.chainType === "ethereum" ? [account.address.toLowerCase()] : [],
-  )
-}
 
 /**
  * Privy's active wallet when this tab still holds it connected and, signed in,
@@ -33,7 +24,9 @@ export function accountActiveWallet<W extends {address: string}>(
  * no wallet: the signed-in wallet then sends as this tab has it connected, the one
  * connected wallet the account is linked to, or, when this tab has several, the
  * account's own wallet the page was drawn for (`own`). Several and none of them
- * the account's own is no wallet. As ash-template's wallet sync.
+ * the account's own is no wallet. `linked` is the account's wallets as Patchbay
+ * verified them at sign-in (`data-account-wallets`), the list the server lets pay.
+ * As ash-template's wallet sync.
  */
 export function sendingWallet<W extends Wallet>(
   active: Wallet | null | undefined,

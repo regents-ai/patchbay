@@ -98,11 +98,15 @@
 
           <%!-- The one control that belongs to Patchbay rather than to any page, so
       it stands above all of them. --%>
-          <%!-- The account's own wallet, which sends when the tab holds several of the
-          account's wallets and Privy names none (privy/wallet_choice.ts). --%>
+          <%!-- Every wallet the account links, the only ones that send for it, and
+          its main wallet, which sends when the tab holds several of them and Privy
+          names none (privy/wallet_choice.ts). The Credits panel takes the same list. --%>
           <div
             id="pb-account"
             class="pb-account"
+            data-account-wallets={
+              @current_profile && Enum.join(@current_profile.account_wallets, " ")
+            }
             data-account-wallet={@current_profile && @current_profile.wallet_address}
           >
             <Regent.ThemeToggle.button
