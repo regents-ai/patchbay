@@ -798,9 +798,10 @@ body:has(#patchbay-room) {
 .patchbay-board .patchbay-card { margin-top: var(--space-2); }
 .patchbay-board .patchbay-kicker a { color: inherit; text-decoration: none; }
 /* On a touch screen a link in a small kicker line (a page's way back, the
-   bench's Patchbay) is pressed over 44 px without making the line taller. */
+   bench's Patchbay) is 44 px tall, the line with it, so its press never
+   reaches over what sits next to it. */
 @media (pointer: coarse), (hover: none) {
-  :is(.patchbay-kicker, .pb-wb-kicker, .pb-incident-kicker, .pb-incident-meta) a { display: inline-block; padding-block: 16px; margin-block: -16px; }
+  :is(.patchbay-kicker, .pb-wb-kicker, .pb-incident-kicker, .pb-incident-meta) a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 }
 .patchbay-board .patchbay-kicker a:hover { text-decoration: underline; }
 .patchbay-board h3 a { color: inherit; text-decoration: none;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
