@@ -12,18 +12,28 @@ defmodule Patchbay.OperatorWallet do
   unconfirmed state for them.
 
   Beside those ages are Patchbay's own two numbers: paid priority reports
-  whose money the escrow has not yet confirmed as recorded, and the USDC of
+  whose escrow credit the chain has not yet confirmed, and the USDC of
   assist fees the operator wallet still holds, waiting, being forwarded or
   failed for a person to look at.
+
+  The operator wallet's requests to its node go through Ethers, from
+  `Patchbay.Escrow` and the payments library's fee forward, the only two
+  callers of Ethers here. `attach/0` counts each one that gets no answer in
+  `health.chain_request_failures.total`, as `Patchbay.ChainClient` counts
+  its own, under the scope `operator`.
   """
 
   require Ash.Query
 
+  import Ecto.Query, only: [from: 2]
+
   alias Patchbay.Assist.Run
   alias Patchbay.Forum.Report
-  alias RegentPayments.PaymentIntent
 
   @usdc_atomic 1_000_000
+
+  # The escrow and the REGENT staking contract are on Base.
+  @operator_chain_id 8453
 
   @doc """
   Each sending flow with when its oldest unconfirmed send was signed, or nil
@@ -47,9 +57,11 @@ defmodule Patchbay.OperatorWallet do
   end
 
   @doc """
-  Paid priority reports whose money the escrow contract has not yet
-  confirmed: nobody has handed the credit over, Base has not confirmed it,
-  or Base would not take it.
+  Paid priority reports whose escrow credit the chain has not yet confirmed:
+  nobody has handed the credit over, Base has not confirmed it, or Base
+  would not take it. A report paid with Patchbay Credits, before every
+  payment was USDC, was marked credited as it was filed, so none is left
+  here.
   """
   @spec escrow_unrecorded() :: non_neg_integer()
   def escrow_unrecorded do
@@ -65,27 +77,79 @@ defmodule Patchbay.OperatorWallet do
   @doc "USDC of assist fees in the operator wallet not yet deposited to staking."
   @spec assist_fees_unforwarded_usdc() :: float()
   def assist_fees_unforwarded_usdc do
-    # The site's own rows, read for its health numbers on no one's behalf.
-    intent_ids =
-      Run
-      |> Ash.Query.filter(
-        deposit_status in [:pending, :forwarding, :failed] and not is_nil(payment_intent_id)
-      )
-      |> Ash.Query.select([:payment_intent_id])
-      |> Ash.read!(authorize?: false)
-      |> Enum.map(& &1.payment_intent_id)
-
+    # One sum over the join of the site's runs and the payments library's
+    # intents. Ash's unrelated exists cannot carry it: its subquery takes the
+    # intents' schema prefix and looks for the runs there.
     atomic =
-      case intent_ids do
-        [] ->
-          0
-
-        ids ->
-          PaymentIntent
-          |> Ash.Query.filter(id in ^ids)
-          |> Ash.sum!(:amount_atomic, authorize?: false) || 0
-      end
+      Patchbay.Repo.one(
+        from(run in "assist_runs",
+          join: intent in "payment_intents",
+          prefix: "regent_payments",
+          on: intent.id == run.payment_intent_id,
+          where: run.deposit_status in ["pending", "forwarding", "failed"],
+          select: type(coalesce(sum(intent.amount_atomic), 0), :integer)
+        )
+      )
 
     atomic / @usdc_atomic
+  end
+
+  @doc "Counts the operator wallet's chain requests that get no answer; attached once at start."
+  def attach,
+    do:
+      :telemetry.attach(
+        "patchbay-operator-chain-requests",
+        [:finch, :request, :stop],
+        &__MODULE__.handle_request/4,
+        nil
+      )
+
+  @doc false
+  def handle_request(_event, _measurements, %{name: Ethereumex.Finch} = metadata, nil) do
+    case no_answer(metadata.result) do
+      nil ->
+        :ok
+
+      class ->
+        :telemetry.execute([:patchbay, :chain, :failure], %{count: 1}, %{
+          method: method(metadata.request.body),
+          class: class,
+          chain_id: @operator_chain_id,
+          scope: "operator"
+        })
+    end
+  end
+
+  def handle_request(_event, _measurements, _other_client, nil), do: :ok
+
+  # The node answered, unless it sent no answer, an HTTP error or a JSON-RPC
+  # error. A revert is the contract's own answer, as `Patchbay.Escrow` reads
+  # it (a push the staking contract refuses), so it is not counted.
+  defp no_answer({:ok, %Finch.Response{status: 200, body: body}}),
+    do: if(rpc_error?(body), do: "rpc")
+
+  defp no_answer({:ok, %Finch.Response{status: status}}), do: "http_#{status}"
+
+  defp no_answer({:error, %{reason: reason}}) when reason in [:timeout, :connect_timeout],
+    do: "timeout"
+
+  defp no_answer({:error, _transport}), do: "transport"
+
+  defp rpc_error?(body) do
+    String.contains?(body, ~s("error")) and
+      case Jason.decode(body) do
+        {:ok, %{"error" => %{"code" => 3}}} -> false
+        {:ok, %{"error" => %{"message" => message}}} -> not String.contains?(message, "revert")
+        {:ok, %{"error" => _error}} -> true
+        _result -> false
+      end
+  end
+
+  # Ethereumex sends one JSON-RPC call, or a batch of them.
+  defp method(body) do
+    case body |> IO.iodata_to_binary() |> Jason.decode!() do
+      %{"method" => method} -> method
+      [_ | _] -> "batch"
+    end
   end
 end
