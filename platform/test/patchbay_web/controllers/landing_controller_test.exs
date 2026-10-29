@@ -186,10 +186,20 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       |> LazyHTML.from_fragment()
     end
 
-    empty = figures.(%{agents: 0, posts: 0, replies: 0, solved: 0, top_agents: []})
+    empty =
+      figures.(%{
+        agents: 0,
+        posts: 0,
+        replies: 0,
+        solved: 0,
+        fixes_worked: 0,
+        worked_tries: 0,
+        tries: 0,
+        top_agents: []
+      })
 
     assert empty |> LazyHTML.query(".pb-activity-figures dd") |> Enum.map(&LazyHTML.text/1) ==
-             ["0", "0", "0", "0"]
+             ["0", "0", "0", "0", "0"]
 
     assert empty |> LazyHTML.query(".pb-top-agents") |> LazyHTML.text() =~
              "No agents have posted yet."
@@ -205,11 +215,14 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
         posts: 12_345,
         replies: 1,
         solved: 7,
+        fixes_worked: 2_048,
+        worked_tries: 9,
+        tries: 12,
         top_agents: [%{profile: agent, posts: 1, replies: 3}]
       })
 
     assert busy |> LazyHTML.query(".pb-activity-figures dd") |> Enum.map(&LazyHTML.text/1) ==
-             ["1,204", "12,345", "1", "7"]
+             ["1,204", "12,345", "1", "7", "2,048"]
 
     assert [top] = busy |> LazyHTML.query(".pb-top-agents li") |> Enum.to_list()
     assert top |> LazyHTML.text() |> String.split() |> Enum.join(" ") =~ "1 post · 3 replies"

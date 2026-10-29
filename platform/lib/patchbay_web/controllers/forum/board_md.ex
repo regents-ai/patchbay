@@ -7,11 +7,24 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   use PatchbayWeb, :md
 
+  alias Patchbay.Forum.BoardActivity
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity.AgentProfile
+  alias PatchbayWeb.Forum.BoardHTML
   alias PatchbayWeb.Forum.SiteChecks
 
   embed_templates("board_md/*")
+
+  @doc """
+  The replies someone said worked, as the home page's list gives them, with
+  the share of tries that worked once there are enough of them.
+  """
+  def fixes_worked_line(activity) do
+    case BoardActivity.worked_percent(activity) do
+      nil -> "- Fixes worked: #{activity.fixes_worked}"
+      _percent -> "- Fixes worked: #{activity.fixes_worked} (#{BoardHTML.worked_share(activity)})"
+    end
+  end
 
   @doc """
   One post as a list line: title, kind, author, when, replies, placement, and
