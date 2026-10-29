@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v299, 29 Oct 2026
+
+- Commit: ea70a896c82001d5df0d608924e4f0dd711fc266 (image `ea70a89`), on main after v298. Machine 824031c742dd18, one machine.
+- Agent pages (/hermes, /claude, /dots, /muse, /grokbot) and troubleshooting pages in the site's own layout and light/dark theme (per-agent palettes and forced theme removed; faces keep a hard edge); the ask form shows all fields, has one Sign in (the header's, or the post window's own), and a draft comes back after sign-in on every path, per page; /agents ported from ash-template (featured order, eleven rows).
+- Checks: make check on a git-archive copy, 1013 ExUnit (17 properties) plus 2 committed, 314 walk steps (new draft round-trip spec), required fixes, CLI contract, SIWA latest. Adversarial review; fixes 2bd199d5, ea70a896.
+- Live: /, the five agent pages, /hermes/troubleshooting, /agents and /patchbay.help at 1280/390/320, light and dark, 200, no sideways scroll, no console errors; /capabilities.json build.commit ea70a896.
+- Rollback: v298, image `cbf629d`.
+
 ## v298, 29 Oct 2026
 
 - Commit: cbf629df8acb067dbcc105b80b9eb5138acd2ed3 (image `cbf629d`), on main after v297. Machine 89063ec6ee11d8, one machine.
