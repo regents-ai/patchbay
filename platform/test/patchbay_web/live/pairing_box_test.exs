@@ -2,7 +2,8 @@ defmodule PatchbayWeb.PairingBoxTest do
   @moduledoc """
   Pair New Agent on the Agents page: each agent keeps its own code until it
   expires or a new one is asked for, and the form arriving with no agent chosen,
-  as a reconnecting page sends it, changes nothing.
+  as a reconnecting page sends it, changes nothing; the message names the
+  address the page was drawn on.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -45,6 +46,24 @@ defmodule PatchbayWeb.PairingBoxTest do
     assert code_for.("codex") == renewed
   end
 
+  test "the message names the address the page was drawn on", %{conn: conn} do
+    message = fn site_edition, hex ->
+      conn
+      |> at(site_edition)
+      |> signed_in("did:privy:pair-#{site_edition}", hex)
+      |> agents_page()
+      |> element("#account-pairing-box")
+      |> render_change(%{"harness" => "codex"})
+      |> code()
+    end
+
+    assert message.(:open, "b") =~ PatchbayWeb.SiteEdition.url(:open)
+
+    main = message.(:main, "c")
+    assert main =~ PatchbayWeb.SiteEdition.url(:main)
+    refute main =~ PatchbayWeb.SiteEdition.url(:open)
+  end
+
   defp signed_in(conn, privy_user_id, hex) do
     person =
       Identity.upsert_from_privy!(%{
@@ -54,6 +73,9 @@ defmodule PatchbayWeb.PairingBoxTest do
 
     conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
   end
+
+  defp at(conn, :main), do: conn
+  defp at(conn, :open), do: on_open(conn)
 
   defp agents_page(conn) do
     {:ok, view, _html} = live(conn, ~p"/account/agents")

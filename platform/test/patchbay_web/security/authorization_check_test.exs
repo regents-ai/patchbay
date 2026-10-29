@@ -715,7 +715,11 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         for i <- 1..20 do
           {:ok, view, _html} =
             live_isolated(conn, PatchbayWeb.SiteRefreshLive,
-              session: %{"origin" => site.origin, "visitor" => "authz-visitor-#{i}"}
+              session: %{
+                "origin" => site.origin,
+                "visitor" => "authz-visitor-#{i}",
+                "site_edition" => :main
+              }
             )
 
           view
@@ -1313,7 +1317,10 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
       {:ok, view, _html} =
         live_isolated(build_conn(), PatchbayWeb.SearchLive,
-          session: %{"visitor" => "authz-visitor-" <> Ash.UUID.generate()}
+          session: %{
+            "visitor" => "authz-visitor-" <> Ash.UUID.generate(),
+            "site_edition" => :main
+          }
         )
 
       render_hook(view, "open", %{"recent" => []})

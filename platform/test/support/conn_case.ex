@@ -20,4 +20,7 @@ defmodule PatchbayWeb.ConnCase do
     Patchbay.JevStandIn.accept_posts()
     {:ok, conn: Phoenix.ConnTest.build_conn()}
   end
+
+  @doc "The request sent to the open address (`PatchbayWeb.SiteEdition`) instead."
+  def on_open(conn), do: %{conn | host: PatchbayWeb.SiteEdition.open_host()}
 end
