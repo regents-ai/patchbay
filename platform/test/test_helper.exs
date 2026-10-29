@@ -1,4 +1,6 @@
-ExUnit.start()
+# Tests whose transactions must commit run apart, in a database of their own
+# (`scripts/committed_tests.sh`).
+ExUnit.start(exclude: [:committed])
 
 # No test reaches outside this machine (PatchbayTest.Offline). A refused request
 # fails the run even when a background process made it and nothing raised in a test.

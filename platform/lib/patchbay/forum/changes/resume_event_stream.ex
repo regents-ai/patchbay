@@ -73,8 +73,14 @@ defmodule Patchbay.Forum.Changes.ResumeEventStream do
           secret_rotation_expires_at: DateTime.add(DateTime.utc_now(), @rotation_ms, :millisecond)
         }
 
+    # The place is carried too: if the row is ended (unsubscribe, or the
+    # hourly removal, neither of which takes the account's lock) between this
+    # read and the save, the upsert inserts it again at the place it had, and
+    # never restarts the stream from the beginning.
     changeset
-    |> Ash.Changeset.force_change_attributes(Map.merge(keys, %{active: true, last_error: nil}))
+    |> Ash.Changeset.force_change_attributes(
+      Map.merge(keys, %{active: true, last_error: nil, delivered_seq: existing.delivered_seq})
+    )
     |> Ash.Changeset.set_context(%{event_stream_truncated: false})
   end
 

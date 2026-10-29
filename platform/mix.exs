@@ -218,7 +218,8 @@ defmodule Patchbay.MixProject do
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",
         "cmd npm test --prefix assets",
-        "test --warnings-as-errors"
+        "test --warnings-as-errors",
+        "cmd scripts/committed_tests.sh"
       ]
     ]
   end
