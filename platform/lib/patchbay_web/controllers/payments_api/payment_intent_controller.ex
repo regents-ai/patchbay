@@ -108,10 +108,12 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   defp executed(answer), do: paid(answer)
 
   # Priority report terms an agent prepared before the hold are not paid
-  # now; one already paid is still finished and read back.
+  # now, in any state the payments library could still settle, a failed
+  # payment's included; one already paid is still finished and read back.
   defp held?(%Actor{} = actor, id) do
     match?(
-      {:ok, %{kind: :special_post, status: status}} when status in [:prepared, :payment_required],
+      {:ok, %{kind: :special_post, status: status}}
+      when status in [:prepared, :payment_required, :failed],
       RegentPayments.Purchase.read(actor, id)
     )
   end

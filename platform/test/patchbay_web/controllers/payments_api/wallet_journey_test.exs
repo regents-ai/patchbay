@@ -207,6 +207,41 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     # It is still read back, alike at both doors.
     assert get(c, id)["status"] == 200
     assert mcp(c, "get_payment_status", %{"payment_intent_id" => id}) == {:ok, get(c, id)["body"]}
+
+    # Terms whose payment failed can be settled again while they stand, so
+    # they are held too, at each door.
+    for door <- [:http, :mcp] do
+      {:ok, failed} =
+        PatchbayWeb.PaymentsAPI.Purchase.prepare_special_post(
+          conn.assigns.agent_actor,
+          report_args(c, "1.00")
+        )
+
+      Patchbay.Repo.query!(
+        "UPDATE regent_payments.payment_intents SET status = 'failed' WHERE id = $1",
+        [Ecto.UUID.dump!(failed.id)]
+      )
+
+      signature = payment(c, RegentPayments.Purchase.requirement(failed), c.address)
+
+      code =
+        case door do
+          :http ->
+            execute(c, failed.id, %{payment_signature: signature})["body"]["error"]["code"]
+
+          :mcp ->
+            {:error, %{"error" => %{"code" => code}}} =
+              mcp(c, "execute_payment", %{
+                "payment_intent_id" => failed.id,
+                "payment_signature" => signature
+              })
+
+            code
+        end
+
+      assert code == "agent_reports_held", "#{door}"
+      refute_receive :settled, 100
+    end
   end
 
   test "changed body and replay are refused by cryptographic verification", c do
@@ -357,6 +392,15 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert %{"result" => %{"isError" => true, "content" => [%{"text" => text}]}} = unsigned.body
     assert Jason.decode!(text)["error"]["code"] == "http_headers_missing"
 
+    # With wallet authors not set up, both doors answer as the HTTP door does.
+    broker = Application.get_env(:patchbay, :wallet_author)
+    Application.delete_env(:patchbay, :wallet_author)
+    not_set_up = execute(c, id)
+    assert not_set_up["status"] == 503
+    assert {:error, refusal} = mcp(c, "execute_payment", %{"payment_intent_id" => id})
+    assert refusal == not_set_up["body"]
+    Application.put_env(:patchbay, :wallet_author, broker)
+
     # A wallet whose pairing has ended may not pay at either door.
     :ok =
       RegentAgents.unpair_agent(c.pairing,
@@ -383,12 +427,9 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
   # Whatever amount an agent names, it can neither post a paid priority
   # report nor change an assist's fixed fee, at either door. A person's
-  # report, through the same door function the page route calls, holds
-  # exactly an amount from 1 to 100 USDC and refuses any other.
-  property "amounts from 0 to 200 USDC, and malformed ones, hold the bounds at every door", c do
+  # report bounds are in PriorityReportAmountsTest, through the page route.
+  property "no amount from 0 to 200 USDC, nor a malformed one, buys an agent anything", c do
     check all(written <- amount_text(), max_runs: 15) do
-      bounded = in_bounds(written)
-
       over_http = prepare(c, "special_post", report_args(c, written))
       assert over_http["status"] == 403, written
       assert over_http["body"]["error"]["code"] == "agent_reports_held"
@@ -401,22 +442,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
       assert prepare(c, "jev_assist", Map.put(assist_args(), "amount_usdc", written))["status"] ==
                422
-
-      answer =
-        PatchbayWeb.PaymentsAPI.PaymentIntentController.prepare(
-          c.person,
-          %{"kind" => "special_post", "args" => report_args(c, written)},
-          nil
-        )
-
-      case bounded do
-        {:ok, atomic} ->
-          assert {:created, [], %{amount_usdc: amount}} = answer, written
-          assert amount == RegentPayments.USDC.format(atomic)
-
-        :out ->
-          assert {:unprocessable_entity, [], %{error: %{code: "invalid"}}} = answer, written
-      end
     end
 
     assert intents(c.address) == []
@@ -483,17 +508,23 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       map(tuple({integer(0..200_000_000), integer(0..6)}), fn {atomic, places} ->
         written(atomic, places)
       end),
-      member_of(["", "-1.00", "1e2", "1.0000001", "abc", " 5.00", "5,00", "0x10"])
+      member_of([
+        "0.999999",
+        "1",
+        "1.00",
+        "100",
+        "100.00",
+        "100.000001",
+        "",
+        "-1.00",
+        "1e2",
+        "1.0000001",
+        "abc",
+        " 5.00",
+        "5,00",
+        "0x10"
+      ])
     ])
-  end
-
-  # `{:ok, atomic}` for an amount a report may hold, 1 to 100 USDC; `:out`
-  # for any other amount and for text that is none.
-  defp in_bounds(written) do
-    case RegentPayments.USDC.parse(written) do
-      {:ok, atomic} when atomic in 1_000_000..100_000_000 -> {:ok, atomic}
-      _other -> :out
-    end
   end
 
   defp complete(c, id),

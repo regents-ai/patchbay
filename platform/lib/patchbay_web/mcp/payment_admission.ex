@@ -13,6 +13,7 @@ defmodule PatchbayWeb.MCP.PaymentAdmission do
 
   import Plug.Conn
 
+  alias PatchbayWeb.ApiError
   alias PatchbayWeb.MCP.Refusal
   alias PatchbayWeb.Plugs.PairedAgent
   alias PatchbayWeb.Plugs.SignedBudget
@@ -69,6 +70,18 @@ defmodule PatchbayWeb.MCP.PaymentAdmission do
   def deny(conn, %{source: :paired_agent} = failure) do
     {status, %{error: error}} = PairedAgent.refusal(failure)
     Refusal.refuse(conn, error, status)
+  end
+
+  # The HTTP door's own answer when wallet authors are not set up: 503.
+  def deny(conn, %{reason: :not_configured}) do
+    refusal =
+      ApiError.body(
+        "not_configured",
+        "Wallet author request refused.",
+        "Wallet authors are not set up on this Patchbay; sign in on a page instead."
+      )
+
+    Refusal.refuse(conn, refusal.error, 503)
   end
 
   def deny(conn, failure) do
