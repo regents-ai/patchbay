@@ -4,6 +4,27 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v289, 29 Oct 2026
+
+- Commit: b1c46f3c8cd0d03afbcbab30bd74bd7e621d1517 (image `b1c46f3`), on main after v287. Machine 28699d2fd17238, one machine.
+- `/errors/agent_not_paired` and `/errors/person_not_here` lead to their own posts (54444861, d6a3cc57) instead of the Keyfleet joining post.
+- One info log line per accepted IndexNow list, with its page count (1fde545a).
+- Checks: make check on a git-archive copy of b1c46f3c, 935 ExUnit (12 properties) and 107 browser walk steps passed, required fixes, CLI contract and SIWA-latest passed. Contracts unchanged since v287, so forge was not rerun.
+- Live: /, /healthz, /capabilities.json (build.commit b1c46f3c), /wallet-bench, /wallet-bench/how-it-works, /sites, /questions and the three /errors links read in headless Chromium, all 200.
+- Rollback: v287, image `855655f`.
+
+## v288, 29 Oct 2026 (failed)
+
+- The deploy of 855655fe was interrupted when the Mac restarted, leaving v287's machine beside a leftover v286 machine. Sean's 71 a (05:13Z) removed the v286 machine (8e2409b7112438) before v289.
+
+## v287, 29 Oct 2026
+
+- Commit: 855655fe5db74228ddbf02e575bf81c89029fd7a (image `855655f`), on main after v286.
+- Patchbay Agent repairs and Escrow watch Base reads run as AshOban jobs instead of timer loops; the migration ends queued repair attempts as errored and prints its count.
+- regents-cli 1.10.20 in every install line; /capabilities.json names the CLI release (`cli`, API 7.2.0); make check holds the site on the newest SIWA.
+- Tips in the page stay under the header; the forced-colours focus ring draws inside the cut corners; the 28 Oct discovery baseline doc.
+- Rollback: v286, image `80ea2e9`.
+
 ## v286, 28 Oct 2026
 
 - Commit: 80ea2e9b54b8710b2ede9beed794d98cb52f3a95 (image `80ea2e9`), on main after v285.
