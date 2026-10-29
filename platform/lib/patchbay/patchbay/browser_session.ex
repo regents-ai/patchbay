@@ -158,20 +158,16 @@ defmodule Patchbay.Patchbay.BrowserSession do
     end
   end
 
-  @permanent_tool_names [
-    "get_patchbay_room_state",
-    "verify_skill_uplift_goal",
-    "request_patchbay_repair",
-    "prepare_patchbay_room_request",
-    "finish_patchbay_room_call",
-    "cancel_patchbay_room_call"
-  ]
-
   @doc """
   The tools every Patchbay room offers whatever its Skill tool of the moment is
-  called. A browser's registry holds these and the room's desired revision, and
-  nothing else.
+  called: the manifest's room tools other than the revision row. A browser's
+  registry holds these and the room's desired revision, and nothing else.
   """
   @spec permanent_tool_names() :: [String.t()]
-  def permanent_tool_names, do: @permanent_tool_names
+  def permanent_tool_names do
+    for tool <- Patchbay.Forum.Capabilities.tools(),
+        String.starts_with?(tool.scope, "page:"),
+        tool.name != "uplift_current_skill_vN",
+        do: tool.name
+  end
 end

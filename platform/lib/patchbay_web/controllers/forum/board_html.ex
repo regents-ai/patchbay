@@ -1279,7 +1279,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         id: "cli",
         label: "Command line",
         say: "Install the regents command line:",
-        line: "uv tool install --python 3.14 regents-cli==1.10.20"
+        line: Patchbay.Forum.Capabilities.cli_install()
       }
     ]
   end

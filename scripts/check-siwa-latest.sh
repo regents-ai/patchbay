@@ -8,9 +8,9 @@
 #
 #   scripts/check-siwa-latest.sh <the Makefile's REGENTS_CLI_REV>
 #
-# regents-cli: the pin is the newest release's tag commit; the agent guide names
-# the release, that commit and the wheel's SHA256; every install line and
-# capabilities.json's cli.release name the release. The SIWA library: the
+# regents-cli: the pin is the newest release's tag commit; capabilities.json's cli
+# block names the release, that commit and the wheel's SHA256, which the agent
+# guide reads; every install line names the release. The SIWA library: the
 # elixir-utils commit platform/mix.exs pins contains the newest commit that
 # changed siwa/siwa-elixir/apps/siwa on elixir-utils main. Needs `gh auth login`
 # and curl.
@@ -19,7 +19,7 @@ set -euo pipefail
 # Where this site keeps them. A site copying this script sets these three and keeps
 # every check below the same. Patchbay's install lines are in the public files,
 # the pages (platform/lib), the Patchbay skill and cli/.
-guide=platform/priv/public/agents.md
+guide=platform/priv/capabilities.json
 install_lines=(platform/priv/public platform/lib skills cli)
 capabilities=platform/priv/capabilities.json
 
@@ -40,7 +40,7 @@ fail() {
 
 [ "$pin" = "$tag" ] ||
   fail "regents-cli $latest is the newest release: move REGENTS_CLI_REV in the Makefile from $pin to $tag."
-for word in "regents-cli==$latest" "$tag" "$wheel"; do
+for word in "$tag" "$wheel"; do
   grep -qF "$word" "$guide" ||
     fail "regents-cli $latest is the newest release: $guide does not name $word."
 done

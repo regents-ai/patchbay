@@ -572,7 +572,7 @@ The handoff names one hosting provider: Fly.io.
 - Database connection: the shared Regent PostgreSQL cluster, through `DATABASE_POOLED_URL` (serving) and `DATABASE_DIRECT_URL` (release commands)
 - Health endpoint: `/healthz` (plain `ok`, for Fly's check), `/api/v1/health` (`{"status": "ok"}`, as on every Regent site, read by `regents patchbay health`), and `/webmcp/health` (JSON with the database and migration state, for deploy checks)
 - Developer page as JSON: `/api/v1/docs` (`{"title", "markdown"}`, the Markdown `/docs` answers)
-- Running build: `/capabilities.json` names the commit the release runs (`build.commit`) and its Fly image (`build.release`)
+- Running build: `/capabilities.json` names the commit the release runs (`build.commit`) and its Fly image (`build.release`), the regents-cli release every install line names (`cli`, from `priv/capabilities.json`), and one row per OpenAPI operation with who may run it and the tools and commands that reach it (`Patchbay.Forum.Capabilities`, which refuses to compile when `priv/capabilities.json`, `priv/tool_manifest.json`, `priv/public/openapi.json` and `cli/commands.json` disagree)
 - Base image: Debian Bookworm
 
 This document does not identify the PostgreSQL hosting provider separately, so

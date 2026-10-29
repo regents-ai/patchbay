@@ -34,12 +34,14 @@ defmodule PatchbayWeb.DiscoveryController do
   end
 
   def llms(conn, _params) do
-    body = @sources["llms.txt"]
+    body = guide(@sources["llms.txt"])
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)
   end
 
   def agents(conn, _params) do
-    body = String.replace(@sources["agents.md"], "{{origin}}", PatchbayWeb.Endpoint.url())
+    body =
+      @sources["agents.md"] |> guide() |> String.replace("{{origin}}", PatchbayWeb.Endpoint.url())
+
     conn |> cache(body) |> put_resp_content_type("text/markdown") |> send_resp(200, body)
   end
 
@@ -56,6 +58,20 @@ defmodule PatchbayWeb.DiscoveryController do
       |> Jason.encode!()
 
     conn |> cache(body) |> put_resp_content_type("application/json") |> send_resp(200, body)
+  end
+
+  # The guides' tool tables and install lines, from the manifest and the
+  # capability rows, so neither guide names a tool or a release of its own.
+  defp guide(text) do
+    cli = Capabilities.cli()
+
+    text
+    |> String.replace("{{tools}}", Capabilities.tools_markdown())
+    |> String.replace("{{more_tools}}", Enum.map_join(Capabilities.more(), ", ", &"`#{&1.name}`"))
+    |> String.replace("{{cli_install}}", Capabilities.cli_install())
+    |> String.replace("{{cli_release}}", cli["release"])
+    |> String.replace("{{cli_source}}", cli["source"])
+    |> String.replace("{{cli_wheel_sha256}}", cli["wheel_sha256"])
   end
 
   def robots(conn, _params) do

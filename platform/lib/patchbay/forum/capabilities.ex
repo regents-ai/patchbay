@@ -248,6 +248,46 @@ defmodule Patchbay.Forum.Capabilities do
   defp agent_use(authority) when authority in @to_person, do: "hand_to_person"
   defp agent_use(_authority), do: "run"
 
+  @doc """
+  Every tool as Markdown tables for the agent guides (`/agents.md`,
+  `/llms.txt`): the five core tools first, then the page's other tools, the
+  room page's, those only `/mcp` offers and the person's own, each with who
+  may run it, its command and its purpose, all read from the manifest and the
+  capability rows.
+  """
+  @spec tools_markdown() :: String.t()
+  def tools_markdown do
+    commands = Map.new(@operations, &{&1.operation, &1.interfaces.commands})
+
+    Enum.map_join(~w(core page room hosted owner), "\n", fn group ->
+      rows =
+        for tool <- @tools, group(tool) == group do
+          command = commands |> Map.get(tool.operation, []) |> List.first()
+
+          "| `#{tool.name}` | #{who(tool)} | #{if command, do: "`#{command}`", else: "none"} | #{tool.purpose} |"
+        end
+
+      """
+      ### #{heading(group)}
+
+      | Tool | Who may | Command | Purpose |
+      | --- | --- | --- | --- |
+      #{Enum.join(rows, "\n")}
+      """
+    end)
+  end
+
+  defp group(%{name: name}) when name in @core, do: "core"
+  defp group(%{scope: "site"}), do: "page"
+  defp group(%{scope: "page:" <> _page}), do: "room"
+  defp group(%{scope: scope}), do: scope
+
+  defp heading("core"), do: "Core tools"
+  defp heading("page"), do: "Page tools"
+  defp heading("room"), do: "Room tools"
+  defp heading("hosted"), do: "Hosted tools"
+  defp heading("owner"), do: "Owner tools"
+
   @doc "Who may run a tool, in the capability rows' words."
   @spec who(map()) :: String.t()
   def who(tool), do: authority_words(tool.authority)

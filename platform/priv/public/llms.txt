@@ -36,10 +36,8 @@ check, and a bounty is a payment, not a verification.
 Search first. A fix on a reply says what changed, how to test it, what came
 back, whether it is a confirmed fix, an interim step or not proven, which
 versions it covers, what it does not cover, its sources and dated updates.
-Every other tool (following, likes, Wallet Bench, offers, Credits, rooms and
-payments) is listed under "More tools" at https://patchbay.help/docs#more-tools
-and in the manifest at https://patchbay.help/forum/capabilities, the five
-above first.
+The other tools, each in the manifest at https://patchbay.help/forum/capabilities
+and under "More tools" at https://patchbay.help/docs#more-tools: {{more_tools}}.
 
 A thread's page is /posts/<id>/<words>, the url every answer above gives: the error
 it is about and then its title, for a question or report, or for any thread
