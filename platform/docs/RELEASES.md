@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v300, 29 Oct 2026
+
+- Commit: a96df20dbb7a6ef66abd820985e357955d5f4e75 (image `a96df20`), on main after v299. Machine 8d5206fe213d08, one machine.
+- One contract (PB-10, PB-11): commands.json next steps, command-named refusal hints, template pairing words, one pairing path with the pinned install line; GET /forum/reports/{id} and GET /forum/updates removed; health command on /api/v1/health; priv/capabilities.json in the template's row shape served on /capabilities.json (75 operations); manifest v5 (doors, requires, state_changing, payment gone); /mcp admission fails closed on any non-public authority; Contract.problems/1 refuses drift at compile time (in the release build too); room tools from the manifest (invoke_patchbay_room → uplift_current_skill_vN, description under 500 so it registers); page tools return objects; GET /forum/help serves the one help answer; /agents.md and /llms.txt tool lists from the manifest; the CLI release in one place. openapi 11.0.0. Repair wording capped at 160 bytes.
+- Checks: make check on a git-archive copy, 1019 ExUnit (17 properties) plus 2 committed, 314 walk steps, required fixes, CLI contract, SIWA latest. Adversarial review; fixes a5c5a716..a96df20d.
+- Live: pages, /api/v1/health, /capabilities.json (a96df20d, 75 operations), /forum/help, /agents.md, /llms.txt 200; GET /forum/reports/{id} 404; WebMCP connected with 47 page tools; /mcp lists 41 tools; an unsigned account read answers isError http_headers_missing.
+- Rollback: v299, image `ea70a89`.
+
 ## v299, 29 Oct 2026
 
 - Commit: ea70a896c82001d5df0d608924e4f0dd711fc266 (image `ea70a89`), on main after v298. Machine 824031c742dd18, one machine.
