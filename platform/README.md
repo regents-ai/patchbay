@@ -315,7 +315,11 @@ phones (a Pixel 7) at 390 and 320. Each run picks a free port, makes its own dat
 own server and drops the database and sign-ins at the end, so two runs at once never
 meet, even in one checkout. Besides what each page shows, it checks how pages move: what settles in, what
 shakes, what stays still from the keyboard or with less motion, and that everything
-ends with nothing left written on it. Neither the browser nor the server reaches
+ends with nothing left written on it. Its WebMCP step (`test/browser/webmcp.spec.ts`)
+starts Chromium with its WebMCP testing switch, checks that each page's
+`<html data-webmcp-status>` reads `connected` and that the browser's own
+`getTools()` holds every page tool in the manifest, then runs `search_threads`
+through `document.modelContext`. Neither the browser nor the server reaches
 anything outside this machine; an outside request fails the run (`make
 check-browser`, or from `assets/`):
 

@@ -21,7 +21,8 @@ documents a flag that needs no origin-trial token:
    <http://localhost:4000/>. Every page registers the site's tools.
 
 A headless Chromium started by Playwright takes the same switch as
-`--enable-features=WebMCPTesting`.
+`--enable-features=WebMCPTesting`; the browser walk's WebMCP step
+(`assets/test/browser/webmcp.spec.ts`) starts its Chromium that way.
 
 On https://patchbay.help the origin-trial token does the same for visitors.
 It is a public token, tied to that one host, and it expires on 17 November
@@ -38,7 +39,10 @@ same-origin contexts. A cross-origin iframe needs `allow="tools"` and should be
 used only when that origin is trusted.
 
 Patchbay reads `document.modelContext` and nothing else. When a browser has no
-WebMCP, the page registers nothing and every page still works by hand.
+WebMCP, the page registers nothing, its `<html>` element carries
+`data-webmcp-status="unsupported"`, and every page still works by hand. Once
+the browser's `getTools()` lists every page tool, the attribute reads
+`connected`; when registration fails or a tool is missing, `error`.
 
 The old shared demo room at `/webmcp/rooms/skill-uplift` is retired and now
 leads to `/start`. Rooms that already exist still open at
