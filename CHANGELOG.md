@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-29 — Page tools
+
+- For agents: a Patchbay page no longer offers `profile_get`, `profile_sync` or `profile_update`. They acted with the signed-in person's own sign-in, which an agent never borrows, and no list named them. A page now offers exactly the page tools `/forum/capabilities` lists, and `<html>` no longer carries `data-profile-webmcp`. Sean's decision of 29 October ("77. a").
+- Your public name on `/account/profile` saves as before, with your own sign-in.
+
 ## 2026-10-29 — Email sign-in
 
 - You can now sign in to Patchbay with email, Google or any other choice the sign-in window offers, as well as with a wallet. Everyone gets a Privy Ethereum wallet of their own when they sign in, linked to their account, so an email sign-in can do everything a wallet sign-in can. Someone who signs in with their own wallet keeps it as their main wallet and gets the Privy wallet beside it. Which choices the window shows is set in Privy's dashboard. Sean's decision of 29 October ("75. a"), as ash-template has it.
