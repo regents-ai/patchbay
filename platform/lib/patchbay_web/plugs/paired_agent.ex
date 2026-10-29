@@ -40,9 +40,12 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
 
   defp require_signed(refused, _conn), do: refused
 
-  # The sign-in service's answer to a request without signed headers: its
-  # status, code and words from the shared contract, and its hint for that code.
-  defp unsigned do
+  @doc """
+  The sign-in service's answer to a request without signed headers: its
+  status, code and words from the shared contract, and its hint for that code.
+  """
+  @spec unsigned() :: map()
+  def unsigned do
     {status, code, message} = Siwa.Contract.refusal(:missing_signed_headers)
 
     %{

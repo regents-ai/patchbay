@@ -43,8 +43,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
              {"assist request", "request_assist"},
              {"payments complete <id>", "complete_payment"},
              {"payments execute <id>", "execute_payment"},
-             {"payments get <id>", "get_payment_status"},
-             {"payments prepare", "post_priority_report"}
+             {"payments get <id>", "get_payment_status"}
            ]
   end
 

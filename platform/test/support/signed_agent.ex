@@ -20,6 +20,28 @@ defmodule PatchbayWeb.SignedAgent do
   def stub_siwa, do: Req.Test.stub(RegentAgents.Broker, &verify/1)
 
   @doc """
+  Answers the wallet-author check the same way, from a loopback sign-in
+  service, until the calling test ends: the paying doors (`POST
+  /api/agent/payment_intents/:id/execute` and the hosted `execute_payment`)
+  verify a wallet author before its pairing.
+  """
+  @spec stub_wallet_author() :: :ok
+  def stub_wallet_author do
+    server =
+      ExUnit.Callbacks.start_supervised!(
+        Supervisor.child_spec(
+          {Bandit, plug: fn conn, _opts -> verify(conn) end, ip: {127, 0, 0, 1}, port: 0},
+          id: :wallet_author_stand_in
+        )
+      )
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(server)
+    original = Application.get_env(:patchbay, :wallet_author)
+    Application.put_env(:patchbay, :wallet_author, broker_url: "http://127.0.0.1:#{port}")
+    ExUnit.Callbacks.on_exit(fn -> Application.put_env(:patchbay, :wallet_author, original) end)
+  end
+
+  @doc """
   Pairs an agent wallet, `wallet` or a new one, with `owner`, a profile signed
   in through Privy, or with a new person when none is given. The person's
   shared account is established as a Privy sign-in establishes it.

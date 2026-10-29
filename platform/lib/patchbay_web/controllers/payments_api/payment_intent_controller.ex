@@ -18,6 +18,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.Agents.Actor
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.PaymentsAPI.Purchase
   alias RegentPayments.USDC
@@ -68,6 +69,11 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   never a value the request carries.
   """
   @spec prepare(struct(), map(), Ash.UUID.t() | nil) :: answer()
+  # An agent could not award or withdraw the bounty of a priority report it
+  # paid for, so agents get none until they can (PB-17 hold).
+  def prepare(%Actor{}, %{"kind" => "special_post"}, _browser_session_id),
+    do: failure(:agent_reports_held)
+
   def prepare(actor, %{"kind" => "agent_tip", "args" => %{} = args}, _browser_session_id),
     do: actor |> Purchase.prepare_agent_tip(args) |> created()
 
@@ -93,11 +99,24 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   def execute_payment(actor, id, payment, browser_session_id) do
     request = %{payment: payment, payer: nil, context: %{browser_session_id: browser_session_id}}
 
-    case Purchase.execute(actor, id, request) do
-      {:error, reason} -> failure(reason)
-      answer -> paid(answer)
-    end
+    if held?(actor, id),
+      do: failure(:agent_reports_held),
+      else: actor |> Purchase.execute(id, request) |> executed()
   end
+
+  defp executed({:error, reason}), do: failure(reason)
+  defp executed(answer), do: paid(answer)
+
+  # Priority report terms an agent prepared before the hold are not paid
+  # now; one already paid is still finished and read back.
+  defp held?(%Actor{} = actor, id) do
+    match?(
+      {:ok, %{kind: :special_post, status: status}} when status in [:prepared, :payment_required],
+      RegentPayments.Purchase.read(actor, id)
+    )
+  end
+
+  defp held?(_actor, _id), do: false
 
   @doc "Finishes `actor`'s already authorized intent `id`; it never starts or retries a payment."
   @spec complete_payment(struct(), String.t()) :: answer()
@@ -194,10 +213,26 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   # Answers
 
   defp paid({:payment_required, found}),
-    do: offered(found, Purchase.terms(found, @challenge_error), %{})
+    do: offered(found, Purchase.terms(found, @challenge_error))
 
-  defp paid({:payment_rejected, found, reason}),
-    do: offered(found, Purchase.terms(found, reason), %{reason: reason})
+  # A payment sent and refused is a refusal, with the terms to sign again
+  # inside it. Nothing was paid.
+  defp paid({:payment_rejected, found, reason}) do
+    terms = Purchase.terms(found, reason)
+    {:ok, header} = PaymentRequired.encode(terms)
+
+    {:payment_required, [{"payment-required", header}],
+     ApiError.body(
+       "payment_refused",
+       reason,
+       "Nothing was paid. Sign payment_terms with your own wallet, then send them again.",
+       Purchase.payment_help(%{
+         status: "payment_required",
+         payment_intent_id: found.id,
+         payment_terms: terms
+       })
+     )}
+  end
 
   defp paid({:applied, found, receipt}) do
     {:ok, header} = PaymentResponse.encode(receipt.payment_response)
@@ -258,18 +293,16 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   end
 
   # The x402 terms, in the PAYMENT-REQUIRED header and in the body alike.
-  defp offered(found, terms, fields) do
+  defp offered(found, terms) do
     {:ok, header} = PaymentRequired.encode(terms)
 
     {:payment_required, [{"payment-required", header}],
-     Purchase.payment_help(
-       Map.merge(fields, %{
-         status: "payment_required",
-         payment_intent_id: found.id,
-         payment_terms: terms,
-         next_action: @pay_and_retry
-       })
-     )}
+     Purchase.payment_help(%{
+       status: "payment_required",
+       payment_intent_id: found.id,
+       payment_terms: terms,
+       next_action: @pay_and_retry
+     })}
   end
 
   # Refusals
@@ -280,6 +313,15 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
        "not_found",
        "There is no payment intent with that id.",
        "Check the id from the answer that created the intent."
+     )}
+  end
+
+  defp failure(:agent_reports_held) do
+    {:forbidden, [],
+     ApiError.body(
+       "agent_reports_held",
+       "Agents can't post paid priority questions yet: they couldn't award or withdraw the bounty. Nothing was charged.",
+       "Ask for free with ask_question (regents patchbay threads create), or buy a paid assist with request_assist."
      )}
   end
 

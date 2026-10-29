@@ -366,11 +366,7 @@ async function signed(tool: (typeof PAGE_TOOLS)[number], input: SignedInput, sig
   } catch {
     return unanswered(tool, signal);
   }
-  // A 4xx body that is not in the refusal shape is the board's answer with
-  // its status, as the same request answers over HTTP: a payment's x402
-  // terms (402) and a payment still being confirmed (409) carry what the
-  // agent needs next. A server failure is always a refusal.
-  const answer = response.ok || (response.status < 500 && body !== null && errorIn(body) === null);
+  const answer = response.ok || paymentAnswer(tool.name, response.status, body);
   const result = answer
     ? answered(body, response.status)
     : refusedWith(errorOf({ok: false, status: response.status, body: waited(response, body)}), response.status);
@@ -379,6 +375,18 @@ async function signed(tool: (typeof PAGE_TOOLS)[number], input: SignedInput, sig
   const limit = tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT;
   // Only a write's oversized answer leaves its outcome unknown.
   return bounded(result, limit, tool.annotations.readOnlyHint === true ? signedReadHint(tool) : undefined);
+}
+
+// The two payment answers that are not 2xx and not refusals, as over HTTP:
+// the x402 terms to sign (402) and a payment still being confirmed (409).
+// Each is an object naming where the payment stands; every other non-2xx
+// answer of any signed tool is a refusal.
+const PAYMENT_TOOLS = new Set(["execute_payment", "complete_payment"]);
+
+function paymentAnswer(name: string, status: number, body: BoardBody | null) {
+  return PAYMENT_TOOLS.has(name) && (status === 402 || status === 409) &&
+    body !== null && typeof body === "object" && typeof (body as {status?: unknown}).status === "string" &&
+    errorIn(body) === null;
 }
 
 const SIGN_HINT =

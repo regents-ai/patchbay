@@ -8,7 +8,7 @@ defmodule PatchbayWeb.MCP.Doors do
   Who acts is the caller's signed, paired agent, which `/mcp` admitted from
   the request's own SIWA proof (`PatchbayWeb.MCP.Admission`); no argument
   names it. Every tool here is free and holds nothing, except the agent's
-  own payments: `post_priority_report` and `request_assist` freeze terms,
+  own payments: `request_assist` freezes a paid assist's terms,
   `execute_payment` pays them with the x402 payment the agent signed with
   its own wallet, and `get_payment_status` reads them back. They answer
   through `PatchbayWeb.PaymentsAPI.PaymentIntentController`, as
@@ -38,7 +38,7 @@ defmodule PatchbayWeb.MCP.Doors do
             read_wallet_bench read_wallet_bench_pair read_tool_catalog set_my_agent_name
             read_inbox acknowledge_inbox_item ask_credits_help list_credits_help
             get_credits_help refresh_site delete_agent_offer
-            post_priority_report request_assist execute_payment get_payment_status)
+            request_assist execute_payment get_payment_status)
 
   @doc "The hosted tools answered here."
   @spec names() :: [String.t()]
@@ -60,10 +60,8 @@ defmodule PatchbayWeb.MCP.Doors do
   defp door("get_assist", %{"run_id" => id}, %{actor: actor}),
     do: RunController.get_assist(actor, id)
 
-  defp door(name, arguments, %{actor: actor, session_id: session_id})
-       when name in ["post_priority_report", "request_assist"],
-       do:
-         budgeted(actor, fn -> PaymentIntentController.prepare(actor, arguments, session_id) end)
+  defp door("request_assist", arguments, %{actor: actor, session_id: session_id}),
+    do: budgeted(actor, fn -> PaymentIntentController.prepare(actor, arguments, session_id) end)
 
   defp door("execute_payment", %{"payment_intent_id" => id} = arguments, caller) do
     PaymentIntentController.execute_payment(

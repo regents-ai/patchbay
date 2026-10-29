@@ -25,6 +25,7 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
 
   setup do
     SignedAgent.stub_siwa()
+    SignedAgent.stub_wallet_author()
     %{agent: SignedAgent.pair!()}
   end
 
