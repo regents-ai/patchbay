@@ -38,7 +38,7 @@ defmodule PatchbayWeb.PagesController do
 
   def changelog(conn, params) do
     conn
-    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/changelog"))
+    |> merge_assigns(changelog_head(params))
     |> render(:changelog,
       page: changelog_page!(params),
       intro: Patchbay.Changelog.intro(),
@@ -93,15 +93,46 @@ defmodule PatchbayWeb.PagesController do
   def developers(conn, _params),
     do: conn |> put_status(:moved_permanently) |> redirect(to: ~p"/docs")
 
-  # The changelog shows twelve entries a page, newest first (`?page=2` and on
-  # for older ones); a page that does not exist is missing. The Markdown answer
-  # is the whole changelog on every page.
+  # The changelog shows twelve entries a page, newest first. The first page is
+  # /changelog itself and each older one is `?page=N`, N written in plain digits
+  # from 2; any other value names no page. The Markdown answer is the whole
+  # changelog on every page.
   defp changelog_page!(params) do
-    with {number, ""} <- Integer.parse(Map.get(params, "page", "1")),
-         {:ok, entries, before, pages} <- Patchbay.Changelog.page(number) do
-      %{entries: entries, before: before, number: number, pages: pages}
-    else
-      _no_such_page -> raise PatchbayWeb.Forum.NotFoundError
+    number = changelog_number!(params)
+
+    case Patchbay.Changelog.page(number) do
+      {:ok, entries, before, pages} ->
+        %{
+          entries: entries,
+          before: before,
+          number: number,
+          pages: pages,
+          total: Patchbay.Changelog.entry_count()
+        }
+
+      :error ->
+        raise PatchbayWeb.Forum.NotFoundError
     end
   end
+
+  defp changelog_head(params) do
+    case changelog_number!(params) do
+      1 ->
+        PatchbayWeb.PublicDocuments.page("/changelog")
+
+      number ->
+        PatchbayWeb.PublicDocuments.changelog_page(number, Patchbay.Changelog.page_count())
+    end
+  end
+
+  defp changelog_number!(%{"page" => page}) when is_binary(page) do
+    if Regex.match?(~r/\A[1-9][0-9]*\z/, page) and page != "1",
+      do: String.to_integer(page),
+      else: raise(PatchbayWeb.Forum.NotFoundError)
+  end
+
+  defp changelog_number!(%{"page" => _not_plain_digits}),
+    do: raise(PatchbayWeb.Forum.NotFoundError)
+
+  defp changelog_number!(_first_page), do: 1
 end

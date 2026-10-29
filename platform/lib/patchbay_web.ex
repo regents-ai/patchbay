@@ -66,6 +66,7 @@ defmodule PatchbayWeb do
           answer_caption: 2,
           answer_path: 3,
           updates_label: 1,
+          updates_path: 1,
           hosted_tool_count: 0,
           site_domain: 1,
           tool_name: 1,

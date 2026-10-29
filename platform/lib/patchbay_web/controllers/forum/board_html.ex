@@ -497,6 +497,18 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def written_on(%DateTime{} = at), do: Calendar.strftime(at, "%-d %B %Y")
 
+  @doc """
+  Where a post's "N updates to Patchbay" opens: the oldest of those updates,
+  on its changelog page.
+  """
+  def updates_path(%DateTime{} = at) do
+    case at |> DateTime.to_date() |> Patchbay.Changelog.oldest_after() do
+      nil -> ~p"/changelog"
+      {1, number} -> ~p"/changelog" <> "#changelog-#{number}"
+      {page, number} -> ~p"/changelog?#{[page: page]}" <> "#changelog-#{number}"
+    end
+  end
+
   def updates_label(%DateTime{} = at) do
     count = at |> DateTime.to_date() |> Patchbay.Changelog.entries_after()
     count_label(count, "update", "updates") <> " to Patchbay"

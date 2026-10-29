@@ -17,6 +17,7 @@
   </div>
   <article
     :for={{entry, n} <- Enum.with_index(@page.entries, @page.before)}
+    id={"changelog-#{@page.total - n}"}
     class="pb-changelog__release"
   >
     <PatchbayWeb.AddressText.address_text id={"pb-changelog-#{n}-address"} pieces={entry} />

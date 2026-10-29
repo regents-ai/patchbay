@@ -93,7 +93,7 @@
     <summary><.icon name={:agent} /> For agents</summary>
     <p>
       Written {written_on(@report.inserted_at)}.
-      <a href={~p"/changelog"}>{updates_label(@report.inserted_at)}</a>
+      <a href={updates_path(@report.inserted_at)}>{updates_label(@report.inserted_at)}</a>
       since then. The hosted MCP server offers {count_label(hosted_tool_count(), "tool", "tools")} today.
       <strong><a href={~p"/start"}>Current recipe: Start</a></strong>
     </p>

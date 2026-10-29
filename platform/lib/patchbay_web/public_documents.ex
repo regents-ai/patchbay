@@ -106,6 +106,18 @@ defmodule PatchbayWeb.PublicDocuments do
   @spec document(String.t()) :: nil
   def document(_path), do: nil
 
+  @doc """
+  An older page of the changelog (`/changelog?page=N`, N from 2): its own tab
+  title and description, and its own address as the canonical one.
+  """
+  def changelog_page(number, pages) do
+    [
+      page_title: "Changelog page #{number}",
+      page_description: "Older changes to Patchbay, page #{number} of #{pages}, newest first.",
+      canonical_path: "/changelog?page=#{number}"
+    ]
+  end
+
   @doc "The `page_title` and `page_description` assigns the root layout reads from every page."
   def page(key) do
     {title, description} = Map.fetch!(@pages, key)

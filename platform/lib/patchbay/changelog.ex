@@ -56,6 +56,24 @@ defmodule Patchbay.Changelog do
 
   def page(_number), do: :error
 
+  @doc "How many pages the entries fill."
+  def page_count, do: @page_count
+
+  @doc "How many dated entries there are."
+  def entry_count, do: length(@dates)
+
+  @doc """
+  Where the oldest entry dated after the given day is: its page and its
+  number counting from the oldest entry (1), or nil when no entry is newer.
+  """
+  @spec oldest_after(Date.t()) :: {pos_integer(), pos_integer()} | nil
+  def oldest_after(%Date{} = day) do
+    case entries_after(day) do
+      0 -> nil
+      count -> {div(count - 1, @per_page) + 1, length(@dates) - count + 1}
+    end
+  end
+
   @doc "The words before the first entry, as the entries' pieces (`Patchbay.AddressText.html/1`)."
   def intro, do: @intro_pieces
   def markdown, do: @markdown
