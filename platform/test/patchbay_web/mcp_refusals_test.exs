@@ -231,6 +231,8 @@ defmodule PatchbayWeb.MCPRefusalsTest do
   end
 
   defp post_rpc(conn, path, id, method, params) do
+    conn = if String.starts_with?(path, "/chatgpt/"), do: on_open(conn), else: conn
+
     conn
     |> put_req_header("content-type", "application/json")
     |> post(path, Jason.encode!(%{jsonrpc: "2.0", id: id, method: method, params: params}))

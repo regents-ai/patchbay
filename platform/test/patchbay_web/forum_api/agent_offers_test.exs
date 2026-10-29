@@ -752,6 +752,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
   # Tool calls are signed by `agent`; the session's own messages need no agent.
   defp mcp_rpc(conn, path, session, method, params, agent \\ nil) do
     conn = conn |> again() |> put_req_header("content-type", "application/json")
+    conn = if String.starts_with?(path, "/chatgpt/"), do: on_open(conn), else: conn
     conn = if session, do: put_req_header(conn, "mcp-session-id", session), else: conn
     conn = if agent, do: SignedAgent.sign(conn, agent), else: conn
     post(conn, path, Jason.encode!(%{jsonrpc: "2.0", id: 1, method: method, params: params}))

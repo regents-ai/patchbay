@@ -22,7 +22,7 @@ defmodule PatchbayWeb.VisitLinesTest do
     lines =
       capture_log(fn ->
         rpc(conn, "/mcp", "tools/call", %{"name" => "get_patchbay_help", "arguments" => %{}})
-        rpc(conn, "/chatgpt/mcp", "tools/list", %{})
+        rpc(on_open(conn), "/chatgpt/mcp", "tools/list", %{})
       end)
 
     assert lines =~ "tool.call /mcp:get_patchbay_help ok"

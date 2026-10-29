@@ -27,6 +27,18 @@ defmodule PatchbayWeb.Router do
     plug :accepts, ["json"]
   end
 
+  # Both addresses are one site (PatchbayWeb.SiteEdition). What is about money,
+  # crypto or wallets, and the hosted tools at /mcp, answers only at
+  # patchbay.help; ChatGPT's connection and tools answer only at the open
+  # address. Anywhere else they are a missing page.
+  pipeline :main_only do
+    plug PatchbayWeb.SiteEdition, only: :main
+  end
+
+  pipeline :open_only do
+    plug PatchbayWeb.SiteEdition, only: :open
+  end
+
   scope "/", PatchbayWeb do
     pipe_through :browser
     get "/blog", BlogController, :index
@@ -58,7 +70,6 @@ defmodule PatchbayWeb.Router do
     get "/.well-known/security.txt", DiscoveryController, :security
     get "/indexnow-key.txt", DiscoveryController, :indexnow_key
     get "/.well-known/api-catalog", DiscoveryController, :api_catalog
-    get "/.well-known/openai-apps-challenge", DiscoveryController, :openai_apps_challenge
     get "/site-screenshots/:site_id", SiteScreenshotController, :show
     get "/post-pictures/:id", PostPictureController, :show
     get "/skill.md", AgentSkillsController, :show
@@ -94,7 +105,7 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/bench", PatchbayWeb do
-    pipe_through :x402_test
+    pipe_through [:main_only, :x402_test]
     get "/x402-test", X402TestController, :show
   end
 
@@ -106,7 +117,7 @@ defmodule PatchbayWeb.Router do
   # Read-only proof that an agent's SIWA sign-in works here. It answers JSON
   # whatever the request accepts, so a person opening it sees the refusal too.
   scope "/", PatchbayWeb do
-    pipe_through :siwa_test
+    pipe_through [:main_only, :siwa_test]
     get "/siwa-test", SiwaTestController, :show
   end
 
@@ -122,7 +133,8 @@ defmodule PatchbayWeb.Router do
 
   # Consent uses the existing Privy session and CSRF; token grants never use cookies.
   scope "/", PatchbayWeb do
-    pipe_through :api
+    pipe_through [:open_only, :api]
+    get "/.well-known/openai-apps-challenge", DiscoveryController, :openai_apps_challenge
     get "/.well-known/oauth-protected-resource", OAuthController, :resource_metadata
     get "/.well-known/oauth-protected-resource/chatgpt/mcp", OAuthController, :resource_metadata
     get "/.well-known/oauth-authorization-server", OAuthController, :server_metadata
@@ -132,7 +144,7 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/oauth", PatchbayWeb do
-    pipe_through :browser
+    pipe_through [:open_only, :browser]
     get "/authorize", OAuthController, :authorize, log: false
     post "/authorize", OAuthController, :approve, log: false
     get "/connections", OAuthController, :connections, log: false
@@ -141,18 +153,23 @@ defmodule PatchbayWeb.Router do
 
   # The hosted MCP tools. Each address takes every message for its door; it
   # keeps no stream open, so anything but a POST is told so. `/mcp` is every
-  # agent's; `/chatgpt/mcp` is the ChatGPT plugin's, which never carries
-  # Agent Offers. The route, not the caller, says which door it is.
+  # agent's, at patchbay.help; `/chatgpt/mcp` is the ChatGPT plugin's, at the
+  # open address, and never carries Agent Offers. The route, not the caller,
+  # says which door it is.
   # Sobelow's "CSRF via action reuse" for GET and DELETE sharing :not_allowed
   # is recorded in .sobelow-skips: that action only refuses and changes nothing.
+  # Neither address is logged: an events subscription carries its webhook
+  # signing secret and callback address in the params, and tool calls carry
+  # what people wrote.
   scope "/", PatchbayWeb do
-    pipe_through :api
-    # Neither address is logged: an events subscription carries its webhook
-    # signing secret and callback address in the params, and tool calls carry
-    # what people wrote.
+    pipe_through [:main_only, :api]
     post "/mcp", MCPController, :message, log: false, assigns: %{mcp_surface: :native_mcp}
     get "/mcp", MCPController, :not_allowed
     delete "/mcp", MCPController, :not_allowed
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through [:open_only, :api]
 
     post "/chatgpt/mcp", MCPController, :message,
       log: false,
@@ -170,7 +187,7 @@ defmodule PatchbayWeb.Router do
   # OAuth bearer or MCP session confers authority here. It answers 404 while
   # ChatGPT identities are off. Never log signed requests.
   scope "/chatgpt/agent", PatchbayWeb do
-    pipe_through [:chatgpt_identity, :api, :paired_agent]
+    pipe_through [:open_only, :chatgpt_identity, :api, :paired_agent]
     post "/mcp", MCPController, :signed_message, log: false
   end
 
@@ -205,25 +222,25 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/api/agent", PatchbayWeb.PaymentsAPI do
-    pipe_through [:api, :paired_agent, :payment_budget]
+    pipe_through [:main_only, :api, :paired_agent, :payment_budget]
     post "/payment_intents", PaymentIntentController, :create
     get "/payment_intents/:id", PaymentIntentController, :show
   end
 
   # New settlement locks current delegation in the shared purchase layer.
   scope "/api/agent", PatchbayWeb.PaymentsAPI do
-    pipe_through [:api, :wallet_author, :agent_payment_admission]
+    pipe_through [:main_only, :api, :wallet_author, :agent_payment_admission]
     post "/payment_intents/:id/execute", PaymentIntentController, :execute
   end
 
   # An original signer may finish only its already authorized payment.
   scope "/api/agent", PatchbayWeb.PaymentsAPI do
-    pipe_through [:api, :wallet_author]
+    pipe_through [:main_only, :api, :wallet_author]
     post "/payment_intents/:id/complete", PaymentIntentController, :complete
   end
 
   scope "/api/agent", PatchbayWeb.AssistAPI do
-    pipe_through [:api, :paired_agent]
+    pipe_through [:main_only, :api, :paired_agent]
     post "/assists", RunController, :create
     get "/assists/:id", RunController, :show
   end
@@ -300,10 +317,10 @@ defmodule PatchbayWeb.Router do
   # The Offers pages are live: the market list searches as a visitor types,
   # and an advertiser's own page shows a screening the moment it is decided.
   scope "/offers", PatchbayWeb do
-    pipe_through [:browser, :html_only]
+    pipe_through [:main_only, :browser, :html_only]
 
     live_session :offers,
-      on_mount: [{PatchbayWeb.CurrentProfile, :default}],
+      on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :default}],
       session: {PatchbayWeb.VisitLog, :session, []} do
       live "/", OffersLive.List, :index
       live "/how-it-works", OffersLive.Index, :index
@@ -318,10 +335,10 @@ defmodule PatchbayWeb.Router do
   # filed. The page answers as though it does not exist to anyone but a
   # moderator.
   scope "/admin", PatchbayWeb do
-    pipe_through [:browser, :html_only]
+    pipe_through [:main_only, :browser, :html_only]
 
     live_session :offer_moderation,
-      on_mount: [{PatchbayWeb.CurrentProfile, :default}],
+      on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :default}],
       session: {PatchbayWeb.VisitLog, :session, []} do
       live "/offers", OfferModerationLive, :index
     end
@@ -385,16 +402,27 @@ defmodule PatchbayWeb.Router do
       live "/account", AccountLive, :show
       live "/account/inbox", AccountLive, :inbox
       live "/account/profile", AccountLive, :profile
+    end
+  end
+
+  # Points are patchbay.help's alone, so the page is in a live session of its
+  # own: moving to it from the Account page loads it afresh.
+  scope "/", PatchbayWeb do
+    pipe_through [:main_only, :browser, :html_only, :no_store]
+
+    live_session :points,
+      on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :account}],
+      session: {PatchbayWeb.VisitLog, :session, []} do
       live "/points", PointsLive, :show
     end
   end
 
   # A fix is watched as it happens, so its page is live like a room's.
   scope "/", PatchbayWeb do
-    pipe_through [:browser, :html_only]
+    pipe_through [:main_only, :browser, :html_only]
 
     live_session :fixes,
-      on_mount: [{PatchbayWeb.CurrentProfile, :default}],
+      on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :default}],
       session: {PatchbayWeb.VisitLog, :session, []} do
       live "/fixes/:id", FixLive.Show, :show
     end
@@ -423,13 +451,20 @@ defmodule PatchbayWeb.Router do
     get "/requests/:client_request_id", ReportController, :request_status
     post "/threads/:id/solution", ReportController, :mark_solution
     post "/replies/:id/uses", ReportController, :record_use
-    post "/offer-reports", ReportController, :report_offer
     post "/subscriptions", ReportController, :subscribe
     delete "/subscriptions/:id", ReportController, :unsubscribe
     get "/subscriptions", ReportController, :subscriptions
     post "/updates", ReportController, :updates
     post "/threads/:id/likes", LikeController, :create
     delete "/threads/:id/likes", LikeController, :delete
+    post "/inbox", InboxController, :index
+    post "/inbox/:id/acknowledge", InboxController, :acknowledge
+    post "/sites/:site/refresh", SiteRefreshController, :create
+  end
+
+  scope "/forum", PatchbayWeb.ForumAPI do
+    pipe_through [:main_only, :api, :paired_agent]
+    post "/offer-reports", ReportController, :report_offer
     post "/offer-bid-options", OfferBidController, :options
     post "/offer-bids", OfferBidController, :create
     post "/offer-fit-checks", OfferBidController, :fit
@@ -438,12 +473,9 @@ defmodule PatchbayWeb.Router do
     delete "/my-offers/:creative_id", OfferBidController, :delete
     get "/my-offers/active", OfferBidController, :active
     post "/my-offers/history", OfferBidController, :history
-    post "/inbox", InboxController, :index
-    post "/inbox/:id/acknowledge", InboxController, :acknowledge
     post "/credits-help", CreditsHelpController, :create
     post "/credits-help/list", CreditsHelpController, :index
     get "/credits-help/:id", CreditsHelpController, :show
-    post "/sites/:site/refresh", SiteRefreshController, :create
   end
 
   # A paired agent names the agent its person posts under, as the person does
@@ -463,6 +495,10 @@ defmodule PatchbayWeb.Router do
     get "/tool-history", ToolController, :index
     get "/capabilities", ReportController, :capabilities
     get "/help", ReportController, :help
+  end
+
+  scope "/forum", PatchbayWeb.ForumAPI do
+    pipe_through [:main_only, :api]
     get "/offer-slots", OfferSlotController, :index
   end
 
@@ -479,7 +515,7 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do
-    pipe_through [:forum_tools, :require_profile]
+    pipe_through [:main_only, :forum_tools, :require_profile]
 
     post "/reports/:id/accept", SolutionController, :create
     post "/reports/:id/refund", RefundController, :create
@@ -519,7 +555,7 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/tools/account", PatchbayWeb do
-    pipe_through [:api, :paired_agent]
+    pipe_through [:main_only, :api, :paired_agent]
     get "/balances", AgentAccountController, :balances
     post "/credits/history", AgentAccountController, :credits_history
     get "/points", AgentAccountController, :points
@@ -552,21 +588,21 @@ defmodule PatchbayWeb.Router do
   # Only a new payment draws on the share. Paying it and reading it back do
   # not, so a signature the wallet has given is never turned away for count.
   scope "/api", PatchbayWeb.PaymentsAPI do
-    pipe_through [:forum_tools, :payments, :require_profile, :payment_budget]
+    pipe_through [:main_only, :forum_tools, :payments, :require_profile, :payment_budget]
 
     post "/payment_intents", PaymentIntentController, :create
   end
 
   # Reading a paid assist back is not a payment request either.
   scope "/api", PatchbayWeb.AssistAPI do
-    pipe_through [:forum_tools, :require_profile]
+    pipe_through [:main_only, :forum_tools, :require_profile]
     get "/assists/:id", RunController, :show
   end
 
   # Paying a frozen intent, reading it back and reading the wallet's balance
   # draw on no share.
   scope "/api", PatchbayWeb.PaymentsAPI do
-    pipe_through [:forum_tools, :payments, :require_profile]
+    pipe_through [:main_only, :forum_tools, :payments, :require_profile]
     post "/payment_intents/:id/execute", PaymentIntentController, :pay
     get "/payment_intents/:id", PaymentIntentController, :show
     get "/me/usdc_balance", BalanceController, :show
@@ -625,7 +661,7 @@ defmodule PatchbayWeb.Router do
   # Credits help is private to the person who asked and the Regents team, so
   # it answers as a page only, never as markdown.
   scope "/", PatchbayWeb do
-    pipe_through [:browser, :html_only]
+    pipe_through [:main_only, :browser, :html_only]
 
     get "/credits-help", CreditsHelpController, :index
     post "/credits-help", CreditsHelpController, :create
@@ -678,7 +714,6 @@ defmodule PatchbayWeb.Router do
 
     post "/threads/preview", BoardController, :preview_thread
     post "/threads/:id/replies", BoardController, :reply_thread
-    get "/priority", BoardController, :priority
     get "/moderation", ModerationController, :index
     post "/moderation", ModerationController, :decide
     post "/follow", BoardController, :follow
@@ -687,9 +722,7 @@ defmodule PatchbayWeb.Router do
     get "/start", BoardController, :start
     get "/agent-setup", BoardController, :agent_setup
     post "/reports/:id/replies", BoardController, :create_reply
-    post "/reports/:id/refund", BoardController, :refund
     post "/posts/:id/replies", BoardController, :create_reply
-    post "/posts/:id/refund", BoardController, :refund
     get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false
     get "/sites/:origin", BoardController, :old_site
     get "/sites/:origin/tools/:name", BoardController, :old_tool
@@ -698,6 +731,15 @@ defmodule PatchbayWeb.Router do
     get "/posts/:id/:slug", BoardController, :post
     get "/posts/:id", BoardController, :post
     get "/reports/:id", BoardController, :post
+  end
+
+  # Paid priority and its refunds.
+  scope "/", PatchbayWeb.Forum do
+    pipe_through [:main_only, :browser]
+
+    get "/priority", BoardController, :priority
+    post "/reports/:id/refund", BoardController, :refund
+    post "/posts/:id/refund", BoardController, :refund
   end
 
   # A site's own page is its domain. These come last so no page of
