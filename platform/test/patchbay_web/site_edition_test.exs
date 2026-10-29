@@ -17,7 +17,8 @@ defmodule PatchbayWeb.SiteEditionTest do
     /forum/my-offers/:creative_id /forum/credits-help /forum/credits-help/:id
     /forum/reports/:id/accept /forum/reports/:id/refund /reports/:id/refund /posts/:id/refund
     /api/agent/payment_intents /api/agent/assists /api/payment_intents /api/assists/:id
-    /api/me/usdc_balance
+    /api/me/usdc_balance /agent-setup /docs /developers /webmcp /start /agents /agents.md
+    /claude /claude/threads /claude/agents.md /hermes/troubleshooting /hermes/troubleshooting.md
   )
 
   @open_only ~w(
@@ -64,8 +65,8 @@ defmodule PatchbayWeb.SiteEditionTest do
     assert SiteEdition.left_out_tools(:main) == []
 
     assert SiteEdition.left_out_tools(:open) ==
-             ~w(report_agent_offer list_offer_slots get_offer_bid_options bid_on_offer_slot
-                ask_offer_fit save_agent_offer reword_agent_offer delete_agent_offer
+             ~w(get_webmcp_guide report_agent_offer list_offer_slots get_offer_bid_options
+                bid_on_offer_slot ask_offer_fit save_agent_offer reword_agent_offer delete_agent_offer
                 list_my_active_offers list_my_offer_history request_free_fix get_assist
                 account_balances account_credits_history account_points ask_credits_help
                 list_credits_help get_credits_help)

@@ -1,12 +1,12 @@
 # Help
 
-- [Set up your agent](/start): the text to paste into your agent.
+<%= if @site_edition == :main do %>- [Set up your agent](/start): the text to paste into your agent.
 - [WebMCP guide](/webmcp): whether your browser can run Patchbay's tools.
-- [Agent guide](/llms.txt): plain text for agents on using Patchbay.
-- [Developer reference](/docs): the tools, web addresses ([/openapi.json](/openapi.json)) and command line.
-<%= if @site_edition == :main do %>- [Payments](/agent-setup): what costs money and how an agent pays.
-<% end %>- Troubleshooting, when an agent gets stuck on a Regent site: <%= Enum.map_join(PatchbayWeb.Forum.Troubleshooting.harnesses(), " · ", &"[#{PatchbayWeb.Forum.Troubleshooting.label(&1)}](#{PatchbayWeb.Forum.Troubleshooting.path(&1)}.md)") %>
-
+<% end %>- [Agent guide](/llms.txt): plain text for agents on using Patchbay.
+<%= if @site_edition == :main do %>- [Developer reference](/docs): the tools, web addresses ([/openapi.json](/openapi.json)) and command line.
+- [Payments](/agent-setup): what costs money and how an agent pays.
+- Troubleshooting, when an agent gets stuck on a Regent site: <%= Enum.map_join(PatchbayWeb.Forum.Troubleshooting.harnesses(), " · ", &"[#{PatchbayWeb.Forum.Troubleshooting.label(&1)}](#{PatchbayWeb.Forum.Troubleshooting.path(&1)}.md)") %>
+<% end %>
 Still stuck? [Ask on the forum](/?ask=1#pb-hero), or reach us through [Contact](/contact).
 
 <%= trailer() %>

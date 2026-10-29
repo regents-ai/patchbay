@@ -63,13 +63,23 @@ defmodule PatchbayWeb.Router do
     get "/privacy", PagesController, :privacy
     get "/terms", PagesController, :terms
     get "/changelog", PagesController, :changelog
+    get "/wallet-bench", WalletBenchController, :index
+    get "/wallet-bench/how-it-works", WalletBenchController, :method
+    get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
+  end
+
+  # The pages for setting up agents and for developers are patchbay.help's.
+  scope "/", PatchbayWeb do
+    pipe_through [:main_only, :browser]
     get "/developers", PagesController, :developers
     get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs
     get "/agents", PagesController, :agents
-    get "/wallet-bench", WalletBenchController, :index
-    get "/wallet-bench/how-it-works", WalletBenchController, :method
-    get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through :main_only
+    get "/agents.md", DiscoveryController, :agents
   end
 
   scope "/", PatchbayWeb do
@@ -78,7 +88,6 @@ defmodule PatchbayWeb.Router do
     get "/solved.rss", SolvedController, :rss
     get "/openapi.json", DiscoveryController, :openapi
     get "/llms.txt", DiscoveryController, :llms
-    get "/agents.md", DiscoveryController, :agents
     get "/capabilities.json", DiscoveryController, :capabilities
     get "/robots.txt", DiscoveryController, :robots
     get "/.well-known/security.txt", DiscoveryController, :security
@@ -217,6 +226,8 @@ defmodule PatchbayWeb.Router do
   # Each agent page's steps on their own, as the agents.md that agent reads, and
   # each troubleshooting page as Markdown.
   scope "/", PatchbayWeb.Forum do
+    pipe_through :main_only
+
     for agent <- @agent_pages do
       get "/#{agent}/agents.md", BoardController, :agent_guide, private: %{home_page: agent}
     end
@@ -687,6 +698,33 @@ defmodule PatchbayWeb.Router do
     # Search words (`q`) stay out of the logs, as on /forum/search.
     get "/", BoardController, :home, log: false
     post "/threads", BoardController, :create_thread
+    post "/threads/preview", BoardController, :preview_thread
+    post "/threads/:id/replies", BoardController, :reply_thread
+    get "/moderation", ModerationController, :index
+    post "/moderation", ModerationController, :decide
+    post "/follow", BoardController, :follow
+    post "/posts/:id/solution", BoardController, :mark_solution
+    post "/posts/:id/likes", BoardController, :like
+    post "/reports/:id/replies", BoardController, :create_reply
+    post "/posts/:id/replies", BoardController, :create_reply
+    get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false
+    get "/sites/:origin", BoardController, :old_site
+    get "/sites/:origin/tools/:name", BoardController, :old_tool
+    # A post's address is its id and the words of its headline, the error first. The id alone,
+    # other words, or the earlier /reports/<id> move there for good.
+    get "/posts/:id/:slug", BoardController, :post
+    get "/posts/:id", BoardController, :post
+    get "/reports/:id", BoardController, :post
+  end
+
+  # Paid priority, its refunds and the release of its money, and the pages for
+  # setting up an agent.
+  scope "/", PatchbayWeb.Forum do
+    pipe_through [:main_only, :browser]
+
+    get "/start", BoardController, :start
+    get "/agent-setup", BoardController, :agent_setup
+
     # Each agent's own page: its quickstart, the same form and the newest posts.
     # A turned-down post comes back to that page.
     for agent <- @agent_pages do
@@ -701,31 +739,6 @@ defmodule PatchbayWeb.Router do
           :troubleshooting,
           private: %{harness: harness}
     end
-
-    post "/threads/preview", BoardController, :preview_thread
-    post "/threads/:id/replies", BoardController, :reply_thread
-    get "/moderation", ModerationController, :index
-    post "/moderation", ModerationController, :decide
-    post "/follow", BoardController, :follow
-    post "/posts/:id/solution", BoardController, :mark_solution
-    post "/posts/:id/likes", BoardController, :like
-    get "/start", BoardController, :start
-    get "/agent-setup", BoardController, :agent_setup
-    post "/reports/:id/replies", BoardController, :create_reply
-    post "/posts/:id/replies", BoardController, :create_reply
-    get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false
-    get "/sites/:origin", BoardController, :old_site
-    get "/sites/:origin/tools/:name", BoardController, :old_tool
-    # A post's address is its id and the words of its headline, the error first. The id alone,
-    # other words, or the earlier /reports/<id> move there for good.
-    get "/posts/:id/:slug", BoardController, :post
-    get "/posts/:id", BoardController, :post
-    get "/reports/:id", BoardController, :post
-  end
-
-  # Paid priority, its refunds and the release of its money.
-  scope "/", PatchbayWeb.Forum do
-    pipe_through [:main_only, :browser]
 
     get "/priority", BoardController, :priority
     post "/reports/:id/refund", BoardController, :refund
