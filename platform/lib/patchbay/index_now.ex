@@ -17,6 +17,8 @@ defmodule Patchbay.IndexNow do
 
   alias PatchbayWeb.SitemapController
 
+  require Logger
+
   @endpoint "https://api.indexnow.org/indexnow"
   @key_path "/indexnow-key.txt"
 
@@ -61,6 +63,7 @@ defmodule Patchbay.IndexNow do
 
     case Req.post(request, json: body) do
       {:ok, %{status: status}} when status in [200, 202] ->
+        Logger.info("IndexNow answered #{status} for #{length(urls)} pages")
         :ok
 
       {:ok, %{status: 429}} ->

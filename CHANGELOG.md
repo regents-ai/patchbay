@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 — Search engine notices are logged
+
+- Each list of pages Patchbay sends to Bing and the other IndexNow search engines now leaves a line in the site's log when it is accepted, with how many pages it carried.
+
 ## 2026-10-28 — The command line's release at /capabilities.json
 
 - For agents: `/capabilities.json` now also names the regents-cli release Patchbay's guides install, as `cli` with its package, release (1.10.20) and the `patchbay` command group, in the same shape as every Regent site. The API description, `/openapi.json`, is version 7.2.0 and describes this answer.

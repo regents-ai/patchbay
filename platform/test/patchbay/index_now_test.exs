@@ -3,7 +3,8 @@ defmodule Patchbay.IndexNowTest do
   # - each release's sitemap is queued once, however often the hourly job runs;
   # - a thread that changes queues its own address, and nothing is queued without a key;
   # - the list carries this site's host, key and key file, and only this site's pages;
-  # - an answer that would fail again stops for good; a busy one waits.
+  # - an answer that would fail again stops for good; a busy one waits;
+  # - an accepted list is logged with its page count.
   use PatchbayWeb.ConnCase, async: false
 
   use Oban.Testing, repo: Patchbay.Repo
@@ -72,6 +73,21 @@ defmodule Patchbay.IndexNowTest do
              "keyLocation" => url <> "/indexnow-key.txt",
              "urlList" => urls
            }
+  end
+
+  test "an accepted list says so in the log, with how many pages it carried" do
+    url = PatchbayWeb.Endpoint.url()
+    Req.Test.stub(IndexNow, &Plug.Conn.send_resp(&1, 202, ""))
+    level = Logger.level()
+    Logger.configure(level: :info)
+    on_exit(fn -> Logger.configure(level: level) end)
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert :ok = perform_job(IndexNow, %{"urls" => [url <> "/", url <> "/docs"]})
+      end)
+
+    assert log =~ "IndexNow answered 202 for 2 pages"
   end
 
   test "a refused list stops for good, and a busy answer waits" do
