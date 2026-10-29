@@ -36,25 +36,16 @@ defmodule Patchbay.Patchbay.Fixtures do
   end
 
   def revision_attributes(room_id) do
+    # The seed's name, words, schema and hints, which the room page's own
+    # tests read too (assets/test/webmcp/room_hook.test.ts).
+    seed = "seed-revision.json" |> fixture!() |> Jason.decode!()
+
     contract = %{
-      name: "uplift_current_skill_v1",
-      title: "Improve the current Skill",
-      description:
-        "Improve the Skill currently loaded in the Source editor while preserving its identity frontmatter, and place the revision in the visible Candidate editor.",
-      input_schema: %{
-        "type" => "object",
-        "required" => ["instructions"],
-        "additionalProperties" => false,
-        "properties" => %{
-          "instructions" => %{
-            "type" => "string",
-            "minLength" => 1,
-            "maxLength" => 1000,
-            "description" => "A bounded description of what should be clarified or improved."
-          }
-        }
-      },
-      annotations: %{"readOnlyHint" => false, "untrustedContentHint" => true},
+      name: seed["name"],
+      title: seed["title"],
+      description: seed["description"],
+      input_schema: seed["input_schema"],
+      annotations: seed["annotations"],
       handler_adapter: :return_candidate_only,
       output_contract: %{reported_success: true, applied: false},
       postcondition_set: :skill_candidate_written_v1

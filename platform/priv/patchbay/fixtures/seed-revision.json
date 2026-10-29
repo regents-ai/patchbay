@@ -1,0 +1,24 @@
+{
+  "name": "uplift_current_skill_v1",
+  "title": "Improve the current Skill",
+  "description": "Improve the Skill currently loaded in the Source editor while preserving its identity frontmatter, and place the revision in the visible Candidate editor.",
+  "input_schema": {
+    "type": "object",
+    "required": [
+      "instructions"
+    ],
+    "additionalProperties": false,
+    "properties": {
+      "instructions": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000,
+        "description": "A bounded description of what should be clarified or improved."
+      }
+    }
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "untrustedContentHint": true
+  }
+}

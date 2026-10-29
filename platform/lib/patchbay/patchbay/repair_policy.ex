@@ -7,7 +7,11 @@ defmodule Patchbay.Patchbay.RepairPolicy do
 
   alias Patchbay.Patchbay.{CanonicalJSON, RepairDSL}
 
-  @max_description_bytes 1_000
+  # The room page registers a revision under its own description followed by
+  # the manifest row's sentence on how to call it, and refuses a description
+  # over 500 characters; 320 bytes leaves room for that sentence (a test holds
+  # the sum under 500).
+  @max_description_bytes 320
 
   # The description is the only place a browser agent learns what this page does
   # with a tool result, so every repaired revision carries the same closing
@@ -20,6 +24,10 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   """
   @spec published_description(String.t()) :: String.t()
   def published_description(replacement), do: replacement <> " " <> @verified_reporting_note
+
+  @doc "The most bytes a repaired revision's published description may hold."
+  @spec max_description_bytes() :: pos_integer()
+  def max_description_bytes, do: @max_description_bytes
 
   @spec verified_reporting_note() :: String.t()
   def verified_reporting_note, do: @verified_reporting_note

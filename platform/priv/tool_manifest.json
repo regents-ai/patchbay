@@ -4708,7 +4708,7 @@
       "version": 3,
       "title": "Room tool",
       "purpose": "Call a room's tool",
-      "description": "The room's current tool, registered as uplift_current_skill_vN for generation N; needs a pairing. Prepare it with prepare_patchbay_room_request (invoke, original arguments as arguments_json), sign that request, then pass input, request and proof.",
+      "description": "Needs a pairing: prepare it with prepare_patchbay_room_request (invoke, with {\"instructions\": \"…\"} as arguments_json), sign that request, then pass input, request and proof.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,

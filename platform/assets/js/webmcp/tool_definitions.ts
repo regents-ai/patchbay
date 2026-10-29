@@ -141,14 +141,15 @@ function activeTool(hook: PermanentToolsHook) {
 
 /**
  * The room's current tool, under the name and title of the generation the room
- * offers now. Its own description and original arguments lead; the manifest's
- * row for it says how to call it. Its schema and hints are the row's.
+ * offers now. Its own description leads; the manifest's row for it says how to
+ * call it. Its schema and hints are the row's, and its original arguments are
+ * in the revision's own schema, so the description does not repeat them.
  */
 export function buildRevisionTool(hook: BridgeHook, revision: ToolRevision) {
   return {
     name: revision.name,
     title: revision.title ?? REVISION_ROW.title,
-    description: `${revision.description} Original arguments: ${JSON.stringify(revision.input_schema ?? revision.inputSchema ?? {})}. ${REVISION_ROW.description}`,
+    description: `${revision.description} ${REVISION_ROW.description}`,
     inputSchema: REVISION_ROW.input_schema,
     annotations: REVISION_ROW.annotations,
     execute: singleFlight(

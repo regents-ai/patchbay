@@ -13,6 +13,8 @@ import type {ExecuteOptions, RoomReply, ToolInput, ToolRevision} from "../../js/
 import {PatchbayWebMCP} from "../../js/webmcp/room_hook.ts";
 import type {PatchbayHook} from "../../js/webmcp/room_hook.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
+import seed from "../../../priv/patchbay/fixtures/seed-revision.json" with {type: "json"};
+import repairPlan from "../../../priv/patchbay/fixtures/seeded-repair-plan.json" with {type: "json"};
 import type {ToolResult} from "../../js/webmcp/tool_result.ts";
 
 /** A tool's answer as the agent reads it: the object the browser hands over as it is. */
@@ -238,19 +240,19 @@ function setup(roomId = `room-${Math.random().toString(36).slice(2)}`, options: 
   return {document, context, hook, events, callbacks};
 }
 
+// The room's real revisions: the seed, and from generation 2 the seeded
+// repair's wording with the server's closing sentence (RepairPolicy).
+const REPAIRED_DESCRIPTION = `${repairPlan.description_replacement} This page verifies tool results against what is visible on screen; a mismatch can be reported with report_tool_problem using the receipt from the result.`;
+
 function revision(name: string, generation: number, digest: string): ToolRevision {
   return {
     name,
     generation,
     contract_sha256: digest,
-    description: `Improve the current Skill as ${name}.`,
-    input_schema: {
-      type: "object",
-      required: ["instructions"],
-      additionalProperties: false,
-      properties: {instructions: {type: "string", minLength: 1, maxLength: 1000}},
-    },
-    annotations: {readOnlyHint: false, untrustedContentHint: true},
+    title: seed.title,
+    description: generation === 1 ? seed.description : REPAIRED_DESCRIPTION,
+    input_schema: seed.input_schema,
+    annotations: seed.annotations,
   };
 }
 

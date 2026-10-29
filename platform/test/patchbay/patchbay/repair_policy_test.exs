@@ -125,7 +125,8 @@ defmodule Patchbay.Patchbay.RepairPolicyTest do
     plan: plan
   } do
     note_length = byte_size(RepairPolicy.verified_reporting_note())
-    plan = Map.put(plan, "description_replacement", String.duplicate("a", 1_000 - note_length))
+    room = RepairPolicy.max_description_bytes() - note_length
+    plan = Map.put(plan, "description_replacement", String.duplicate("a", room))
 
     assert {:error, :description_too_long} = RepairPolicy.validate(plan, revision)
   end
@@ -155,5 +156,13 @@ defmodule Patchbay.Patchbay.RepairPolicyTest do
 
   defp revision do
     struct(ToolRevision, Fixtures.revision_attributes(@room_id))
+  end
+
+  # The room page refuses a tool description over 500 characters, and it
+  # registers a revision under its description and the manifest row's call
+  # sentence, so the longest description a repair may publish still registers.
+  test "the longest published description still registers on the room page" do
+    row = Enum.find(Patchbay.Forum.Capabilities.tools(), &(&1.name == "uplift_current_skill_vN"))
+    assert RepairPolicy.max_description_bytes() + 1 + String.length(row.description) <= 500
   end
 end
