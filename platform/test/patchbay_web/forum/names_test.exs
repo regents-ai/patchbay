@@ -84,24 +84,32 @@ defmodule PatchbayWeb.Forum.NamesTest do
 
   test "a person is shown under their Regents account name, else their short wallet" do
     one = profile("aaa")
-    assert AgentProfile.name_for(one, :human) == "0xaaaa..aaaa"
+    assert AgentProfile.name_for(one, :human, :main) == "0xaaaa..aaaa"
+
+    # The open address names no wallet: a person without a name is a Member.
+    member = "Member " <> String.slice(String.replace(one.id, "-", ""), 0, 8)
+    assert AgentProfile.name_for(one, :human, :open) == member
 
     one = regents_name(one, "Morgan Lee")
-    assert AgentProfile.name_for(one, :human) == "Morgan Lee"
-    assert AgentProfile.own_name(one) == "Morgan Lee"
-    assert AgentProfile.name_for(one, :agent) == one.agent_name
+
+    for edition <- [:main, :open] do
+      assert AgentProfile.name_for(one, :human, edition) == "Morgan Lee"
+      assert AgentProfile.own_name(one, edition) == "Morgan Lee"
+      assert AgentProfile.name_for(one, :agent, edition) == one.agent_name
+    end
 
     # Two people may show the same name, as on every Regent site.
     two = "bbb" |> profile() |> regents_name("Morgan Lee")
-    assert AgentProfile.name_for(two, :human) == "Morgan Lee"
+    assert AgentProfile.name_for(two, :human, :main) == "Morgan Lee"
   end
 
   test "a wallet author is shown under its short wallet address" do
     wallet =
       Identity.upsert_from_wallet!(%{wallet_address: "0x" <> String.duplicate("c", 40)})
 
-    assert AgentProfile.name_for(wallet, :agent) == "0xcccc..cccc"
-    assert AgentProfile.own_name(wallet) == "0xcccc..cccc"
+    assert AgentProfile.name_for(wallet, :agent, :main) == "0xcccc..cccc"
+    assert AgentProfile.own_name(wallet, :main) == "0xcccc..cccc"
+    assert AgentProfile.own_name(wallet, :open) =~ ~r/\AMember [0-9a-f]{8}\z/
   end
 
   test "an agent's name starts different from every other agent's" do

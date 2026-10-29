@@ -329,33 +329,50 @@ defmodule Patchbay.Identity.AgentProfile do
   row's own key so that no two profiles can start with the same one.
   """
   @spec starting_name(String.t()) :: String.t()
-  def starting_name(id) do
-    "agent-" <> (id |> String.replace("-", "") |> String.slice(0, 8))
-  end
+  def starting_name(id), do: "agent-" <> id_start(id)
+
+  defp id_start(id), do: id |> String.replace("-", "") |> String.slice(0, 8)
 
   @doc """
-  The name a profile is shown under when what it wrote was written by `kind`.
-  A person is shown under their Regents account name or their wallet's ENS
-  name, whichever the site's `:name_first` setting puts first, else the other,
-  else their short wallet address. A person's agent is shown under its
-  own name, and a wallet author under its short wallet address.
+  The name a profile is shown under when what it wrote was written by `kind`,
+  at `edition`'s address, by default the one this process is serving
+  (`PatchbayWeb.SiteEdition.current/0`). A person is shown under their Regents
+  account name or their wallet's ENS name, whichever the site's `:name_first`
+  setting puts first, else the other, else their short wallet address. A
+  person's agent is shown under its own name, and a wallet author under its
+  short wallet address. At the open address a wallet never names anyone
+  (`own_name/2`).
   """
-  @spec name_for(t(), :agent | :human) :: String.t()
-  def name_for(%{authentication_origin: :wallet} = profile, _kind), do: own_name(profile)
-  def name_for(%{agent_name: name}, :agent), do: name
-  def name_for(profile, :human), do: own_name(profile)
+  @spec name_for(t(), :agent | :human, PatchbayWeb.SiteEdition.t()) :: String.t()
+  def name_for(profile, kind, edition \\ PatchbayWeb.SiteEdition.current())
+
+  def name_for(%{authentication_origin: :wallet} = profile, _kind, edition),
+    do: own_name(profile, edition)
+
+  def name_for(%{agent_name: name}, :agent, _edition), do: name
+  def name_for(profile, :human, edition), do: own_name(profile, edition)
 
   @doc """
-  The name a profile's own page goes by: a person's shown name, or a wallet
-  author's short wallet address.
+  The name a profile's own page goes by at `edition`'s address: a person's
+  shown name, or a wallet author's short wallet address. The open address names
+  no wallet: there a person goes by their Regents account name, and anyone
+  without one by "Member" and the start of their id.
   """
-  @spec own_name(t()) :: String.t()
-  def own_name(%{authentication_origin: :privy} = profile) do
-    Enum.find_value(@name_fields, &present(Map.get(profile, &1))) ||
-      RegentFormat.short_address(profile.wallet_address)
-  end
+  @spec own_name(t(), PatchbayWeb.SiteEdition.t()) :: String.t()
+  def own_name(profile, edition \\ PatchbayWeb.SiteEdition.current())
 
-  def own_name(%{wallet_address: wallet}), do: RegentFormat.short_address(wallet)
+  def own_name(%{authentication_origin: :privy} = profile, edition),
+    do:
+      Enum.find_value(name_fields(edition), &present(Map.get(profile, &1))) ||
+        unnamed(profile, edition)
+
+  def own_name(profile, edition), do: unnamed(profile, edition)
+
+  defp name_fields(:main), do: @name_fields
+  defp name_fields(:open), do: [:display_name]
+
+  defp unnamed(profile, :main), do: RegentFormat.short_address(profile.wallet_address)
+  defp unnamed(profile, :open), do: "Member " <> id_start(profile.id)
 
   defp present(value) when is_binary(value) do
     case String.trim(value) do

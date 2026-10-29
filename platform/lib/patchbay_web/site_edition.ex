@@ -15,6 +15,11 @@ defmodule PatchbayWeb.SiteEdition do
   signed session (`PatchbayWeb.VisitLog.session/1`) and is assigned it on
   mount (`PatchbayWeb.live_view/0`); a connected mount of a page the other
   address does not have goes to the home page.
+
+  The process serving a request or a LiveView also keeps its edition, as
+  Gettext keeps a locale, for words drawn far from the connection that differ
+  by address, such as the name of a person who chose none
+  (`Patchbay.Identity.AgentProfile.own_name/1`).
   """
   @behaviour Plug
 
@@ -67,19 +72,35 @@ defmodule PatchbayWeb.SiteEdition do
   def init(:assign), do: :assign
   def init(only: edition) when edition in [:main, :open], do: {:only, edition}
 
+  @doc "The edition of the request or LiveView this process is serving."
+  @spec current() :: t()
+  def current do
+    case Process.get(__MODULE__) do
+      edition when edition in [:main, :open] -> edition
+    end
+  end
+
+  @doc "Keeps `edition` as the one this process is serving (`current/0`)."
+  @spec put(t()) :: t() | nil
+  def put(edition) when edition in [:main, :open], do: Process.put(__MODULE__, edition)
+
   @impl Plug
-  def call(conn, :assign),
-    do: assign(conn, :site_edition, if(conn.host == open_host(), do: :open, else: :main))
+  def call(conn, :assign) do
+    edition = if conn.host == open_host(), do: :open, else: :main
+    put(edition)
+    assign(conn, :site_edition, edition)
+  end
 
   def call(conn, {:only, edition}) do
     conn.assigns.site_edition == edition or raise PatchbayWeb.Forum.NotFoundError
     conn
   end
 
-  def on_mount(:default, _params, session, socket),
-    do:
-      {:cont,
-       Phoenix.Component.assign(socket, :site_edition, Map.fetch!(session, "site_edition"))}
+  def on_mount(:default, _params, session, socket) do
+    edition = Map.fetch!(session, "site_edition")
+    put(edition)
+    {:cont, Phoenix.Component.assign(socket, :site_edition, edition)}
+  end
 
   def on_mount(edition, _params, session, socket) when edition in [:main, :open] do
     if Map.fetch!(session, "site_edition") == edition,

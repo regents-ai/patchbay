@@ -33,6 +33,9 @@ defmodule PatchbayWeb.OpenEditionTest do
   # common words "safe" and "base" are not them.
   @chain ~r/\bETH\b|\bSafe\b|\bBase\b/
 
+  # A wallet address, whole or short.
+  @address ~r/\b0x[0-9a-fA-F]{4,}/
+
   # A person's own post about a payment: what people write stays on the open
   # address as they wrote it.
   @own_words "My USDC never reached the wallet."
@@ -245,6 +248,22 @@ defmodule PatchbayWeb.OpenEditionTest do
            end) == %{}
   end
 
+  test "a person with no chosen name is a Member at the open address", %{
+    conn: conn,
+    asker: asker
+  } do
+    member = "Member " <> String.slice(String.replace(asker.id, "-", ""), 0, 8)
+    open = conn |> on_open() |> get(AgentProfile.profile_url(asker)) |> html_response(200)
+    assert open =~ member
+
+    main = conn |> get(AgentProfile.profile_url(asker)) |> html_response(200)
+    refute main =~ member
+    assert main =~ "0xaaaa"
+
+    # The menu under the person's picture names them the same way.
+    assert conn |> on_open() |> signed_in(asker) |> get("/") |> html_response(200) =~ member
+  end
+
   test "the directory's finance category is Finance at the open address", %{conn: conn} do
     assert conn |> get("/sites") |> html_response(200) =~ "Finance &amp; Crypto"
 
@@ -384,7 +403,7 @@ defmodule PatchbayWeb.OpenEditionTest do
     )
   end
 
-  defp words_for_money(words), do: words_for(words, [@money, @token, @crypto, @chain])
+  defp words_for_money(words), do: words_for(words, [@money, @token, @crypto, @chain, @address])
 
   defp words_for(words, patterns) do
     text = Enum.join(words, "\n")

@@ -179,6 +179,8 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
   end
 
   test "the board's figures and top agents, and what each says when there is nothing to show" do
+    PatchbayWeb.SiteEdition.put(:main)
+
     figures = fn activity ->
       render_component(&PatchbayWeb.Forum.BoardHTML.board_activity/1, activity: activity)
       |> LazyHTML.from_fragment()

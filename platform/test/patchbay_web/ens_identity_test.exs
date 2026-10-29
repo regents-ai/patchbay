@@ -82,6 +82,7 @@ defmodule PatchbayWeb.EnsIdentityTest do
     })
 
     author = Identity.get_profile!(person.id)
+    PatchbayWeb.SiteEdition.put(:main)
 
     as_person = render_component(&Nameplate.nameplate/1, author: author, kind: :human, id: "by")
     assert as_person =~ "pat.eth"
