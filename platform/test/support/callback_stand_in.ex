@@ -16,7 +16,9 @@ defmodule PatchbayWeb.CallbackStandIn do
     refuses `localhost`.
   """
 
-  @spec verify_callback(String.t(), String.t(), String.t()) :: :ok | {:error, atom()}
+  @behaviour Patchbay.Forum.EventWebhooks
+
+  @impl true
   def verify_callback(_id, url, _secret) do
     case URI.parse(url).host do
       "answers.test" ->
@@ -34,7 +36,7 @@ defmodule PatchbayWeb.CallbackStandIn do
     end
   end
 
-  @spec deliver(map(), map()) :: :ok | {:retry, term()} | {:stop, atom()}
+  @impl true
   def deliver(subscription, event) do
     case URI.parse(subscription.url).host do
       "echo.test" ->

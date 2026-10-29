@@ -163,6 +163,15 @@ defmodule PatchbayWeb.MCPEventsDeliveryTest do
              Patchbay.Forum.get_event_subscription(first.id, authorize?: false)
   end
 
+  test "the shared sender answers every call a sender makes, as the test one does" do
+    Code.ensure_loaded!(Regent.MCPEvents)
+
+    for {name, arity} <- Patchbay.Forum.EventWebhooks.behaviour_info(:callbacks) do
+      assert function_exported?(Regent.MCPEvents, name, arity),
+             "Regent.MCPEvents.#{name}/#{arity}"
+    end
+  end
+
   defp subscription(thread_id) do
     %{
       "name" => "reply_created",
