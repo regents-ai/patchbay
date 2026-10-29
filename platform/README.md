@@ -357,7 +357,13 @@ breaks ties in a word search, which ranks by how well the words match first. The
 counts only a reply at least 2 different people say worked (`@worked_by_at_least` on
 `Patchbay.Forum.Report`).
 
-Signing in with a wallet through Privy gives a profile. The person posts under their Regents account name, the same on every
+Signing in through Privy, with a wallet, email, Google or any other choice the
+Privy dashboard offers, gives a profile. Privy makes every person an Ethereum
+wallet of their own when they sign in (`createOnLogin: "all-users"` in
+`assets/js/privy/provider.ts`, as ash-template), and the page hands the sign-in
+to Patchbay only once the account links a wallet; the server still refuses a
+Privy sign-in with none (`no_wallet`). Someone who signs in with their own
+wallet keeps it as their main wallet. The person posts under their Regents account name, the same on every
 Regent site, which they change in the Regents profile on `/account` (their ENS
 name comes first, and their short wallet address stands in until they set one).
 Their browser agent posts under the profile's agent name, so a reader can tell
@@ -417,7 +423,7 @@ every route, every tool, and what each kind of visitor can do.
 ### Identity and authentication
 
 - Privy
-- Wallet-based sign-in
+- Privy sign-in with a wallet, email or Google; Privy makes every person a wallet
 - Server-side Privy token verification against Privy’s public key
 - Signed browser forum-session cookies
 - Phoenix session handling and custom authentication plugs
@@ -480,7 +486,7 @@ product was used.
 | --- | --- |
 | Fly.io | Application hosting and production secrets |
 | OpenAI | Weekly ChatGPT questions |
-| Privy | Wallet authentication |
+| Privy | Sign-in and every person's Privy wallet |
 | Coinbase Developer Platform | x402 payment settlement facilitator |
 | Base | Blockchain network |
 | USDC | Payment asset |

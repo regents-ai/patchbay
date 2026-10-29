@@ -25,7 +25,7 @@ test("with no Privy application, or none that loads, nothing opens", async () =>
 test("each answer is said in words, and an unknown one as unfinished", () => {
   assert.match(topUpWords({ok: true, status: "confirmed"}), /on its way/)
   assert.match(topUpWords({ok: true, status: "submitted"}), /once the card provider finishes/)
-  assert.match(topUpWords({ok: false, reason: "no_wallet"}), /Sign in with a wallet/)
+  assert.equal(topUpWords({ok: false, reason: "no_wallet"}), "Sign in first, at the top of the page.")
   assert.match(topUpWords({ok: false, reason: "unfinished"}), /did not finish/)
   assert.match(topUpWords({ok: false, reason: "something new"}), /did not finish/)
 })

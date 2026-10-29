@@ -1,12 +1,13 @@
 import {createElement, useEffect} from "react"
 import type {ComponentProps} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useIdentityToken, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
 import type {ConnectedWallet, PrivyErrorCode} from "@privy-io/react-auth"
 import type {Root} from "react-dom/client"
 import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
+import {hasWallet, providerConfig} from "./privy/provider.ts"
 import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
@@ -27,7 +28,6 @@ type BridgeState = {
   user: ReturnType<typeof usePrivy>["user"]
   getAccessToken: ReturnType<typeof usePrivy>["getAccessToken"]
   logout: ReturnType<typeof usePrivy>["logout"]
-  identityToken: string | null
   login: ReturnType<typeof useLogin>["login"]
   wallets: ConnectedWallet[]
   walletsReady: boolean
@@ -63,7 +63,6 @@ function finishLogin(outcome: LoginOutcome) {
 // publishes what they currently say to the plain functions below.
 function Bridge() {
   const privy = usePrivy()
-  const {identityToken} = useIdentityToken()
   const {wallets, ready: walletsReady} = useWallets()
   const {wallet: activeWallet} = useActiveWallet()
   const {fund} = useFiatOnramp()
@@ -79,7 +78,6 @@ function Bridge() {
       user: privy.user,
       getAccessToken: privy.getAccessToken,
       logout: privy.logout,
-      identityToken,
       login,
       wallets,
       walletsReady,
@@ -144,7 +142,7 @@ function start(appId: string) {
     createElement(
       PrivyProvider,
       // Its children are the next argument, which React hands it as props.children.
-      {appId, config: {loginMethods: ["wallet"]}} as ComponentProps<typeof PrivyProvider>,
+      {appId, config: providerConfig} as ComponentProps<typeof PrivyProvider>,
       createElement(Bridge),
     ),
   )
@@ -174,10 +172,11 @@ function waitFor(matches: (state: BridgeState) => boolean, timeoutMs: number): P
 /**
  * Signs in with Privy and hands back the pair of tokens the server verifies.
  *
- * Nothing is sent anywhere from here; the caller posts the pair. A person who
- * closes the window, and a Privy application that has not been told to issue
- * identity tokens, are both reported rather than treated as a failure to sign
- * in for some unnamed reason.
+ * Nothing is sent anywhere from here; the caller posts the pair, and only once
+ * the person's Privy account links an Ethereum wallet. A person who closes the
+ * window, an account whose wallet Privy has not made (`no_wallet`), and a Privy
+ * application that has not been told to issue identity tokens are each reported
+ * rather than treated as a failure to sign in for some unnamed reason.
  */
 export async function signIn(appId: string): Promise<{ok: true, access: string, identity: string} | Refusal> {
   start(appId)
@@ -200,14 +199,26 @@ export async function signIn(appId: string): Promise<{ok: true, access: string, 
     }
   }
 
+  // Nothing is handed over until the person has a wallet. Privy's window closes
+  // once it has made the wallet of someone who signed in with email or Google;
+  // a Privy sign-in this browser already held may still be making it.
+  let withWallet
   try {
-    const authenticated = await waitFor(one => one.authenticated, TOKEN_TIMEOUT_MS)
-    const access = await authenticated.getAccessToken()
-    const withIdentity = await waitFor(one => isToken(one.identityToken), TOKEN_TIMEOUT_MS)
+    withWallet = await waitFor(one => one.authenticated && hasWallet(one.user), TOKEN_TIMEOUT_MS)
+  } catch {
+    return {ok: false, reason: "no_wallet"}
+  }
 
+  // The evidence is asked for first and the session proof second, so the proof
+  // is never older than the evidence it is offered with. As in ash-template.
+  try {
+    const identity = await getIdentityToken()
+    const access = await withWallet.getAccessToken()
+
+    if (!isToken(identity)) return {ok: false, reason: "no_identity_token"}
     if (!isToken(access)) return {ok: false, reason: "no_access_token"}
 
-    return {ok: true, access, identity: withIdentity.identityToken as string}
+    return {ok: true, access, identity}
   } catch {
     return {ok: false, reason: "no_identity_token"}
   }

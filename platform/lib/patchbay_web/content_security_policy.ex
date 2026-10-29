@@ -8,7 +8,7 @@ defmodule PatchbayWeb.ContentSecurityPolicy do
   from elsewhere is a signed-in person's ENS picture, from the ENS avatar
   service.
 
-  `sign_in/0` is the baseline plus exactly what Privy's wallet sign-in loads,
+  `sign_in/0` is the baseline plus exactly what Privy's sign-in loads,
   taken from Privy's published policy and checked against the bundled Privy
   and WalletConnect code: Privy's API, frame and wallet RPC, Cloudflare
   Turnstile (when bot protection is on for the Privy app), WalletConnect's
@@ -103,7 +103,7 @@ defmodule PatchbayWeb.ContentSecurityPolicy do
   @doc "The strict baseline, for pages that never start sign-in."
   def reading, do: render(@baseline)
 
-  @doc "The baseline plus Privy wallet sign-in, for pages that can sign someone in."
+  @doc "The baseline plus Privy sign-in, for pages that can sign someone in."
   def sign_in, do: @baseline |> add(@sign_in) |> render()
 
   @doc """
