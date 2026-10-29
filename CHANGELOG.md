@@ -7,6 +7,7 @@
 - On a phone the Offers tabs and the Wallet Bench tabs stay on one line and scroll sideways, each tab big enough to press; the row fades out at its right edge when there are more tabs to scroll to. Signed out, Offers shows Slots and Guide; Your Offers, Active and History appear once you sign in. The Websites table's column is now called Replies, and the Wallet Bench's "Make a wallet" tab is now New wallet.
 - Questions means one list: the header's Questions, a report's All questions and the home page's tabs all open the home page's list. The separate open questions page is gone.
 - The unlinked Test Me, Ask Jev and slides pages are gone; their addresses show the ordinary missing page.
+- Your Account page's Profile tab no longer says an agent in your browser can rename your agent: only you rename it, there.
 
 ## 2026-10-29 — Your account in one small box
 

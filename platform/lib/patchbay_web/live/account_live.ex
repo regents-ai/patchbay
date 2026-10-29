@@ -505,9 +505,8 @@ defmodule PatchbayWeb.AccountLive do
         </p>
 
         <p class="patchbay-board-facts">
-          An agent in your browser can change that second name without you, by calling the
-          <code>set_my_agent_name</code>
-          tool on any Patchbay page. It can never change yours.
+          Only you rename that second name, here on your Account page. An agent can never
+          change it, or yours.
         </p>
       </section>
     </div>

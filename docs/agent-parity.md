@@ -78,11 +78,11 @@ the same; the door for each tool is its `doors.http` row in
 | Read Offer history | `list_my_offer_history` | `/offers/history` | `list_my_offer_history` | `list_my_offer_history` | `offers history` |
 | Report an Agent Offer | `report_agent_offer` | none: an agent reports an Offer it was shown | `report_agent_offer` | `report_agent_offer` | `offers report` |
 | Bid on an Offer slot | `bid_on_offer_slot` | `/offers/bid` (OffersLive.Bid `bid`) | `bid_on_offer_slot` | GAP PB-17 (Patchbay), protected | `offers bid` |
-| Read Credits | `account_balances` | Credits panel in the side panel | `account_balances` | GAP PB-8 (Patchbay) | `account balances` |
+| Read Credits | `account_balances` | The header's Credits balance and the Credits card on `/account` | `account_balances` | GAP PB-8 (Patchbay) | `account balances` |
 | Read Credits history | `account_credits_history` | Purchase History in the Credits panel, which opens regents.sh/account/credits | `account_credits_history` | GAP PB-8 (Patchbay) | `account credits-history` |
 | Read Points | `account_points` | `/points` | `account_points` | GAP PB-8 (Patchbay) | `account points` |
-| Check identity and pairing | `agent_whoami` | Agents list in the side panel | `agent_whoami` | GAP PB-8 (Patchbay) | `agents whoami` |
-| Check in as a paired agent | `agent_status` | none: the person sees the check-in time in the side panel | `agent_status` | GAP PB-8 (Patchbay) | `agents status` |
+| Check identity and pairing | `agent_whoami` | Agents on `/account` and in the account menu | `agent_whoami` | GAP PB-8 (Patchbay) | `agents whoami` |
+| Check in as a paired agent | `agent_status` | none: the person sees the check-in time on `/account` | `agent_status` | GAP PB-8 (Patchbay) | `agents status` |
 | Prepare a signed request | `prepare_agent_request` | n/a: how a page tool is signed | `prepare_agent_request` | n/a: at /mcp the agent signs the request it sends | n/a: the CLI signs the request it sends |
 | Say hello | `hello` | none: POST /hello takes the person's session as JSON; no page button | GAP PB-8 (Patchbay) | GAP PB-8 (Patchbay) | GAP PB-29 (regents-cli): sayVerifiedHello has no command |
 | Read your USDC balance | `get_my_usdc_balance` | USDC Balance card on `/account/profile` | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected |
@@ -97,9 +97,9 @@ the same; the door for each tool is its `doors.http` row in
 | Run the room's tool | `invoke_patchbay_room`, `finish_patchbay_room_call`, `cancel_patchbay_room_call` | The room page, by hand (`/webmcp/rooms/:slug`) | The room page registers the current tool as uplift_current_skill_vN, which the manifest does not list yet (PB-11), then `finish_patchbay_room_call` and `cancel_patchbay_room_call` | GAP PB-27 (Patchbay): a room call needs the open room page's evidence | GAP PB-29 (regents-cli) |
 | Ask for a room repair | `request_patchbay_repair` | Repair button in the room (RoomLive `request_repair`) | `request_patchbay_repair` | GAP PB-27 (Patchbay): needs the open room page's evidence | GAP PB-29 (regents-cli): `rooms request-repair` |
 | Ask for a free fix | | none: a free fix is an agent's, two a day (POST /api/agent/assists) | GAP PB-8 (Patchbay) | GAP PB-8 (Patchbay) | `assist free` |
-| Pair a new agent | | Pair New Agent in the side panel (PairingBox `new_pairing_code`, `choose_agent`) | GAP PB-28 (template), protected: pairing stays the owner's under the 9 Oct agent access rule | GAP PB-28 (template), protected | GAP PB-28 (template), protected; the agent's own half is `agents pair` |
+| Pair a new agent | | Pair New Agent on `/account` (PairingBox `new_pairing_code`, `choose_agent`) | GAP PB-28 (template), protected: pairing stays the owner's under the 9 Oct agent access rule | GAP PB-28 (template), protected | GAP PB-28 (template), protected; the agent's own half is `agents pair` |
 | Unpair an agent | | Agents panel (AgentsPanel `unpair_agent`) | GAP PB-28 (template), protected | GAP PB-28 (template), protected | GAP PB-28 (template), protected |
-| Read an agent's last actions | | Agents in the side panel (PanelAgents `read_last_actions`) | GAP PB-28 (template) | GAP PB-28 (template) | GAP PB-28 (template) |
+| Read an agent's last actions | | Agents in the account menu (MenuAgents `read_last_actions`) | GAP PB-28 (template) | GAP PB-28 (template) | GAP PB-28 (template) |
 | Change the public name | | `/account/profile` (AccountLive `public_name_saved`, through the shared profile page tools) | GAP PB-28 (template): the page's profile_update acts on the person's session and is being removed (PB-18) | GAP PB-28 (template) | GAP PB-28 (template) |
 | Clear an inbox item | | `/account/inbox` (AccountLive `acknowledge`) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) | GAP PB-27 (Patchbay) |
 | Buy Credits | | Credits panel, by card or onchain (CreditsPanel `prepare_and_send`, `step_sent`) | GAP PB-28 (template), protected | GAP PB-28 (template), protected | GAP PB-28 (template), protected |
