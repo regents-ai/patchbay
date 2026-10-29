@@ -75,3 +75,25 @@
   max-width: 100%;
   overflow-x: auto;
 }
+
+/* Newer and older pages, under the last entry. */
+.pb-changelog__pages {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  border-top: 1px solid var(--pb-line);
+  padding-top: var(--space-3);
+  color: var(--pb-text-muted);
+}
+
+.pb-changelog__pages a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--pb-text);
+  font-weight: 600;
+}
+
+.pb-changelog__pages span { order: -1; flex-basis: 100%; }

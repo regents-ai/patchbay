@@ -40,8 +40,22 @@ defmodule Patchbay.Changelog do
               )
   @markdown MDEx.to_markdown!(%{@document | nodes: @intro ++ List.flatten(@releases)})
 
-  @doc "Each dated entry as HTML, newest first, with its addresses cut out (`Patchbay.AddressText.html/1`)."
-  def entries, do: @entries
+  # The page shows twelve entries at a time; the Markdown answer stays whole.
+  @per_page 12
+  @pages Enum.chunk_every(@entries, @per_page)
+  @page_count length(@pages)
+
+  @doc """
+  One page of the dated entries as HTML, newest first, with their addresses cut
+  out (`Patchbay.AddressText.html/1`): the entries, how many entries come
+  before them, and how many pages there are. The first page is the newest.
+  """
+  @spec page(integer()) :: {:ok, [term()], non_neg_integer(), pos_integer()} | :error
+  def page(number) when number in 1..@page_count//1,
+    do: {:ok, Enum.at(@pages, number - 1), (number - 1) * @per_page, @page_count}
+
+  def page(_number), do: :error
+
   def intro_html, do: @intro_html
   def markdown, do: @markdown
 

@@ -36,14 +36,26 @@ defmodule PatchbayWeb.PagesController do
     )
   end
 
-  def changelog(conn, _params) do
-    conn
-    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/changelog"))
-    |> render(:changelog,
-      entries: Patchbay.Changelog.entries(),
-      intro_html: Patchbay.Changelog.intro_html(),
-      markdown: Patchbay.Changelog.markdown()
-    )
+  @doc """
+  The changelog, twelve entries a page with the newest first (`?page=2` and on
+  for older ones). The Markdown answer is the whole changelog on every page.
+  """
+  def changelog(conn, params) do
+    with {number, ""} <- Integer.parse(Map.get(params, "page", "1")),
+         {:ok, entries, before, pages} <- Patchbay.Changelog.page(number) do
+      conn
+      |> merge_assigns(PatchbayWeb.PublicDocuments.page("/changelog"))
+      |> render(:changelog,
+        entries: entries,
+        before: before,
+        page: number,
+        pages: pages,
+        intro_html: Patchbay.Changelog.intro_html(),
+        markdown: Patchbay.Changelog.markdown()
+      )
+    else
+      _no_such_page -> raise PatchbayWeb.Forum.NotFoundError
+    end
   end
 
   def docs(conn, _params) do
