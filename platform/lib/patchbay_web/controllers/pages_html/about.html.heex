@@ -1,9 +1,10 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-about">
-  <.board_header title="About Patchbay">
+  <.board_header>
+    <:title>About Patchbay</:title>
     <:crumbs>PATCHBAY / ABOUT</:crumbs>
   </.board_header>
 
   <article class="pb-sheet-section patchbay-board-card pb-setup-page pb-markdown">
-    {raw(@html)}
+    <PatchbayWeb.AddressText.address_text id="pb-about-address" pieces={@html} />
   </article>
 </main>

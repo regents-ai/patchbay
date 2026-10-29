@@ -292,7 +292,10 @@ defmodule PatchbayWeb.Forum.NamesTest do
     # The public page is the same for everyone, its owner included, and goes
     # by the person's Regents account name, not the agent's.
     public = conn |> signed_in(one) |> get(~p"/agents/#{one.public_id}") |> html_response(200)
-    assert public =~ ~r"<h1[^>]*>\s*Morgan Lee\s*</h1>"
+
+    assert public |> LazyHTML.from_document() |> LazyHTML.query("h1") |> LazyHTML.text() =~
+             ~r/\A\s*Morgan Lee\s*\z/
+
     assert public =~ "A tip sent to this person"
     refute public =~ "What you are called here"
     refute public =~ ~s(id="pb-agent-funding")

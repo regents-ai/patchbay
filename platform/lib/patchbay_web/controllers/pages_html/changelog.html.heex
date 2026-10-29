@@ -13,7 +13,7 @@
   </header>
 
   <div :if={@intro_html != ""} class="pb-changelog__intro">{raw(@intro_html)}</div>
-  <article :for={entry <- @entries} class="pb-changelog__release">
-    {raw(entry)}
+  <article :for={{entry, n} <- Enum.with_index(@entries)} class="pb-changelog__release">
+    <PatchbayWeb.AddressText.address_text id={"pb-changelog-#{n}-address"} pieces={entry} />
   </article>
 </main>

@@ -83,12 +83,12 @@ defmodule PatchbayWeb.EnsIdentityTest do
 
     author = Identity.get_profile!(person.id)
 
-    as_person = render_component(&Nameplate.nameplate/1, author: author, kind: :human)
+    as_person = render_component(&Nameplate.nameplate/1, author: author, kind: :human, id: "by")
     assert as_person =~ "pat.eth"
     assert [{"img", attrs, []}] = as_person |> Floki.parse_fragment!() |> Floki.find("img")
     assert {"src", @picture} in attrs
 
-    as_agent = render_component(&Nameplate.nameplate/1, author: author, kind: :agent)
+    as_agent = render_component(&Nameplate.nameplate/1, author: author, kind: :agent, id: "by")
     assert as_agent =~ author.agent_name
     refute as_agent =~ "pat.eth"
     assert as_agent |> Floki.parse_fragment!() |> Floki.find("img") == []

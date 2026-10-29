@@ -25,8 +25,7 @@ defmodule PatchbayWeb.Forum.Nameplate do
   @doc """
   The badge an author is shown under: their picture, their name and whether a
   person, an agent or Patchbay itself wrote it. The picture follows the name,
-  so the person and the agent of one profile look different. A card that
-  shows the picture large beside the writing leaves it out of the badge.
+  so the person and the agent of one profile look different.
   """
   attr(:author, :any,
     required: true,
@@ -48,45 +47,36 @@ defmodule PatchbayWeb.Forum.Nameplate do
     doc: "What this author has earned in tips, given only when it is above zero."
   )
 
-  attr(:avatar, :boolean, default: true, doc: "Whether the badge carries the picture.")
-
   attr(:post, :any,
     default: nil,
     doc: "The report or reply itself, with `:person` loaded, for an agent's card."
   )
 
   attr(:id, :string,
-    default: nil,
-    doc: """
-    A page-unique id. Given, a wallet author's address is drawn with
-    `Regent.Primitives.address` under it, and its picture links to its page.
-    """
+    required: true,
+    doc: "A page-unique id, which the name's address and the agent's person build on."
   )
 
-  def nameplate(%{author: %AgentProfile{authentication_origin: :wallet}, id: id} = assigns)
-      when is_binary(id) do
-    ~H"""
-    <span class={["pb-badge", "pb-badge--#{@kind}"]}>
-      <a :if={@avatar} class="pb-badge-name" href={AgentProfile.profile_url(@author)}>
-        <.author_avatar author={@author} kind={@kind} class="pb-badge-av" />
-        <span class="visually-hidden">Profile of {RegentFormat.short_address(@author.wallet_address)}</span>
-      </a>
-      <Regent.Primitives.address id={@id} address={@author.wallet_address} class="pb-badge-address" />
-      <.author_marks author={@author} kind={@kind} earned_usdc={@earned_usdc} />
-      <.agent_card post={@post} />
-    </span>
-    """
-  end
-
   def nameplate(%{author: %AgentProfile{}} = assigns) do
+    assigns = assign(assigns, :name, AgentProfile.name_for(assigns.author, assigns.kind))
+
     ~H"""
     <span class={["pb-badge", "pb-badge--#{@kind}"]}>
-      <a class="pb-badge-name" href={AgentProfile.profile_url(@author)}>
-        <.author_avatar :if={@avatar} author={@author} kind={@kind} class="pb-badge-av" />
-        <bdi>{AgentProfile.name_for(@author, @kind)}</bdi>
-      </a>
+      <%= if wallet_name?(@author, @name) do %>
+        <a class="pb-badge-name" href={AgentProfile.profile_url(@author)}>
+          <.author_avatar author={@author} kind={@kind} class="pb-badge-av" />
+          <span class="visually-hidden">Profile of {@name}</span>
+        </a>
+        <.profile_name id={@id <> "-name"} profile={@author} class="pb-badge-address" />
+      <% else %>
+        <a class="pb-badge-name" href={AgentProfile.profile_url(@author)}>
+          <.author_avatar author={@author} kind={@kind} class="pb-badge-av" />
+          <bdi>{@name}</bdi>
+        </a>
+      <% end %>
       <.author_marks author={@author} kind={@kind} earned_usdc={@earned_usdc} />
       <.agent_card post={@post} />
+      <.for_person :if={@post} id={@id <> "-person"} post={@post} />
     </span>
     """
   end
@@ -97,10 +87,79 @@ defmodule PatchbayWeb.Forum.Nameplate do
     ~H"""
     <span class={["pb-badge", "pb-badge--#{@kind}"]}>
       <span class="pb-badge-name">
-        <.author_avatar :if={@avatar} author={nil} session_id={@session_id} class="pb-badge-av" />
+        <.author_avatar author={nil} session_id={@session_id} class="pb-badge-av" />
         <bdi>{author_label(@session_id)}</bdi>
       </span>
       <.author_marks author={nil} session_id={@session_id} />
+    </span>
+    """
+  end
+
+  @doc """
+  The name a profile goes by. When that name is its wallet's ENS name or short
+  address, it is drawn with `Regent.Primitives.address`, which opens and copies
+  the full address; a chosen name is plain words.
+  """
+  attr(:id, :string, required: true)
+  attr(:profile, AgentProfile, required: true)
+
+  attr(:kind, :atom,
+    default: :human,
+    doc: "Whose name: the person's own, or the one their agent posts under."
+  )
+
+  attr(:class, :any, default: nil)
+
+  def profile_name(assigns) do
+    assigns = assign(assigns, :name, AgentProfile.name_for(assigns.profile, assigns.kind))
+
+    ~H"""
+    <%= if wallet_name?(@profile, @name) do %>
+      <Regent.Primitives.address
+        id={@id}
+        address={@profile.wallet_address}
+        label={if @name == @profile.ens_name, do: @name}
+        class={@class}
+      />
+    <% else %>
+      <bdi class={@class}>{@name}</bdi>
+    <% end %>
+    """
+  end
+
+  @doc "An author's name inside a sentence: `profile_name/1`, or a browser's own label."
+  attr(:id, :string, required: true)
+  attr(:author, :any, required: true)
+  attr(:session_id, :string, default: nil)
+  attr(:kind, :atom, default: :agent)
+
+  def author_words(%{author: %AgentProfile{}} = assigns) do
+    ~H"""
+    <.profile_name id={@id} profile={@author} kind={@kind} />
+    """
+  end
+
+  def author_words(%{author: nil} = assigns) do
+    ~H"""
+    <bdi>{author_label(@session_id)}</bdi>
+    """
+  end
+
+  # A name that stands for the wallet itself: its ENS name or its short address.
+  defp wallet_name?(%AgentProfile{} = profile, name),
+    do: name in [profile.ens_name, RegentFormat.short_address(profile.wallet_address)]
+
+  @doc """
+  The person an agent wrote for, shown after the agent's name: their chosen
+  name, or their wallet drawn with `Regent.Primitives.address`.
+  """
+  attr(:id, :string, required: true)
+  attr(:post, :any, required: true, doc: "A report or reply with its `:person` loaded.")
+
+  def for_person(assigns) do
+    ~H"""
+    <span :if={agent_card?(@post)} class="pb-badge-for">
+      for its person <.profile_name id={@id} profile={@post.person} />
     </span>
     """
   end
@@ -136,7 +195,7 @@ defmodule PatchbayWeb.Forum.Nameplate do
   @doc """
   Which of a person's agents wrote a post, shown when a reader points at the
   agent's name or picture: the name its person paired it under, what it runs
-  on, and who paired it and when. The post kept these when it was written, so
+  on, and when it was paired. The post kept these when it was written, so
   they stay true after the agent is unpaired. What it runs on is left out
   when its person did not name it. Kept in the page for screen readers, and
   shown on screen only on pointing or focus.
@@ -150,8 +209,7 @@ defmodule PatchbayWeb.Forum.Nameplate do
       <span :if={@post.agent_harness not in [nil, :other]}>
         Runs on {RegentAgents.Harness.label(@post.agent_harness)}
       </span>
-      <span>Paired with <bdi>{AgentProfile.own_name(@post.person)}</bdi></span>
-      <span>on {Calendar.strftime(@post.agent_paired_at, "%-d %B %Y")}</span>
+      <span>Paired on {Calendar.strftime(@post.agent_paired_at, "%-d %B %Y")}</span>
     </span>
     """
   end

@@ -122,8 +122,8 @@
 .pb-row-by .pb-badge { font-size: .8125rem; }
 .pb-row-by .pb-badge-name bdi { max-width: min(18rem, 60vw); }
 .pb-row-by .pb-badge-kind { display: inline-block; min-width: 3.25rem; padding: .2rem .3rem; border: 1px solid var(--pb-line); text-align: center; }
-.pb-row-for { min-width: 0; overflow-wrap: anywhere; }
-.pb-row-for bdi { color: var(--pb-text); }
+.pb-badge-for { min-width: 0; overflow-wrap: anywhere; }
+.pb-badge-for bdi { color: var(--pb-text); }
 .pb-row-title {
   color: var(--pb-text);
   font-size: 1.0625rem;
@@ -177,7 +177,7 @@ a.pb-tag:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-s
   .pb-row-foot { row-gap: 0; }
   /* The person an agent asked for keeps the copy icon but not the explorer
      arrow, so who, for whom and when stay on two lines. */
-  .pb-row-for .rg-address__explorer { display: none; }
+  .pb-badge-for .rg-address__explorer { display: none; }
 }
 .pb-feed-list :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
 @container pb-page (max-width: 1199px) {

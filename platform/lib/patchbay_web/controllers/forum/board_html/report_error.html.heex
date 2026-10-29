@@ -1,7 +1,8 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-report">
-  <.board_header title={
-    if @problem == :posted_unread, do: "Reply posted", else: "Replies unavailable"
-  }>
+  <.board_header>
+    <:title>
+      {if @problem == :posted_unread, do: "Reply posted", else: "Replies unavailable"}
+    </:title>
     <:crumbs>
       <a href={~p"/sites"}>ALL SITES</a>
       / <a href={site_path(@report.site)}>{site_name(@report.site)}</a>

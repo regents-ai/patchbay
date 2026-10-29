@@ -1,5 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-site">
-  <.board_header title={if @site, do: site_name(@site), else: @domain}>
+  <.board_header>
+    <:title>{if @site, do: site_name(@site), else: @domain}</:title>
     <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
     <:meta>
       <span class="patchbay-generation">{@domain}</span>

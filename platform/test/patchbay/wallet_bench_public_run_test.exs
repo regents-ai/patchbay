@@ -121,6 +121,7 @@ defmodule Patchbay.WalletBenchPublicRunTest do
       rendered_to_string(~H"""
       <WalletBenchRunHTML.report report={@report} selected_check="C2" />
       """)
+      |> String.replace(~r/\s+/, " ")
 
     assert html =~ "Pass, flagged: plain password file"
     assert html =~ "How the wallet keeps its key:</strong> plain password file."
@@ -133,5 +134,25 @@ defmodule Patchbay.WalletBenchPublicRunTest do
     assert html =~ "Waiting for a machine"
     assert html =~ "0.02 USDC · Confirmed on Base"
     assert html =~ "https://techtree.sh/wallet-bench/#{@id}/evidence/T2/transcript.md"
+  end
+
+  test "a wallet address in a run's words is drawn as an address that opens and copies in full" do
+    wallet = "0x" <> String.duplicate("e4", 20)
+    why = "It sent 0.01 USDC from #{wallet} to the bench."
+
+    assigns = %{
+      report:
+        put_in(record(), ["tests", Access.at(0), "ruling", "checks", Access.at(0), "why"], why)
+    }
+
+    html =
+      rendered_to_string(~H"""
+      <WalletBenchRunHTML.report report={@report} />
+      """)
+
+    cell = html |> LazyHTML.from_fragment() |> LazyHTML.query("#wb-check-T2-C1 td:last-child")
+    assert LazyHTML.text(LazyHTML.query(cell, ".rg-address__label")) =~ "0xe4e4..e4e4"
+    assert [_] = cell |> LazyHTML.query(".rg-address .rg-copy") |> Enum.to_list()
+    assert LazyHTML.text(cell) =~ "It sent 0.01 USDC from"
   end
 end

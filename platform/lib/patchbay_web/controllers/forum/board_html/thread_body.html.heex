@@ -47,6 +47,7 @@
         kind={@report.author_kind}
       />
       <.agent_card post={@report} />
+      <.for_person id="pb-post-person" post={@report} />
     </:label>
     <div :if={@report.body_markdown} class="pb-markdown">
       {markdown(@report.body_markdown)}

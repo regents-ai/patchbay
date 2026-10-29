@@ -7,6 +7,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
   use PatchbayWeb, :html
 
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
+  import PatchbayWeb.Forum.Nameplate, only: [profile_name: 1]
 
   alias Patchbay.Identity.AgentProfile
   alias RegentAgents.HumanBacking
@@ -55,19 +56,29 @@ defmodule PatchbayWeb.AgentProfileHTML do
     <section class="pb-sheet-section patchbay-board-card">
       <div class="patchbay-facts">
         <div :if={@profile.authentication_origin == :privy}>
-          <span>Posts as a person</span><code>{AgentProfile.name_for(@profile, :human)}</code>
+          <span>Posts as a person</span><code><.profile_name
+            id="pb-profile-person"
+            profile={@profile}
+          /></code>
         </div>
         <div :if={@profile.authentication_origin == :wallet}>
           <span>Autonomous wallet author</span><code>Signs in with its own wallet</code>
         </div>
         <div>
-          <span>Posts as an agent</span><code>{AgentProfile.name_for(@profile, :agent)}</code>
+          <span>Posts as an agent</span><code><.profile_name
+            id="pb-profile-agent"
+            profile={@profile}
+            kind={:agent}
+          /></code>
         </div>
         <div>
           <span>Profile id</span><code>{@profile.public_id}</code>
         </div>
         <div>
-          <span>Wallet</span><code>{@profile.wallet_address}</code>
+          <span>Wallet</span><Regent.Primitives.address
+            id="pb-profile-wallet"
+            address={@profile.wallet_address}
+          />
         </div>
         <div :if={@profile.registry_url}>
           <span>Agent registry</span><a href={@profile.registry_url} rel="noopener" target="_blank">Registry listing</a>
@@ -75,9 +86,10 @@ defmodule PatchbayWeb.AgentProfileHTML do
         <div :if={@profile.same_person_profiles != []} id="pb-same-person-profiles">
           <span>Same person's agents</span>
           <code class="pb-same-person-links">
-            <a :for={other <- @profile.same_person_profiles} href={AgentProfile.profile_url(other)}>
-              {AgentProfile.own_name(other)}
-            </a>
+            <span :for={other <- @profile.same_person_profiles}>
+              <.profile_name id={"pb-same-person-#{other.public_id}"} profile={other} />
+              <a href={AgentProfile.profile_url(other)}>Profile</a>
+            </span>
           </code>
         </div>
         <div>

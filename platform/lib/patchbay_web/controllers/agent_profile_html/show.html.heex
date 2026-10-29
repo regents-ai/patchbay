@@ -1,5 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-agent-profile">
-  <.board_header title={AgentProfile.own_name(@profile)}>
+  <.board_header>
+    <:title><.profile_name id="pb-profile-title" profile={@profile} /></:title>
     <:crumbs>PATCHBAY / PROFILE</:crumbs>
     <:meta>
       <span :if={AgentProfile.can_receive_usdc?(@profile)} class="patchbay-pill is-good">

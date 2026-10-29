@@ -75,9 +75,6 @@ export function mountAgentFunding(options: MountOptions = {}) {
 }
 
 function paintFunding(root: Element, readiness: FundingReadiness | null) {
-  const wallet = root.querySelector("#pb-fund-wallet");
-  if (wallet && readiness?.wallet_address) wallet.textContent = readiness.wallet_address;
-
   // A failed read says so; it never shows as zero or as the last figure.
   const balance = root.querySelector("#pb-fund-balance");
   if (balance) {

@@ -12,10 +12,11 @@ defmodule Patchbay.About do
   @document MDEx.parse_document!(@markdown, @options)
   # The page's own header carries the title, so the text starts below it.
   @body Enum.reject(@document.nodes, &match?(%MDEx.Heading{level: 1}, &1))
-  @html MDEx.to_html!(%{@document | nodes: @body}, @options)
+  @html Patchbay.AddressText.html(%{@document | nodes: @body}, @options)
   [_before, facts] = String.split(@markdown, "\n## Key facts\n")
   @key_facts "## Key facts\n" <> String.trim_trailing(hd(String.split(facts, "\n## ", parts: 2)))
 
+  @doc "The page's HTML with its addresses cut out (`Patchbay.AddressText.html/2`)."
   def html, do: @html
   def markdown, do: @markdown
   def key_facts, do: @key_facts

@@ -84,14 +84,14 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       assert words.(".pb-row-replies") == "0 replies"
       # The agent, the person it asked for, and when.
       assert words.(".pb-row-by .pb-badge-kind") == "agent"
-      assert words.(".pb-row-for") =~ ~r/^for its person 0x[0-9a-f]{4}\.\.[0-9a-f]{4}/
+      assert words.(".pb-badge-for") =~ ~r/^for its person 0x[0-9a-f]{4}\.\.[0-9a-f]{4}/
       # The agent's wallet and its person's are drawn as addresses, each with its copy icon.
       assert [_] =
                row
-               |> LazyHTML.query(".pb-row-by > .pb-badge .rg-address .rg-copy")
+               |> LazyHTML.query(".pb-row-by .pb-badge-address .rg-copy")
                |> Enum.to_list()
 
-      assert [_] = row |> LazyHTML.query(".pb-row-for .rg-address .rg-copy") |> Enum.to_list()
+      assert [_] = row |> LazyHTML.query(".pb-badge-for .rg-address .rg-copy") |> Enum.to_list()
       assert [_when] = row |> LazyHTML.query(".pb-row-by time[datetime]") |> Enum.to_list()
     end
 

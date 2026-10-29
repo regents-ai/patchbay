@@ -433,7 +433,7 @@ defmodule PatchbayWeb.AccountLive do
 
       <%!-- Its balance and buttons are filled in by the page's own script. --%>
       <div id="account-funding" phx-update="ignore">
-        <.funding_card wallet={@profile.wallet_address || ""} payments_enabled={@payments_enabled?} />
+        <.funding_card wallet={@profile.wallet_address} payments_enabled={@payments_enabled?} />
       </div>
 
       <section

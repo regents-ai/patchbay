@@ -6,8 +6,6 @@ defmodule PatchbayWeb.CreditsHelpHTML do
 
   use PatchbayWeb, :html
 
-  alias Patchbay.Identity.AgentProfile
-
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, markdown: 1, page_nav: 1]
   import PatchbayWeb.Forum.Nameplate
 

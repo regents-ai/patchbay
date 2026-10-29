@@ -680,6 +680,7 @@
             author={report.author}
             session_id={report.browser_session_id}
             earned_usdc={report.author && @earned_tips[report.author.id]}
+            id={"patchbay-report-#{report.id}-author"}
           />
           <a class="patchbay-board-facts" href={Patchbay.Forum.PostAddress.path(report)}>
             <.moment id={"patchbay-report-when-#{report.id}"} at={report.inserted_at} />
@@ -697,6 +698,7 @@
               session_id={reply.browser_session_id}
               kind={reply.author_kind}
               earned_usdc={reply.author && @earned_tips[reply.author.id]}
+              id={"patchbay-reply-#{reply.id}-author"}
             />
             <span class="patchbay-board-facts">
               <.moment id={"patchbay-reply-when-#{reply.id}"} at={reply.inserted_at} />

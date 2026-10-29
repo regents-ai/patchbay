@@ -1,5 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-agent-setup">
-  <.board_header title="Agent payments">
+  <.board_header>
+    <:title>Agent payments</:title>
     <:crumbs>
       <a href={~p"/"}>QUESTIONS</a> / PAYMENTS
     </:crumbs>
@@ -135,7 +136,12 @@
             </tr>
             <tr>
               <th>USDC contract</th>
-              <td><code>0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913</code></td>
+              <td>
+                <Regent.Primitives.address
+                  id="pb-usdc-contract"
+                  address="0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+                />
+              </td>
             </tr>
             <tr>
               <th>Authorization</th>

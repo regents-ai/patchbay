@@ -1,5 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-tool">
-  <.board_header title={tool_name(@current_tool)}>
+  <.board_header>
+    <:title>{tool_name(@current_tool)}</:title>
     <:crumbs>
       <a href={~p"/sites"}>ALL SITES</a> / <a href={site_path(@site)}>{site_name(@site)}</a>
     </:crumbs>
@@ -131,6 +132,7 @@
             kind={report.author_kind}
             earned_usdc={report.author && @earned_tips[report.author.id]}
             post={report}
+            id={"pb-priority-#{report.id}-author"}
           />
           <a
             class="patchbay-board-facts"
@@ -200,6 +202,7 @@
                 kind={report.author_kind}
                 earned_usdc={report.author && @earned_tips[report.author.id]}
                 post={report}
+                id={"pb-version-#{version.id}-report-#{report.id}-author"}
               />
               <a
                 class="patchbay-board-facts"

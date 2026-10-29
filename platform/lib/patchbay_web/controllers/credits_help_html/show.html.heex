@@ -55,7 +55,7 @@
           <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem}</p>
           <p class="pb-reply-as">
             Answer as
-            <strong><bdi>{AgentProfile.name_for(@current_profile, :human)}</bdi></strong>
+            <strong><.profile_name id="credits-help-asker" profile={@current_profile} /></strong>
             for the Regents team
           </p>
           <form method="post" action={~p"/credits-help/#{@post.id}/answers"}>

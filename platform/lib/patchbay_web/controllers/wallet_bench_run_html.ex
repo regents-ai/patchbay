@@ -30,7 +30,9 @@ defmodule PatchbayWeb.WalletBenchRunHTML do
           <dt>{label}</dt><dd>{value}</dd>
         </div>
       </dl>
-      <p :if={present?(@report["failure"])} class="pb-wb-report-note">{@report["failure"]}</p>
+      <p :if={present?(@report["failure"])} class="pb-wb-report-note">
+        <.prose id="wb-failure" text={@report["failure"]} />
+      </p>
 
       <section
         :for={step <- @report["tests"]}
@@ -42,11 +44,14 @@ defmodule PatchbayWeb.WalletBenchRunHTML do
           <strong>{outcome(step)}</strong>
         </header>
         <p :if={step["ruling"] && present?(step["ruling"]["summary"])}>
-          {step["ruling"]["summary"]}
+          <.prose id={"wb-summary-" <> step["folder"]} text={step["ruling"]["summary"]} />
         </p>
-        <p :if={present?(step["failure"])} class="pb-wb-report-note">{step["failure"]}</p>
+        <p :if={present?(step["failure"])} class="pb-wb-report-note">
+          <.prose id={"wb-failure-" <> step["folder"]} text={step["failure"]} />
+        </p>
         <p :if={present?(step["storage_finding"])} class="pb-wb-report-note">
-          <strong>How the wallet keeps its key:</strong> {step["storage_finding"]}.
+          <strong>How the wallet keeps its key:</strong>
+          <.prose id={"wb-storage-" <> step["folder"]} text={step["storage_finding"]} />.
         </p>
         <dl class="pb-wb-report-facts">
           <div>
@@ -85,18 +90,29 @@ defmodule PatchbayWeb.WalletBenchRunHTML do
                 id={"wb-check-" <> step["folder"] <> "-C#{number}"}
                 class={@selected_check == "C#{number}" && "is-selected"}
               >
-                <td>{check["check"]}</td>
+                <td>
+                  <.prose
+                    id={"wb-check-" <> step["folder"] <> "-C#{number}-words"}
+                    text={recorded(check["check"])}
+                  />
+                </td>
                 <td class={["pb-wb-answer", "is-" <> answer_result(check["answer"])]}>
                   <span aria-hidden="true">{dot_mark(answer_result(check["answer"]))}</span>
                   {dot_answer(answer_result(check["answer"]))}
                 </td>
-                <td>{recorded(check["why"])}</td>
+                <td>
+                  <.prose
+                    id={"wb-check-" <> step["folder"] <> "-C#{number}-why"}
+                    text={recorded(check["why"])}
+                  />
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
         <p :if={present?(step["base_check"])}>
-          <strong>The bench's own check:</strong> {step["base_check"]}
+          <strong>The bench's own check:</strong>
+          <.prose id={"wb-base-check-" <> step["folder"]} text={step["base_check"]} />
         </p>
         <Regent.Primitives.disclosure id={"wb-prompt-" <> step["folder"]} summary="The prompt">
           <pre><code>{recorded(step["prompt"])}</code></pre>
@@ -169,6 +185,16 @@ defmodule PatchbayWeb.WalletBenchRunHTML do
         </ul>
       </section>
     </article>
+    """
+  end
+
+  attr(:id, :string, required: true)
+  attr(:text, :string, required: true)
+
+  # A run's recorded words, with each wallet address in them drawn as one.
+  defp prose(assigns) do
+    ~H"""
+    <PatchbayWeb.AddressText.address_text id={@id} pieces={Patchbay.AddressText.split(@text)} />
     """
   end
 

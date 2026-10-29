@@ -1,5 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-moderation">
-  <.board_header title="Moderation">
+  <.board_header>
+    <:title>Moderation</:title>
     <:crumbs>PATCHBAY / MODERATION</:crumbs>
     <:meta>
       <span class="patchbay-generation">Private</span>
@@ -58,7 +59,13 @@
             )} · {entry.check.inserted_at}
           </span>
           <span>
-            {person_name(entry.person)}<span :if={entry.check.acting_agent_id}> · sent by their agent</span>
+            <PatchbayWeb.Forum.Nameplate.profile_name
+              :if={entry.person}
+              id={"pb-mod-#{entry.check.id}-person"}
+              profile={entry.person}
+            /><span :if={!entry.person}>{person_name(nil)}</span><span :if={
+              entry.check.acting_agent_id
+            }> · sent by their agent</span>
           </span>
         </header>
 

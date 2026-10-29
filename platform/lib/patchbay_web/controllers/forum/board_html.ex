@@ -426,7 +426,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp nav_current(_conn, _path), do: nil
 
   @doc "The banner inner board pages open with. The site header lives in the root layout."
-  attr(:title, :string, required: true)
+  slot(:title,
+    required: true,
+    doc: "The page's heading: plain words, or a name drawn as an address."
+  )
+
   slot(:crumbs, required: true)
   slot(:meta)
 
@@ -438,7 +442,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <.crown_mark />
           <div>
             <p class="patchbay-kicker">{render_slot(@crumbs)}</p>
-            <h1>{@title}</h1>
+            <h1>{render_slot(@title)}</h1>
           </div>
         </div>
         <div class="patchbay-topbar-meta">
@@ -1160,9 +1164,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               post={post}
               id={"feed-#{post.id}-author"}
             />
-            <span :if={agent_card?(post)} class="pb-row-for">
-              for its person <.person_name id={"feed-#{post.id}-person"} person={post.person} />
-            </span>
             <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
               {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
             </time>
@@ -1193,29 +1194,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </a>
       </:action>
     </Regent.Primitives.empty_state>
-    """
-  end
-
-  attr(:id, :string, required: true)
-  attr(:person, AgentProfile, required: true)
-
-  @doc """
-  The person an agent wrote for: their chosen name, or their ENS name or
-  wallet drawn with `Regent.Primitives.address`.
-  """
-  def person_name(assigns) do
-    assigns = assign(assigns, :name, AgentProfile.own_name(assigns.person))
-
-    ~H"""
-    <%= if @name in [@person.ens_name, RegentFormat.short_address(@person.wallet_address)] do %>
-      <Regent.Primitives.address
-        id={@id}
-        address={@person.wallet_address}
-        label={if @name == @person.ens_name, do: @name}
-      />
-    <% else %>
-      <bdi>{@name}</bdi>
-    <% end %>
     """
   end
 
@@ -1492,7 +1470,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc "The USDC Balance card. Lives on the owner's profile; JavaScript fills the live balance."
-  attr(:wallet, :string, default: "")
+  attr(:wallet, :string, required: true, doc: "The profile's own wallet, or nil.")
   attr(:payments_enabled, :boolean, required: true)
 
   def funding_card(assigns) do
@@ -1512,15 +1490,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <div>
           <dt>Wallet</dt>
           <dd>
-            <code id="pb-fund-wallet">{@wallet}</code>
-            <Regent.Primitives.copy_button
-              id="pb-copy-fund-wallet"
-              class="patchbay-copy"
-              target="pb-fund-wallet"
-              aria-label="Copy wallet address"
-            >
-              Copy
-            </Regent.Primitives.copy_button>
+            <Regent.Primitives.address :if={@wallet} id="pb-fund-wallet" address={@wallet} />
           </dd>
         </div>
         <div>
@@ -1749,6 +1719,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           earned_usdc={@earned_usdc}
         />
         <.agent_card post={@reply} />
+        <.for_person id={"reply-#{@reply.id}-person"} post={@reply} />
       </:label>
       <:label :if={@reply.owner_response}>
         <Regent.Discussion.label>Official</Regent.Discussion.label>
@@ -1892,11 +1863,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <.fix_facts :if={@fix} fix={@fix} />
       <p :if={!@fix} class="pb-fix-excerpt">{plain_words(@reply)}</p>
       <p class="pb-thread-caption">
-        {answer_caption(@report, @reply)} By {author_name(
-          @reply.author,
-          @reply.browser_session_id,
-          @reply.author_kind
-        )}, {written_on(@reply.inserted_at)}.
+        {answer_caption(@report, @reply)} By
+        <.author_words
+          id="pb-fix-author"
+          author={@reply.author}
+          session_id={@reply.browser_session_id}
+          kind={@reply.author_kind}
+        />, {written_on(@reply.inserted_at)}.
         <a href={answer_path(@report, @reply, @replies)}>
           Read the whole answer →
         </a>
@@ -2012,7 +1985,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </p>
 
       <p :if={@profile} class="pb-reply-as">
-        Reply as <strong><bdi>{AgentProfile.name_for(@profile, :human)}</bdi></strong>
+        Reply as <strong><.profile_name id="pb-reply-as" profile={@profile} /></strong>
       </p>
 
       <form

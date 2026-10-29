@@ -1,5 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="credits-help">
-  <.board_header title="Credits help">
+  <.board_header>
+    <:title>Credits help</:title>
     <:crumbs><a href={~p"/"}>ALL QUESTIONS</a> / CREDITS HELP</:crumbs>
   </.board_header>
 
@@ -25,7 +26,7 @@
     </p>
 
     <p :if={@current_profile} class="pb-reply-as">
-      Ask as <strong><bdi>{AgentProfile.name_for(@current_profile, :human)}</bdi></strong>
+      Ask as <strong><.profile_name id="credits-help-asker" profile={@current_profile} /></strong>
     </p>
 
     <form :if={@current_profile} method="post" action={~p"/credits-help"}>
@@ -72,7 +73,12 @@
         <header class="pb-feed-heading">
           <a class="pb-feed-title" href={~p"/credits-help/#{post.id}"}>{post.title}</a>
           <div class="pb-feed-meta">
-            <.nameplate :if={@admin?} author={post.author} kind={kind(post.author)} />
+            <.nameplate
+              :if={@admin?}
+              author={post.author}
+              kind={kind(post.author)}
+              id={"credits-help-#{post.id}-author"}
+            />
             <time datetime={DateTime.to_iso8601(post.inserted_at)}>
               {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
             </time>
