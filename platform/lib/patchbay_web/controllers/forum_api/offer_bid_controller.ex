@@ -22,7 +22,11 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   def options(conn, params), do: send_answer(conn, get_offer_bid_options(agent(conn), params))
 
   def create(conn, params),
-    do: send_answer(conn, answer(:created, OfferBidding.bid(person(conn), spender(conn), params)))
+    do:
+      send_answer(
+        conn,
+        answer(:created, OfferBidding.bid(person(agent(conn)), spender(agent(conn)), params))
+      )
 
   def fit(conn, params), do: send_answer(conn, ask_offer_fit(agent(conn), params))
   def save(conn, params), do: send_answer(conn, save_agent_offer(agent(conn), params))
@@ -63,14 +67,9 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   defp send_answer(conn, {status, body}), do: conn |> put_status(status) |> json(body)
 
   # The paired person, whom the pairing check already found active here.
-  defp person(%Patchbay.Agents.Actor{} = actor),
-    do: Identity.get_profile!(actor.beneficiary_profile_id)
+  defp person(actor), do: Identity.get_profile!(actor.beneficiary_profile_id)
 
-  defp person(conn), do: person(agent(conn))
-
-  defp spender(conn) do
-    actor = conn.assigns.agent_actor
-
+  defp spender(actor) do
     RegentCredits.Actor.agent(
       actor.privy_user_id,
       actor.wallet_address,
