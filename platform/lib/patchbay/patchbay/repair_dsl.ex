@@ -7,6 +7,16 @@ defmodule Patchbay.Patchbay.RepairDSL do
   closed before any Ash resource is written.
   """
 
+  # The room page registers a revision under the published description (this
+  # wording, a space and RepairPolicy's closing sentence), a space and the
+  # manifest row's sentence on how to call it, and refuses one over 500
+  # characters; 160 bytes keeps the whole under it (a test holds the sum).
+  @max_description_replacement 160
+
+  @doc "The most bytes a repair's own description wording may hold."
+  @spec max_description_replacement() :: pos_integer()
+  def max_description_replacement, do: @max_description_replacement
+
   @fields [
     "root_cause",
     "description_replacement",
@@ -36,7 +46,11 @@ defmodule Patchbay.Patchbay.RepairDSL do
          :ok <- exact_fields(values),
          {:ok, root_cause} <- bounded_text(values["root_cause"], :root_cause, 1_000),
          {:ok, description} <-
-           bounded_text(values["description_replacement"], :description_replacement, 1_000),
+           bounded_text(
+             values["description_replacement"],
+             :description_replacement,
+             @max_description_replacement
+           ),
          {:ok, adapter} <- adapter(values["handler_adapter"]),
          :ok <- output_contract(values["output_contract_version"]),
          :ok <- postcondition(values["postcondition_set"]),

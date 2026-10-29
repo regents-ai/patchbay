@@ -7,7 +7,7 @@ defmodule Patchbay.Patchbay.RepairPolicyTest do
 
   use ExUnit.Case, async: true
 
-  alias Patchbay.Patchbay.{Fixtures, RepairPolicy, ToolRevision}
+  alias Patchbay.Patchbay.{Fixtures, RepairDSL, RepairPolicy, ToolRevision}
 
   @room_id "3f1d2c9e-1f6e-4d0b-9a8c-4c6f0f3f2b11"
 
@@ -120,15 +120,14 @@ defmodule Patchbay.Patchbay.RepairPolicyTest do
     assert attributes.description =~ "report_tool_problem"
   end
 
-  test "measures the published description, not just the model's half", %{
+  test "refuses a repair's wording past its bytes, however few its characters", %{
     revision: revision,
     plan: plan
   } do
-    note_length = byte_size(RepairPolicy.verified_reporting_note())
-    room = RepairPolicy.max_description_bytes() - note_length
-    plan = Map.put(plan, "description_replacement", String.duplicate("a", room))
+    # 81 characters, two bytes each: one byte past the limit.
+    plan = Map.put(plan, "description_replacement", String.duplicate("é", 81))
 
-    assert {:error, :description_too_long} = RepairPolicy.validate(plan, revision)
+    assert {:error, {:description_replacement, :too_long}} = RepairPolicy.validate(plan, revision)
   end
 
   test "requires the candidate to keep untrustedContentHint true", %{
@@ -163,6 +162,17 @@ defmodule Patchbay.Patchbay.RepairPolicyTest do
   # sentence, so the longest description a repair may publish still registers.
   test "the longest published description still registers on the room page" do
     row = Enum.find(Patchbay.Forum.Capabilities.tools(), &(&1.name == "uplift_current_skill_vN"))
-    assert RepairPolicy.max_description_bytes() + 1 + String.length(row.description) <= 500
+
+    published =
+      RepairDSL.max_description_replacement() + 1 +
+        byte_size(RepairPolicy.verified_reporting_note())
+
+    assert published + 1 + byte_size(row.description) <= 500
+
+    # The model is asked for no more than the parser takes.
+    assert Patchbay.Patchbay.OpenAI.RepairSchema.schema()["properties"]["description_replacement"][
+             "maxLength"
+           ] ==
+             RepairDSL.max_description_replacement()
   end
 end

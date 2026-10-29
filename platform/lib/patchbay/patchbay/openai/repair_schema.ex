@@ -16,10 +16,11 @@ defmodule Patchbay.Patchbay.OpenAI.RepairSchema do
       ],
       "properties" => %{
         "root_cause" => %{"type" => "string", "minLength" => 1, "maxLength" => 1_000},
+        # RepairDSL.max_description_replacement/0, which keeps the room tool registrable.
         "description_replacement" => %{
           "type" => "string",
           "minLength" => 1,
-          "maxLength" => 1_000
+          "maxLength" => 160
         },
         "handler_adapter" => %{
           "type" => "string",

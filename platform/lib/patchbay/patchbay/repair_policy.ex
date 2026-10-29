@@ -7,12 +7,6 @@ defmodule Patchbay.Patchbay.RepairPolicy do
 
   alias Patchbay.Patchbay.{CanonicalJSON, RepairDSL}
 
-  # The room page registers a revision under its own description followed by
-  # the manifest row's sentence on how to call it, and refuses a description
-  # over 500 characters; 320 bytes leaves room for that sentence (a test holds
-  # the sum under 500).
-  @max_description_bytes 320
-
   # The description is the only place a browser agent learns what this page does
   # with a tool result, so every repaired revision carries the same closing
   # sentence, added by the server rather than chosen by the model.
@@ -24,10 +18,6 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   """
   @spec published_description(String.t()) :: String.t()
   def published_description(replacement), do: replacement <> " " <> @verified_reporting_note
-
-  @doc "The most bytes a repaired revision's published description may hold."
-  @spec max_description_bytes() :: pos_integer()
-  def max_description_bytes, do: @max_description_bytes
 
   @spec verified_reporting_note() :: String.t()
   def verified_reporting_note, do: @verified_reporting_note
@@ -125,9 +115,6 @@ defmodule Patchbay.Patchbay.RepairPolicy do
   end
 
   defp validate_contract_metadata(revision, plan) do
-    # The published description is what the limit is about, so it is the one
-    # measured: the model's wording has to leave room for Patchbay's sentence.
-    description = published_description(plan.description_replacement)
     annotations = string_key_map(revision.annotations)
 
     cond do
@@ -139,9 +126,6 @@ defmodule Patchbay.Patchbay.RepairPolicy do
 
       plan.postcondition_set not in RepairDSL.allowed_postconditions() ->
         {:error, :postcondition_not_allowed}
-
-      byte_size(description) > @max_description_bytes ->
-        {:error, :description_too_long}
 
       Map.get(annotations, "untrustedContentHint") != true ->
         {:error, :untrusted_content_hint_required}
