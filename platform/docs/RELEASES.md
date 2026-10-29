@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v304, 29 Oct 2026
+
+- Commit: 6179493fa7d4e51250723af74bde9245b814b990 (image `6179493`), on main after v303. Machine 48e0709fe20628, one machine.
+- Email sign-in (PB-16, Sean's A a 19:26:56Z; Privy email and the test account on, 19:53:04Z): Privy as ash-template has it (no `loginMethods`; `createOnLogin: "all-users"`, so everyone gets a Regents wallet); every wallet the account links pays. WebMCP profile tools removed (PB-18, Sean's 77 a): pages no longer register profile_get, profile_sync or profile_update.
+- Checks: make check on a clean copy; check-siwa-latest: SIWA library line held for the site verify key window (letter 7; it named 094ebe8a); regents-cli parts passed. Review gate APPROVED 21:20Z.
+- Live (chief, 23:10Z): /healthz ok, /webmcp/health ok with migrations current; /, /account, /incidents, /offers, /sites, /wallet-bench, /wallet-bench/how-it-works, /changelog, /help, /credits-help 200 (all under 0.25 s); headless Chromium at 390 and 1280 on /, /sites and /account: no data-profile-webmcp, no sideways overflow, no page errors; the live Privy bundle carries `createOnLogin:"all-users"`; 100 log lines, no errors.
+- Migrations: none. Rollback: v303, image `344ee38`.
+
 ## v303, 29 Oct 2026
 
 - Commit: 344ee382900f82a7e677f3b8e5657c3d19cfbfd9 (image `344ee38`), on main after v302. Machine 2870d13b757318, one machine.
