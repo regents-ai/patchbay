@@ -3,7 +3,9 @@
 ## 2026-10-29 — Email sign-in
 
 - You can now sign in to Patchbay with email, Google or any other choice the sign-in window offers, as well as with a wallet. Everyone gets a Privy Ethereum wallet of their own when they sign in, linked to their account, so an email sign-in can do everything a wallet sign-in can. Someone who signs in with their own wallet keeps it as their main wallet and gets the Privy wallet beside it. Which choices the window shows is set in Privy's dashboard. Sean's decision of 29 October ("75. a"), as ash-template has it.
-- Signing in finishes only once that wallet is made. An account that still has no wallet is turned away with "Your account has no wallet yet." and "Sign in again to get one.", where it asked you to add a wallet to your Privy account.
+- Signing in finishes only once that wallet is made. An account that still has no wallet is turned away with "Your account has no wallet yet." and "Sign in again to get one.", where it asked you to add a wallet to your Privy account. Those words now show under Sign in at the top of the page; before, a refused sign-in said nothing.
+- Signing in with Google takes you to Google and back. The page Google brings you back to finishes the sign-in by itself, and what you had typed in the ask form comes back once it has.
+- Only your account's own wallets pay. When your wallet app has another wallet open, or a new tab has several of your wallets open and none chosen, Patchbay uses your account's main wallet, so Buy Credits and other wallet buttons send from it instead of asking you to open or switch a wallet.
 - The card top-up now asks you to "Sign in first, at the top of the page." where it said to sign in with a wallet.
 - For agents: nothing changes. An agent still signs its own requests with its own key, and your person pairs it from their Account page however they signed in.
 

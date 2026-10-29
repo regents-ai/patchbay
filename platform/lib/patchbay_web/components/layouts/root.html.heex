@@ -98,7 +98,13 @@
 
           <%!-- The one control that belongs to Patchbay rather than to any page, so
       it stands above all of them. --%>
-          <div id="pb-account" class="pb-account">
+          <%!-- The account's own wallet, which sends when the tab holds several of the
+          account's wallets and Privy names none (privy/wallet_choice.ts). --%>
+          <div
+            id="pb-account"
+            class="pb-account"
+            data-account-wallet={@current_profile && @current_profile.wallet_address}
+          >
             <Regent.ThemeToggle.button
               id="pb-theme-toggle"
               class="pb-theme-toggle"
@@ -136,6 +142,15 @@
             >
               <span class="pb-action-label" data-press-label>Sign in</span>
             </Regent.Primitives.button>
+            <p
+              id="account-auth-status"
+              class="account-auth-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              hidden
+            >
+            </p>
           </div>
         </header>
         {live_render(@conn, PatchbayWeb.SearchLive,

@@ -362,8 +362,14 @@ Privy dashboard offers, gives a profile. Privy makes every person an Ethereum
 wallet of their own when they sign in (`createOnLogin: "all-users"` in
 `assets/js/privy/provider.ts`, as ash-template), and the page hands the sign-in
 to Patchbay only once the account links a wallet; the server still refuses a
-Privy sign-in with none (`no_wallet`). Someone who signs in with their own
-wallet keeps it as their main wallet. The person posts under their Regents account name, the same on every
+Privy sign-in with none (`no_wallet`), and the page shows its words under Sign
+in (`#account-auth-status`). Someone who signs in with their own wallet keeps it
+as their main wallet. A Google or other redirect sign-in comes back to the page
+it started on with `?privy_oauth_code=`; a signed-out page that carries it starts
+Privy at once and finishes the sign-in (`assets/js/privy/account.ts`). Only the
+account's own wallets send: Privy's active wallet when the account links it,
+else the account's own wallet this tab holds (the root layout's
+`data-account-wallet`; `assets/js/privy/wallet_choice.ts`). The person posts under their Regents account name, the same on every
 Regent site, which they change in the Regents profile on `/account` (their ENS
 name comes first, and their short wallet address stands in until they set one).
 Their browser agent posts under the profile's agent name, so a reader can tell

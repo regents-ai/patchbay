@@ -8,7 +8,9 @@ import {expect, test, watch} from "./support/test"
 // covers that check). Here the bridge is a stand-in that hands over tokens signed
 // with this run's own Privy key (support/serve.sh), so the page's own Sign in posts
 // them to this run's server: an email sign-in with the wallet Privy made signs in,
-// and one with no wallet is still refused.
+// and one with no wallet is still refused and says why. A Google sign-in leaves
+// the page and Privy brings it back with ?privy_oauth_code=; that page finishes
+// the sign-in by itself, with what was typed in the ask form kept.
 
 const bridge = /\/assets\/js\/privy_bridge(-[0-9a-f]+)?\.js$/
 const key = () => createPrivateKey(readFileSync(`test/browser/.auth/${process.env.PATCHBAY_DEV_PARTITION}/privy-key.pem`))
@@ -32,11 +34,16 @@ function tokens(linkedAccounts: object[]) {
 // The stand-in's sign-in answers with these tokens; every other export answers as
 // a browser with no Privy sign-in does (support/test.ts).
 async function signInAnswers(page: import("@playwright/test").Page, proof: object) {
+  await standIn(page, `return ${JSON.stringify(proof)}`, `return ${JSON.stringify({ok: false, reason: "signed_out"})}`)
+}
+
+async function standIn(page: import("@playwright/test").Page, signIn: string, finishRedirectSignIn: string) {
   await page.route(bridge, route =>
     route.fulfill({
       contentType: "text/javascript",
       body: `
-export async function signIn() { return ${JSON.stringify(proof)} }
+export async function signIn() { ${signIn} }
+export async function finishRedirectSignIn() { ${finishRedirectSignIn} }
 export async function signOut() {}
 export async function activeWallet() { return {ok: false, reason: "signed_out"} }
 export async function activeAddress() { return null }
@@ -75,8 +82,36 @@ test("an email sign-in with no wallet is refused and the page stays signed out",
   const refusal = await answered
   expect(refusal.status()).toBe(422)
   expect((await refusal.json()).error.code).toBe("no_wallet")
+  await expect(page.locator("#account-auth-status")).toHaveText("Your account has no wallet yet. Sign in again to get one.")
 
   await page.reload()
   await expect(signInButton(page)).toBeVisible()
+  await problems.expect()
+})
+
+// Privy's Google button takes the whole page to Google, which brings it back to
+// the page it left with ?privy_oauth_code=. Here the stand-in's signIn leaves the
+// page that way, and the page it comes back to finishes the sign-in.
+test("a Google sign-in that comes back to home signs in, with the ask form's draft kept", async ({page}, info) => {
+  test.skip(info.project.name === "small phone", "checked at 1280 and 390")
+  const problems = watch(page)
+  await page.route(/\/fix-check\?/, route =>
+    route.fulfill({contentType: "application/json", body: JSON.stringify({status: "none", said: "", tools: [], directory: false})}))
+  await standIn(
+    page,
+    `location.assign("/?privy_oauth_code=walk&privy_oauth_state=walk&privy_oauth_provider=google"); return new Promise(() => {})`,
+    `return ${JSON.stringify(tokens([email, made]))}`,
+  )
+  await page.goto("/")
+  await page.locator("#pb-ask > summary").click()
+  await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
+
+  const answered = page.waitForResponse(response => response.url().endsWith("/auth/privy/session"))
+  await page.locator("#pb-account [data-account-target='sign-in']").click()
+  expect((await answered).status()).toBe(200)
+
+  await expect(page.locator("#pb-account [data-account-target='sign-in']")).toHaveCount(0)
+  await expect(page.locator("#pb-hero-form")).toHaveAttribute("data-pb-signed-in", "true")
+  await expect(page.locator("#pb-fix-goal")).toHaveValue("Booking tool refuses my date")
   await problems.expect()
 })

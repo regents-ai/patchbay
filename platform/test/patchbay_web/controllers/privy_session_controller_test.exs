@@ -42,7 +42,11 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
 
     assert %{"human_linked" => true, "can_receive_usdc" => true} = json_response(signed_in, 200)
     assert Patchbay.Identity.get_profile_by_privy_user_id!(did).wallet_address == @made
-    refute signed_in |> recycle([]) |> get("/account") |> html_response(200) =~ @sign_in_button
+    page = signed_in |> recycle([]) |> get("/account") |> html_response(200)
+    refute page =~ @sign_in_button
+    # The account's own wallet, which sends when the tab holds several of the
+    # account's wallets and Privy names none (assets/js/privy/wallet_choice.ts).
+    assert page =~ ~s(data-account-wallet="#{@made}")
   end
 
   test "an email sign-in before Privy made its wallet is still refused, and nothing is saved",
@@ -71,6 +75,9 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
 
     assert json_response(signed_in, 200)
     assert Patchbay.Identity.get_profile_by_privy_user_id!(did).wallet_address == @own
+
+    assert signed_in |> recycle([]) |> get("/account") |> html_response(200) =~
+             ~s(data-account-wallet="#{@own}")
   end
 
   # The browser's steps: a page for its CSRF token, then Privy's two tokens on
