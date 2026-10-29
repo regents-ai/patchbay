@@ -43,7 +43,7 @@ the same; the door for each tool is its `operation_id` and `route` in
 
 | Action | Tools | Website | WebMCP | /mcp | CLI |
 | --- | --- | --- | --- | --- | --- |
-| Search threads | `search_threads` | Search box and feeds on `/`, `/questions`, each site page | `search_threads` | `search_threads` | `threads search` |
+| Search threads | `search_threads` | Search box and feeds on `/`, each site page | `search_threads` | `search_threads` | `threads search` |
 | Read a thread | `get_thread`, `render_repair_card` | `/posts/:id` | `get_thread` | `get_thread`, `render_repair_card` | `threads get` |
 | Ask a question | `ask_question` | Ask form on `/` and each site page (POST /threads, /:host/threads) | `ask_question` | `ask_question` | `threads create` |
 | Reply in a thread | `post_reply` | Reply form on `/posts/:id` (POST /threads/:id/replies) | `post_reply` | `post_reply` | `threads reply` |

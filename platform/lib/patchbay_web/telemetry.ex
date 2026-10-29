@@ -17,11 +17,23 @@ defmodule PatchbayWeb.Telemetry do
   OpenRouter charged, and the engine's memory, run queues and process counts
   from telemetry_poller's default poller.
 
+  Each chain request `Patchbay.ChainClient` sends that gets no answer is
+  counted by method, class, chain and its caller's fixed scope
+  (`[:patchbay, :chain, :failure]`). The operator wallet sends from Patchbay's
+  own key, so `unconfirmed_sends` in `config :patchbay, PatchbayWeb.Telemetry`
+  names the function that answers each of its fixed sending flows with when
+  its oldest signed, unconfirmed transaction was signed, or nil; every ten
+  seconds `[:patchbay, :wallet, :unconfirmed_oldest]` carries that `age_ms`
+  for each `flow`, 0 when none waits (`Patchbay.OperatorWallet`).
+
   The figures every visitor sees alike (`Patchbay.SharedReading`) report, for
   each kind, how many keys are held, how many have never been read, how long ago
   the oldest was read, each reading that could not be taken and each one refused.
 
-  Beside them are Patchbay's own three: the day's readings of posts reaching
+  Beside them are Patchbay's own: where the fee queue runs, every ten seconds,
+  the paid priority reports whose escrow money is not yet confirmed and the
+  USDC of assist fees the operator wallet has not yet sent to staking
+  (`[:patchbay, :operator_wallet, :waiting]`); and three more: the day's readings of posts reaching
   half their limit, each post refused because the limit is reached
   (`Patchbay.Assist.ModelCalls`), and each post turned away whose words
   were not kept because the day's count of them was reached
@@ -54,12 +66,24 @@ defmodule PatchbayWeb.Telemetry do
   def site_poller,
     do:
       {:telemetry_poller,
-       measurements: [
-         {Patchbay.SharedReading, :measure, []},
-         {__MODULE__, :oldest_unfinished_jobs, []}
-       ],
+       measurements:
+         [
+           {Patchbay.SharedReading, :measure, []},
+           {__MODULE__, :oldest_unfinished_jobs, []},
+           {__MODULE__, :operator_wallet_waiting, []}
+         ] ++ unconfirmed_sends_step(),
        period: 10_000,
        name: :patchbay_site_poller}
+
+  # Only a site that sends from its own wallet names its query. Without one the
+  # age is never published, so Sentinel never reads a steady 0 that only means
+  # nothing was asked.
+  defp unconfirmed_sends_step do
+    case Application.get_env(:patchbay, __MODULE__)[:unconfirmed_sends] do
+      nil -> []
+      query -> [{__MODULE__, :oldest_unconfirmed_sends, [query]}]
+    end
+  end
 
   # The poller drops for good a measurement that raises or exits, and the row
   # would then keep its last number. So whatever stops this tick (a database
@@ -69,12 +93,65 @@ defmodule PatchbayWeb.Telemetry do
   def oldest_unfinished_jobs do
     measure_oldest_unfinished_jobs()
   rescue
-    error -> not_measured(Exception.message(error))
+    error -> not_measured("background job age", Exception.message(error))
   catch
-    :exit, reason -> not_measured(Exception.format_exit(reason))
+    :exit, reason -> not_measured("background job age", Exception.format_exit(reason))
   end
 
-  defp not_measured(why), do: Logger.warning("background job age not measured: #{why}")
+  # The site's query, `{module, function, args}`, answers `{flow, signed_at}`
+  # for each of its sending flows, `signed_at` nil when nothing waits. Logged
+  # and skipped like the job age.
+  @doc false
+  def oldest_unconfirmed_sends({module, function, args}) do
+    now = DateTime.utc_now()
+
+    for {flow, signed_at} <- apply(module, function, args) do
+      age_ms =
+        case signed_at do
+          nil -> 0
+          signed_at -> DateTime.diff(now, signed_at, :millisecond)
+        end
+
+      :telemetry.execute([:patchbay, :wallet, :unconfirmed_oldest], %{age_ms: age_ms}, %{
+        flow: flow
+      })
+    end
+
+    :ok
+  rescue
+    error -> not_measured("unconfirmed send age", Exception.message(error))
+  catch
+    :exit, reason -> not_measured("unconfirmed send age", Exception.format_exit(reason))
+  end
+
+  # Counted only where the fee queue runs, the machine whose jobs send from
+  # the operator wallet, so nothing is read where no queue runs (tests).
+  # Logged and skipped like the job age.
+  @doc false
+  def operator_wallet_waiting do
+    if Enum.any?(Oban.check_all_queues(), &(&1.queue == "fees")),
+      do: measure_operator_wallet_waiting()
+
+    :ok
+  rescue
+    error -> not_measured("operator wallet numbers", Exception.message(error))
+  catch
+    :exit, reason -> not_measured("operator wallet numbers", Exception.format_exit(reason))
+  end
+
+  @doc false
+  def measure_operator_wallet_waiting do
+    :telemetry.execute(
+      [:patchbay, :operator_wallet, :waiting],
+      %{
+        escrow_unrecorded: Patchbay.OperatorWallet.escrow_unrecorded(),
+        assist_fees_usdc: Patchbay.OperatorWallet.assist_fees_unforwarded_usdc()
+      },
+      %{}
+    )
+  end
+
+  defp not_measured(what, why), do: Logger.warning("#{what} not measured: #{why}")
 
   # Only running queues are measured: a paused queue holds its jobs on purpose,
   # and its age would only grow. Where no queue runs (tests), nothing is read.
@@ -114,7 +191,8 @@ defmodule PatchbayWeb.Telemetry do
   end
 
   # No tag here ever holds a wallet, an account or anything a caller wrote:
-  # only queue and worker names and the fixed outcomes.
+  # only queue and worker names, chain methods, scopes and flows named in
+  # code, and the fixed outcomes.
   defp prometheus_metrics do
     [
       distribution("health.db_queue.microseconds",
@@ -153,6 +231,29 @@ defmodule PatchbayWeb.Telemetry do
             [5_000, 10_000, 25_000, 50_000, 100_000, 250_000, 500_000, 1_000_000] ++
               [2_500_000, 5_000_000, 10_000_000]
         ]
+      ),
+      counter("health.chain_request_failures.total",
+        event_name: [:patchbay, :chain, :failure],
+        tags: [:method, :class, :chain_id, :scope],
+        description: "Chain requests that got no answer"
+      ),
+      last_value("health.wallet_unconfirmed_oldest.seconds",
+        event_name: [:patchbay, :wallet, :unconfirmed_oldest],
+        measurement: :age_ms,
+        unit: {:millisecond, :second},
+        tags: [:flow],
+        description:
+          "Age of the oldest transaction the site's own wallet signed that is not yet confirmed"
+      ),
+      last_value("patchbay.escrow_unrecorded",
+        event_name: [:patchbay, :operator_wallet, :waiting],
+        measurement: :escrow_unrecorded,
+        description: "Escrow payments on the chain the site has not yet recorded"
+      ),
+      last_value("patchbay.assist_fees_unforwarded.usdc",
+        event_name: [:patchbay, :operator_wallet, :waiting],
+        measurement: :assist_fees_usdc,
+        description: "Assist fees the operator holds that are not yet sent to staking"
       ),
       last_value("health.job.oldest_age.seconds",
         event_name: [:patchbay, :jobs, :oldest_unfinished],

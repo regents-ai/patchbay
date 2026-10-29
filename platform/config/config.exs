@@ -195,6 +195,11 @@ config :patchbay, Oban,
 # cancels any one view's read that runs longer, so it frees its connection.
 config :patchbay, Patchbay.WalletBench.Board, statement_timeout: 5_000
 
+# The operator wallet signs Patchbay's own sends on Base, so the site poller
+# reads the age of each flow's oldest unconfirmed one (`PatchbayWeb.Telemetry`).
+config :patchbay, PatchbayWeb.Telemetry,
+  unconfirmed_sends: {Patchbay.OperatorWallet, :unconfirmed_sends, []}
+
 # Metrics listen on loopback, on a port the system picks, so this site runs
 # beside the others; production names the port Fly reads (config/prod.exs).
 config :patchbay, :metrics_listener, ip: {127, 0, 0, 1}, port: 0

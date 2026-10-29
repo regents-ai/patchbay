@@ -30,6 +30,10 @@ config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Test
 config :patchbay, :load_sites_at_boot, false
 config :patchbay, Oban, testing: :manual
 
+# The poller asks nothing of the test database; the chain numbers test asks
+# the operator wallet's query itself.
+config :patchbay, PatchbayWeb.Telemetry, unconfirmed_sends: nil
+
 # Tests name sites under the endings reserved for testing and examples, which
 # the Public Suffix List leaves out; here they count as real endings.
 config :domainatrex, custom_suffixes: ["example", "invalid", "test"]
