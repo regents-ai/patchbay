@@ -21,13 +21,7 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
   def call(conn, _opts) do
     conn
     |> put_resp_header("cache-control", "no-store")
-    |> Siwa.AgentAuthPlug.call(
-      client: RegentAgents.Broker,
-      hooks: __MODULE__,
-      audience: "patchbay",
-      body: :if_present,
-      query: :signed
-    )
+    |> Siwa.AgentAuthPlug.call(siwa_options(__MODULE__))
   end
 
   # A request with no signed header is refused here, as the sign-in service
@@ -131,22 +125,44 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
        "Ask your person to sign in on this site, then send the request again."}
 
   @impl Siwa.AgentAuthPlug.Hooks
-  def deny(conn, %{reason: reason}) when reason in [:agent_not_paired, :person_not_here] do
-    {message, hint} = words(reason)
+  def deny(conn, failure) do
+    {status, body} = refusal(failure)
 
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(403, Jason.encode!(ApiError.body(to_string(reason), message, hint)))
+    |> send_resp(status, Jason.encode!(body))
     |> halt()
   end
 
-  def deny(conn, failure) do
-    WalletAuthor.refuse_signed(
-      conn,
+  @doc """
+  The status and body a refused request answers with: 403 for an agent that
+  is not paired or whose person is not here, otherwise what the sign-in
+  service said (`WalletAuthor.signed_refusal/3`).
+  """
+  @spec refusal(map()) :: {pos_integer(), %{error: map()}}
+  def refusal(%{reason: reason}) when reason in [:agent_not_paired, :person_not_here] do
+    {message, hint} = words(reason)
+    {403, ApiError.body(to_string(reason), message, hint)}
+  end
+
+  def refusal(failure) do
+    WalletAuthor.signed_refusal(
       failure,
       "A signed agent request is required.",
       "Prepare the exact request and sign it for patchbay with your existing SIWA signer. See /agents.md. Cookies confer no agent authority."
     )
+  end
+
+  @doc "The options `Siwa.AgentAuthPlug` checks a paired agent's request with, `hooks` answering."
+  @spec siwa_options(module()) :: keyword()
+  def siwa_options(hooks) do
+    [
+      client: RegentAgents.Broker,
+      hooks: hooks,
+      audience: "patchbay",
+      body: :if_present,
+      query: :signed
+    ]
   end
 
   defp refused(reason), do: {:error, %{reason: reason, source: :paired_agent}}

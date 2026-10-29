@@ -254,28 +254,29 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   refused here before it reached the service answers 401 with its reason and
   the caller's own words.
   """
-  def refuse_signed(conn, %{reason: :siwa_request_failed}, _message, _hint) do
-    refuse(
-      conn,
-      503,
-      ApiError.body(
-        "siwa_request_failed",
-        "The sign-in service could not be reached.",
-        "Try again in a moment."
-      )
-    )
+  def refuse_signed(conn, failure, message, hint) do
+    {status, body} = signed_refusal(failure, message, hint)
+    refuse(conn, status, body)
   end
 
-  def refuse_signed(conn, failure, message, hint) do
-    refuse(
-      conn,
-      refusal_status(failure),
-      ApiError.body(
-        failure[:siwa_code] || to_string(failure.reason),
-        failure[:siwa_message] || message,
-        failure[:siwa_hint] || hint
-      )
-    )
+  @doc "The status and body `refuse_signed/4` answers with, for a door that answers in its own form."
+  @spec signed_refusal(map(), String.t(), String.t()) :: {pos_integer(), %{error: map()}}
+  def signed_refusal(%{reason: :siwa_request_failed}, _message, _hint) do
+    {503,
+     ApiError.body(
+       "siwa_request_failed",
+       "The sign-in service could not be reached.",
+       "Try again in a moment."
+     )}
+  end
+
+  def signed_refusal(failure, message, hint) do
+    {refusal_status(failure),
+     ApiError.body(
+       failure[:siwa_code] || to_string(failure.reason),
+       failure[:siwa_message] || message,
+       failure[:siwa_hint] || hint
+     )}
   end
 
   defp refusal_status(%{siwa_status: status}) when status in 400..599, do: status

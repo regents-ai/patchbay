@@ -1,5 +1,10 @@
 defmodule PatchbayWeb.Plugs.EventReader do
-  @moduledoc "OAuth authority for ChatGPT event subscription methods only."
+  @moduledoc """
+  OAuth authority for ChatGPT event subscription methods only. A missing or
+  refused token is answered 401 with the OAuth challenge, which starts a
+  client's sign-in; event sign-in that is off or failing is answered in
+  JSON-RPC (`PatchbayWeb.MCP.Refusal`).
+  """
   @behaviour Plug
   import Plug.Conn
 
@@ -15,11 +20,21 @@ defmodule PatchbayWeb.Plugs.EventReader do
         _ -> refuse(conn, 401, "Sign in to Patchbay to watch updates.")
       end
     else
-      refuse(conn, 503, "Patchbay event sign-in is not enabled.")
+      unavailable(conn, "Watching updates from ChatGPT is not switched on yet.")
     end
   rescue
-    _ -> refuse(conn, 503, "Patchbay event sign-in is temporarily unavailable.")
+    _ -> unavailable(conn, "Watching updates from ChatGPT is not working right now.")
   end
+
+  # Nothing the client can sign in to: answered in JSON-RPC, like every other
+  # refusal at this address, rather than as a failed connection.
+  defp unavailable(conn, message),
+    do:
+      PatchbayWeb.MCP.Refusal.refuse(conn, %{
+        code: "unavailable",
+        message: message,
+        hint: "Read threads with search_threads and get_thread meanwhile, and try again later."
+      })
 
   defp refuse(conn, status, message) do
     conn

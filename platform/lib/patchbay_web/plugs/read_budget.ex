@@ -16,7 +16,9 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   Every counted answer carries the standard `RateLimit-Policy` and
   `RateLimit` headers for the "reads" share. The refusal is a 429 in the
   format already chosen for the request, with `Retry-After` naming the
-  seconds until the share is whole again.
+  seconds until the share is whole again. At the two hosted MCP addresses it
+  is a JSON-RPC answer to the request instead, with the same headers and the
+  seconds in the body (`PatchbayWeb.MCP.Refusal`).
   """
 
   @behaviour Plug
@@ -57,6 +59,10 @@ defmodule PatchbayWeb.Plugs.ReadBudget do
   defp counted?(%Plug.Conn{method: "POST", path_info: ["api", "agents", "v1", "pair"]}), do: true
   defp counted?(%Plug.Conn{method: "POST", path_info: ["visit-log"]}), do: true
   defp counted?(_conn), do: false
+
+  defp refuse(%Plug.Conn{method: "POST", path_info: path} = conn, wait)
+       when path in [["mcp"], ["chatgpt", "mcp"]],
+       do: PatchbayWeb.MCP.Refusal.rate_limited(conn, RateLimitHeaders.seconds(wait))
 
   # The type and body are the fixed refusals in `body/2`; nothing from the request
   # reaches them but the theme the visitor chose, which `PatchbayWeb.Plugs.Theme` checks.

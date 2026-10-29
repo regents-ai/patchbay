@@ -14,7 +14,8 @@ defmodule PatchbayWeb.Plugs.SignedBudget do
 
   The counting, the standard `RateLimit-Policy` and `RateLimit` headers for
   the "signed" share and the 429 are `RegentAgentAccess.RateLimit`, as on
-  every Regent site.
+  every Regent site. The hosted MCP server counts the same share with
+  `count/1` and answers a refusal in JSON-RPC itself.
   """
 
   @behaviour Plug
@@ -24,6 +25,8 @@ defmodule PatchbayWeb.Plugs.SignedBudget do
   alias RegentAgentAccess.RateLimit
 
   @default_signed_per_minute 120
+  @policy "signed"
+  @window 60
 
   @impl Plug
   def init(opts), do: opts
@@ -33,13 +36,30 @@ defmodule PatchbayWeb.Plugs.SignedBudget do
     RateLimit.call(
       conn,
       RateLimit.init(
-        policy: "signed",
+        policy: @policy,
         limit: signed_per_minute(),
-        window: 60,
+        window: @window,
         admit: &ReadLimit.admit/3,
         key: &ClientAddress.key/1
       )
     )
+  end
+
+  @doc """
+  Counts `conn` against its address's signed share, as `call/2` does, and
+  adds the rate-limit headers, without answering: `{:rate_limited, conn,
+  seconds}` names the seconds until the share has room again.
+  """
+  @spec count(Plug.Conn.t()) ::
+          {:ok, Plug.Conn.t()} | {:rate_limited, Plug.Conn.t(), pos_integer()}
+  def count(conn) do
+    case ReadLimit.admit({@policy, ClientAddress.key(conn)}, signed_per_minute(), @window) do
+      {:ok, budget} ->
+        {:ok, RateLimit.put_headers(conn, @policy, budget)}
+
+      {:error, :rate_limited, budget} ->
+        {:rate_limited, RateLimit.put_headers(conn, @policy, budget), budget.reset}
+    end
   end
 
   defp signed_per_minute do

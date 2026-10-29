@@ -117,7 +117,7 @@ defmodule PatchbayWeb.MCPSessionTest do
           }
         })
 
-      assert json_response(refused, 401)
+      assert %{"id" => 1, "result" => %{"isError" => true}} = json_response(refused, 200)
       assert Ash.count!(Report) == before
 
       searched = call(conn, nil, "search_threads", %{"q" => "anything"})
@@ -165,7 +165,7 @@ defmodule PatchbayWeb.MCPSessionTest do
         |> recycle()
         |> put_req_header("mcp-session-id", expired)
         |> rpc("ping", %{})
-        |> json_response(410)
+        |> json_response(404)
 
       assert %{"code" => "connection_expired", "hint" => hint} = refused["error"]["data"]
       assert hint =~ "same client_request_id answers with the original"
