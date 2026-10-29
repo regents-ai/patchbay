@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v294, 29 Oct 2026
+
+- Commit: 4116e33b9401d17e500c823eb889027614c5757b (image `4116e33`), on main after v293. Machine 784171ef617138, one machine.
+- A site page's Markdown escapes post titles in its Solved and Still open lists (a title written as a Markdown link no longer becomes a second link; open since d2b2d0e3, 21 Oct; served as text/markdown with nosniff, so no browser ran it). Regression test in agent_readiness_test.
+- The four security ExUnit files moved from scripts/security into test/patchbay_web/security and run in make check; three stale checks (post address with words, the 301 to a post's address, the search panel's visitor key) follow the current pages.
+- Checks: make check on a git-archive copy, 994 ExUnit (13 properties) plus 2 committed, 169 walk steps, required fixes, CLI contract, SIWA latest.
+- Live: /, /healthz, /capabilities.json (4116e33b), /wallet-bench, /sites, /offers, /patchbay.help 200 in headless Chromium.
+- Rollback: v293, image `ba44e9b`.
+
 ## v293, 29 Oct 2026
 
 - Commit: ba44e9b8edb05f615ae9dba31731459442291e5b (image `ba44e9b`), on main after v292. Machine 830241a7e41e18, one machine.
