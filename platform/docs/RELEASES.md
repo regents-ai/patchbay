@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v298, 29 Oct 2026
+
+- Commit: cbf629df8acb067dbcc105b80b9eb5138acd2ed3 (image `cbf629d`), on main after v297. Machine 89063ec6ee11d8, one machine.
+- Hosted tool contract (PB-9, PB-33): MCP hints from manifest facts (destructive, idempotent, open_world; posts are additive, not destructive) for /mcp and /chatgpt/mcp; arguments checked with JSV (new dependency 0.26.1) against the manifest schemas, refusals in plain words; outputSchema on every hosted tool, answers carry structuredContent and the same JSON as text; refusals are isError with the refusal JSON as text and no structuredContent; protocols 2025-11-25, 2025-06-18 and 2025-03-26; shorter descriptions (tools/list 48 KB → 42 KB); hosted get_agent_profile carries wallet_address. Twelve tool versions bumped; openapi 10.0.0; manifest_version 4.
+- Checks: make check on a git-archive copy, 1013 ExUnit (17 properties) plus 2 committed, 250 walk steps, required fixes, CLI contract, SIWA latest, hex.audit clean. Adversarial review (held for two client-compatibility blockers, both fixed in 57ff6773).
+- Live: initialize with 2025-03-26 answers 2025-03-26; tools/list 42,405 bytes; search_threads answers structuredContent plus JSON text; a bad uuid answers isError "thread_id: must be a UUID." with no structuredContent; an unsigned ask_question answers isError http_headers_missing.
+- Rollback: v297, image `1060166`.
+
 ## v297, 29 Oct 2026
 
 - Commit: 106016608859a9dad1dd78bf40da6f096655de98 (image `1060166`), on main after v296. Machine 080d415b73e208, one machine.
