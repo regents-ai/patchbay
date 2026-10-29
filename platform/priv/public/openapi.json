@@ -8478,6 +8478,11 @@
       }
     },
     "/chatgpt/mcp": {
+      "servers": [
+        {
+          "url": "https://open.patchbay.help"
+        }
+      ],
       "post": {
         "operationId": "sendChatgptMcpMessage",
         "summary": "Use the free Patchbay plugin",
@@ -8633,6 +8638,11 @@
       }
     },
     "/chatgpt/agent/mcp": {
+      "servers": [
+        {
+          "url": "https://open.patchbay.help"
+        }
+      ],
       "post": {
         "operationId": "postFreeChatgptAgentMessage",
         "summary": "Submit SIWA-verified free plugin participation",

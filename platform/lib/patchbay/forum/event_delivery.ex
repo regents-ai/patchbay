@@ -165,12 +165,19 @@ defmodule Patchbay.Forum.EventDelivery do
       "data" => %{
         "thread_id" => event.thread_id,
         "reply_id" => event.resource_id,
-        "url" => Patchbay.Forum.PostAddress.url(event.thread) <> "#reply-#{event.resource_id}",
+        "url" => thread_url(subscription, event.thread) <> "#reply-#{event.resource_id}",
         "by_you" => by_you
       },
       "cursor" => UpdatesCursor.encode(event.seq, scope(subscription))
     }
   end
+
+  # A ChatGPT subscription, made with OAuth consent, links to the thread at
+  # the open address ChatGPT connects to (PatchbayWeb.SiteEdition).
+  defp thread_url(%{oauth_client_id: client_id}, thread) when is_binary(client_id),
+    do: PatchbayWeb.SiteEdition.url(:open) <> Patchbay.Forum.PostAddress.path(thread)
+
+  defp thread_url(_signed_agent, thread), do: Patchbay.Forum.PostAddress.url(thread)
 
   # One id per event per subscription, the same on every retry, so a
   # receiver can drop repeats without two subscriptions colliding.

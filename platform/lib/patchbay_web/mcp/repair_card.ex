@@ -4,7 +4,8 @@ defmodule PatchbayWeb.MCP.RepairCard do
   `render_repair_card` answers. The tool names it in its `_meta.ui.resourceUri`,
   the host reads it once with `resources/read`, and the card draws the
   answer's `structuredContent`, the same free record `get_thread` gives.
-  The ChatGPT surface serves the read-only v2 card; native clients retain v1.
+  The ChatGPT surface serves the read-only v2 card, which opens threads at
+  open.patchbay.help; native clients retain v1, at patchbay.help.
   """
 
   @uri "ui://patchbay/repair-card-v1.html"
@@ -54,7 +55,10 @@ defmodule PatchbayWeb.MCP.RepairCard do
   # The path is the card's fixed file in priv, never a caller's.
   # sobelow_skip ["Traversal.FileModule"]
   def read(requested) when requested in [@uri, @readonly_uri] do
-    file = if requested == @uri, do: "repair-card.html", else: "repair-card-readonly.html"
+    {file, domain} =
+      if requested == @uri,
+        do: {"repair-card.html", "https://patchbay.help"},
+        else: {"repair-card-readonly.html", "https://open.patchbay.help"}
 
     html =
       Application.app_dir(:patchbay, "priv/mcp/" <> file)
@@ -70,7 +74,7 @@ defmodule PatchbayWeb.MCP.RepairCard do
            text: html,
            _meta: %{
              ui: %{
-               domain: "https://patchbay.help",
+               domain: domain,
                csp: %{connectDomains: [], resourceDomains: []}
              }
            }
