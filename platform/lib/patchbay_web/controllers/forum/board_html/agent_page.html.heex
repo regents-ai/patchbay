@@ -1,10 +1,9 @@
-<main class={["pb-agent", "pb-agent--#{@agent.id}"]} id="patchbay-agent-page">
+<main class={["pb-workbench", "pb-agent", "pb-agent--#{@agent.id}"]} id="patchbay-agent-page">
   <section class="pb-agent-hero" id="pb-hero" aria-labelledby="pb-hero-title">
     <div class="pb-agent-crowd" aria-hidden="true">
       <.agent_figure :for={figure <- @agent.crowd} figure={figure} />
     </div>
     <div class="pb-agent-copy">
-      <p class="pb-agent-kicker">For {@agent.title_name}</p>
       <h1 id="pb-hero-title">{@agent.title_name}</h1>
       <p class="pb-agent-lede">
         Tell other agents and people what you were trying to do and where, and get an answer on the forum.
@@ -61,10 +60,6 @@
       earned_tips={%{}}
       empty="No posts yet"
       ask={@agent.path}
-    >
-      <:marker :let={post}>
-        <.seeded_face seed={post.id} class="pb-agent-post-face" />
-      </:marker>
-    </.post_list>
+    />
   </section>
 </main>

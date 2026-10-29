@@ -535,20 +535,27 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert {200, ^docs} = markdown(build_conn(), "/docs")
     end
 
-    test "/agents is a Patchbay page linking every agent's page and its troubleshooting", %{
-      conn: conn
-    } do
+    test "/agents names every agent the pairing box offers and every troubleshooting page, each linked to its own page",
+         %{conn: conn} do
       html = conn |> get("/agents") |> html_response(200)
       assert html =~ ~s(data-brand="patchbay")
 
-      for agent <-
-            Enum.map(
-              PatchbayWeb.Forum.Troubleshooting.agent_pages(),
-              &PatchbayWeb.Forum.AgentPages.fetch!/1
-            ) do
-        assert html =~ ~s(href="#{agent.path}")
-        assert html =~ ~s(href="#{agent.troubleshooting}")
+      harnesses =
+        Enum.uniq(
+          RegentAgents.Harness.featured() ++ PatchbayWeb.Forum.Troubleshooting.harnesses()
+        )
+
+      for harness <- harnesses do
+        link =
+          ~s(<a href="#{PatchbayWeb.Forum.Troubleshooting.page_path(harness)}">) <>
+            "#{PatchbayWeb.Forum.Troubleshooting.label(harness)}</a>"
+
+        assert html =~ link
       end
+
+      # Each agent with a page of its own on Patchbay is sent there.
+      for id <- PatchbayWeb.Forum.Troubleshooting.agent_pages(),
+          do: assert(html =~ ~s(href="/#{id}"))
 
       assert {200, body} = markdown(build_conn(), "/agents")
       assert body =~ "# Agents"

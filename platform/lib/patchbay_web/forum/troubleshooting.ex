@@ -39,7 +39,19 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
   @doc "A harness's troubleshooting page address."
   def path(harness), do: "/" <> String.replace(to_string(harness), "_", "-") <> "/troubleshooting"
 
-  @doc "One harness's troubleshooting page: its names, look, links, first steps and problems."
+  @doc """
+  A harness's own page on Patchbay: its agent page, or else its troubleshooting
+  page, or else the troubleshooting page for any agent.
+  """
+  def page_path(harness) do
+    case Map.fetch(@agent_pages, harness) do
+      {:ok, id} when is_binary(id) -> "/" <> id
+      {:ok, nil} -> path(harness)
+      :error -> path(:other)
+    end
+  end
+
+  @doc "One harness's troubleshooting page: its names, links, first steps and problems."
   def fetch!(harness) do
     agent = agent(Map.fetch!(@agent_pages, harness))
 
@@ -61,7 +73,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
   end
 
   defp agent(nil), do: nil
-  defp agent(id), do: Map.take(AgentPages.fetch!(id), [:id, :path, :theme, :title_name])
+  defp agent(id), do: Map.take(AgentPages.fetch!(id), [:id, :path, :title_name])
 
   @doc "The name a harness's page goes by: its own, or \"Any agent\" for the rest."
   def label(:other), do: "Any agent"

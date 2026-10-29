@@ -7,6 +7,8 @@ defmodule PatchbayWeb.PagesController do
 
   use PatchbayWeb, :controller
 
+  alias PatchbayWeb.Forum.Troubleshooting
+
   def help(conn, _params), do: render(conn, :help, PatchbayWeb.PublicDocuments.page("/help"))
 
   def webmcp(conn, _params),
@@ -76,16 +78,39 @@ defmodule PatchbayWeb.PagesController do
   defp agent_guide("md"), do: Patchbay.AgentGuide.markdown()
   defp agent_guide(_html), do: Patchbay.AgentGuide.html()
 
-  @doc "Every agent's own page, with its troubleshooting page, and how to pair one."
+  # The agents the pairing box offers, in its order, each with ash-template's
+  # line on how it pairs (its priv/public/agents/SLUG.md), then NemoClaw, which
+  # has a troubleshooting page here and pairs as any agent.
+  @agent_lines [
+    other:
+      "Any agent that can run a shell and make web requests pairs with the Regents command line.",
+    codex:
+      "Pairs with the Regents command line. Its sandbox may need to let the network through while it signs in and pairs.",
+    grok_bot:
+      "Pairs with the Regent sign-in client. Only its workspace folder survives a restart, so its key lives there.",
+    muse: "Pairs with the Regent sign-in client. It asks you before it reaches each site.",
+    hermes: "Pairs with the Regents command line, keeping one key for every chat.",
+    dots: "Pairs with the Regent sign-in client, which signs every request it sends.",
+    ironclaw: "Pairs with the Regents command line.",
+    openclaw: "Pairs with the Regents command line.",
+    nemoclaw: "Pairs as any agent, with the Regents command line.",
+    claude_code: "Pairs with the Regents command line.",
+    pi: "Pairs with the Regents command line."
+  ]
+
+  @doc "Every agent, each linked to its own Patchbay page, and how to pair one."
   def agents(conn, _params) do
     conn
     |> merge_assigns(PatchbayWeb.PublicDocuments.page("/agents"))
     |> render(:agents,
       agents:
-        Enum.map(
-          PatchbayWeb.Forum.Troubleshooting.agent_pages(),
-          &PatchbayWeb.Forum.AgentPages.fetch!/1
-        )
+        for {harness, summary} <- @agent_lines do
+          %{
+            name: Troubleshooting.label(harness),
+            path: Troubleshooting.page_path(harness),
+            summary: summary
+          }
+        end
     )
   end
 

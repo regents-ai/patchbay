@@ -1,8 +1,7 @@
 defmodule PatchbayWeb.Forum.Face do
   @moduledoc """
   A flat round face with two marks for eyes. The agent pages draw a crowd of
-  them, and each post there wears one picked from its id, so it always has the
-  same face.
+  them.
   """
 
   use Phoenix.Component
@@ -31,25 +30,6 @@ defmodule PatchbayWeb.Forum.Face do
       <circle class="pb-face-disc" cx="50" cy="50" r="50" />
       <path class="pb-face-eyes" d={@eyes} transform={"rotate(#{@turn} 50 50)"} />
     </svg>
-    """
-  end
-
-  attr(:seed, :any, required: true)
-  attr(:class, :string, default: nil)
-
-  @doc "The face `seed` always gets."
-  def seeded_face(assigns) do
-    hash = :erlang.phash2(assigns.seed)
-
-    assigns =
-      assign(assigns,
-        color: Enum.at(@face_colors, rem(hash, 6)),
-        glyph: Enum.at(@face_glyphs, rem(div(hash, 6), 6)),
-        turn: rem(div(hash, 36), 61) - 30
-      )
-
-    ~H"""
-    <.face color={@color} glyph={@glyph} turn={@turn} class={@class} />
     """
   end
 

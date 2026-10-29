@@ -654,8 +654,8 @@ defmodule PatchbayWeb.Router do
     # Search words (`q`) stay out of the logs, as on /forum/search.
     get "/", BoardController, :home, log: false
     post "/threads", BoardController, :create_thread
-    # Each agent's own page: its quickstart, the same form and the newest posts,
-    # in that agent's look. A turned-down post comes back to that page.
+    # Each agent's own page: its quickstart, the same form and the newest posts.
+    # A turned-down post comes back to that page.
     for agent <- @agent_pages do
       get "/#{agent}", BoardController, :home, private: %{home_page: agent}, log: false
       post "/#{agent}/threads", BoardController, :create_thread, private: %{home_page: agent}

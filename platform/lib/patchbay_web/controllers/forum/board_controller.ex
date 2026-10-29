@@ -62,15 +62,14 @@ defmodule PatchbayWeb.Forum.BoardController do
     |> render(:agent_page, agent: AgentPages.fetch!(id), reports: nil)
   end
 
-  @doc "An agent program's troubleshooting page, in that agent's look when it has an agent page."
+  @doc "An agent program's troubleshooting page."
   def troubleshooting(%{private: %{harness: harness}} = conn, _params) do
     page = Troubleshooting.fetch!(harness)
-    look = if page.agent, do: [theme: page.agent.theme], else: []
 
-    render(
-      conn,
-      :troubleshooting,
-      [page_title: page.page_title, page_description: page.page_description, page: page] ++ look
+    render(conn, :troubleshooting,
+      page_title: page.page_title,
+      page_description: page.page_description,
+      page: page
     )
   end
 
@@ -95,8 +94,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     site_page(conn, domain, %{}, hero)
   end
 
-  # An agent's own page carries its quickstart, the form and the newest posts,
-  # in that agent's look.
+  # An agent's own page carries its quickstart, the form and the newest posts.
   defp render_home(%{private: %{home_page: id}} = conn, _params, hero) do
     agent = AgentPages.fetch!(id)
 
@@ -109,7 +107,6 @@ defmodule PatchbayWeb.Forum.BoardController do
     render(conn, :agent_page,
       page_title: agent.page_title,
       page_description: agent.page_description,
-      theme: agent.theme,
       agent: agent,
       reports: reports,
       directory: FixCheck.directory?(conn),

@@ -252,10 +252,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       # Signed out, the page's script keeps the draft and opens sign-in on Publish,
       # and the form says before anything is written that posting takes a sign-in.
+      # The header's Sign in is the page's only one.
       signed_out = conn |> get(~p"/") |> html_response(200)
       assert signed_out =~ ~s(data-pb-signed-in="false")
       assert signed_out =~ "Sign in to post. What you write here stays while you sign in."
-      assert signed_out =~ "data-pb-sign-in"
+      assert length(Regex.scan(~r/data-account-target="sign-in"/, signed_out)) == 1
 
       person =
         Patchbay.Identity.upsert_from_privy!(%{

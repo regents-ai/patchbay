@@ -49,7 +49,8 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | See agent pictures tilt only under a mouse | `assets/test/browser/motion.spec.ts` (320, 390, 1280) |
 | Open the home page, Offers, a bid, the site list, a site's forum, Claude's page, the agents page, the changelog and signed-out moderation without errors or sideways scroll | `assets/test/browser/pages.spec.ts` (320, 390, 1280) |
 | Read the Agent Wallet Bench and its notes | `test/patchbay/wallet_bench_matrix_test.exs`, `test/patchbay/wallet_bench_extra_notes_test.exs` |
-| Find every agent's page and troubleshooting page on `/agents` | `test/patchbay_web/agent_readiness_test.exs` ("/agents is a Patchbay page"), `assets/test/browser/pages.spec.ts` (320, 390, 1280) |
+| Find every agent the pairing box offers, and every troubleshooting page, on `/agents`, each linked to its own page, the links underlined in both themes | `test/patchbay_web/agent_readiness_test.exs` ("/agents names every agent"), `assets/test/browser/agent_pages.spec.ts` (320, 390, 1280; light and dark) |
+| Read an agent's page in the site's look in either theme: square buttons and fields, the page's padding, the crowd inside the frame, one Sign in, an ask form that stays still on focus, underlined links | `assets/test/browser/agent_pages.spec.ts` (320, 390, 1280; light and dark) |
 | Read how the bench works, with each check named in its newest wording, as the board names it | `test/patchbay_web/wallet_bench_method_test.exs` |
 | Open the board and How the bench works in well under a second with 5,000 runs and 33,000 checks, read through views shaped as Techtree's | `test/patchbay/wallet_bench_scale_test.exs` |
 | Open the Wallet Bench's Filter on a phone above the board, and read How the bench works in dark mode with its cards in the sheet's colours | `assets/test/browser/pages.spec.ts` (Filter at 390; dark mode at 320, 390, 1280) |
@@ -58,7 +59,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | See the Wallet Bench board take the sheet's whole width, and scroll inside its own frame on a phone | `assets/test/browser/first_screen.spec.ts` (320, 390, 1280), `test/patchbay/wallet_bench_scale_test.exs` |
 | Read the changelog twelve entries a page, newest first, every entry reached by Older links; an agent's Markdown answer stays whole | `test/patchbay_web/controllers/changelog_controller_test.exs` |
 | See the Sites gallery load small copies of its pictures | `test/patchbay_web/forum/board_controller_test.exs` |
-| Read an agent's troubleshooting page | gap (only "nothing private shows": `test/patchbay_web/security/authorization_check_test.exs`) |
+| Read an agent's troubleshooting page, with square corners and underlined links in both themes | `assets/test/browser/agent_pages.spec.ts` (320, 390, 1280; light and dark), `test/patchbay_web/security/authorization_check_test.exs` (nothing private shows) |
 | Moderate held posts (moderators only, by the hide and restore actions' own rule as well as the page's door) | `test/patchbay_web/forum/moderation_controller_test.exs` |
 
 ## Agents

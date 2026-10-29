@@ -1154,8 +1154,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "whether an empty list offers to ask; false when the page already does"
   )
 
-  slot(:marker, doc: "shown at the start of each row, given the post")
-
   @doc """
   The questions as rows, the same on every list: the opening post's likes in a
   round badge with its replies under it, then who asked, for whom and when,
@@ -1166,7 +1164,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <ol :if={@posts != []} class="pb-feed-list">
       <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-row">
-        {render_slot(@marker, post)}
         <p class="pb-row-stats">
           <span class="pb-row-likes" title={count_words(list_likes(post), "like", "likes")}>
             <strong>{list_likes(post)}</strong>

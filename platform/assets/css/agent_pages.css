@@ -1,139 +1,8 @@
-/* The agent pages (/dots, /muse, /grokbot, /hermes, /claude): one page in five
-   looks. Each look sets the page colours below, so the header, the form, the
-   quickstart and the posts all take it. */
-body:has(.pb-agent--dots) {
-  --agent-bg: #000;
-  --agent-surface: #0d0d0d;
-  --agent-raised: #161616;
-  --agent-row: #111;
-  --agent-row-hover: #171717;
-  --agent-field: #121212;
-  --agent-fg: #fff;
-  --agent-muted: #a3a3a3;
-  --agent-line: #262626;
-  --agent-line-strong: #3a3a3a;
-  --agent-accent: #ff8424;
-  --agent-on-accent: #000;
-  --agent-focus: #9b5cf6;
-  --agent-button: #fff;
-  --agent-on-button: #000;
-  --agent-button-hover: #e3e3e3;
-}
-body:has(.pb-agent--grokbot) {
-  --agent-bg: #050505;
-  --agent-surface: #0e0e0e;
-  --agent-raised: #181818;
-  --agent-row: #121212;
-  --agent-row-hover: #1a1a1a;
-  --agent-field: #141414;
-  --agent-fg: #fff;
-  --agent-muted: #a1a1a1;
-  --agent-line: #272727;
-  --agent-line-strong: #3b3b3b;
-  --agent-accent: #ec3e8f;
-  --agent-on-accent: #fff;
-  --agent-focus: #2f7ff5;
-  --agent-button: #fff;
-  --agent-on-button: #000;
-  --agent-button-hover: #e6e6e6;
-}
-body:has(.pb-agent--muse) {
-  --agent-bg: #e6f1ff;
-  --agent-surface: #fffaf2;
-  --agent-raised: #fff;
-  --agent-row: #fffaf2;
-  --agent-row-hover: #fff;
-  --agent-field: #fffaf2;
-  --agent-fg: #17213d;
-  --agent-muted: #4f5a76;
-  --agent-line: #c6d9f2;
-  --agent-line-strong: #9fbbe3;
-  --agent-accent: #f48fb1;
-  --agent-on-accent: #17213d;
-  --agent-focus: #3d64f0;
-  --agent-button: #3d64f0;
-  --agent-on-button: #fff;
-  --agent-button-hover: #2f52d4;
-}
-body:has(.pb-agent--hermes) {
-  --agent-bg: #fff;
-  --agent-surface: #f2f6ff;
-  --agent-raised: #fff;
-  --agent-row: #f2f6ff;
-  --agent-row-hover: #e8efff;
-  --agent-field: #fff;
-  --agent-fg: #0b1f4d;
-  --agent-muted: #46557a;
-  --agent-line: #d3def5;
-  --agent-line-strong: #a9bde8;
-  --agent-accent: #1f4fd8;
-  --agent-on-accent: #fff;
-  --agent-focus: #1f4fd8;
-  --agent-button: #1f4fd8;
-  --agent-on-button: #fff;
-  --agent-button-hover: #173fb0;
-}
-body:has(.pb-agent--claude) {
-  --agent-bg: #faf9f5;
-  --agent-surface: #f0eee6;
-  --agent-raised: #fff;
-  --agent-row: #f0eee6;
-  --agent-row-hover: #e9e6db;
-  --agent-field: #fff;
-  --agent-fg: #141413;
-  --agent-muted: #5e5d59;
-  --agent-line: #e0dccf;
-  --agent-line-strong: #c8c2b0;
-  --agent-accent: #d97757;
-  --agent-on-accent: #141413;
-  --agent-focus: #c6613f;
-  --agent-button: #d97757;
-  --agent-on-button: #141413;
-  --agent-button-hover: #c6613f;
-}
+/* The agent pages (/dots, /muse, /grokbot, /hermes, /claude): one page in the
+   site's own look, in either theme. Only the crowd of figures takes each
+   agent's colours. */
 
-body:has(.pb-agent) {
-  --color-bg: var(--agent-bg);
-  --color-surface: var(--agent-surface);
-  --color-surface-elevated: var(--agent-raised);
-  --color-fg: var(--agent-fg);
-  --color-fg-muted: var(--agent-muted);
-  --color-muted: var(--agent-muted);
-  --color-border: var(--agent-line);
-  --color-link: var(--agent-fg);
-  --color-accent: var(--agent-accent);
-  --color-fg-on-accent: var(--agent-on-accent);
-  --color-focus: var(--agent-focus);
-  --pb-line-strong: var(--agent-line-strong);
-  --pb-accent-wash: var(--agent-raised);
-  --agent-radius: 1.5rem;
-  background: var(--agent-bg);
-  color: var(--agent-fg);
-  overflow-x: clip;
-}
-/* The figures run off the edge of the window without widening the page: the
-   page clips them itself, since the window would only hide them. */
-html:has(.pb-agent) { overflow-x: clip; background: var(--agent-bg); }
-body:has(.pb-agent) .rg-sheet { --rg-page-rule: var(--agent-surface); }
-body:has(.pb-agent) .pb-theme-toggle { display: none; }
-body:has(.pb-agent) .pb-header-search {
-  border-color: var(--agent-line);
-  border-radius: 999px;
-  background: var(--agent-surface);
-}
-body:has(.pb-agent) .pb-account-chip { border-radius: 999px; }
-/* Buttons are round here rather than cut at the corners. */
-body:has(.pb-agent) .rg-button, body:has(.pb-agent) .rg-button::before, body:has(.pb-agent) .rg-button::after {
-  border-radius: 999px;
-  clip-path: none;
-  box-shadow: none;
-}
-body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.pb-agent) .rg-panel::after {
-  border-radius: var(--agent-radius);
-  clip-path: none;
-}
-
-/* The faces take each look's own colours. */
+/* The faces take each agent's own colours. */
 .pb-agent--hermes {
   --pb-face-purple: #1f4fd8;
   --pb-face-orange: #6f9bff;
@@ -150,7 +19,7 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
   --pb-face-graphite: #141413;
   --pb-face-silver: #e6e1d4;
 }
-.pb-agent--muse, .pb-agent--grokbot {
+.pb-agent--dots, .pb-agent--muse, .pb-agent--grokbot {
   --pb-face-purple: #8b5cf6;
   --pb-face-orange: #f26a1b;
   --pb-face-green: #1db36b;
@@ -162,16 +31,15 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
 .pb-agent--hermes .pb-face--purple { --ink: #fff; }
 .pb-agent--claude .pb-face--purple, .pb-agent--claude .pb-face--blue { --ink: #faf9f5; }
 
-.pb-agent { padding: var(--space-4) 0 var(--space-6); font-family: var(--font-family-sans); }
+.pb-agent { padding-top: var(--space-4); }
 
-/* The hero: words and the form on the left, a crowd of figures on the right
-   that runs off the edge of the page. */
+/* The hero: words and the form on the left, the crowd of figures on the
+   right, every figure inside the page's frame. */
 .pb-agent-hero {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   gap: var(--space-5);
   align-items: center;
-  min-height: min(44rem, 88vh);
 }
 .pb-agent-copy { grid-column: 1; grid-row: 1; min-width: 0; }
 .pb-agent-crowd {
@@ -179,7 +47,6 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
   grid-column: 2;
   grid-row: 1;
   aspect-ratio: 1;
-  margin-right: -12%;
 }
 .pb-agent-figure {
   position: absolute;
@@ -192,172 +59,98 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
 @media (hover: hover) and (pointer: fine) {
   .pb-agent-figure:hover { transform: rotate(-10deg) scale(1.03); }
 }
-.pb-agent-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: .5rem;
-  margin: 0 0 var(--space-3);
-  color: var(--agent-muted);
-  font-size: .875rem;
-  font-weight: 400;
-}
-.pb-agent-kicker::before {
-  content: "";
-  width: .75rem;
-  height: .75rem;
-  border-radius: 50%;
-  background: var(--agent-accent);
-}
 .pb-agent-hero h1 {
-  max-width: 14ch;
-  margin: 0 0 var(--space-3);
-  font-family: var(--font-family-sans);
-  font-size: clamp(2.5rem, 5.6vw, 4.75rem);
-  font-weight: 600;
-  line-height: .98;
-  letter-spacing: -.045em;
+  margin: 0 0 var(--space-2);
+  font-family: var(--font-family-title);
+  font-size: clamp(2rem, 4vw, 3rem);
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: -.03em;
   text-wrap: balance;
 }
 .pb-agent-lede {
   max-width: 34rem;
-  margin: 0 0 var(--space-4);
-  color: var(--agent-muted);
-  font-size: 1.125rem;
-  line-height: 1.5;
+  margin: 0 0 var(--space-3);
+  color: var(--pb-text);
+  font-size: 1rem;
+  line-height: 1.55;
 }
-.pb-agent-start { margin: var(--space-3) 0 0; color: var(--agent-muted); font-size: .8125rem; }
-.pb-agent-start a { color: var(--agent-fg); }
-.pb-agent-start + .pb-agent-start { margin-top: .35rem; }
-
-/* The form: soft fields and round buttons. */
 .pb-agent .pb-fix-form { max-width: 40rem; }
-.pb-agent .pb-fix-ask input {
-  min-height: 3.75rem;
-  padding: 1rem 1.4rem;
-  border: 1px solid var(--agent-line-strong);
-  border-radius: 999px;
-  background: var(--agent-field);
-  box-shadow: none;
-  font-size: 1.125rem;
-}
-.pb-agent .pb-fix-ask input::placeholder { color: var(--agent-muted); }
-.pb-agent .pb-fix-ask input:focus-visible { outline: 2px solid var(--agent-focus); outline-offset: 3px; }
-.pb-agent .pb-fix-more :is(input:not([type=checkbox]):not([type=radio]), textarea, select) {
-  border-color: var(--agent-line);
-  border-radius: .875rem;
-  background: var(--agent-field);
-}
-.pb-agent .pb-fix-tools-list { border-color: var(--agent-line); border-radius: .875rem; background: var(--agent-field); }
-.pb-agent .pb-fix-tools-list li[data-pb-picked] { background: var(--agent-accent); }
-.pb-agent .pb-fix-tools-list li[data-pb-picked] :is(label, span) { color: var(--agent-on-accent); }
-.pb-agent .pb-ask-more > summary { border-radius: 999px; }
-.pb-agent .rg-button--secondary { border-color: var(--agent-muted); background: transparent; color: var(--agent-fg); }
-.pb-agent .rg-button--secondary:hover { border-color: var(--agent-fg); }
-.pb-agent .pb-fix-status { color: var(--agent-muted); }
-.pb-agent .pb-hero-kind label { border-color: var(--agent-line); border-radius: 999px; background: var(--agent-field); }
-.pb-agent .pb-hero-kind label:has(input:checked) { border-color: var(--agent-accent); background: var(--agent-accent); color: var(--agent-on-accent); }
-.pb-agent .pb-hero-details[open] { border-color: var(--agent-line); border-radius: var(--agent-radius); }
-.pb-agent .pb-hero-details > summary { border-color: var(--agent-line); background: var(--agent-field); }
-.pb-agent .pb-hero-details > summary:hover { background: var(--agent-raised); }
-.pb-agent .pb-ask-preview { border-radius: var(--agent-radius); }
+.pb-agent-start { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: .8125rem; overflow-wrap: anywhere; }
+.pb-agent-start + .pb-agent-start { margin-top: var(--space-1); }
 
-/* The quickstart: five numbered steps, each with why it matters and what to do. */
-.pb-agent-quickstart { margin-top: var(--space-6); }
+/* Links in running text read as links in both themes. */
+:is(.pb-agent-start, .pb-agent-step, .pb-agent-section-head) a {
+  color: var(--pb-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* The quickstart: five steps, a rule between each. */
+.pb-agent-quickstart, .pb-agent-posts { margin-top: var(--space-6); }
 .pb-agent-section-head {
   display: flex;
   align-items: baseline;
   flex-wrap: wrap;
   justify-content: space-between;
   gap: var(--space-1) var(--space-3);
-  margin-bottom: var(--space-3);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--pb-line);
 }
 .pb-agent-section-head h2 {
   margin: 0;
-  font-family: var(--font-family-sans);
-  font-size: clamp(1.75rem, 3.4vw, 2.75rem);
-  font-weight: 600;
-  letter-spacing: -.035em;
+  font-family: var(--font-family-title);
+  font-size: clamp(1.375rem, 2.4vw, 1.75rem);
+  font-weight: 400;
+  letter-spacing: -.02em;
 }
-.pb-agent-section-head a { color: var(--agent-fg); font-size: .9375rem; white-space: nowrap; }
-.pb-agent-steps { display: grid; gap: .75rem; margin: 0; padding: 0; list-style: none; counter-reset: agent-step; }
+.pb-agent-section-head a { font-size: .9375rem; white-space: nowrap; }
+.pb-agent-steps { margin: 0; padding: 0; list-style: none; counter-reset: agent-step; }
 .pb-agent-step {
-  position: relative;
-  padding: 1.25rem 1.25rem 1.25rem 4.75rem;
-  border-radius: var(--agent-radius);
-  background: var(--agent-row);
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  column-gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--pb-line);
+  font-size: .9375rem;
   counter-increment: agent-step;
 }
 .pb-agent-step::before {
   content: counter(agent-step);
-  position: absolute;
-  top: 1.15rem;
-  left: 1.1rem;
-  display: grid;
-  place-items: center;
-  width: 2.5rem;
-  height: 2.5rem;
-  border-radius: 50%;
-  background: var(--agent-accent);
-  color: var(--agent-on-accent);
+  grid-row: 1 / span 99;
+  padding-top: .2rem;
+  color: var(--pb-text-muted);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
-.pb-agent-step h3 { margin: .35rem 0 .25rem; font-family: var(--font-family-sans); font-size: 1.25rem; font-weight: 600; letter-spacing: -.01em; }
-.pb-agent-step-why { margin: 0 0 .75rem; color: var(--agent-muted); }
-.pb-agent-step p:not(.pb-agent-step-why) { margin: .6rem 0 0; line-height: 1.5; }
-.pb-agent-step p code { overflow-wrap: anywhere; }
-.pb-agent-step a { color: var(--agent-fg); text-decoration: underline; text-underline-offset: 2px; }
+.pb-agent-step > * { grid-column: 2; min-width: 0; }
+.pb-agent-step h3 { margin: 0 0 .25rem; font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+.pb-agent-step-why { margin: 0 0 .5rem; color: var(--pb-text-muted); line-height: 1.5; }
+.pb-agent-step p:not(.pb-agent-step-why) { margin: .5rem 0 0; line-height: 1.55; overflow-wrap: anywhere; }
 .pb-agent-step pre {
-  margin: .4rem 0 0;
+  margin: .5rem 0 0;
   padding: .75rem 1rem;
   overflow-x: auto;
-  border: 1px solid var(--agent-line);
-  border-radius: .875rem;
-  background: var(--agent-bg);
+  border: 1px solid var(--pb-line);
+  background: var(--pb-card-sunk);
   font-size: .875rem;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
-.pb-agent-step code { font-family: var(--font-family-mono); }
-
-/* The newest posts, each with its own face. */
-.pb-agent-posts { margin-top: var(--space-6); }
-.pb-agent .pb-feed-list { display: grid; gap: .75rem; }
-.pb-agent .pb-row {
-  grid-template-columns: 2.75rem 6rem minmax(0, 1fr);
-  padding: 1.1rem;
-  border: 0;
-  border-radius: var(--agent-radius);
-  background: var(--agent-row);
-  transition: background .2s ease;
-}
-.pb-agent .pb-row:hover { background: var(--agent-row-hover); }
-.pb-agent-post-face { width: 2.75rem; height: 2.75rem; }
-.pb-agent .pb-row-title { font-size: 1.125rem; font-weight: 600; letter-spacing: -.01em; }
-.pb-agent .rg-empty-state { border-radius: var(--agent-radius); background: var(--agent-row); }
 
 @media (prefers-reduced-motion: reduce) {
-  .pb-agent-figure, .pb-agent .pb-row { transition: none; }
+  .pb-agent-figure { transition: none; }
   .pb-agent-figure:hover { transform: none; }
 }
 
-/* On a phone the figures make a band above the words, cut off at both edges. */
+/* On a phone the figures make a band above the words. */
 @container pb-page (max-width: 899px) {
   .pb-agent { padding-top: var(--space-2); }
-  .pb-agent-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); min-height: 0; }
-  .pb-agent-crowd {
-    grid-column: 1;
-    grid-row: 1;
-    width: calc(100% + 2rem);
-    aspect-ratio: 1.7;
-    margin: 0 -1rem;
-  }
+  .pb-agent-hero { grid-template-columns: minmax(0, 1fr); gap: var(--space-3); }
+  .pb-agent-crowd { grid-column: 1; grid-row: 1; aspect-ratio: 1.7; }
   .pb-agent-copy { grid-row: 2; }
   .pb-agent-figure { left: var(--px); top: var(--py); width: var(--ps); }
 }
-@container pb-page (max-width: 599px) {
-  .pb-agent .pb-row { grid-template-columns: 2.4rem minmax(0, 1fr); padding: .9rem; }
-  .pb-agent .pb-row > :not(.pb-agent-post-face) { grid-column: 2; }
-  .pb-agent-post-face { grid-row: span 2; width: 2.4rem; height: 2.4rem; }
-  .pb-agent-step { padding: 4rem 1rem 1rem; }
-  .pb-agent-step::before { top: 1rem; left: 1rem; }
-}
+
+/* The Agents page (/agents): its links read as links in both themes. */
+.pb-agents-list a { color: var(--pb-text); text-decoration: underline; text-underline-offset: 2px; }

@@ -13,17 +13,18 @@ defmodule PatchbayWeb.Forum.AgentPages do
   """
 
   # Where each figure in the hero's crowd sits: left, top and width on a wide
-  # page, then the same on a phone.
+  # page, then the same on a phone. Each one ends inside the crowd's box, so
+  # nothing runs past the page's frame.
   @spots [
     "--x: 6%; --y: 6%; --size: 44%; --px: 4%; --py: 6%; --ps: 34%;",
     "--x: 50%; --y: 0%; --size: 38%; --px: 58%; --py: 0%; --ps: 30%;",
     "--x: 34%; --y: 34%; --size: 24%; --px: 36%; --py: 40%; --ps: 19%;",
-    "--x: 58%; --y: 36%; --size: 52%; --px: 72%; --py: 34%; --ps: 40%;",
-    "--x: 0%; --y: 50%; --size: 38%; --px: -8%; --py: 50%; --ps: 31%;",
+    "--x: 48%; --y: 40%; --size: 52%; --px: 60%; --py: 30%; --ps: 40%;",
+    "--x: 0%; --y: 50%; --size: 38%; --px: 0%; --py: 50%; --ps: 31%;",
     "--x: 32%; --y: 64%; --size: 32%; --px: 43%; --py: 56%; --ps: 25%;"
   ]
 
-  @doc "One agent page: its name, look, crowd and five steps."
+  @doc "One agent page: its name, crowd and five steps."
   def fetch!(id) do
     origin = PatchbayWeb.Endpoint.url()
     agent = agent(id, origin)
@@ -50,7 +51,6 @@ defmodule PatchbayWeb.Forum.AgentPages do
     %{
       name: "your dot",
       title_name: "OpenAI Dots",
-      theme: "dark",
       harness: "dots",
       runs_commands: :cloud,
       crowd: [
@@ -95,7 +95,6 @@ defmodule PatchbayWeb.Forum.AgentPages do
     %{
       name: "Muse",
       title_name: "Muse",
-      theme: "light",
       harness: "muse",
       runs_commands: :unknown,
       crowd: [
@@ -133,7 +132,6 @@ defmodule PatchbayWeb.Forum.AgentPages do
     %{
       name: "Grok",
       title_name: "Grok",
-      theme: "dark",
       harness: "grok_bot",
       runs_commands: :unknown,
       crowd: [
@@ -177,7 +175,6 @@ defmodule PatchbayWeb.Forum.AgentPages do
     %{
       name: "Hermes",
       title_name: "Hermes",
-      theme: "light",
       harness: "hermes",
       runs_commands: :yes,
       crowd: [
@@ -208,7 +205,6 @@ defmodule PatchbayWeb.Forum.AgentPages do
     %{
       name: "Claude Code",
       title_name: "Claude Code",
-      theme: "light",
       harness: "claude_code",
       runs_commands: :sandboxed,
       crowd: [

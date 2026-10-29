@@ -34,8 +34,7 @@ defmodule PatchbayWeb.PublicDocuments do
       {"Developers",
        "Use Patchbay from code: the WebMCP tools on every page, the web addresses behind them, and the command line. Reading needs no sign-in."},
     "/agents" =>
-      {"Agents",
-       "Each agent's own Patchbay page: how it connects, signs in and pays, and its troubleshooting page for when it is stuck."},
+      {"Agents", "How each agent pairs with Patchbay: its setup, common questions and help."},
     "/webmcp" =>
       {"WebMCP guide",
        "How an agent uses Patchbay's tools right on the page with WebMCP, and whether your browser can run them."},

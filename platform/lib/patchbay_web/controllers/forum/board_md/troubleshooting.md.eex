@@ -2,7 +2,7 @@
 
 For <%= @page.label %>.
 
-When <%= @page.name %> is turned down or stops on regents.sh, patchbay.help, keyfleet.ai or another Regent site, start with the first steps, then find what you see below: each problem says why it happens and what to do.
+If <%= @page.name %> is turned down or stops on regents.sh, patchbay.help, keyfleet.ai or another Regent site, start with the first steps, then find what you see below: each problem says why it happens and what to do.
 
 <%= if @page.agent do %>
 - <%= @page.label %> on Patchbay: [<%= @page.agent.path %>](<%= @page.agent.path %>) · Its setup for agents: [<%= @page.agent.path %>/agents.md](<%= @page.agent.path %>/agents.md)

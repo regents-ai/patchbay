@@ -37,15 +37,15 @@ type Picture = {size: number; type: string}
 
 /**
  * The form at the top of the home page. What the person is trying to do,
- * the site and the tools they pick become a forum post. It folds its extra
- * fields away until the person starts typing, keeps what they typed and the
- * tools they picked across a sign-in, and lists the WebMCP tools found at
- * the site to pick from.
+ * the site and the tools they pick become a forum post. It shows every field
+ * from the start, so nothing moves when the person starts typing, keeps what
+ * they typed and the tools they picked across a sign-in, and lists the WebMCP
+ * tools found at the site to pick from.
  *
  * Either post button shows the post as it will appear, in place so the
  * pictures chosen stay chosen, and its Publish button sends the form, or
  * opens sign-in first. Signed out, the form says so before anything is
- * written, and its Sign in button keeps the draft too.
+ * written; the page's own Sign in keeps the draft too.
  */
 export function mountHeroForm(options: HeroFormOptions = {}) {
   const doc = options.document ?? globalThis.document
@@ -56,7 +56,6 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   restoreDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
   restorePicks(form, storage)
   openFilledDetails(form)
-  foldUntilFocus(form)
   const picker = mountToolPicker(form)
   mountSiteCheck(form, {...options, onTools: picker?.show})
   mountKindChoice(form)
@@ -85,11 +84,10 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   form.addEventListener("input", changed)
   form.addEventListener("change", changed)
 
-  // Signing in before writing anything, or partway through, keeps what is written.
-  form.querySelector("[data-pb-sign-in]")?.addEventListener("click", () => {
-    keep()
-    void requestAccountAction("sign-in", doc, options)
-  })
+  // Signing in from the page's Sign in partway through keeps what is written.
+  doc.addEventListener("click", event => {
+    if ((event.target as Element).closest?.("[data-account-target='sign-in']")) keep()
+  }, {capture: true})
 
   form.addEventListener("submit", event => {
     const submitter = event.submitter
@@ -181,14 +179,6 @@ function clearPreview(form: PageForm) {
 function picturesOf(form: PageForm) {
   const field = form.elements[PICTURES] as HTMLInputElement | undefined
   return Array.from(field?.files ?? [])
-}
-
-// The page arrives folded to one line. A draft put back from this tab
-// opens it at once; otherwise it opens for good on the first focus.
-function foldUntilFocus(form: PageForm) {
-  const unfold = () => delete form.dataset.pbCollapsed
-  if ((form.elements["ask[site_url]"]?.value ?? "") !== "") return unfold()
-  form.addEventListener("focusin", unfold, {once: true})
 }
 
 // The type of post is one pick at a time, and pressing the picked one again

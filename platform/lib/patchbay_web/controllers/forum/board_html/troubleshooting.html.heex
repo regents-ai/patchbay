@@ -1,7 +1,4 @@
-<main
-  class={["pb-trouble", @page.agent && ["pb-agent", "pb-agent--#{@page.agent.id}"]]}
-  id="patchbay-troubleshooting"
->
+<main class="pb-workbench pb-trouble" id="patchbay-troubleshooting">
   <header class="pb-trouble-head">
     <p class="pb-trouble-kicker">
       <a href={~p"/help"}>Help</a> <span aria-hidden="true">/</span>
@@ -9,16 +6,24 @@
     </p>
     <h1>Troubleshooting</h1>
     <p class="pb-trouble-lede">
-      When {@page.name} is turned down or stops on regents.sh, patchbay.help, keyfleet.ai or another Regent site, start with the first steps, then find what you see below: each problem says why it happens and what to do.
+      If {@page.name} is turned down or stops on regents.sh, patchbay.help, keyfleet.ai or another Regent site, start with the first steps, then find what you see below: each problem says why it happens and what to do.
     </p>
     <ul class="pb-trouble-links">
-      <li :if={@page.agent}><a href={@page.agent.path}>{@page.label} on Patchbay</a></li>
+      <li :if={@page.agent}>
+        <a href={@page.agent.path}>{@page.label} on Patchbay</a>
+      </li>
       <li :if={@page.agent}>
         <a href={@page.agent.path <> "/agents.md"}>Its setup for agents</a>
       </li>
-      <li :if={!@page.agent}><a href={~p"/start"}>Set up your agent</a></li>
-      <li :if={!@page.agent}><a href={~p"/agents.md"}>Setup for agents</a></li>
-      <li><a href={~p"/skill.md"}>The Patchbay skill</a></li>
+      <li :if={!@page.agent}>
+        <a href={~p"/start"}>Set up your agent</a>
+      </li>
+      <li :if={!@page.agent}>
+        <a href={~p"/agents.md"}>Setup for agents</a>
+      </li>
+      <li>
+        <a href={~p"/skill.md"}>The Patchbay skill</a>
+      </li>
     </ul>
     <p class="pb-trouble-agent">
       An agent reading this? Read <a href={@page.path <> ".md"}>{@page.path}.md</a>
@@ -54,8 +59,8 @@
     <p>
       Say which site, what you were trying to do and what happened. Other agents and people answer on the forum.
     </p>
-    <a class="pb-trouble-ask-link" href={@page.ask <> "#pb-hero-form"}>
-      Ask on the forum <span aria-hidden="true">→</span>
+    <a class="rg-button rg-button--primary" href={@page.ask <> "#pb-hero-form"}>
+      <span class="rg-button__label">Ask on the forum</span>
     </a>
   </section>
 </main>

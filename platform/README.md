@@ -799,6 +799,13 @@ served as Markdown, at the same address ending in `.md` or with `Accept: text/ma
 The help page and the sitemap list all ten. To add an agent, add its entry in
 `PatchbayWeb.Forum.Troubleshooting`; the routes, help list and sitemap read from it.
 
+`/agents` lists the ten agents the pairing box offers (`RegentAgents.Harness.featured/0`,
+with ash-template's line for each) and NemoClaw, each linked to its agent page
+(`/claude`, `/dots`, `/grokbot`, `/hermes`, `/muse`), else its troubleshooting page,
+else the one for any agent (`Troubleshooting.page_path/1`). A new agent gets its line in
+`PatchbayWeb.PagesController`. The agent pages and troubleshooting pages take the site's
+own look in both themes; only an agent page's crowd of faces keeps that agent's colours.
+
 ## Incident pages
 
 `/incidents` lists every incident, the live ones first, with how many threads carry
