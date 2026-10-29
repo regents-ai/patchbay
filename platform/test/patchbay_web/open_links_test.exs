@@ -45,9 +45,35 @@ defmodule PatchbayWeb.OpenLinksTest do
         actor: asker
       )
 
+    # A post about Patchbay itself carries a box for agents.
+    own_site = Forum.register_site!(Patchbay.Forum.RoomMirror.origin())
+
+    own_tool =
+      Forum.observe_tool!(%{
+        site_id: own_site.id,
+        address: "https://#{own_site.origin}/",
+        name: "search_threads",
+        contract_sha256: @contract
+      })
+
+    own_report =
+      Forum.file_priority_report!(
+        %{
+          tool_id: own_tool.id,
+          browser_session_id: Ash.UUID.generate(),
+          arguments_sha256: String.duplicate("d", 64),
+          verdict: :verified_failure,
+          note: "The search never answered.",
+          priority_amount_atomic: 5_000_000,
+          payment_intent_id: Ash.UUID.generate()
+        },
+        actor: asker
+      )
+
     pages = [
       "/",
       PostAddress.path(report),
+      PostAddress.path(own_report),
       "/sites",
       "/#{site.origin}",
       "/#{site.origin}/tools/checkout",
