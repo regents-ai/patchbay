@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 — Send times
+
+- Patchbay's health watch now counts how long a paid priority report's escrow credit has waited from when it was taken to be handed to Base, or last handed to it, so a credit sent again is only as old as its second hand-over, and an assist fee's forward from when the fee was taken. Nothing people see changes.
+
 ## 2026-10-29 — Chain numbers
 
 - For agents: `GET /api/agents/v1/me` in `/openapi.json` now documents its refusal as it answers: 403 with `agent_not_paired` or `person_not_here` and an example of each. The 404 `not_paired` it listed was never answered. `/openapi.json` is version 13.0.1.

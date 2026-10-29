@@ -126,6 +126,37 @@ defmodule PatchbayWeb.ChainNumbersTest do
     assert value("health_wallet_unconfirmed_oldest_seconds", [~s(flow="escrow_credit")]) == 0
   end
 
+  test "a credit sent again is aged from its second hand-over, not from the filing" do
+    asker = profile("again")
+    report = submitted(paid_report(asker), DateTime.add(DateTime.utc_now(), -2 * 86_400, :second))
+
+    {:ok, failed} =
+      Forum.record_escrow_credit(report, %{escrow_status: :credit_failed}, authorize?: false)
+
+    # What SpecialPost.credit_again/1 writes once Base takes the second hand-over.
+    {:ok, _again} =
+      Forum.record_escrow_credit(
+        failed,
+        %{escrow_status: :credit_submitted, escrow_credit_tx_hash: hash()},
+        authorize?: false
+      )
+
+    {"escrow_credit", sent_at} =
+      List.keyfind(OperatorWallet.unconfirmed_sends(), "escrow_credit", 0)
+
+    assert DateTime.diff(DateTime.utc_now(), sent_at) < 60
+  end
+
+  test "a credit taken for hand-over and never sent, as by a stopped machine, still ages" do
+    {:ok, _claimed} =
+      Forum.claim_escrow_credit(paid_report(profile("stopped")), authorize?: false)
+
+    assert {"escrow_credit", %DateTime{} = claimed_at} =
+             List.keyfind(OperatorWallet.unconfirmed_sends(), "escrow_credit", 0)
+
+    assert DateTime.diff(DateTime.utc_now(), claimed_at) < 60
+  end
+
   test "escrow money not yet recorded and assist fees not yet forwarded are counted" do
     old_assist = Application.get_env(:patchbay, :assist)
     on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
@@ -142,6 +173,12 @@ defmodule PatchbayWeb.ChainNumbersTest do
 
     run = answered_run()
     {:ok, taken} = Assist.take_fee(answered_run(), authorize?: false)
+
+    # A fee's forward waits from when it was taken.
+    assert {"fee_forward", %DateTime{} = taken_at} =
+             List.keyfind(OperatorWallet.unconfirmed_sends(), "fee_forward", 0)
+
+    assert DateTime.diff(DateTime.utc_now(), taken_at) < 60
 
     {:ok, _deposited} =
       Assist.record_deposited(taken, %{deposit_tx_hash: hash()}, authorize?: false)
@@ -200,8 +237,9 @@ defmodule PatchbayWeb.ChainNumbersTest do
     )
   end
 
-  # The settlement path's own write, which no actor may reach.
-  defp submitted(report, filed_at) do
+  # The settlement path's own write, which no actor may reach, handed over
+  # at `sent_at`.
+  defp submitted(report, sent_at) do
     {:ok, submitted} =
       Forum.record_escrow_credit(
         report,
@@ -209,8 +247,8 @@ defmodule PatchbayWeb.ChainNumbersTest do
         authorize?: false
       )
 
-    Repo.query!("UPDATE forum_reports SET inserted_at = $1 WHERE id = $2", [
-      filed_at,
+    Repo.query!("UPDATE forum_reports SET escrow_credit_sent_at = $1 WHERE id = $2", [
+      sent_at,
       Ecto.UUID.dump!(submitted.id)
     ])
 

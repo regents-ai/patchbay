@@ -37,9 +37,8 @@ defmodule Patchbay.OperatorWallet do
 
   @doc """
   Each sending flow with when its oldest unconfirmed send was signed, or nil
-  when nothing waits. An escrow credit is handed to Base as its report is
-  filed, so it is aged from the filing; a fee's forward from when it was
-  taken.
+  when nothing waits: an escrow credit from when it was taken to be handed to
+  Base, or last handed to it, a fee's forward from when it was taken.
   """
   @spec unconfirmed_sends() :: [{String.t(), DateTime.t() | nil}]
   def unconfirmed_sends do
@@ -48,11 +47,11 @@ defmodule Patchbay.OperatorWallet do
       {"escrow_credit",
        Report
        |> Ash.Query.filter(escrow_status == :credit_submitted)
-       |> Ash.min!(:inserted_at, authorize?: false)},
+       |> Ash.min!(:escrow_credit_sent_at, authorize?: false)},
       {"fee_forward",
        Run
        |> Ash.Query.filter(deposit_status == :forwarding)
-       |> Ash.min!(:updated_at, authorize?: false)}
+       |> Ash.min!(:fee_taken_at, authorize?: false)}
     ]
   end
 
