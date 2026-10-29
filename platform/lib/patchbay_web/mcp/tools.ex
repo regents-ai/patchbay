@@ -49,9 +49,6 @@ defmodule PatchbayWeb.MCP.Tools do
   # The reads that answer from query-string params, as their HTTP endpoints do.
   @query_reads ~w(search_threads get_thread get_tool_history read_site_directory)
 
-  # The tools that answer through their HTTP door's own function.
-  @doors Doors.names()
-
   # The writes that post, counted against the signed agent's owner's hourly
   # share.
   @posts ~w(ask_question post_reply)
@@ -116,14 +113,16 @@ defmodule PatchbayWeb.MCP.Tools do
 
   # Public reads remain anonymous. Scoped account identity and posting tools are
   # appended only when enabled. Profiles describing financial activity, Offer
-  # slots and the tools answered through their HTTP doors are excluded.
+  # slots and the reads answered through their HTTP doors
+  # (`PatchbayWeb.MCP.Doors`) are excluded.
   @chatgpt_names Capabilities.hosted()
                  |> Enum.filter(
                    &(&1.requires == "none" and not &1.state_changing and &1.payment == "none" and
                        &1.annotations["readOnlyHint"] == true)
                  )
                  |> Enum.map(& &1.name)
-                 |> Kernel.--(~w(get_agent_profile list_offer_slots) ++ Doors.names())
+                 |> Kernel.--(~w(get_agent_profile list_offer_slots find_known_fixes get_known_fix
+                      read_tool_catalog read_wallet_bench read_wallet_bench_pair))
 
   @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
   @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
@@ -347,9 +346,6 @@ defmodule PatchbayWeb.MCP.Tools do
     |> forum_answer()
   end
 
-  defp dispatch(name, arguments, caller) when name in @doors,
-    do: name |> Doors.call(arguments, caller) |> with_offers(caller.surface)
-
   defp dispatch(name, arguments, caller) when name in @query_reads do
     run(
       name,
@@ -359,8 +355,13 @@ defmodule PatchbayWeb.MCP.Tools do
     )
   end
 
-  defp dispatch(name, arguments, caller),
-    do: run(name, arguments, caller.session_id, Map.get(caller, :actor))
+  # The tools that answer through their HTTP door's own function. The list is
+  # read when called, so this module does not compile against every door.
+  defp dispatch(name, arguments, caller) do
+    if name in Doors.names(),
+      do: name |> Doors.call(arguments, caller) |> with_offers(caller.surface),
+      else: run(name, arguments, caller.session_id, Map.get(caller, :actor))
+  end
 
   # A new post's answer, with Agent Offers after it. Posts are made only at
   # native hosted address; the ChatGPT participation door skips Offer selection.
