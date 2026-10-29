@@ -61,8 +61,8 @@ defmodule PatchbayWeb.OfferModerationLive do
      |> hold_authority()
      |> assign(PatchbayWeb.PublicDocuments.page("/admin/offers"))
      |> assign(problem: nil)
-     |> assign(board: %Read{owner: :moderators})
-     |> Read.settle({Read, :board, 0}, {:ok, read_board()})}
+     |> assign(board: %Read{})
+     |> reread()}
   end
 
   # CurrentProfile refreshes the profile first. A changed verified wallet or
@@ -76,9 +76,6 @@ defmodule PatchbayWeb.OfferModerationLive do
       check_authority(socket)
     end)
     |> attach_hook(:moderator_authority, :handle_info, fn _message, socket ->
-      check_authority(socket)
-    end)
-    |> attach_hook(:moderator_authority, :handle_async, fn _name, _result, socket ->
       check_authority(socket)
     end)
   end
@@ -165,11 +162,9 @@ defmodule PatchbayWeb.OfferModerationLive do
     end
   end
 
-  @impl true
-  def handle_async({Read, :board, _generation} = name, result, socket),
-    do: {:noreply, Read.settle(socket, name, result)}
-
-  defp reread(socket), do: Read.start(socket, :board, :moderators, &read_board/0)
+  # The board is this site's own database, read inside the callback: a burst of
+  # notices rereads it one after another instead of piling up reads at once.
+  defp reread(socket), do: Read.now(socket, :board, :moderators, &read_board/0)
 
   defp decision("dismissed"), do: {:ok, :dismissed}
   defp decision("confirmed"), do: {:ok, :confirmed}
@@ -201,19 +196,25 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   defp read_board do
     now = DateTime.utc_now()
-    reports = reports()
 
-    {:ok,
-     %{
-       now: now,
-       starts: starts(reports, now),
-       offers: offers(),
-       bids: bids(),
-       turn_downs: turn_downs(),
-       reports: reports,
-       ranking: ranking(),
-       decisions: decisions()
-     }}
+    with {:ok, reports} <- reports(),
+         {:ok, offers} <- offers(),
+         {:ok, bids} <- bids(),
+         {:ok, turn_downs} <- turn_downs(),
+         {:ok, ranking} <- ranking(),
+         {:ok, decisions} <- decisions() do
+      {:ok,
+       %{
+         now: now,
+         starts: starts(reports, now),
+         offers: offers,
+         bids: bids,
+         turn_downs: turn_downs,
+         reports: reports,
+         ranking: ranking,
+         decisions: decisions
+       }}
+    end
   end
 
   # Admin reads, as above.
@@ -222,7 +223,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.Query.limit(@limit)
     |> Ash.Query.load([:owner, :has_bids?, current_version: [:offer_text | @figures]])
-    |> Ash.read!(authorize?: false)
+    |> Ash.read(authorize?: false)
   end
 
   # As above.
@@ -231,7 +232,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.Query.limit(@limit)
     |> Ash.Query.load([:owner, version: [:creative, :offer_text], slot: [market: :site]])
-    |> Ash.read!(authorize?: false)
+    |> Ash.read(authorize?: false)
   end
 
   # As above.
@@ -240,7 +241,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.Query.limit(@limit)
     |> Ash.Query.load([:owner, market: :site])
-    |> Ash.read!(authorize?: false)
+    |> Ash.read(authorize?: false)
   end
 
   # As above.
@@ -254,7 +255,7 @@ defmodule PatchbayWeb.OfferModerationLive do
       version: [:offer_text, {:reviews, reviews} | @figures],
       placement: [slot: [next_bid: [:version], market: :site]]
     )
-    |> Ash.read!(authorize?: false)
+    |> Ash.read(authorize?: false)
   end
 
   # The waiting next-period bids that would start at once if the Offer
@@ -277,7 +278,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> Ash.Query.filter(report_count > 0)
     |> Ash.Query.sort(report_count: :desc, inserted_at: :asc)
     |> Ash.Query.limit(@limit)
-    |> Ash.read!(authorize?: false)
+    |> Ash.read(authorize?: false)
   end
 
   # As above.
@@ -286,7 +287,7 @@ defmodule PatchbayWeb.OfferModerationLive do
     |> Ash.Query.sort(inserted_at: :desc)
     |> Ash.Query.limit(@limit)
     |> Ash.Query.load(:moderator)
-    |> Ash.read!(authorize?: false)
+    |> Ash.read(authorize?: false)
   end
 
   attr(:text, :map, required: true)

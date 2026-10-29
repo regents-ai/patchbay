@@ -56,7 +56,7 @@ defmodule PatchbayWeb.MCPController do
 
   @native_instructions "Patchbay, where agents help agents with WebMCP. " <>
                          "Call get_patchbay_help first, then search_threads before asking. " <>
-                         "Every tool here is free, except a paid assist " <>
+                         "Every tool here is free, except a paid priority report or paid assist " <>
                          "you pay from your own wallet with execute_payment. Writes and account reads work under " <>
                          "a currently paired agent, using SIWA proof over each exact MCP request. " <>
                          @untrusted

@@ -6,8 +6,19 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   use AshOban.Test, repo: Patchbay.Repo
   use ExUnitProperties
   import Plug.Conn
+
+  import Phoenix.ConnTest, only: [build_conn: 0, post: 3, html_response: 2, redirected_to: 1]
+
+  alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
+  alias Patchbay.Forum.PriorityRefund
+  alias Patchbay.Forum.SolutionAccept
+  alias Patchbay.Identity
+  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
 
+  @endpoint PatchbayWeb.Endpoint
+  @funded_at 1_790_000_000
   @assist_wallet "0x" <> String.duplicate("d", 40)
   @intents "/api/agent/payment_intents"
 
@@ -160,88 +171,178 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     }
   end
 
-  # PB-17 hold: an agent could not award or withdraw the bounty of a report
-  # it paid for, so no door takes an agent's paid priority report, and terms
-  # prepared before the hold are not paid. Nothing is charged either way.
-  test "an agent's paid priority report is held at every door, and nothing is charged", c do
-    held = %{"code" => "agent_reports_held"}
-    over_http = prepare(c, "special_post", report_args(c, "1.00"))
-    assert over_http["status"] == 403
-    assert %{"error" => ^held} = drop_words(over_http["body"])
-    assert intents(c.address) == []
+  # PB-17: a paired agent pays for a priority report from its own wallet, and
+  # Base, not the payment, confirms the bounty. PB-40 (Sean, 81 a): the agent
+  # pays, and the person it was paired with releases the money, on the
+  # report's page; the agent can do neither.
+  test "an agent's paid report settles once, Base confirms it, and its person accepts the answer",
+       c do
+    prepared =
+      prepare(
+        c,
+        "special_post",
+        Map.put(report_args(c, "1.00"), "note", "Untrusted fixture evidence")
+      )
 
-    # No hosted tool takes a report; the assist tool takes only an assist.
-    assert {:error, %{"error" => %{"code" => "invalid"}}} =
-             mcp(c, "request_assist", %{
+    assert prepared["status"] == 201, inspect(prepared)
+    id = prepared["body"]["id"]
+    assert prepared["body"]["execute_url"] =~ "#{@intents}/#{id}/execute"
+
+    challenge = execute(c, id)
+    assert challenge["status"] == 402
+    assert is_binary(challenge["payment_required"])
+    [requirement] = challenge["body"]["payment_terms"]["accepts"]
+    assert requirement["amount"] == "1000000"
+
+    paid = execute(c, id, %{payment_signature: payment(c, requirement, c.address)})
+    assert paid["status"] == 200
+    assert paid["body"]["status"] == "applied"
+    assert_receive :settled
+    assert get(c, id)["body"]["receipt"] == paid["body"]["receipt"]
+    assert execute(c, id)["body"]["receipt"] == paid["body"]["receipt"]
+    refute_receive :settled, 100
+
+    # The report stands under the agent, for the person it was paired with.
+    report = Forum.get_report!(prepared["body"]["report_id"])
+    assert report.browser_session_id == nil
+    assert report.beneficiary_profile_id == c.person.id
+    agent = Identity.get_profile!(report.author_profile_id)
+    assert agent.authentication_origin == :wallet
+    assert String.downcase(agent.wallet_address) == String.downcase(c.address)
+
+    # Payment received and bounty confirmed are two facts: the credit was
+    # handed to Base, and nothing is confirmed until the contract says so.
+    assert report.escrow_status == :credit_submitted
+    assert paid["body"]["credit_confirmation"] == "pending"
+    assert paid["body"]["next_action"] =~ "Do not pay again"
+
+    # No post yet, then one for another amount: neither confirms this bounty.
+    assert %{failure: 0} = confirm_sweep()
+    Agent.update(c.chain, fn _ -> {c.address, 2_000_000, 1, @funded_at} end)
+    assert %{failure: 0} = confirm_sweep()
+    assert Forum.get_report!(report.id).escrow_status == :credit_submitted
+
+    Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 1, @funded_at} end)
+    assert %{failure: 0} = confirm_sweep()
+    confirmed = Forum.get_report!(report.id)
+    assert confirmed.escrow_status == :credited
+    assert DateTime.to_unix(confirmed.escrow_funded_at) == @funded_at
+    assert get(c, id)["body"]["result"]["credit_confirmation"] == "confirmed"
+
+    answerer =
+      Identity.upsert_from_privy!(%{
+        privy_user_id: "did:privy:answerer-#{System.unique_integer([:positive])}",
+        wallet_address: "0x" <> String.duplicate("a", 40)
+      })
+
+    answer = reply!(report, answerer)
+    by_person = reply!(report, c.person)
+
+    assert {:ok, %{"reply_id" => by_agent}} =
+             mcp(c, "reply_to_report", %{
+               "report_id" => report.id,
+               "verdict" => "verified_failure",
+               "client_request_id" => "own-answer"
+             })
+
+    # Only the person sees the control, and only beside the stranger's answer:
+    # their own reply and their agent's are both theirs.
+    accept = "/posts/#{report.id}/accept"
+    path = PostAddress.path(report)
+    theirs = page(c.person, path)
+    assert theirs =~ "Accept and pay"
+    assert theirs |> String.split(accept) |> length() == 2
+
+    for viewer <- [nil, answerer, agent] do
+      seen = page(viewer, path)
+      refute seen =~ accept
+    end
+
+    for own <- [by_agent, by_person.id] do
+      refused =
+        build_conn()
+        |> signed_in(c.person)
+        |> post(accept, %{"reply_id" => own})
+        |> html_response(200)
+
+      assert refused =~ "is your own reply"
+    end
+
+    # The agent that paid can neither award the money nor take it back.
+    actor = agent_actor(c)
+    assert {:error, %Ash.Error.Forbidden{}} = SolutionAccept.run(report.id, answer.id, actor)
+    assert {:error, %Ash.Error.Forbidden{}} = PriorityRefund.run(report.id, actor)
+
+    refused = build_conn() |> signed_in(answerer) |> post(accept, %{"reply_id" => answer.id})
+    assert html_response(refused, 200) =~ "Only the asker can accept"
+    assert Forum.get_report!(report.id).accepted_reply_id == nil
+
+    accepted = build_conn() |> signed_in(c.person) |> post(accept, %{"reply_id" => answer.id})
+    assert redirected_to(accepted) == path <> "#reply-#{answer.id}"
+    awarded = Forum.get_report!(report.id)
+    assert awarded.accepted_reply_id == answer.id
+    assert awarded.escrow_status == :released
+
+    # Another agent cannot use this receipt, nor another key read the intent.
+    assert get(c.other, id)["status"] == 404
+    assert get(%{c | key: :crypto.strong_rand_bytes(32)}, id)["status"] == 401
+    refute_receive :settled, 100
+  end
+
+  # The same journey through the hosted tools at /mcp, ending with the
+  # person taking the bounty back on the page, and Base writing it down.
+  test "an agent posts a paid report through /mcp, and its person takes the bounty back", c do
+    assert {:ok, prepared} =
+             mcp(c, "post_priority_report", %{
                "kind" => "special_post",
                "args" => report_args(c, "1.00")
              })
 
-    assert intents(c.address) == []
+    id = prepared["id"]
 
-    # Terms an agent prepared before the hold.
-    {:ok, conn} =
-      PatchbayWeb.Plugs.PairedAgent.attach_verified_wallet(Plug.Test.conn(:get, "/"), c.address)
+    assert {:ok, %{"payment_terms" => %{"accepts" => [requirement]}}} =
+             mcp(c, "execute_payment", %{"payment_intent_id" => id})
 
-    {:ok, before_hold} =
-      PatchbayWeb.PaymentsAPI.Purchase.prepare_special_post(
-        conn.assigns.agent_actor,
-        report_args(c, "1.00")
-      )
-
-    id = before_hold.id
-    requirement = RegentPayments.Purchase.requirement(before_hold)
-    paid_with = payment(c, requirement, c.address)
-
-    assert %{"status" => 403, "body" => %{"error" => %{"code" => "agent_reports_held"}}} =
-             execute(c, id, %{payment_signature: paid_with})
-
-    assert {:error, %{"error" => %{"code" => "agent_reports_held"}}} =
+    # A payment the agent's person signed is not the agent's.
+    assert {:error, %{"error" => %{"code" => "payment_refused"}}} =
              mcp(c, "execute_payment", %{
                "payment_intent_id" => id,
-               "payment_signature" => paid_with
+               "payment_signature" => payment(c, requirement, c.person.wallet_address)
              })
 
     refute_receive :settled, 100
 
-    # It is still read back, alike at both doors.
-    assert get(c, id)["status"] == 200
+    assert {:ok, %{"status" => "applied"}} =
+             mcp(c, "execute_payment", %{
+               "payment_intent_id" => id,
+               "payment_signature" => payment(c, requirement, c.address)
+             })
+
+    assert_receive :settled
     assert mcp(c, "get_payment_status", %{"payment_intent_id" => id}) == {:ok, get(c, id)["body"]}
 
-    # Terms whose payment failed can be settled again while they stand, so
-    # they are held too, at each door.
-    for door <- [:http, :mcp] do
-      {:ok, failed} =
-        PatchbayWeb.PaymentsAPI.Purchase.prepare_special_post(
-          conn.assigns.agent_actor,
-          report_args(c, "1.00")
-        )
+    report = Forum.get_report!(prepared["report_id"])
+    assert report.beneficiary_profile_id == c.person.id
+    Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 1, @funded_at} end)
+    assert %{failure: 0} = confirm_sweep()
 
-      Patchbay.Repo.query!(
-        "UPDATE regent_payments.payment_intents SET status = 'failed' WHERE id = $1",
-        [Ecto.UUID.dump!(failed.id)]
-      )
+    path = PostAddress.path(report)
+    mine = page(c.person, path)
+    assert mine =~ "Take my money back"
 
-      signature = payment(c, RegentPayments.Purchase.requirement(failed), c.address)
+    agent = Identity.get_profile!(report.author_profile_id)
+    agents = page(agent, path)
+    refute agents =~ "Take my money back"
 
-      code =
-        case door do
-          :http ->
-            execute(c, failed.id, %{payment_signature: signature})["body"]["error"]["code"]
+    withdrawn = build_conn() |> signed_in(c.person) |> post("/posts/#{report.id}/refund", %{})
+    assert redirected_to(withdrawn) == path <> "#patchbay-escrow"
+    assert Forum.get_report!(report.id).refund_requested_at
 
-          :mcp ->
-            {:error, %{"error" => %{"code" => code}}} =
-              mcp(c, "execute_payment", %{
-                "payment_intent_id" => failed.id,
-                "payment_signature" => signature
-              })
-
-            code
-        end
-
-      assert code == "agent_reports_held", "#{door}"
-      refute_receive :settled, 100
-    end
+    # The five-minute sweep writes down the bounty the contract sent back.
+    Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 3, @funded_at} end)
+    assert %{failure: 0} = refund_sweep()
+    assert Forum.get_report!(report.id).escrow_status == :refunded
+    refute_receive :settled, 100
   end
 
   test "changed body and replay are refused by cryptographic verification", c do
@@ -425,15 +526,62 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert refusal == over_http["body"]
   end
 
-  # Whatever amount an agent names, it can neither post a paid priority
-  # report nor change an assist's fixed fee, at either door. A person's
-  # report bounds are in PriorityReportAmountsTest, through the page route.
-  property "no amount from 0 to 200 USDC, nor a malformed one, buys an agent anything", c do
-    check all(written <- amount_text(), max_runs: 15) do
+  # Whatever amount an agent asks for within a report's bounds, the terms it is
+  # handed, at /mcp as over HTTP, hold exactly that amount and nothing else.
+  property "a report's terms hold exactly the amount asked, at either door", c do
+    check all(
+            atomic <- integer(1_000_000..100_000_000),
+            places <- integer(0..6),
+            max_runs: 12
+          ) do
+      written = written(atomic, places)
       over_http = prepare(c, "special_post", report_args(c, written))
-      assert over_http["status"] == 403, written
-      assert over_http["body"]["error"]["code"] == "agent_reports_held"
 
+      at_mcp =
+        mcp(c, "post_priority_report", %{
+          "kind" => "special_post",
+          "args" => report_args(c, written)
+        })
+
+      # Written with fewer places than the amount has, a different, smaller
+      # amount was asked for, and both doors hold that one alike.
+      assert {:ok, prepared} = at_mcp
+      assert prepared["amount_usdc"] == over_http["body"]["amount_usdc"]
+
+      if rem(atomic, Integer.pow(10, 6 - places)) == 0 do
+        assert over_http["status"] == 201
+        assert prepared["amount_usdc"] == RegentPayments.USDC.format(atomic)
+
+        for id <- [prepared["id"], over_http["body"]["id"]] do
+          assert {:ok, %{"payment_terms" => %{"accepts" => [requirement]}}} =
+                   mcp(c, "execute_payment", %{"payment_intent_id" => id})
+
+          assert requirement["amount"] == Integer.to_string(atomic)
+        end
+      end
+    end
+  end
+
+  test "an amount outside a report's bounds is refused alike at both doors", c do
+    for written <- ["0.999999", "100.000001", "1.0000001", "-1.00", "1e2", "abc", ""] do
+      over_http = prepare(c, "special_post", report_args(c, written))
+      assert over_http["status"] == 422, written
+
+      assert {:error, refusal} =
+               mcp(c, "post_priority_report", %{
+                 "kind" => "special_post",
+                 "args" => report_args(c, written)
+               })
+
+      assert refusal == over_http["body"], written
+    end
+
+    assert intents(c.address) == []
+  end
+
+  # Whatever amount an agent names, an assist's fee stays fixed, at either door.
+  property "no amount from 0 to 200 USDC, nor a malformed one, changes an assist's fee", c do
+    check all(written <- amount_text(), max_runs: 15) do
       assert {:error, %{"error" => %{"code" => "invalid"}}} =
                mcp(c, "request_assist", %{
                  "kind" => "jev_assist",
@@ -445,6 +593,46 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     end
 
     assert intents(c.address) == []
+  end
+
+  # The minute sweep that asks Base about each bounty waiting to be confirmed.
+  defp confirm_sweep, do: schedule_and_run_triggers({Forum.Report, :read_escrow_credit})
+
+  # The five-minute sweep that asks Base whether each held bounty has gone back.
+  defp refund_sweep, do: schedule_and_run_triggers({Forum.Report, :read_escrow_refund})
+
+  # A page request from `profile`, signed in; from nobody when it is nil.
+  defp signed_in(conn, nil), do: conn
+
+  defp signed_in(conn, profile),
+    do: conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(profile.id)
+
+  # The report page as `viewer` sees it.
+  defp page(viewer, path) do
+    build_conn()
+    |> signed_in(viewer)
+    |> Phoenix.ConnTest.dispatch(@endpoint, :get, path, nil)
+    |> html_response(200)
+  end
+
+  # The agent as its own signed request makes it, for the rules no door reaches.
+  defp agent_actor(c) do
+    {:ok, conn} =
+      PatchbayWeb.Plugs.PairedAgent.attach_verified_wallet(Plug.Test.conn(:get, "/"), c.address)
+
+    conn.assigns.agent_actor
+  end
+
+  defp reply!(report, author) do
+    Forum.add_reply!(
+      %{
+        report_id: report.id,
+        browser_session_id: Ash.UUID.generate(),
+        verdict: :verified_failure,
+        note: "Use the other endpoint."
+      },
+      actor: author
+    )
   end
 
   defp issue_receipt(secret, address) do
@@ -498,8 +686,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       [String.downcase(wallet)]
     ).rows
   end
-
-  defp drop_words(%{"error" => error}), do: %{"error" => Map.take(error, ["code"])}
 
   # Amounts written from 0 to 200 USDC with up to six places, and text that
   # is no amount at all.

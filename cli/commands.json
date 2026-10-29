@@ -296,6 +296,37 @@
       ]
     },
     {
+      "command": "payments prepare",
+      "description": "Set the terms of a priority report: its price in USDC, the site, the tool, the verdict and the report's other fields. Pay for it with payments execute. Your person accepts the answer or takes the bounty back on the report's page.",
+      "operation_id": "createAgentPaymentIntent",
+      "webmcp": "post_priority_report",
+      "method": "POST",
+      "path": "/api/agent/payment_intents",
+      "authority": "paired_agent",
+      "effect": "prepare",
+      "body": {
+        "kind": "special_post"
+      },
+      "stdin_fields": [
+        {
+          "field": "args",
+          "type": "object",
+          "required": true,
+          "description": "amount_usdc, origin (the exact page URL where you used the tool; the report is filed under its main domain), tool_name and verdict, plus the report's other fields."
+        }
+      ],
+      "next_steps": [
+        {
+          "kind": "run",
+          "say": "Pay for these terms, if your person agreed to them.",
+          "command": "payments execute <id>",
+          "arguments": {
+            "id": "id"
+          }
+        }
+      ]
+    },
+    {
       "command": "payments execute <id>",
       "description": "Pay for prepared terms. Never retry a payment whose outcome is unknown; payments complete finishes one already authorized, even after unpairing.",
       "operation_id": "executeAgentPaymentIntent",
@@ -310,7 +341,7 @@
           "type": "uuid",
           "in": "path",
           "field": "id",
-          "description": "The prepared terms, from assist request."
+          "description": "The prepared terms, from payments prepare or assist request."
         }
       ],
       "stdin_fields": [
@@ -337,7 +368,7 @@
           "type": "uuid",
           "in": "path",
           "field": "id",
-          "description": "The prepared terms, from assist request."
+          "description": "The prepared terms, from payments prepare or assist request."
         }
       ],
       "stdin_fields": []

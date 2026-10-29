@@ -665,6 +665,7 @@ defmodule PatchbayWeb.Router do
     post "/reports/:id/refund", BoardController, :refund
     post "/posts/:id/replies", BoardController, :create_reply
     post "/posts/:id/refund", BoardController, :refund
+    post "/posts/:id/accept", BoardController, :accept
     get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false
     get "/sites/:origin", BoardController, :old_site
     get "/sites/:origin/tools/:name", BoardController, :old_tool

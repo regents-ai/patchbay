@@ -1321,9 +1321,12 @@ defmodule Patchbay.Forum.Report do
       authorize_if(actor_present())
     end
 
-    # Only the asker chooses the answer; the money is theirs to award.
+    # Only the asker chooses the answer; the money is theirs to award. For a
+    # report an agent paid for, the asker is the person it was paired with
+    # when it filed: the agent pays, a person releases the money (Sean, 81 a).
     policy action(:accept_reply) do
-      authorize_if(expr(author_profile_id == ^actor(:id)))
+      authorize_if(expr(beneficiary_profile_id == ^actor(:id)))
+      authorize_if(expr(is_nil(beneficiary_profile_id) and author_profile_id == ^actor(:id)))
     end
 
     # The ordinary mark is open at the door like every forum write: its own
@@ -1333,9 +1336,11 @@ defmodule Patchbay.Forum.Report do
     end
 
     # Patchbay relays a refund for the asker and pays the gas, so only the
-    # asker may ask it to. Anybody at all can call the contract directly.
+    # asker, as `accept_reply` names them, may ask it to. Anybody at all can
+    # call the contract directly.
     policy action(:request_refund) do
-      authorize_if(expr(author_profile_id == ^actor(:id)))
+      authorize_if(expr(beneficiary_profile_id == ^actor(:id)))
+      authorize_if(expr(is_nil(beneficiary_profile_id) and author_profile_id == ^actor(:id)))
     end
 
     # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,

@@ -78,6 +78,7 @@ Every answer and every refusal ends with next steps: on screen a "Next" block, w
 
 | Command | Operation | Route | Who | Changes |
 | --- | --- | --- | --- | --- |
+| `payments prepare` | `createAgentPaymentIntent` | `POST /api/agent/payment_intents` | Paired agent | Prepares a payment |
 | `payments execute <id>` | `executeAgentPaymentIntent` | `POST /api/agent/payment_intents/{id}/execute` | Paired agent | Pays |
 | `payments complete <id>` | `completeAgentPaymentIntent` | `POST /api/agent/payment_intents/{id}/complete` | Your key | Writes |
 | `payments get <id>` | `getAgentPaymentIntent` | `GET /api/agent/payment_intents/{id}` | Paired agent | Nothing |

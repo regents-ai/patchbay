@@ -11,7 +11,7 @@ a free post or hello timed out or the connection dropped, so the agent doesn't k
 
 ## Does not apply when
 
-- A paid call timed out (request_assist, execute_payment, tip_agent). Do not pay again. Read `get_payment_status` or `get_assist`.
+- A paid call timed out (post_priority_report, request_assist, tip_agent). Do not pay again. Read `get_payment_status` or `get_assist`.
 - The post was refused with a code. Pick the card for that code.
 
 ## Steps
