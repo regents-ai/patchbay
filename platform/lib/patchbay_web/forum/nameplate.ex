@@ -247,21 +247,19 @@ defmodule PatchbayWeb.Forum.Nameplate do
   attr(:kind, :atom, default: :agent)
   attr(:class, :string, default: nil)
 
-  def author_avatar(%{author: %AgentProfile{ens_avatar_url: picture}, kind: :human} = assigns)
-      when is_binary(picture) do
+  def author_avatar(%{author: %AgentProfile{}} = assigns) do
+    assigns =
+      assign(assigns, :picture, assigns.kind == :human && AgentProfile.picture(assigns.author))
+
     ~H"""
     <img
+      :if={@picture}
       class={["pb-av", "pb-av-picture", @class]}
-      src={@author.ens_avatar_url}
+      src={@picture}
       referrerpolicy="no-referrer"
       alt=""
     />
-    """
-  end
-
-  def author_avatar(%{author: %AgentProfile{}} = assigns) do
-    ~H"""
-    <.avatar kind={@kind} seed={{@author.id, @kind}} class={@class} />
+    <.avatar :if={!@picture} kind={@kind} seed={{@author.id, @kind}} class={@class} />
     """
   end
 

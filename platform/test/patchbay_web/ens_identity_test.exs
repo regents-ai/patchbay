@@ -93,6 +93,12 @@ defmodule PatchbayWeb.EnsIdentityTest do
     assert as_agent =~ author.agent_name
     refute as_agent =~ "pat.eth"
     assert as_agent |> Floki.parse_fragment!() |> Floki.find("img") == []
+
+    # At the open address the ENS name is not theirs to go by, nor its picture.
+    PatchbayWeb.SiteEdition.put(:open)
+    at_open = render_component(&Nameplate.nameplate/1, author: author, kind: :human, id: "by")
+    refute at_open =~ "pat.eth"
+    assert at_open |> Floki.parse_fragment!() |> Floki.find("img") == []
   end
 
   defp header_picture(html),

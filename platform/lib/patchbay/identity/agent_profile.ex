@@ -368,6 +368,16 @@ defmodule Patchbay.Identity.AgentProfile do
 
   def own_name(profile, edition), do: unnamed(profile, edition)
 
+  @doc """
+  The picture a person is shown with at `edition`'s address, by default the
+  one this process is serving: their ENS name's at patchbay.help, and none at
+  the open address, where that name is not theirs to go by (`own_name/2`).
+  """
+  @spec picture(t(), PatchbayWeb.SiteEdition.t()) :: String.t() | nil
+  def picture(profile, edition \\ PatchbayWeb.SiteEdition.current())
+  def picture(profile, :main), do: profile.ens_avatar_url
+  def picture(_profile, :open), do: nil
+
   defp name_fields(:main), do: @name_fields
   defp name_fields(:open), do: [:display_name]
 
