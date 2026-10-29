@@ -17,8 +17,13 @@ trap 'exit 130' INT
 unset BASE_RPC_URL PATCHBAY_ETHEREUM_NODE_URL ETHEREUM_READ_RPC_URL PATCHBAY_SIWA_URL \
   SIWA_HOSTED_URL SIWA_HOSTED_SIGNING_KEY SIWA_ACTIVITY_READ_TOKEN OPENROUTER_API_KEY \
   PATCHBAY_INDEXNOW_KEY
+# The run's own Privy signing key, in its own folder of saved sign-ins (dropped
+# with them), so sign_in.spec.ts can sign a stand-in's tokens as Privy would.
 export PATCHBAY_WALK=true POOL_SIZE=3 PRIVY_APP_ID=browser-walk-app
-PRIVY_VERIFICATION_KEY="$(openssl ecparam -name prime256v1 -genkey 2>/dev/null | openssl ec -pubout 2>/dev/null)"
+walk_auth="assets/test/browser/.auth/${PATCHBAY_DEV_PARTITION}"
+mkdir -p "$walk_auth"
+openssl ecparam -name prime256v1 -genkey -noout -out "$walk_auth/privy-key.pem" 2>/dev/null
+PRIVY_VERIFICATION_KEY="$(openssl ec -in "$walk_auth/privy-key.pem" -pubout 2>/dev/null)"
 export PRIVY_VERIFICATION_KEY
 
 mkdir -p tmp

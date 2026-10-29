@@ -1,12 +1,16 @@
 import {createElement, useEffect} from "react"
 import type {ComponentProps} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useIdentityToken, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
 import type {ConnectedWallet, PrivyErrorCode} from "@privy-io/react-auth"
 import type {Root} from "react-dom/client"
 import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
+import {providerConfig} from "./privy/provider.ts"
+import {handOver, stateWaiters} from "./privy/sign_in.ts"
+import type {Proof, Refusal} from "./privy/sign_in.ts"
+import {sendingWallet} from "./privy/wallet_choice.ts"
 import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
@@ -16,7 +20,6 @@ import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
 const CONTAINER_ID = "pb-privy-bridge"
 const READY_TIMEOUT_MS = 20000
-const TOKEN_TIMEOUT_MS = 15000
 // Privy's own code for a person who closed the window instead of signing in.
 const CLOSED_BY_USER = "exited_auth_flow"
 
@@ -27,7 +30,6 @@ type BridgeState = {
   user: ReturnType<typeof usePrivy>["user"]
   getAccessToken: ReturnType<typeof usePrivy>["getAccessToken"]
   logout: ReturnType<typeof usePrivy>["logout"]
-  identityToken: string | null
   login: ReturnType<typeof useLogin>["login"]
   wallets: ConnectedWallet[]
   walletsReady: boolean
@@ -37,20 +39,17 @@ type BridgeState = {
 
 type LoginOutcome = {ok: true} | {ok: false, code: PrivyErrorCode}
 
-type Refusal = {ok: false, reason: string}
-
 let mounted: {container: HTMLDivElement, root: Root} | null = null
-let current: BridgeState | null = null
+const published = stateWaiters<BridgeState>()
 let settleLogin: ((outcome: LoginOutcome) => void) | null = null
 let identityGeneration = 0
 let mountedAppId: string | null = null
-const waiters = new Set<(state: BridgeState) => void>()
+const waitFor = published.waitFor
 
-function publish(state: BridgeState) {
-  const changed = current?.user?.id !== state.user?.id || current?.authenticated !== state.authenticated
-  current = state
-  if (changed) identityGeneration += 1
-  for (const waiter of Array.from(waiters)) waiter(state)
+function publish(next: BridgeState) {
+  const current = published.current()
+  if (current?.user?.id !== next.user?.id || current?.authenticated !== next.authenticated) identityGeneration += 1
+  published.publish(next)
 }
 
 function finishLogin(outcome: LoginOutcome) {
@@ -63,7 +62,6 @@ function finishLogin(outcome: LoginOutcome) {
 // publishes what they currently say to the plain functions below.
 function Bridge() {
   const privy = usePrivy()
-  const {identityToken} = useIdentityToken()
   const {wallets, ready: walletsReady} = useWallets()
   const {wallet: activeWallet} = useActiveWallet()
   const {fund} = useFiatOnramp()
@@ -79,7 +77,6 @@ function Bridge() {
       user: privy.user,
       getAccessToken: privy.getAccessToken,
       logout: privy.logout,
-      identityToken,
       login,
       wallets,
       walletsReady,
@@ -115,13 +112,16 @@ export async function openProfile(appId: string): Promise<ProfileAction> {
   const opened = await waitFor(one => one.ready, 10_000)
   return createProfileClient({
     acquireProof: oneSignIn(opened.authenticated ? opened.user?.id ?? null : null, async () => {
-      const state = current
-      if (!state?.ready || !state.authenticated || !state.user?.id) return null
+      const signedIn = published.current()
+      if (!signedIn?.ready || !signedIn.authenticated || !signedIn.user?.id) return null
       const generation = identityGeneration
-      const subject = state.user.id
+      const subject = signedIn.user.id
       const identityToken = await getIdentityToken()
-      const accessToken = await state.getAccessToken()
-      const isCurrent = () => (current?.authenticated && current.user?.id === subject && identityGeneration === generation) as boolean
+      const accessToken = await signedIn.getAccessToken()
+      const isCurrent = () => {
+        const now = published.current()
+        return (now?.authenticated && now.user?.id === subject && identityGeneration === generation) as boolean
+      }
       return {accessToken: accessToken as string, identityToken: identityToken as string, subject, isCurrent}
     }),
   })
@@ -144,7 +144,7 @@ function start(appId: string) {
     createElement(
       PrivyProvider,
       // Its children are the next argument, which React hands it as props.children.
-      {appId, config: {loginMethods: ["wallet"]}} as ComponentProps<typeof PrivyProvider>,
+      {appId, config: providerConfig} as ComponentProps<typeof PrivyProvider>,
       createElement(Bridge),
     ),
   )
@@ -152,34 +152,16 @@ function start(appId: string) {
   mounted = {container, root}
 }
 
-function waitFor(matches: (state: BridgeState) => boolean, timeoutMs: number): Promise<BridgeState> {
-  if (current && matches(current)) return Promise.resolve(current)
-
-  return new Promise((resolve, reject) => {
-    const waiter = (state: BridgeState) => {
-      if (!matches(state)) return
-      clearTimeout(timer)
-      waiters.delete(waiter)
-      resolve(state)
-    }
-    const timer = setTimeout(() => {
-      waiters.delete(waiter)
-      reject(new Error("privy_timeout"))
-    }, timeoutMs)
-
-    waiters.add(waiter)
-  })
-}
-
 /**
  * Signs in with Privy and hands back the pair of tokens the server verifies.
  *
- * Nothing is sent anywhere from here; the caller posts the pair. A person who
- * closes the window, and a Privy application that has not been told to issue
- * identity tokens, are both reported rather than treated as a failure to sign
- * in for some unnamed reason.
+ * Nothing is sent anywhere from here; the caller posts the pair, and only once
+ * the person's Privy account links an Ethereum wallet. A person who closes the
+ * window, an account whose wallet Privy has not made (`no_wallet`), and a Privy
+ * application that has not been told to issue identity tokens are each reported
+ * rather than treated as a failure to sign in for some unnamed reason.
  */
-export async function signIn(appId: string): Promise<{ok: true, access: string, identity: string} | Refusal> {
+export async function signIn(appId: string): Promise<Proof | Refusal> {
   start(appId)
 
   let state
@@ -200,17 +182,32 @@ export async function signIn(appId: string): Promise<{ok: true, access: string, 
     }
   }
 
-  try {
-    const authenticated = await waitFor(one => one.authenticated, TOKEN_TIMEOUT_MS)
-    const access = await authenticated.getAccessToken()
-    const withIdentity = await waitFor(one => isToken(one.identityToken), TOKEN_TIMEOUT_MS)
+  return handOver(waitFor, getIdentityToken)
+}
 
-    if (!isToken(access)) return {ok: false, reason: "no_access_token"}
+/**
+ * Finishes a Google or other redirect sign-in on the page Privy brought the
+ * person back to (`?privy_oauth_code=`), which completes only once Privy runs
+ * here. The window the person opened on the page before speaks for this page:
+ * Privy completes it once it has handled the return and made the person's
+ * wallet, then the pair is handed back as `signIn` hands it. As ash-template,
+ * where a redirect return starts the bridge with its sign-in window open.
+ */
+export async function finishRedirectSignIn(appId: string): Promise<Proof | Refusal> {
+  const completed = new Promise<LoginOutcome>(resolve => { settleLogin = resolve })
+  start(appId)
 
-    return {ok: true, access, identity: withIdentity.identityToken as string}
-  } catch {
-    return {ok: false, reason: "no_identity_token"}
-  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const outcome = await Promise.race([
+    completed,
+    new Promise<null>(resolve => { timer = setTimeout(() => resolve(null), READY_TIMEOUT_MS) }),
+  ])
+  clearTimeout(timer)
+
+  if (!outcome) return {ok: false, reason: "unready"}
+  if (!outcome.ok) return {ok: false, reason: outcome.code === CLOSED_BY_USER ? "closed" : "refused"}
+
+  return handOver(waitFor, getIdentityToken)
 }
 
 /**
@@ -226,9 +223,10 @@ export async function signOut(appId: string): Promise<void> {
 }
 
 /**
- * Privy's active wallet, when it is an Ethereum wallet still connected in this
- * browser: its address and the provider a payment is signed through. With none
- * open (`wallet_unavailable`), nothing opens and nothing is signed; the page
+ * The wallet that sends for the signed-in account (`sendingWallet`): Privy's
+ * active wallet when the account links it, else the account's own wallet this
+ * tab holds connected. Its address and the provider a payment is signed through.
+ * With none (`wallet_unavailable`), nothing opens and nothing is signed; the page
  * asks the person to open one of their wallets. One whose provider does not
  * answer is `wallet_unanswered`. The server decides whether this wallet may pay
  * for the account.
@@ -245,7 +243,7 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
 
   if (!state.authenticated) return {ok: false, reason: "signed_out"}
 
-  const active = sendingWallet(state)
+  const active = signedInWallet(state)
   if (!active) return {ok: false, reason: "wallet_unavailable"}
 
   try {
@@ -257,8 +255,9 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
 }
 
 /**
- * The address of Privy's active wallet, lowercased, read without opening
- * anything: null when Privy holds no sign-in or no active wallet here.
+ * The address of the wallet that sends for the signed-in account, lowercased,
+ * read without opening anything: null when Privy holds no sign-in here or the
+ * tab holds none of the account's wallets.
  */
 export async function activeAddress(appId: string): Promise<string | null> {
   start(appId)
@@ -270,7 +269,7 @@ export async function activeAddress(appId: string): Promise<string | null> {
     return null
   }
 
-  const active = state.authenticated ? sendingWallet(state) : null
+  const active = state.authenticated ? signedInWallet(state) : null
   return active ? active.address.toLowerCase() : null
 }
 
@@ -304,27 +303,21 @@ export async function addFundsByCard(appId: string): Promise<{ok: true, status: 
   }
 }
 
-// An Ethereum wallet Privy has selected and still holds connected. A Solana
-// selection, or one the wallet app has dropped, is no wallet rather than a
-// reason to pick another. Privy names no wallet after a sign-in that skipped
-// its window, or in a new tab: the signed-in wallet then sends as this browser
-// has it connected, when exactly one connected wallet is linked to the account.
-function sendingWallet({activeWallet: active, wallets, user}: BridgeState): ConnectedWallet | null {
-  if (active) {
-    if (active.type !== "ethereum") return null
-    return wallets.some(one => sameAddress(one.address, active.address)) ? active : null
-  }
-  const linked = (user?.linkedAccounts ?? []).flatMap(account =>
-    account.type === "wallet" && account.chainType === "ethereum" ? [account.address] : [],
-  )
-  const signedIn = wallets.filter(one => linked.some(address => sameAddress(address, one.address)))
-  return signedIn.length === 1 ? signedIn[0] : null
+// Every wallet the account links as Patchbay verified it at sign-in
+// (`data-account-wallets`), the same list the server lets pay, so the page never
+// sends from a wallet the server would refuse, such as a Privy wallet made after
+// this sign-in handed over.
+function accountWallets(): string[] {
+  const listed = document.querySelector<HTMLElement>("#pb-account")?.dataset.accountWallets ?? ""
+  return listed.split(" ").filter(Boolean).map(address => address.toLowerCase())
 }
 
-function sameAddress(left: unknown, right: unknown): boolean {
-  return typeof left === "string" && typeof right === "string" && left.toLowerCase() === right.toLowerCase()
+// The account's main wallet the page was drawn for (`data-account-wallet`), which
+// sends when this tab holds several of the account's wallets and Privy names none.
+function accountWallet(): string | null {
+  return document.querySelector<HTMLElement>("#pb-account")?.dataset.accountWallet?.toLowerCase() ?? null
 }
 
-function isToken(value: unknown): value is string {
-  return typeof value === "string" && value.trim() !== ""
+function signedInWallet({activeWallet: active, wallets}: BridgeState): ConnectedWallet | null {
+  return sendingWallet(active, wallets, accountWallets(), accountWallet())
 }

@@ -97,7 +97,7 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Pair a new agent | | Pair New Agent on `/account` (PairingBox `new_pairing_code`, `choose_agent`) | GAP PB-28 (template), protected: pairing stays the owner's under the 9 Oct agent access rule | GAP PB-28 (template), protected | GAP PB-28 (template), protected; the agent's own half is `agents pair` |
 | Unpair an agent | | Agents panel (AgentsPanel `unpair_agent`) | GAP PB-28 (template), protected | GAP PB-28 (template), protected | GAP PB-28 (template), protected |
 | Read an agent's last actions | | Agents in the account menu (MenuAgents `read_last_actions`) | GAP PB-28 (template) | GAP PB-28 (template) | GAP PB-28 (template) |
-| Change the public name | | `/account/profile` (AccountLive `public_name_saved`, through the shared profile page tools) | GAP PB-28 (template): the page's profile_update acts on the person's session and is being removed (PB-18) | GAP PB-28 (template) | GAP PB-28 (template) |
+| Change the public name | | `/account/profile` (AccountLive `public_name_saved`, with the person's own sign-in) | GAP PB-28 (template): no page tool; the shared profile tools acted with the person's own sign-in and were removed (PB-18) | GAP PB-28 (template) | GAP PB-28 (template) |
 | Read the inbox | `read_inbox` | Waiting on `/account/inbox` | `read_inbox` | `read_inbox` | `inbox read` |
 | Clear an inbox item | `acknowledge_inbox_item` | Acknowledge on `/account/inbox` (AccountLive `acknowledge`) | `acknowledge_inbox_item` | `acknowledge_inbox_item` | `inbox acknowledge` |
 | Buy Credits | | Credits panel, by card or onchain (CreditsPanel `prepare_and_send`, `step_sent`) | GAP PB-28 (template), protected | GAP PB-28 (template), protected | GAP PB-28 (template), protected |

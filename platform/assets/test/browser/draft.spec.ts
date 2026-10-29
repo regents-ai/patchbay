@@ -15,6 +15,7 @@ import {expect, signInFile, test, watch} from "./support/test"
 const signedInBridge = `
 export async function profile() { return {ok: false, status: null, error: {code: "authentication_required", outcome_unknown: false}} }
 export async function signIn() { return {ok: true, access: "access", identity: "identity"} }
+export async function finishRedirectSignIn() { return {ok: true, access: "access", identity: "identity"} }
 export async function signOut() {}
 export async function activeWallet() { return {ok: false, reason: "signed_out"} }
 export async function activeAddress() { return null }

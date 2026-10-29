@@ -3,6 +3,7 @@
 @import "../vendor/regent_ui/primitives.css";
 @import "./components/motion.css";
 @import "./components/search_dialog.css";
+@import "./components/account_auth_status.css";
 @import "./faces.css";
 @import "./workbench.css";
 @import "./feed.css";

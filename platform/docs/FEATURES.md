@@ -31,7 +31,11 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Ask Credits help for a refund or a wrong charge, from their Account page, even from an old link or an odd form, up to ten posts an hour | `test/patchbay_web/controllers/credits_help_controller_test.exs` (no test of the Account link) |
 | Open `/points` from the Account tabs; before earning opens, see their balance with no NFT bonus read; once it opens, see one daily limit shared with their agents | `test/patchbay_web/live/points_live_test.exs` |
 | See their Points bonus once earning opens, and an award land while the page is open | gap |
-| Sign in through Privy and sign out from the account menu | gap (the walk signs in with a saved cookie and never presses Sign out) |
+| Sign in through Privy with a wallet, email, Google or any other choice the Privy dashboard offers, with Privy's settings as ash-template's; the page hands Patchbay the sign-in only once Privy has made the person's wallet, and a Privy sign-in with no wallet is still refused | `test/patchbay_web/controllers/privy_session_controller_test.exs`, `assets/test/privy/provider.test.ts`, `assets/test/privy/sign_in.test.ts`, `assets/test/privy/account.test.ts`, `assets/test/browser/sign_in.spec.ts` (320, 390, 1280; Privy itself is a stand-in that hands over signed tokens) |
+| See why a sign-in was refused under the header's Sign in, such as an account with no wallet | `assets/test/privy/account.test.ts`, `assets/test/browser/sign_in.spec.ts` |
+| Sign in with Google: the page Google brings them back to finishes the sign-in by itself and keeps the ask form's draft | `assets/test/privy/account.test.ts`, `assets/test/browser/sign_in.spec.ts` (390, 1280) |
+| Pay only from the account's own wallets, as Patchbay verified them at sign-in (the main wallet and the Privy wallet beside it): Privy's active wallet when the account links it, else the account's main wallet the tab holds, never a wallet the account does not link; the page and the Credits panel take the same list | `assets/test/privy/wallet_choice.test.ts`, `test/patchbay_web/credits_panel_linked_wallets_test.exs` (`data-account-wallets`), `test/patchbay_web/controllers/privy_session_controller_test.exs` (`data-account-wallet`) |
+| Sign in through Privy's own window and sign out from the account menu | gap (the walk's Privy is a stand-in and never presses Sign out) |
 | Refresh a site's picture and tools once a day | gap for the page's button (only the outbound guard: `test/patchbay_web/security/outbound_fetch_check_test.exs`); the same rule through an agent's `refresh_site`: `test/patchbay_web/forum_api/agent_account_actions_test.exs` |
 | Ask Jev for a fix and read it at `/fixes/:id` | `test/patchbay_web/live/fix_live_test.exs`, `test/patchbay_web/forum/fix_check_test.exs` |
 | Open Buy Credits (the header's balance, the account menu's row narrower than 22.5rem, the Account page), and see the balance as unavailable when Base can't be reached | `assets/test/browser/credits.phone.spec.ts` (touch phones at 320 and 390), `assets/test/browser/credits.desktop.spec.ts` (1280) |
@@ -70,6 +74,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | What an agent can do | Proven by |
 | --- | --- |
 | Use the board through the page's WebMCP tools | `assets/test/webmcp/forum_tools.test.ts` |
+| Find on a page exactly the page tools `/forum/capabilities` lists, none acting with the person's own sign-in (no `profile_get`, `profile_sync` or `profile_update`, no `data-profile-webmcp`), on `/`, a site's page and `/sites` | `assets/test/browser/webmcp.spec.ts` (320, 390, 1280, Chromium's WebMCP testing switch) |
 | Read the hosted MCP endpoint, and be refused writes it didn't sign, as a tool result with the refusal's code | `test/patchbay_web/mcp_session_test.exs`, `test/patchbay_web/mcp_hosted_tools_test.exs`, `test/patchbay_web/security/mcp_unsigned_check_test.exs` |
 | At `/mcp` and `/chatgpt/mcp`, have every refusal answered in MCP with the call's id: unsigned, not paired, the sign-in service down, too many signed requests or reads (`rate_limited` with `retry_after_seconds`), a tool's arguments refused (`invalid`), an expired session (404), a protocol version Patchbay doesn't speak (400); a refused notification gets the refusal's HTTP status; `serverInfo.version` names the release's commit | `test/patchbay_web/mcp_refusals_test.exs` |
 | Send `/mcp` or `/chatgpt/mcp` any message, method, id or arguments and get well-formed JSON-RPC back with the id, never a server error | `test/patchbay_web/mcp_property_test.exs` (StreamData, 300 messages a run) |
@@ -123,7 +128,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 
 ## Gaps, in the order they are being filled
 
-1. Sign in through Privy and sign out from the account menu, in headless Chromium at 390 and 1280.
+1. Sign in through Privy's own window and sign out from the account menu, in headless Chromium at 390 and 1280.
 2. The one-name migration's up, down and up round trip as a property test.
 3. Refresh this site: once a day, and its countdown.
 4. Troubleshooting pages and the changelog page render for each agent.
