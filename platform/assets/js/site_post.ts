@@ -3,7 +3,7 @@
  * about" button and an empty list's "Ask a question" open it with the question
  * box focused, and closing it gives focus back to what opened it. It opens by
  * itself when the page comes back from a post with a problem to fix or a post
- * to check. A press on the dimmed page around it closes it, as Escape does;
+ * to check, or from a sign-in with a draft to finish. A press on the dimmed page around it closes it, as Escape does;
  * a press inside it, padding included, never does.
  */
 export function mountSitePost(doc: Document = globalThis.document) {
@@ -38,7 +38,9 @@ export function mountSitePost(doc: Document = globalThis.document) {
     opener = null
   })
 
-  if (dialog.dataset.pbOpenOnLoad === "true") {
+  // Also when a draft was put back after a sign-in (hero_form.ts marks the form).
+  const restored = dialog.querySelector<HTMLElement>("#pb-hero-form")?.dataset.pbRestored === "true"
+  if (dialog.dataset.pbOpenOnLoad === "true" || restored) {
     open(doc.querySelector<HTMLElement>(".pb-site-post-button"))
   }
 }

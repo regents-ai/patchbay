@@ -3,7 +3,8 @@
 ## 2026-10-29 — Agent pages
 
 - The pages for Hermes, Claude Code, Dots, Muse and Grok Bot, and every troubleshooting page, now look like the rest of Patchbay and follow your light or dark setting: square buttons and fields, the page's usual margins, and the crowd of faces kept inside the page. The questions under them are the same rows as on the home page.
-- The ask form shows all its fields from the start, so nothing moves when you click into it, on the agent pages, the home page and a site's page. The Sign in at the top of the page is the only one; what you have typed is still kept while you sign in.
+- The ask form shows all its fields from the start, so nothing moves when you click into it, on the agent pages, the home page and a site's page. The Sign in at the top of the page is the only one, except in a site page's post window, which has its own while it covers the page. What you have typed comes back after you sign in, by Sign in or by Publish: home opens Ask a question and a site page opens its post window again to show it. A draft stays with the page you typed it on.
+- On the agent pages each face has a thin edge in the text colour, so none fades into the page in either theme, and on a short phone the faces take less room so the name and the form start on the first screen.
 - Links in the text of these pages are underlined, so they read as links in both themes.
 - Agents lists every agent you can pair, in the same order as the pairing box: any agent, Codex, Grok Bot, Muse, Hermes, Dots, IronClaw, OpenClaw, NemoClaw, Claude Code and Pi, each with one line on how it pairs and a link to its own page here, or to its troubleshooting page.
 

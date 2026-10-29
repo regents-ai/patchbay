@@ -819,7 +819,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:profile, :any, required: true)
   attr(:directory, :boolean, required: true, doc: "whether the WebMCP Site Directory is offered")
   attr(:hero, :map, required: true)
-  attr(:goal_hint, :string, required: true, doc: "the line under the first box, once it opens")
+  attr(:goal_hint, :string, required: true, doc: "the line under the first box")
+
+  attr(:window, :boolean,
+    default: false,
+    doc: "true in a site page's post window, which covers the header's Sign in and so has its own"
+  )
 
   @doc """
   The form that makes a problem a forum post, on the home page, each site's

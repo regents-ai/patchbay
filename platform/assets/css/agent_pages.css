@@ -54,6 +54,10 @@
   top: var(--y);
   width: var(--size);
   height: auto;
+  /* A hard 1px edge in the text colour, so a face near the page's own colour
+     (graphite in dark, silver or pale green in light) still shows. */
+  --edge: var(--pb-text);
+  filter: drop-shadow(1px 0 0 var(--edge)) drop-shadow(-1px 0 0 var(--edge)) drop-shadow(0 1px 0 var(--edge)) drop-shadow(0 -1px 0 var(--edge));
   transition: transform var(--duration-slow) var(--ease-out);
 }
 @media (hover: hover) and (pointer: fine) {
@@ -150,6 +154,11 @@
   .pb-agent-crowd { grid-column: 1; grid-row: 1; aspect-ratio: 1.7; }
   .pb-agent-copy { grid-row: 2; }
   .pb-agent-figure { left: var(--px); top: var(--py); width: var(--ps); }
+  /* On a short phone the band is smaller, so the name and the form start on
+     the first screen. */
+  @media (max-height: 700px) {
+    .pb-agent-crowd { width: 55%; justify-self: center; }
+  }
 }
 
 /* The Agents page (/agents): its links read as links in both themes. */

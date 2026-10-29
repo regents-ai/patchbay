@@ -9,7 +9,15 @@
 >
   <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
   <p :if={!@profile} id="pb-hero-sign-in" class="pb-hero-sign-in">
-    Sign in to post. What you write here stays while you sign in.
+    <span>Sign in to post. What you write here stays while you sign in.</span>
+    <Regent.Primitives.button
+      :if={@window}
+      variant="secondary"
+      type="button"
+      data-account-target="sign-in"
+    >
+      Sign in
+    </Regent.Primitives.button>
   </p>
   <p :if={@hero.problem && !@hero.preview} class="pb-reply-form-problem" role="alert">
     {@hero.problem.said}

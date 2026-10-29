@@ -53,16 +53,26 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   if (!form) return
 
   const storage = options.storage === undefined ? sessionStorageOrNull() : options.storage
-  restoreDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
-  restorePicks(form, storage)
+  // Each page's form keeps its own draft, so one typed on /hermes stays there.
+  const home = form.dataset.pbHome!
+  const draftKey = `${DRAFT_KEY}:${home}`
+  const picksKey = `${PICKS_KEY}:${home}`
+  // A draft put back shows itself: home's Ask a question opens, and a site
+  // page's post window opens (site_post.ts reads data-pb-restored).
+  if (restoreDraft(form, storage, draftKey, FIELD_NAMES)) {
+    form.dataset.pbRestored = "true"
+    const ask = form.closest<HTMLDetailsElement>("details#pb-ask")
+    if (ask) ask.open = true
+  }
+  restorePicks(form, storage, picksKey)
   openFilledDetails(form)
   const picker = mountToolPicker(form)
   mountSiteCheck(form, {...options, onTools: picker?.show})
   mountKindChoice(form)
 
   const keep = () => {
-    keepDraft(form, storage, DRAFT_KEY, FIELD_NAMES)
-    keepPicks(form, storage)
+    keepDraft(form, storage, draftKey, FIELD_NAMES)
+    keepPicks(form, storage, picksKey)
   }
 
   // A post that was turned down comes back at the address the form
@@ -70,7 +80,6 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   // is on goes back in its place, with what was typed kept, so signing in or
   // reloading returns to this form rather than to a page that is not there.
   const view = doc.defaultView
-  const home = form.dataset.pbHome!
   if (view && view.location.pathname !== home) {
     keep()
     view.history.replaceState(view.history.state, "", home)
@@ -84,9 +93,13 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   form.addEventListener("input", changed)
   form.addEventListener("change", changed)
 
-  // Signing in from the page's Sign in partway through keeps what is written.
+  // Signing in partway through keeps what is written. The page's Sign in is
+  // the header's, or the post window's own while the window covers the header;
+  // the window closes first, so Privy's sign-in opens above the page.
   doc.addEventListener("click", event => {
-    if ((event.target as Element).closest?.("[data-account-target='sign-in']")) keep()
+    if (!(event.target as Element).closest?.("[data-account-target='sign-in']")) return
+    keep()
+    form.closest("dialog")?.close()
   }, {capture: true})
 
   form.addEventListener("submit", event => {
@@ -97,6 +110,7 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
     } else if (submitter?.hasAttribute("data-pb-post") && form.dataset.pbSignedIn !== "true") {
       event.preventDefault()
       keep()
+      form.closest("dialog")?.close()
       void requestAccountAction("sign-in", doc, options)
     }
   })
@@ -217,19 +231,19 @@ function picksOf(form: PageForm) {
 
 // The picked tools ride across a sign-in the way the texts do, and the
 // list takes them back once it is shown again.
-function keepPicks(form: PageForm, storage: Storage | null) {
+function keepPicks(form: PageForm, storage: Storage | null, key: string) {
   try {
-    storage?.setItem(PICKS_KEY, picksOf(form).join("\n"))
+    storage?.setItem(key, picksOf(form).join("\n"))
   } catch {
     // A page that cannot keep the picks still signs in.
   }
 }
 
-function restorePicks(form: PageForm, storage: Storage | null) {
+function restorePicks(form: PageForm, storage: Storage | null, key: string) {
   const box = form.querySelector<HTMLElement>("#pb-fix-tools")
   try {
-    const kept = storage?.getItem(PICKS_KEY)
-    storage?.removeItem(PICKS_KEY)
+    const kept = storage?.getItem(key)
+    storage?.removeItem(key)
     if (box && kept) box.dataset.pbPicked = kept
   } catch {
     // Nothing kept, nothing to put back.

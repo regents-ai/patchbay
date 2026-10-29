@@ -28,27 +28,33 @@ export function keepDraft(form: DraftForm, storage: DraftStorage | null, key: st
   }
 }
 
-export function restoreDraft(form: DraftForm, storage: DraftStorage | null, key: string, names: string[]) {
+/** Puts a kept draft back once; true when any field took a kept value. */
+export function restoreDraft(form: DraftForm, storage: DraftStorage | null, key: string, names: string[]): boolean {
   let kept: string | null | undefined
   try {
     kept = storage?.getItem(key)
     storage?.removeItem(key)
   } catch {
-    return
+    return false
   }
-  if (!kept) return
+  if (!kept) return false
   let draft: Record<string, unknown>
   try {
     draft = JSON.parse(kept)
   } catch {
-    return
+    return false
   }
+  let restored = false
   for (const name of names) {
     const field = form.elements[name]
     const value = draft[name]
     if (!field || typeof value !== "string" || value === "") continue
-    if (field.tagName === "SELECT" || field.value === "") field.value = value
+    if (field.tagName === "SELECT" || field.value === "") {
+      field.value = value
+      restored = true
+    }
   }
+  return restored
 }
 
 export function sessionStorageOrNull() {
