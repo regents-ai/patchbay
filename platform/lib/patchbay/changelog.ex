@@ -34,10 +34,10 @@ defmodule Patchbay.Changelog do
   @entries Enum.map(@releases, fn nodes ->
              Patchbay.AddressText.html(%{@document | nodes: nodes})
            end)
-  @intro_html MDEx.to_html!(
-                %{@document | nodes: Enum.reject(@intro, &match?(%MDEx.Heading{level: 1}, &1))},
-                render: [unsafe: false]
-              )
+  @intro_pieces Patchbay.AddressText.html(%{
+                  @document
+                  | nodes: Enum.reject(@intro, &match?(%MDEx.Heading{level: 1}, &1))
+                })
   @markdown MDEx.to_markdown!(%{@document | nodes: @intro ++ List.flatten(@releases)})
 
   # The page shows twelve entries at a time; the Markdown answer stays whole.
@@ -56,7 +56,8 @@ defmodule Patchbay.Changelog do
 
   def page(_number), do: :error
 
-  def intro_html, do: @intro_html
+  @doc "The words before the first entry, as the entries' pieces (`Patchbay.AddressText.html/1`)."
+  def intro, do: @intro_pieces
   def markdown, do: @markdown
 
   @doc "How many entries are dated after the given day."

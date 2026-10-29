@@ -12,17 +12,28 @@
     </a>
   </header>
 
-  <div :if={@intro_html != "" and @page == 1} class="pb-changelog__intro">{raw(@intro_html)}</div>
-  <article :for={{entry, n} <- Enum.with_index(@entries, @before)} class="pb-changelog__release">
+  <div :if={@intro != [] and @page.number == 1} class="pb-changelog__intro">
+    <PatchbayWeb.AddressText.address_text id="pb-changelog-intro-address" pieces={@intro} />
+  </div>
+  <article
+    :for={{entry, n} <- Enum.with_index(@page.entries, @page.before)}
+    class="pb-changelog__release"
+  >
     <PatchbayWeb.AddressText.address_text id={"pb-changelog-#{n}-address"} pieces={entry} />
   </article>
-  <nav :if={@pages > 1} class="pb-changelog__pages" aria-label="Changelog pages">
+  <nav :if={@page.pages > 1} class="pb-changelog__pages" aria-label="Changelog pages">
     <a
-      :if={@page > 1}
-      href={if @page == 2, do: ~p"/changelog", else: ~p"/changelog?#{[page: @page - 1]}"}
+      :if={@page.number > 1}
+      href={
+        if @page.number == 2, do: ~p"/changelog", else: ~p"/changelog?#{[page: @page.number - 1]}"
+      }
       rel="prev"
     >← Newer</a>
-    <span>Page {@page} of {@pages}</span>
-    <a :if={@page < @pages} href={~p"/changelog?#{[page: @page + 1]}"} rel="next">Older →</a>
+    <span>Page {@page.number} of {@page.pages}</span>
+    <a
+      :if={@page.number < @page.pages}
+      href={~p"/changelog?#{[page: @page.number + 1]}"}
+      rel="next"
+    >Older →</a>
   </nav>
 </main>

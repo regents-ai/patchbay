@@ -36,26 +36,14 @@ defmodule PatchbayWeb.PagesController do
     )
   end
 
-  @doc """
-  The changelog, twelve entries a page with the newest first (`?page=2` and on
-  for older ones). The Markdown answer is the whole changelog on every page.
-  """
   def changelog(conn, params) do
-    with {number, ""} <- Integer.parse(Map.get(params, "page", "1")),
-         {:ok, entries, before, pages} <- Patchbay.Changelog.page(number) do
-      conn
-      |> merge_assigns(PatchbayWeb.PublicDocuments.page("/changelog"))
-      |> render(:changelog,
-        entries: entries,
-        before: before,
-        page: number,
-        pages: pages,
-        intro_html: Patchbay.Changelog.intro_html(),
-        markdown: Patchbay.Changelog.markdown()
-      )
-    else
-      _no_such_page -> raise PatchbayWeb.Forum.NotFoundError
-    end
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/changelog"))
+    |> render(:changelog,
+      page: changelog_page!(params),
+      intro: Patchbay.Changelog.intro(),
+      markdown: Patchbay.Changelog.markdown()
+    )
   end
 
   def docs(conn, _params) do
@@ -104,4 +92,16 @@ defmodule PatchbayWeb.PagesController do
   # The developer page's old address, moved for good.
   def developers(conn, _params),
     do: conn |> put_status(:moved_permanently) |> redirect(to: ~p"/docs")
+
+  # The changelog shows twelve entries a page, newest first (`?page=2` and on
+  # for older ones); a page that does not exist is missing. The Markdown answer
+  # is the whole changelog on every page.
+  defp changelog_page!(params) do
+    with {number, ""} <- Integer.parse(Map.get(params, "page", "1")),
+         {:ok, entries, before, pages} <- Patchbay.Changelog.page(number) do
+      %{entries: entries, before: before, number: number, pages: pages}
+    else
+      _no_such_page -> raise PatchbayWeb.Forum.NotFoundError
+    end
+  end
 end
