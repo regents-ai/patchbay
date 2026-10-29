@@ -58,12 +58,18 @@ defmodule Patchbay.Forum.Capabilities.Contract do
     |> Enum.map(&"#{row["operation"]} in priv/capabilities.json has #{&1}")
   end
 
+  # A tool with no operation runs on the page itself: it sends nothing, so it
+  # signs nothing and changes nothing, and no server offers it.
   defp tool_problems(tool, _rows, _openapi) when not is_map_key(tool, "operation_id") do
-    changes? = tool["annotations"]["readOnlyHint"] != true
-
-    if tool["authentication"] == "siwa_per_request" or changes?,
-      do: [tool_says(tool, "no operation_id, yet it signs or changes something")],
-      else: []
+    [
+      {tool["hosted"] != false, "no operation_id, yet /mcp lists it"},
+      {tool["scope"] != "site" and not String.starts_with?(tool["scope"], "page:"),
+       "no operation_id, yet it is offered off the page"},
+      {tool["authentication"] != "public", "no operation_id, yet it signs"},
+      {tool["annotations"]["readOnlyHint"] != true, "no operation_id, yet it changes something"}
+    ]
+    |> first()
+    |> Enum.map(&tool_says(tool, &1))
   end
 
   defp tool_problems(tool, rows, openapi) do
@@ -80,12 +86,17 @@ defmodule Patchbay.Forum.Capabilities.Contract do
           {tool["authentication"] == "owner_only" != row["authority"] in @to_person,
            "an owner door its operation's authority does not have"},
           {tool["annotations"]["readOnlyHint"] == true != row["effect"] in @changes_nothing,
-           "a read-only hint its operation's effect contradicts"}
+           "a read-only hint its operation's effect contradicts"},
+          {offered_to_agents?(tool) and row["authority"] in @to_person,
+           "an agent surface for an operation only its person runs"}
         ]
         |> first()
         |> Enum.map(&tool_says(tool, &1))
     end
   end
+
+  # A page's own tools and /mcp's are agents'; the person's own actions are not.
+  defp offered_to_agents?(tool), do: tool["hosted"] != false or tool["scope"] == "site"
 
   defp tool_says(tool, problem), do: "#{tool["name"]} in priv/tool_manifest.json has #{problem}"
 

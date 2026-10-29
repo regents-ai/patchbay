@@ -1220,11 +1220,13 @@
       },
       "scope": "hosted",
       "hosted": true,
+      "operation_id": "getWebmcpGuide",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": false
+      "open_world": false,
+      "route": "GET /webmcp"
     },
     {
       "name": "report_tool_problem",
@@ -2027,11 +2029,13 @@
       },
       "scope": "hosted",
       "hosted": true,
+      "operation_id": "getThread",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
-      "open_world": true
+      "open_world": true,
+      "route": "GET /forum/threads/{id}"
     },
     {
       "name": "mark_solution",

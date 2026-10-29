@@ -49,7 +49,6 @@ defmodule Patchbay.Forum.Capabilities do
 
   @source files.capabilities
   @cli @source["cli"]
-  @agents ~w(signed_agent paired_agent)
   @to_person ~w(owner_only wallet)
   @changes_nothing ~w(read quote)
 
@@ -135,8 +134,8 @@ defmodule Patchbay.Forum.Capabilities do
              hosted: tool["hosted"],
              availability: tool["availability"],
              operation: tool["operation_id"],
-             authority: if(row, do: row["authority"], else: "public"),
-             effect: if(row, do: row["effect"], else: "read"),
+             authority: row && row["authority"],
+             effect: row && row["effect"],
              route: tool["route"],
              purpose: tool["purpose"],
              destructive: tool["destructive"],
@@ -195,9 +194,14 @@ defmodule Patchbay.Forum.Capabilities do
   @spec hosted() :: [map()]
   def hosted, do: Enum.filter(@tools, & &1.hosted)
 
-  @doc "Whether a tool's operation needs a signed agent rather than anyone."
+  @doc """
+  Whether a caller must prove who it is before a tool runs: every tool whose
+  operation is not open to anyone. A tool with no operation runs only on the
+  page itself (the contract refuses one anywhere else), so it is never public
+  either.
+  """
   @spec signed?(map()) :: boolean()
-  def signed?(tool), do: tool.authority in @agents
+  def signed?(tool), do: tool.authority != "public"
 
   @doc "Whether a tool changes nothing."
   @spec read_only?(map()) :: boolean()
@@ -293,8 +297,9 @@ defmodule Patchbay.Forum.Capabilities do
   defp heading("hosted"), do: "Hosted tools"
   defp heading("owner"), do: "Owner tools"
 
-  @doc "Who may run a tool, in the capability rows' words."
+  @doc "Who may run a tool, in the capability rows' words; a page-only tool runs on the page itself."
   @spec who(map()) :: String.t()
+  def who(%{operation: nil}), do: "The page itself, which sends nothing."
   def who(tool), do: authority_words(tool.authority)
 
   defp authority_words(name),

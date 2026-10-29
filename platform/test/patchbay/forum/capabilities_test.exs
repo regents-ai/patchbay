@@ -60,6 +60,18 @@ defmodule Patchbay.Forum.CapabilitiesTest do
         "search_threads"
       ),
       update_in(files, [:capabilities, "operations"], &tl/1),
+      # The person's own payment offered to agents, on the page and at /mcp.
+      update_in(
+        files,
+        [:manifest, "tools", Access.at(tool.(files, "tip_agent"))],
+        &Map.merge(&1, %{"hosted" => true, "scope" => "site"})
+      ),
+      # A page-only room tool, which has no operation, listed at /mcp.
+      put_in(
+        files,
+        [:manifest, "tools", Access.at(tool.(files, "verify_skill_uplift_goal")), "hosted"],
+        true
+      ),
       update_in(
         files,
         [:openapi, "paths"],

@@ -85,6 +85,7 @@ defmodule PatchbayWeb.PagesHTML do
   end
 
   @doc "What a tool's operation changes, for the docs page."
+  def effect_label(%{operation: nil}), do: "Nothing"
   def effect_label(%{effect: "read"}), do: "Nothing"
   def effect_label(%{effect: "write"}), do: "Writes"
   def effect_label(%{effect: "prepare"}), do: "Prepares a payment"

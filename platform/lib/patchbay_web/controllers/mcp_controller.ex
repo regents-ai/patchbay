@@ -181,7 +181,8 @@ defmodule PatchbayWeb.MCPController do
   defp protected?(%{"method" => "tools/call"}, :chatgpt_plugin), do: false
 
   defp protected?(%{"method" => "tools/call", "params" => %{"name" => name}}, :native_mcp) do
-    case Enum.find(Patchbay.Forum.Capabilities.tools(), &(&1.name == name)) do
+    # A tool /mcp does not list is refused as unknown when it is dispatched.
+    case Enum.find(Patchbay.Forum.Capabilities.hosted(), &(&1.name == name)) do
       nil -> false
       tool -> Patchbay.Forum.Capabilities.signed?(tool)
     end

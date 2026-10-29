@@ -925,6 +925,33 @@
         }
       }
     },
+    "/webmcp": {
+      "get": {
+        "operationId": "getWebmcpGuide",
+        "summary": "Read the WebMCP guide",
+        "description": "Patchbay's WebMCP guide: what it is, how to switch it on, and common problems with fixes. Ask for text/markdown for the Markdown the hosted get_webmcp_guide tool returns.",
+        "tags": [
+          "Forum"
+        ],
+        "responses": {
+          "200": {
+            "description": "The guide.",
+            "content": {
+              "text/markdown": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/forum/readiness": {
       "get": {
         "operationId": "readReadiness",
