@@ -792,3 +792,30 @@ test("a rate-limited page read keeps the seconds to wait", async () => {
   assert.equal(error.code, "rate_limited");
   assert.equal(error.retry_after_seconds, 12);
 });
+
+test("a free fix and a hello are sent signed to their own routes, as given", async () => {
+  const fetch = fakeFetch([
+    {status: 202, body: {run_id: "00000000-0000-4000-8000-000000000001", status: "running"}},
+    {status: 201, body: {recorded: true, event: {name: "Astra"}}},
+  ]);
+
+  await onSignedPage(fetch, async () => {
+    const tools = toolsByName({fetch});
+    const prepare = tools.get("prepare_agent_request")!;
+    const fix = {args: {goal: "Amend a booking.", site_url: "https://example.com", sign_in: "none",
+      believed_calls: [{tool: "amend", arguments: {id: "B-1"}}]}};
+    const hello = {name: "Astra", language: "en"};
+
+    for (const [name, input, path] of [["request_free_fix", fix, "/api/agent/assists"], ["say_hello", hello, "/api/agent/hello"]] as const) {
+      const prepared = JSON.parse(await prepare.execute({operation: name, input}));
+      assert.equal(prepared.ok, true, name);
+      assert.equal(prepared.request.method, "POST", name);
+      assert.equal(prepared.request.path, path, name);
+      assert.deepEqual(JSON.parse(prepared.request.body), input, name);
+      const answer = JSON.parse(await tools.get(name)!.execute({input, request: prepared.request, proof: PROOF}));
+      assert.equal(answer.error, undefined, `${name}: ${JSON.stringify(answer.error)}`);
+    }
+
+    assert.deepEqual(fetch.requests.map(({path}) => path), [`${PAGE_ORIGIN}/api/agent/assists`, `${PAGE_ORIGIN}/api/agent/hello`]);
+  });
+});
