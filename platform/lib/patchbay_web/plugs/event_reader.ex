@@ -41,7 +41,7 @@ defmodule PatchbayWeb.Plugs.EventReader do
     |> put_resp_header("www-authenticate", RegentOAuth.challenge())
     |> RegentOAuth.Protocol.json(status, %{
       jsonrpc: "2.0",
-      id: conn.body_params["id"],
+      id: PatchbayWeb.MCP.Refusal.id(conn.body_params),
       error: %{code: -32_001, message: message}
     })
     |> halt()
