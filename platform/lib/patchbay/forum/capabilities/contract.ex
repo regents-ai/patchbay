@@ -58,67 +58,68 @@ defmodule Patchbay.Forum.Capabilities.Contract do
     |> Enum.map(&"#{row["operation"]} in priv/capabilities.json has #{&1}")
   end
 
-  defp tool_problems(tool, rows, openapi) do
-    row = rows[tool["operation_id"]]
-    signed? = tool["authentication"] == "siwa_per_request"
-    read_only? = tool["annotations"]["readOnlyHint"] == true
+  defp tool_problems(tool, _rows, _openapi) when not is_map_key(tool, "operation_id") do
+    changes? = tool["annotations"]["readOnlyHint"] != true
 
-    problem =
-      cond do
-        is_nil(tool["operation_id"]) ->
-          (signed? or not read_only?) && "no operation_id, yet it signs or changes something"
-
-        is_nil(row) ->
-          "an operation_id OpenAPI does not have"
-
-        address(tool["route"]) != address(openapi[row["operation"]]) ->
-          "a route other than its operation's"
-
-        signed? != row["authority"] in @agents ->
-          "a signature its operation's authority does not ask for"
-
-        tool["authentication"] == "owner_only" != row["authority"] in @to_person ->
-          "an owner door its operation's authority does not have"
-
-        read_only? != row["effect"] in @changes_nothing ->
-          "a read-only hint its operation's effect contradicts"
-
-        true ->
-          false
-      end
-
-    if problem, do: ["#{tool["name"]} in priv/tool_manifest.json has #{problem}"], else: []
+    if tool["authentication"] == "siwa_per_request" or changes?,
+      do: [tool_says(tool, "no operation_id, yet it signs or changes something")],
+      else: []
   end
 
+  defp tool_problems(tool, rows, openapi) do
+    case rows[tool["operation_id"]] do
+      nil ->
+        [tool_says(tool, "an operation_id OpenAPI does not have")]
+
+      row ->
+        [
+          {address(tool["route"]) != address(openapi[row["operation"]]),
+           "a route other than its operation's"},
+          {tool["authentication"] == "siwa_per_request" != row["authority"] in @agents,
+           "a signature its operation's authority does not ask for"},
+          {tool["authentication"] == "owner_only" != row["authority"] in @to_person,
+           "an owner door its operation's authority does not have"},
+          {tool["annotations"]["readOnlyHint"] == true != row["effect"] in @changes_nothing,
+           "a read-only hint its operation's effect contradicts"}
+        ]
+        |> first()
+        |> Enum.map(&tool_says(tool, &1))
+    end
+  end
+
+  defp tool_says(tool, problem), do: "#{tool["name"]} in priv/tool_manifest.json has #{problem}"
+
   defp command_problems(command, rows, openapi, files) do
-    row = rows[command["operation_id"]]
-    runs = Map.new(files.manifest["tools"], &{&1["name"], &1["operation_id"]})
+    case rows[command["operation_id"]] do
+      nil ->
+        [command_says(command, "an operation_id OpenAPI does not have")]
 
-    problem =
-      cond do
-        is_nil(row) ->
-          "an operation_id OpenAPI does not have"
+      row ->
+        runs = Map.new(files.manifest["tools"], &{&1["name"], &1["operation_id"]})
 
-        "#{command["method"]} #{command["path"]}" != openapi[row["operation"]] ->
-          "a route other than its operation's"
+        [
+          {"#{command["method"]} #{command["path"]}" != openapi[row["operation"]],
+           "a route other than its operation's"},
+          {command["effect"] != row["effect"], "an effect other than its operation's"},
+          {command["authority"] != row["authority"], "an authority other than its operation's"},
+          {is_binary(command["webmcp"]) and runs[command["webmcp"]] != row["operation"],
+           "a browser tool that runs another operation"},
+          {not released?(row), "no cli_release or cli_pending in priv/capabilities.json"}
+        ]
+        |> first()
+        |> Enum.map(&command_says(command, &1))
+    end
+  end
 
-        command["effect"] != row["effect"] ->
-          "an effect other than its operation's"
+  defp command_says(command, problem),
+    do: "`#{command["command"]}` in cli/commands.json has #{problem}"
 
-        command["authority"] != row["authority"] ->
-          "an authority other than its operation's"
-
-        command["webmcp"] && runs[command["webmcp"]] != row["operation"] ->
-          "a browser tool that runs another operation"
-
-        not released?(row) ->
-          "no cli_release or cli_pending in priv/capabilities.json"
-
-        true ->
-          false
-      end
-
-    if problem, do: ["`#{command["command"]}` in cli/commands.json has #{problem}"], else: []
+  # The first of `checks` that holds, as a one-item list; none holds, none.
+  defp first(checks) do
+    case Enum.find(checks, &elem(&1, 0)) do
+      {true, problem} -> [problem]
+      nil -> []
+    end
   end
 
   defp released_without_command(files) do

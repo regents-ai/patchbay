@@ -260,12 +260,7 @@ defmodule Patchbay.Forum.Capabilities do
     commands = Map.new(@operations, &{&1.operation, &1.interfaces.commands})
 
     Enum.map_join(~w(core page room hosted owner), "\n", fn group ->
-      rows =
-        for tool <- @tools, group(tool) == group do
-          command = commands |> Map.get(tool.operation, []) |> List.first()
-
-          "| `#{tool.name}` | #{who(tool)} | #{if command, do: "`#{command}`", else: "none"} | #{tool.purpose} |"
-        end
+      rows = for tool <- @tools, group(tool) == group, do: tool_row(tool, commands)
 
       """
       ### #{heading(group)}
@@ -275,6 +270,16 @@ defmodule Patchbay.Forum.Capabilities do
       #{Enum.join(rows, "\n")}
       """
     end)
+  end
+
+  defp tool_row(tool, commands) do
+    command =
+      case Map.get(commands, tool.operation, []) do
+        [command | _more] -> "`#{command}`"
+        [] -> "none"
+      end
+
+    "| `#{tool.name}` | #{who(tool)} | #{command} | #{tool.purpose} |"
   end
 
   defp group(%{name: name}) when name in @core, do: "core"

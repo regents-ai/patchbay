@@ -8,7 +8,7 @@ defmodule PatchbayWeb.RefusalHintsTest do
 
   use ExUnit.Case, async: true
 
-  @openapi Path.expand("../../priv/public/openapi.json", __DIR__)
+  @openapi Application.app_dir(:patchbay, "priv/public/openapi.json")
   @route ~r{/forum/|/api/|HOST}
 
   test "no documented hint or next step names a route or a placeholder" do
