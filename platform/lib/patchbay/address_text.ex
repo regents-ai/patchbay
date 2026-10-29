@@ -6,7 +6,7 @@ defmodule Patchbay.AddressText do
   text; only the HTML page draws the pieces.
   """
 
-  @address ~r/0x[0-9a-fA-F]{40}(?![0-9a-fA-F])/
+  @address ~r/(?<![0-9a-zA-Z])0x[0-9a-fA-F]{40}(?![0-9a-zA-Z])/
   # Private-use characters around an address in a markdown document, so the
   # rendered HTML can be cut where each address stood and nowhere else.
   @open "\u{E000}"
@@ -35,13 +35,14 @@ defmodule Patchbay.AddressText do
   @doc """
   A markdown document rendered to HTML, with each full address in its words or
   in an inline code span cut out, rendered with the options it was parsed with.
-  An address in a code block stays where it is, since a code block is copied
-  whole.
+  An address stays as written in a code block, which is copied whole, and in a
+  picture's words, a heading or a link's words, which the page puts in
+  attributes or inside a link where the address piece cannot go.
   """
   @spec html(MDEx.Document.t()) :: [html_piece()]
   def html(%MDEx.Document{} = document) do
     document
-    |> MDEx.traverse_and_update(&mark/1)
+    |> mark()
     |> MDEx.to_html!()
     |> then(&Regex.split(@marked, &1, include_captures: true, trim: true))
     |> Enum.map(fn piece ->
@@ -52,6 +53,10 @@ defmodule Patchbay.AddressText do
     end)
   end
 
+  @left_as_written [MDEx.Image, MDEx.Link, MDEx.Heading]
+
+  defp mark(%kind{} = node) when kind in @left_as_written, do: node
+
   defp mark(%MDEx.Text{literal: literal} = text),
     do: %{text | literal: Regex.replace(@address, literal, @open <> "\\0" <> @close)}
 
@@ -60,6 +65,9 @@ defmodule Patchbay.AddressText do
       do: %MDEx.Text{literal: @open <> literal <> @close},
       else: code
   end
+
+  defp mark(%{nodes: nodes} = node) when is_list(nodes),
+    do: %{node | nodes: Enum.map(nodes, &mark/1)}
 
   defp mark(node), do: node
 end

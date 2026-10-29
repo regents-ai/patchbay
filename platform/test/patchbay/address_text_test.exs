@@ -60,6 +60,24 @@ defmodule Patchbay.AddressTextTest do
            ] = pieces
   end
 
+  test "an address glued to other letters or digits is not cut out" do
+    assert AddressText.split("deadbeef" <> @a) == ["deadbeef" <> @a]
+    assert AddressText.split(@a <> "g") == [@a <> "g"]
+  end
+
+  test "markdown leaves an address in a picture's words, a heading or a link's words as written" do
+    for markdown <- [
+          "![Paid to #{@a}](https://example.com/receipt.png)",
+          "## Paid to #{@a}",
+          "See [#{@a}](https://basescan.org/address/#{@a}).",
+          "Hex deadbeef#{@a} is not one."
+        ] do
+      pieces = markdown |> MDEx.parse_document!() |> AddressText.html()
+      assert [{:html, html}] = pieces, markdown
+      assert html =~ @a
+    end
+  end
+
   defp words do
     map(string([?a..?z, ?\s, ?,, ?.], min_length: 1, max_length: 12), &(" " <> &1 <> " "))
   end
