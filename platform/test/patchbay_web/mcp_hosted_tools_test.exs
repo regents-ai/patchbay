@@ -8,9 +8,9 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
     nothing;
   - every hosted tool answers a signed, paired agent from its own code;
   - a tool answers with the same body its HTTP door does for the same
-    input, refusals included: every read, and each write whose second
-    sending changes nothing (a like, a saved Offer under its request key,
-    a refused report).
+    input, and both answer or both refuse: every read, and each write whose
+    second sending changes nothing (a like, a saved Offer under its request
+    key, a refused report).
 
   Each hosted tool needs a row in `calls/1`, so a new tool cannot be hosted
   without being called here.
@@ -59,7 +59,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
     calls = calls(world)
 
     hosted = Enum.map(Capabilities.hosted(), & &1.name)
-    assert Enum.sort(Enum.map(calls, &elem(&1, 0))) == Enum.sort(hosted)
+    assert calls |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> Enum.sort() == Enum.sort(hosted)
 
     for {name, arguments, expectation} <- calls do
       result =
@@ -72,8 +72,9 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   # What each hosted tool is called with, in an order where a write that
   # needs another's result follows it, and what it must answer:
   #
-  #   * `{:http, method, path}` or `{:http, method, path, body}`: the same
-  #     body as that HTTP door;
+  #   * `{:http, outcome, method, path}` or `{:http, outcome, method, path,
+  #     body}`: the same body as that HTTP door, and at both an answer
+  #     (`:answer`: a 2xx and no `isError`) or a refusal (`:refusal`);
   #   * `{:http_error, status, path}`: the same body as the error page that
   #     HTTP door raises to, for an address that names nothing;
   #   * `:ok`: an answer, not a refusal;
@@ -82,21 +83,27 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   defp calls(world) do
     %{thread: thread, reply: reply, key: key, profile: profile, run: run} = world
     offer_key = Ecto.UUID.generate()
+    # A wording that is not the person's: refused alike at both doors.
+    fit = %{"origin" => "quiet.example.net", "version_id" => Ecto.UUID.generate()}
 
     [
       {"get_patchbay_help", %{}, :ok},
       {"get_webmcp_guide", %{}, :ok},
-      {"search_threads", %{"q" => "reservation"}, {:http, :get, "/forum/search?q=reservation"}},
-      {"get_thread", %{"thread_id" => thread}, {:http, :get, "/forum/threads/#{thread}"}},
+      {"search_threads", %{"q" => "reservation"},
+       {:http, :answer, :get, "/forum/search?q=reservation"}},
+      {"get_thread", %{"thread_id" => thread},
+       {:http, :answer, :get, "/forum/threads/#{thread}"}},
       {"render_repair_card", %{"thread_id" => thread}, :ok},
       {"get_tool_history", %{"origin" => "https://quiet.example.net", "tool_name" => "amend"},
-       {:http, :get, "/forum/tool-history?origin=https://quiet.example.net&tool_name=amend"}},
-      {"read_site_directory", %{}, {:http, :get, "/sites"}},
-      {"list_offer_slots", %{}, {:http, :get, "/forum/offer-slots"}},
-      {"get_agent_profile", %{"profile_id" => profile}, {:http, :get, "/api/agents/#{profile}"}},
+       {:http, :refusal, :get,
+        "/forum/tool-history?origin=https://quiet.example.net&tool_name=amend"}},
+      {"read_site_directory", %{}, {:http, :answer, :get, "/sites"}},
+      {"list_offer_slots", %{}, {:http, :answer, :get, "/forum/offer-slots"}},
+      {"get_agent_profile", %{"profile_id" => profile},
+       {:http, :answer, :get, "/api/agents/#{profile}"}},
       {"get_request_status", %{"client_request_id" => key},
-       {:http, :get, "/forum/requests/#{key}"}},
-      {"list_my_active_offers", %{}, {:http, :get, "/forum/my-offers/active"}},
+       {:http, :answer, :get, "/forum/requests/#{key}"}},
+      {"list_my_active_offers", %{}, {:http, :answer, :get, "/forum/my-offers/active"}},
       {"list_my_offer_history", %{}, :ok},
       {"get_updates", %{}, :ok},
       {"ask_question", question(), :ok},
@@ -123,43 +130,45 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       # The fix `world!/3` opened is still running, so a second is refused
       # with it, at either door.
       {"request_free_fix", %{"args" => free_fix()},
-       {:http, :post, "/api/agent/assists", %{"args" => free_fix()}}},
-      {"get_assist", %{"run_id" => run}, {:http, :get, "/api/agent/assists/#{run}"}},
+       {:http, :refusal, :post, "/api/agent/assists", %{"args" => free_fix()}}},
+      {"get_assist", %{"run_id" => run}, {:http, :answer, :get, "/api/agent/assists/#{run}"}},
       {"find_known_fixes", %{"site" => "patchbay.help"},
-       {:http, :get, "/known-fixes?site=patchbay.help"}},
-      {"get_known_fix", %{"fix_id" => known_fix()}, {:http, :get, "/known-fixes/#{known_fix()}"}},
-      {"get_subscriptions", %{}, {:http, :get, "/forum/subscriptions"}},
+       {:http, :answer, :get, "/known-fixes?site=patchbay.help"}},
+      {"get_known_fix", %{"fix_id" => known_fix()},
+       {:http, :answer, :get, "/known-fixes/#{known_fix()}"}},
+      {"get_subscriptions", %{}, {:http, :answer, :get, "/forum/subscriptions"}},
       {"like_post", %{"thread_id" => thread, "reply_id" => reply},
-       {:http, :post, "/forum/threads/#{thread}/likes", %{"reply_id" => reply}}},
+       {:http, :answer, :post, "/forum/threads/#{thread}/likes", %{"reply_id" => reply}}},
       {"unlike_post", %{"thread_id" => thread},
-       {:http, :delete, "/forum/threads/#{thread}/likes", %{}}},
+       {:http, :answer, :delete, "/forum/threads/#{thread}/likes", %{}}},
       {"report_tool_problem", %{"receipt" => "not-a-receipt", "client_request_id" => key},
-       {:http, :post, "/forum/reports",
+       {:http, :refusal, :post, "/forum/reports",
         %{"receipt" => "not-a-receipt", "client_request_id" => key}}},
       {"report_tool_on_another_site", other_site_report(), :ok},
       # The report above put amend_reservation on example.net's board.
       {"read_tool_catalog", %{"host" => "example.net", "name" => "amend_reservation"},
-       {:http, :get, "/example.net/tools/amend_reservation"}},
+       {:http, :answer, :get, "/example.net/tools/amend_reservation"}},
       {"reply_to_report",
        %{
          "report_id" => thread,
          "verdict" => "verified_success",
          "client_request_id" => Ecto.UUID.generate()
        }, :ok},
-      {"account_balances", %{}, {:http, :get, "/tools/account/balances"}},
-      {"account_credits_history", %{}, {:http, :post, "/tools/account/credits/history", %{}}},
-      {"account_points", %{}, {:http, :get, "/tools/account/points"}},
+      {"account_balances", %{}, {:http, :answer, :get, "/tools/account/balances"}},
+      {"account_credits_history", %{},
+       {:http, :answer, :post, "/tools/account/credits/history", %{}}},
+      {"account_points", %{}, {:http, :answer, :get, "/tools/account/points"}},
       {"get_offer_bid_options", %{"slot" => 1},
-       {:http, :post, "/forum/offer-bid-options", %{"slot" => 1}}},
-      {"ask_offer_fit", %{"origin" => "quiet.example.net", "version_id" => Ecto.UUID.generate()},
-       {:http, :post, "/forum/offer-fit-checks",
-        %{"origin" => "quiet.example.net", "version_id" => Ecto.UUID.generate()}}},
+       {:http, :answer, :post, "/forum/offer-bid-options", %{"slot" => 1}}},
+      {"ask_offer_fit", fit, {:http, :refusal, :post, "/forum/offer-fit-checks", fit}},
       {"save_agent_offer", offer(offer_key),
-       {:http, :post, "/forum/my-offers", offer(offer_key)}},
+       {:http, :answer, :post, "/forum/my-offers", offer(offer_key)}},
       {"reword_agent_offer", reword(thread),
-       {:http, :post, "/forum/my-offers/#{thread}/versions",
+       {:http, :refusal, :post, "/forum/my-offers/#{thread}/versions",
         Map.delete(reword(thread), "creative_id")}},
-      {"read_wallet_bench", %{}, {:http, :get, "/api/wallet-bench"}},
+      {"read_wallet_bench", %{}, {:http, :answer, :get, "/api/wallet-bench"}},
+      {"read_wallet_bench_pair", %{"harness_id" => "H901", "wallet_id" => "W901"},
+       {:http, :answer, :get, "/api/wallet-bench/H901/W901"}},
       {"read_wallet_bench_pair", %{"harness_id" => "H999999", "wallet_id" => "W999999"},
        {:http_error, 404, "/api/wallet-bench/H999999/W999999"}}
     ]
@@ -199,10 +208,10 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       "request_key" => "reword-#{creative_id}"
     }
 
-  defp answered(name, result, {:http, method, path}, conn, agent),
-    do: answered(name, result, {:http, method, path, nil}, conn, agent)
+  defp answered(name, result, {:http, outcome, method, path}, conn, agent),
+    do: answered(name, result, {:http, outcome, method, path, nil}, conn, agent)
 
-  defp answered(name, result, {:http, method, path, body}, conn, agent) do
+  defp answered(name, result, {:http, outcome, method, path, body}, conn, agent) do
     over_http =
       conn
       |> recycle()
@@ -213,6 +222,12 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
     assert comparable(result["structuredContent"]) ==
              over_http.resp_body |> Jason.decode!() |> free() |> comparable(),
            "#{name} answered differently from #{method} #{path}"
+
+    refused? = outcome == :refusal
+
+    assert result["isError"] == refused? and over_http.status >= 400 == refused?,
+           "#{name}: expected #{outcome} at both doors, got isError #{result["isError"]} " <>
+             "and HTTP #{over_http.status}"
   end
 
   defp answered(name, result, {:http_error, status, path}, conn, _agent) do
@@ -246,8 +261,11 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
 
   # The hosted tools are free, so their reads leave out what money a post,
   # reply or author holds (`PatchbayWeb.ForumAPI.Reads`, the `:free`
-  # audience); the HTTP doors carry it. Nothing else may differ.
-  @money ~w(escrowed_usdc reward_eligibility can_receive_usdc)
+  # audience), and a profile's money record and the wallet its tips settle
+  # to (`PatchbayWeb.AuthorJSON.profile/2`); the HTTP doors carry them.
+  # Nothing else may differ.
+  @money ~w(escrowed_usdc reward_eligibility can_receive_usdc wallet_address bounties_posted
+            answers_accepted tips_given tips_given_usdc tips_received tips_received_usdc)
 
   defp free(answer), do: drop(answer, @money)
 
@@ -271,8 +289,15 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   defp drop(list, keys) when is_list(list), do: Enum.map(list, &drop(&1, keys))
   defp drop(value, _keys), do: value
 
-  # A thread asked by `asker` with a reply from `helper`.
+  # A thread asked by `asker` with a reply from `helper`, a free fix `asker`
+  # opened, and a Wallet Bench pair with no runs yet. The bench's tables are
+  # Techtree's, which Patchbay only reads; the test database has plain ones.
   defp world!(conn, asker, helper) do
+    Patchbay.Repo.query!(
+      "INSERT INTO techtree_app.wallet_bench_roster (kind, id, name) " <>
+        "VALUES ('harness', 'H901', 'Agent 901'), ('wallet', 'W901', 'Wallet 901')"
+    )
+
     question = question()
 
     %{"structuredContent" => %{"thread_id" => thread}} =
@@ -302,7 +327,12 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       reply: reply,
       run: run,
       key: question["client_request_id"],
-      profile: Patchbay.Forum.Report |> Ash.get!(thread) |> Map.fetch!(:author_profile_id)
+      profile:
+        Patchbay.Forum.Report
+        |> Ash.get!(thread)
+        |> Map.fetch!(:author_profile_id)
+        |> Patchbay.Identity.get_profile!()
+        |> Map.fetch!(:public_id)
     }
   end
 
