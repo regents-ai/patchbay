@@ -65,19 +65,55 @@ defmodule Patchbay.WalletBench.Board do
   @doc """
   The board under `filters` with `grids` built, from the shared reading:
   `{:ok, board, read}`, where `read` says when the bench was read and whether
-  the latest pass failed, or `:unread` while no pass has read it since the
-  site started. A visit with no filters is handed the board built once, with
-  every grid; one with filters builds `grids` from the shared rows.
-  """
-  @spec board(map(), [String.t()]) :: {:ok, map(), read()} | :unread
-  def board(filters, _grids) when filters == %{}, do: shared(:board)
+  the latest pass failed, `:unread` while no pass has read it since the site
+  started, or `:busy` when as many filtered boards as may be built at once
+  are being built.
 
-  def board(filters, grids) do
+  A visit with no filters is handed the board built once, with every grid,
+  and never waits. One with filters builds `grids` from the shared rows in a
+  process of `#{inspect(__MODULE__)}.Builds`, a `Task.Supervisor` that runs
+  at most four at a time: each build takes tens of megabytes for a moment,
+  so the cap bounds that memory however many visitors filter at once. The
+  build's memory goes with its process; only the board comes back.
+  """
+  @spec board(map(), [String.t()]) :: {:ok, map(), read()} | :unread | :busy
+  def board(filters, _grids) when filters == %{}, do: shared(:board)
+  def board(filters, grids), do: in_build(fn -> filtered(filters, grids) end)
+
+  defp filtered(filters, grids) do
     with {:ok, rows, read} <- shared(:rows),
          {:ok, checks} <- checks(grids) do
       {:ok, Matrix.board(Map.put(rows, :checks, checks), filters, grids), read}
     end
   end
+
+  # Runs `build` in one of the supervisor's processes and waits for its
+  # answer, or answers `:busy` at once when all of them are taken. A build
+  # that crashes takes the visit with it, as it would have in the visit.
+  defp in_build(build) do
+    caller = self()
+    answer = make_ref()
+
+    case Task.Supervisor.start_child(__MODULE__.Builds, fn -> send(caller, {answer, build.()}) end) do
+      {:ok, pid} ->
+        watch = Process.monitor(pid)
+
+        receive do
+          {^answer, result} ->
+            Process.demonitor(watch, [:flush])
+            result
+
+          {:DOWN, ^watch, :process, _pid, reason} ->
+            exit(reason)
+        end
+
+      {:error, :max_children} ->
+        :busy
+    end
+  end
+
+  @doc "The supervisor filtered builds run under, four at a time."
+  def builds, do: {Task.Supervisor, name: __MODULE__.Builds, max_children: 4}
 
   defp checks(grids) do
     Enum.reduce_while(grids, {:ok, []}, fn grid, {:ok, held} ->

@@ -31,6 +31,8 @@ defmodule Patchbay.Application do
         # there before the endpoint below serves a page.
         Patchbay.SharedReading,
         wallet_bench_board(),
+        # The Wallet Bench's filtered boards, built four at a time.
+        Patchbay.WalletBench.Board.builds(),
         # Each paired agent's sign-in service reading, kept five minutes.
         Patchbay.Agents.ActivityReading,
         # The home page's board figures, kept a minute.

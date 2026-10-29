@@ -187,24 +187,88 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     assert {:ok, ^board, %{degraded?: true}} = Board.board(%{}, ["install"])
   end
 
+  test "four filtered boards build at once; a fifth answers busy, and a board with no filter never waits",
+       %{conn: conn} do
+    SharedBench.share!()
+    model_b = Sets.token("model-b")
+    filtered = "/wallet-bench?test=install&model=#{model_b}"
+
+    # Four filtered visits at once all get their board.
+    statuses =
+      1..4
+      |> Task.async_stream(fn _ -> get(build_conn(), filtered).status end)
+      |> Enum.map(fn {:ok, status} -> status end)
+
+    assert statuses == [200, 200, 200, 200]
+
+    # With four builds under way, the fifth is turned away at every door.
+    holders =
+      for _ <- 1..4 do
+        {:ok, pid} =
+          Task.Supervisor.start_child(Patchbay.WalletBench.Board.Builds, fn ->
+            receive do
+              :done -> :ok
+            end
+          end)
+
+        pid
+      end
+
+    busy = get(conn, filtered)
+    assert busy.status == 503
+    assert get_resp_header(busy, "retry-after") == ["5"]
+    assert busy.resp_body =~ "Wallet Bench is busy. Try again in a few seconds."
+
+    api = get(conn, "/api/wallet-bench?test=install&model=#{model_b}")
+    assert get_resp_header(api, "retry-after") == ["5"]
+
+    assert %{
+             "error" => %{
+               "code" => "busy",
+               "message" => "Wallet Bench is busy.",
+               "hint" => "Try again in a few seconds."
+             }
+           } = json_response(api, 503)
+
+    assert {:service_unavailable, %{error: %{code: "busy"}}} =
+             PatchbayWeb.WalletBenchController.read_wallet_bench(%{"model" => model_b})
+
+    # The board with no filter, and with every filter at any version, does not wait.
+    assert conn |> get("/wallet-bench?test=install") |> html_response(200) =~ "Wallet Two"
+    assert conn |> get("/api/wallet-bench?test=install&model=") |> json_response(200)
+
+    # Once a build finishes, a filtered visit gets its board again.
+    Enum.each(holders, &send(&1, :done))
+    Enum.each(holders, &wait_for_exit/1)
+    assert conn |> get(filtered) |> html_response(200) =~ "Wallet Two"
+  end
+
+  defp wait_for_exit(pid) do
+    watch = Process.monitor(pid)
+
+    receive do
+      {:DOWN, ^watch, :process, ^pid, _reason} -> :ok
+    end
+  end
+
   test "before the first read the board answers 503 at every door, and the producer reads as it starts",
        %{conn: conn} do
     assert Board.board(%{}, ["install"]) == :unread
 
     html = conn |> get("/wallet-bench") |> html_response(503)
-    assert html =~ "This page is not ready yet."
+    assert html =~ "Wallet Bench results are still being read. Try again in a minute."
     assert get_resp_header(get(conn, "/wallet-bench"), "retry-after") == ["60"]
 
     assert %{"error" => %{"code" => "not_ready"}} =
              conn |> get("/api/wallet-bench") |> json_response(503)
 
-    assert conn |> get("/wallet-bench/how-it-works") |> html_response(503) =~ "not ready yet"
+    assert conn |> get("/wallet-bench/how-it-works") |> html_response(503) =~ "still being read"
 
     assert conn
            |> put_req_header("accept", "text/markdown")
            |> get("/wallet-bench")
            |> response(503) =~
-             "# This page is not ready yet."
+             "# Not ready\n\nWallet Bench results are still being read."
 
     assert {:service_unavailable, %{"error" => %{"code" => "not_ready"}}} =
              PatchbayWeb.WalletBenchController.read_wallet_bench(%{})

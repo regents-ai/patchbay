@@ -7,7 +7,8 @@ defmodule PatchbayWeb.WalletBenchController do
   the bench as it was read within the last minute, shared with every visitor
   (`Patchbay.WalletBench.Board`), so a finished run shows within a minute and
   a visit reads nothing from Techtree. Until the bench has been read once
-  since the site started, both answer 503 and say to try again in a minute.
+  since the site started, both answer 503 and say to try again in a minute;
+  while four filtered boards are being built, a fifth answers 503 busy.
   A pair's page reads that pair's runs when it is opened.
   """
 
@@ -30,8 +31,8 @@ defmodule PatchbayWeb.WalletBenchController do
         |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
         |> render(:index, assigns ++ [page_data: [WalletBenchHTML.dataset(assigns[:matrix])]])
 
-      :unread ->
-        unread(conn)
+      why when why in [:unread, :busy] ->
+        unavailable(conn, why)
     end
   end
 
@@ -51,31 +52,44 @@ defmodule PatchbayWeb.WalletBenchController do
     end
   end
 
-  # The bench has not been read since the site started: the site's 503 page,
-  # in the format asked for, with no crash to log on every visit.
-  defp unread(conn) do
-    conn = conn |> put_status(:service_unavailable) |> put_resp_header("retry-after", "60")
+  # The bench has not been read since the site started, or as many filtered
+  # boards as may be built at once are being built: a 503 in the format asked
+  # for, with no crash to log on every visit.
+  defp unavailable(conn, why) do
+    %{error: %{message: message, hint: hint}} = body = refusal(why)
+
+    conn =
+      conn
+      |> put_status(:service_unavailable)
+      |> put_resp_header("retry-after", retry_after(why))
 
     case get_format(conn) do
       "json" ->
-        json(conn, not_ready())
+        json(conn, body)
 
       _page ->
         conn
-        |> put_root_layout(false)
-        |> put_layout(false)
-        |> put_view(html: PatchbayWeb.ErrorHTML, md: PatchbayWeb.ErrorMD)
-        |> render(:"503")
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
+        |> render(:unavailable, heading: heading(why), words: message <> " " <> hint)
     end
   end
 
-  defp not_ready,
+  defp refusal(:unread),
     do:
       PatchbayWeb.ApiError.body(
         "not_ready",
         "Wallet Bench results are still being read.",
         "Try again in a minute."
       )
+
+  defp refusal(:busy),
+    do: PatchbayWeb.ApiError.body("busy", "Wallet Bench is busy.", "Try again in a few seconds.")
+
+  defp retry_after(:unread), do: "60"
+  defp retry_after(:busy), do: "5"
+
+  defp heading(:unread), do: "Not ready"
+  defp heading(:busy), do: "Busy"
 
   @doc """
   The board for one test, as a status and the body `GET /api/wallet-bench`
@@ -86,7 +100,7 @@ defmodule PatchbayWeb.WalletBenchController do
     read(fn ->
       case board(params, every_grid?: false) do
         {:ok, assigns} -> {:ok, WalletBenchJSON.index(Map.new(assigns))}
-        :unread -> {:service_unavailable, not_ready()}
+        why when why in [:unread, :busy] -> {:service_unavailable, refusal(why)}
       end
     end)
   end
@@ -118,7 +132,7 @@ defmodule PatchbayWeb.WalletBenchController do
         )
 
       :unread ->
-        unread(conn)
+        unavailable(conn, :unread)
     end
   end
 

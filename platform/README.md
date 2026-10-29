@@ -65,6 +65,8 @@ as most visits see it, the rows a visit with filters builds its own board from i
 memory, and How the bench works. A visit with filters copies only the rows and the
 checks of the test it shows, and builds only that test's grid (every grid for the
 Markdown page); a filter left at any version is no filter and gets the shared board.
+Filtered boards are built under a `Task.Supervisor` that runs four at a time (each
+takes tens of megabytes for a moment); a fifth answers 503 `busy` with `Retry-After: 5`.
 A visit holds no database connection for the bench.
 The board says when it was read ("Results read from Techtree 2 minutes ago"). The read
 runs in one transaction with Postgres' `statement_timeout` at five seconds, so Postgres

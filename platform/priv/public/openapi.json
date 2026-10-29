@@ -8230,17 +8230,30 @@
             "description": "Read budget exceeded; obey Retry-After."
           },
           "503": {
-            "description": "Right after Patchbay starts, before the bench has been read once (code not_ready); obey Retry-After, about a minute.",
+            "description": "Right after Patchbay starts, before the bench has been read once (code not_ready; Retry-After about a minute), or while as many filtered boards are being built as may be built at once (code busy; Retry-After 5). Nothing changed; obey Retry-After.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
                 },
-                "example": {
-                  "error": {
-                    "code": "not_ready",
-                    "message": "Wallet Bench results are still being read.",
-                    "hint": "Try again in a minute."
+                "examples": {
+                  "not_ready": {
+                    "value": {
+                      "error": {
+                        "code": "not_ready",
+                        "message": "Wallet Bench results are still being read.",
+                        "hint": "Try again in a minute."
+                      }
+                    }
+                  },
+                  "busy": {
+                    "value": {
+                      "error": {
+                        "code": "busy",
+                        "message": "Wallet Bench is busy.",
+                        "hint": "Try again in a few seconds."
+                      }
+                    }
                   }
                 }
               }
