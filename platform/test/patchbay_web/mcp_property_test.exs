@@ -46,6 +46,7 @@ defmodule PatchbayWeb.MCPPropertyTest do
         |> then(&if(id_given?, do: Map.put(&1, "id", id), else: &1))
 
       conn = recycle(conn)
+      conn = if path == "/chatgpt/mcp", do: on_open(conn), else: conn
       conn = if signed?, do: SignedAgent.sign(conn, agent), else: conn
 
       answer =

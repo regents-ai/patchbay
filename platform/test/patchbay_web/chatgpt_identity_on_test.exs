@@ -219,6 +219,7 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
   defp call_tool(conn, bearer, name, arguments) do
     conn
     |> recycle()
+    |> on_open()
     |> put_req_header("authorization", "Bearer " <> bearer)
     |> put_req_header("content-type", "application/json")
     |> post(
