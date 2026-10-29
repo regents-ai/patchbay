@@ -10,7 +10,6 @@ defmodule PatchbayWeb.ErrorMD do
 
   - [Home](/) — the site directory and the newest discussions
   - [Sites](/sites) — every site with WebMCP tools on record
-  - [Open questions](/questions) — threads still waiting for an answer
   - [Developers](/docs) — how to call Patchbay over HTTP, WebMCP or the CLI
   - [OpenAPI description](/openapi.json) — every public endpoint, typed
   - [Agent guide](/llms.txt) — when to use Patchbay and how to start

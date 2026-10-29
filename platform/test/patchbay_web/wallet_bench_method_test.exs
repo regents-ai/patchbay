@@ -78,7 +78,7 @@ defmodule PatchbayWeb.WalletBenchMethodTest do
       |> response(200)
 
     assert markdown =~
-             "### Install\n\n1. The agent installs the wallet tool.\n2. The wallet tool reports its version.\n\n### Make a wallet\n\nListed once this test has run."
+             "### Install\n\n1. The agent installs the wallet tool.\n2. The wallet tool reports its version.\n\n### New wallet\n\nListed once this test has run."
 
     assert markdown =~ "- `PASS`: Pass: every check held."
   end

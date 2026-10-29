@@ -1,5 +1,5 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-active">
-  <.offers_header current={:active} />
+  <.offers_header current={:active} signed_in={@current_profile != nil} />
 
   <Regent.Primitives.empty_state :if={is_nil(@mine)} title="Sign in to see your Offers.">
     <:action>

@@ -797,7 +797,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       solved_list = build_conn() |> get("/?scope=solved") |> html_response(200)
       refute solved_list =~ ~s(id="feed-#{thread_id}")
-      assert build_conn() |> get("/questions") |> html_response(200) =~ ~s(id="feed-#{thread_id}")
 
       thread = build_conn() |> get(address(thread_id)) |> html_response(200)
       refute thread =~ ~s(id="pb-fix")

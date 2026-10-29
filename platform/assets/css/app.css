@@ -10,14 +10,12 @@
 @import "./evidence.css";
 @import "./home.css";
 @import "./changelog.css";
-@import "./runtime.css";
 @import "./agent_pages.css";
 @import "./troubleshooting.css";
 @import "./incidents.css";
 @import "./credits.css";
 @import "./account.css";
 @import "./site_directory.css";
-@import "./assistance.css";
 @import "./animations.css";
 
 /* Make LiveView wrapper divs transparent for layout */
@@ -1569,7 +1567,9 @@ a.patchbay-button { text-decoration: none; }
 .pb-feed-row .patchbay-board-title { justify-self: start;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-feed-row .patchbay-pill { justify-self: start; }
 
-.pb-setup-page { display: grid; gap: var(--space-2); }
+/* One column the width of the page: its widest block (a long command, a table)
+   never widens it past the screen. */
+.pb-setup-page { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-2); }
 .pb-setup-page section { scroll-margin-top: var(--pb-header-height); }
 .pb-setup-page h2 { margin: 0 0 var(--space-1); font-size: var(--pb-fs-md); letter-spacing: -.02em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-setup-page h3 { margin: var(--space-2) 0 var(--space-1); font-size: var(--pb-fs-sm);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
@@ -1821,7 +1821,7 @@ html:has(.pb-site-post-dialog[open]) { overflow: hidden; }
 .pb-setup-page, .pb-setup-page .rg-disclosure, .pb-setup-page .rg-disclosure-body { min-width: 0; }
 .pb-setup-page pre { max-width: 100%; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pb-setup-page table { table-layout: fixed; }
-.pb-setup-page td, .pb-setup-page th { overflow-wrap: anywhere; }
+.pb-setup-page td, .pb-setup-page th, .pb-setup-page p, .pb-setup-page li { overflow-wrap: anywhere; }
 .pb-setup-page section > * + * { margin-top: var(--space-1); }
 .pb-guide h2 { margin-top: var(--space-3); }
 .pb-guide h2, .pb-guide h3 { scroll-margin-top: var(--pb-header-height); }
@@ -2244,6 +2244,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-wb-sheet .rg-disclosure a { color: inherit; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: .2em; white-space: nowrap; }
 .pb-wb-tabs { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); border-bottom: 1px solid var(--pb-wb-rule); }
 .pb-wb-tabs a {
+  display: inline-flex; flex-shrink: 0; align-items: center; min-height: 2.75rem; white-space: nowrap;
   padding: .5rem 0 .55rem; border-top: 3px solid transparent; color: var(--pb-wb-ink-soft);
   font: 600 var(--pb-fs-sm)/1.2 var(--font-family-ui); text-decoration: none;
 }
@@ -2477,7 +2478,11 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 }
 .pb-offers-view-title { margin: 0 0 var(--space-3); font-size: 1.375rem; }
 .pb-offers-board-link { margin: 0 0 var(--space-2); font-size: .875rem; }
-@container pb-page (max-width: 479px) { .pb-offers-nav { column-gap: var(--space-2); row-gap: 0; } }
+/* On a phone the tabs stay on one line and the row scrolls sideways inside
+   itself, never the page. */
+@container pb-page (max-width: 599px) {
+  .pb-offers-nav, .pb-wb-tabs { flex-wrap: nowrap; column-gap: var(--space-2); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+}
 
 /* Offers opens on its audience gallery; supporting details stay compact. */
 .pb-offers-gallery-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); margin-block: var(--space-3); }

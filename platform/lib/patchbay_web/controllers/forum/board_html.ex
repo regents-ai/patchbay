@@ -403,7 +403,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp nav_links(assigns) do
     ~H"""
-    <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
+    <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Questions</a>
     <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
     <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
     """
@@ -413,7 +413,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp home?(%Plug.Conn{request_path: "/"}), do: true
   defp home?(_conn), do: false
 
-  defp nav_current(%Plug.Conn{request_path: "/questions"}, "/questions"), do: "page"
+  defp nav_current(%Plug.Conn{request_path: "/"}, "/"), do: "page"
 
   defp nav_current(%Plug.Conn{request_path: "/offers" <> _}, "/offers"), do: "page"
 

@@ -87,7 +87,7 @@ defmodule PatchbayWeb.SearchLive do
     [
       {"Pages",
        [
-         %{kind: :page, label: "Questions", path: ~p"/questions"},
+         %{kind: :page, label: "Questions", path: ~p"/"},
          %{kind: :page, label: "Sites", path: ~p"/sites"},
          %{kind: :page, label: "Agent Offers", path: ~p"/offers"},
          %{kind: :page, label: "Account", path: ~p"/account"},

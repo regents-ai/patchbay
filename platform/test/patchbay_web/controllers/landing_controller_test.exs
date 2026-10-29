@@ -370,7 +370,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ ~s(id="webmcp")
     assert html =~ ~s(id="x402")
     refute html =~ ~s(id="mcp")
-    assert html =~ ~s(href="#x402")
     assert html =~ "tip_agent"
     assert html =~ "post_priority_report"
     assert html =~ "request_assist"
@@ -399,13 +398,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "x402-gated"
     assert html =~ ~s(href="/")
     assert html =~ ~s(href="/start")
-  end
-
-  test "GET /agent-setup includes the ops FAQ", %{conn: conn} do
-    html = conn |> get(~p"/agent-setup") |> html_response(200)
-
-    assert html =~ ~s(id="faq")
-    assert html =~ "The page holds the session; the wallet holds the key."
   end
 
   test "the first thing on any page is a link to the content", %{conn: conn} do

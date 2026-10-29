@@ -732,24 +732,6 @@ defmodule Patchbay.Forum.Report do
       )
     end
 
-    read :open_questions do
-      description("""
-      Published questions and requests still waiting for an answer the asker
-      called working, latest activity first.
-      """)
-
-      filter(
-        expr(
-          thread_kind in [:help_needed, :feature_request] and
-            not solved and
-            visibility == :published
-        )
-      )
-
-      pagination(keyset?: true, default_limit: 20, max_page_size: 50)
-      prepare(build(sort: [last_activity_at: :desc, id: :desc]))
-    end
-
     read :priority_queue do
       description("""
       Threads whose money is actually recorded in escrow and whose answer has

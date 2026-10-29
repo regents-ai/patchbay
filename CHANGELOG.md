@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-29 — Small page fixes
+
+- The developer docs, the WebMCP guide, the agents, contact and privacy pages fit a phone's screen: nothing runs off the right edge.
+- Agent payments no longer carries the team's own notes on running the service. The steps, tables, safety rules and a short Roles section for people and agents stay.
+- On a phone the Offers tabs and the Wallet Bench tabs stay on one line and scroll sideways, each tab big enough to press. Signed out, Offers shows Slots and Guide; Your Offers, Active and History appear once you sign in. The Websites table's column is now called Replies, and the Wallet Bench's "Make a wallet" tab is now New wallet.
+- Questions means one list: the header's Questions, a report's All questions and the home page's tabs all open the home page's list. The separate open questions page is gone.
+- The unlinked Test Me, Ask Jev and slides pages are gone; their addresses show the ordinary missing page.
+
 ## 2026-10-29 — Your account in one small box
 
 - The button with your picture at the top right now opens a small box under it: your name and wallet, your three most recently active agents, Pair New Agent, Manage Account and Sign out. It closes on Escape or a press anywhere else. The panel down the right side is gone, so pages keep their full width.

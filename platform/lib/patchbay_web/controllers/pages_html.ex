@@ -7,38 +7,6 @@ defmodule PatchbayWeb.PagesHTML do
 
   embed_templates("pages_html/*")
 
-  def assistance_nav(assigns) do
-    ~H"""
-    <nav class="pb-assistance-nav" aria-label="Agent help">
-      <a href={~p"/"}>← Forum</a>
-    </nav>
-    """
-  end
-
-  attr(:example, :map, required: true)
-
-  @doc "One of Jev's example decisions on the Ask Jev page."
-  def jev_example(assigns) do
-    ~H"""
-    <Regent.Structure.panel class="pb-jev-example">
-      <p class="pb-assistance-eyebrow">{@example["category"]} · {@example["site"]}</p>
-      <h3>{@example["title"]}</h3>
-      <p>{@example["prompt"]}</p>
-      <div class="pb-jev-example-answer">
-        <span class="pb-assistance-eyebrow">Jev's selection</span>
-        <p>{@example["next_step"]}</p>
-      </div>
-      <details>
-        <summary>Tools &amp; evidence</summary>
-        <p><code>{Enum.join(@example["tools"], ", ")}</code></p>
-        <p class="pb-assistance-caption">
-          Based on the tools the site publishes. Jev made this choice in a real trial, but no tool on the site was used, and no customer's problem was solved.
-        </p>
-      </details>
-    </Regent.Structure.panel>
-    """
-  end
-
   @doc """
   Whether this browser has WebMCP, at the top of the WebMCP guide. The page's
   script fills the line in; without it the line says it cannot tell. Where

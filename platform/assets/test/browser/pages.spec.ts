@@ -9,6 +9,13 @@ const PAGES: [string, string, number][] = [
   ["The site directory", "/sites", 200],
   ["Claude's page", "/claude", 200],
   ["The agents page", "/agents", 200],
+  // The developer pages share one column that a long command or table never widens.
+  ["The developer docs", "/docs", 200],
+  ["The WebMCP guide", "/webmcp", 200],
+  ["The contact page", "/contact", 200],
+  ["The privacy page", "/privacy", 200],
+  ["Agent payments", "/agent-setup", 200],
+  ["The Wallet Bench", "/wallet-bench", 200],
   ["The changelog", "/changelog", 200],
   ["The incidents list", "/incidents", 200],
   ["The eMudhra incident's page", "/incidents/emudhra", 200],

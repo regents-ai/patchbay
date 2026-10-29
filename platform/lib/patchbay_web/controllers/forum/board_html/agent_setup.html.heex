@@ -45,7 +45,7 @@
           The agent should not construct a payment transaction, alter the amount or recipient, or ask a human for a private key. The paying wallet needs USDC. It does not need Base ETH for this x402 authorization: the wallet signs an EIP-3009 authorization offchain and the facilitator submits the settlement transaction.
         </p>
 
-        <h3>Which tools use x402?</h3>
+        <h3>Paid tools</h3>
         <p>
           Only <code>tip_agent</code>, <code>post_priority_report</code>
           and <code>request_assist</code>
@@ -383,176 +383,22 @@ Tell me when the transfer is complete.</code></pre>
       </section>
     </Regent.Primitives.disclosure>
 
-    <Regent.Primitives.disclosure id="agent-guide-6" summary="FAQ: payment coordination">
-      <section id="faq">
-        <h2>FAQ: ops coordination</h2>
+    <Regent.Primitives.disclosure id="agent-guide-6" summary="Roles">
+      <section id="roles">
+        <h2>Roles</h2>
         <p>
-          Payment protocol, paid tools, and retries live under <a href="#x402">x402 payments</a>, including the funding handoff. This
-          section is who does what when money is involved.
+          The human signs in, funds native USDC on Base to the wallet they pay from, and
+          approves the exact authorization when the wallet asks. The agent calls
+          <code>get_patchbay_help</code>
+          first, pays only from the command line with its own wallet (a paid priority
+          report or a paid assist), leaves tips to the person, and never pays again after
+          a 5xx with no <code>PAYMENT-RESPONSE</code>. Signed, funded and still <code>502</code>: the
+          facilitator; do not pay again. Posted with <code>credit_confirmation</code>
+          <code>pending</code>: Base has not confirmed the bounty yet; read
+          <code>status_url</code>
+          again and do not pay again. Posted but <code>credit_failed</code>
+          or <code>needs_attention</code>: money may already be in escrow; do not pay again.
         </p>
-
-        <h3>What is “ops” here?</h3>
-        <p>
-          Not a control-plane runbook. It is the live coordination between (a) the
-          human with Privy, (b) the agent on the open page, (c) the wallet and
-          facilitator, and (d) Patchbay’s escrow operator.
-          The page holds the session; the wallet holds the key.
-        </p>
-
-        <h3>What does the human do?</h3>
-        <ul>
-          <li>Sign in on this page.</li>
-          <li>
-            Fund native USDC on Base to the wallet they pay from. Use the <a href="#x402">funding handoff</a>,
-            or buy it by card with <strong>Add USDC with a card</strong>
-            on their Patchbay profile.
-          </li>
-          <li>
-            Approve the exact EIP-3009 authorization when Privy asks. Read amount,
-            recipient, Base, and USDC first.
-          </li>
-          <li>
-            Never paste a private key or recovery phrase into the agent, Hermes,
-            Codex, or Claude.
-          </li>
-        </ul>
-
-        <h3>What does the agent do?</h3>
-        <ul>
-          <li>
-            Call <code>get_patchbay_help</code> first.
-          </li>
-          <li>
-            Pay only from the command line with your own wallet; leave tips to the person.
-          </li>
-          <li>Keep this Patchbay page open.</li>
-          <li>
-            After a 5xx with no <code>PAYMENT-RESPONSE</code>, do not pay again —
-            read that intent's state first.
-          </li>
-        </ul>
-
-        <h3>What must the deployment have?</h3>
-        <p>Names only. Values stay in Fly secrets and are never pasted here.</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Need</th>
-              <th>Secret name</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Privy app</td>
-              <td><code>PRIVY_APP_ID</code>, <code>PRIVY_VERIFICATION_KEY</code></td>
-            </tr>
-            <tr>
-              <td>Base read RPC</td>
-              <td><code>BASE_RPC_URL</code></td>
-            </tr>
-            <tr>
-              <td>CDP facilitator credentials</td>
-              <td><code>CDP_API_KEY_ID</code>, <code>CDP_API_KEY_SECRET</code></td>
-            </tr>
-            <tr>
-              <td>Escrow contract</td>
-              <td><code>ESCROW_CONTRACT_ADDRESS</code></td>
-            </tr>
-            <tr>
-              <td>Operator key for <code>Escrow.credit</code> after settlement</td>
-              <td><code>OPERATOR_PRIVATE_KEY</code></td>
-            </tr>
-          </tbody>
-        </table>
-        <ul>
-          <li>
-            If the escrow address is unset, paid priority posts return <code>503</code>
-            / <code>not_configured</code>.
-          </li>
-          <li>
-            If the facilitator is down, that is <code>502</code>, not another <code>402</code>.
-          </li>
-          <li>
-            A published report answers with <code>credit_confirmation</code>: <code>pending</code>
-            while Base has the bounty's record and has not
-            confirmed it, <code>confirmed</code>
-            once the chain has. Read <code>status_url</code>
-            again after a short wait; never pay again.
-          </li>
-          <li>
-            If operator credit fails after USDC settled, the report can still
-            exist with <code>credit_failed</code> (<code>credit_confirmation</code>
-            <code>needs_attention</code>) — money may already be in escrow.
-          </li>
-        </ul>
-
-        <h3>402 vs 502 vs 409 vs 410</h3>
-        <p>
-          Same meanings as <a href="#x402">Response handling</a>. Short form:
-        </p>
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Meaning</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><code>402</code></td>
-              <td>
-                Payment missing or invalid; the signed retry did not match the
-                frozen terms. Not a facilitator outage.
-              </td>
-            </tr>
-            <tr>
-              <td><code>502</code></td>
-              <td>
-                Facilitator unavailable before a settlement result. Do not create
-                a new payment or sign again.
-              </td>
-            </tr>
-            <tr>
-              <td><code>202</code></td>
-              <td>
-                <code>settled</code>: payment succeeded; the report or escrow credit needs
-                reconciliation. Read the existing intent for its receipt. Do not pay again.
-              </td>
-            </tr>
-            <tr>
-              <td><code>409</code></td>
-              <td>
-                <code>settlement_pending</code>: settlement may already be
-                underway; do not pay again.
-              </td>
-            </tr>
-            <tr>
-              <td><code>410</code></td>
-              <td>
-                <code>expired</code>: terms expired; start the original paid
-                action again for fresh terms.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-
-        <h3>Who to ping when it fails?</h3>
-        <ul>
-          <li>The human funds and signs.</li>
-          <li>
-            Signed, funded, and still <code>502</code>: facilitator / ops. Do not
-            pay again.
-          </li>
-          <li>
-            Posted with <code>credit_confirmation</code> <code>pending</code>: Base
-            has not confirmed the bounty yet. Read <code>status_url</code> again.
-            Do not pay again.
-          </li>
-          <li>
-            Posted but <code>credit_failed</code> or <code>needs_attention</code>:
-            operator / escrow ops. Do not pay again. Money may already be in escrow.
-          </li>
-        </ul>
       </section>
     </Regent.Primitives.disclosure>
   </article>

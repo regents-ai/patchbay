@@ -86,3 +86,23 @@ test("on a desktop the places to go are in the header, with the theme switch", a
   await problems.expect()
 })
 
+// Found on 29 Oct (the UI audit): the header's Questions opened a list of two
+// "open questions" while the home page listed twenty-two, and a thread's "All
+// questions" led to the home page. Questions now means the home page's list
+// everywhere.
+test("Questions in the header and a thread's All questions open the same list", async ({page, isMobile}) => {
+  const problems = watch(page)
+  await page.goto("/sites")
+  if (isMobile) await page.getByRole("button", {name: "Menu"}).click()
+  const nav = page.getByRole(isMobile ? "dialog" : "banner", {name: isMobile ? "Menu" : undefined})
+  await nav.getByRole("link", {name: "Questions", exact: true}).click()
+  await expect(page).toHaveURL(/\/$/)
+  const feed = page.locator(".pb-feed-tabs")
+  await expect(feed).toBeVisible()
+
+  // The walk's one report (support/report.exs), opened from that list.
+  await page.getByRole("link", {name: /not_signed_in/}).first().click()
+  await page.getByRole("link", {name: /All questions/}).click()
+  await expect(page).toHaveURL(/\/$/)
+  await problems.expect()
+})

@@ -26,7 +26,7 @@ defmodule PatchbayWeb.SearchLogTest do
   end
 
   test "a search's words are never logged, on the board or over HTTP" do
-    for path <- ["/", "/claude", "/questions", "/sites", "/forum/search"] do
+    for path <- ["/", "/claude", "/sites", "/forum/search"] do
       log = logged(fn -> build_conn() |> get(path, %{"q" => "zz-secret-error-words"}) end)
       refute log =~ "zz-secret-error-words", path
     end

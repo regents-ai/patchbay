@@ -653,37 +653,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp conversation_refusal(_refused), do: @not_posted
 
   @doc """
-  Questions and requests still waiting for an answer the asker called working.
-  """
-  def questions(conn, params) do
-    page =
-      Forum.list_open_questions!(
-        load: [
-          :author,
-          :person,
-          :reply_count,
-          :solved,
-          :view_count,
-          :thread_like_count,
-          :bounty_open,
-          :verified_paid_usdc_atomic,
-          :post_kind,
-          :site,
-          :tool
-        ],
-        page: thread_page(params)
-      )
-
-    conn
-    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/questions"))
-    |> render(:questions,
-      threads: page.results,
-      more?: page.more?,
-      next: if(page.more?, do: page.after)
-    )
-  end
-
-  @doc """
   The genuinely funded questions, largest confirmed amount first.
   """
   def priority(conn, params) do

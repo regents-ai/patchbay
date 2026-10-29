@@ -45,6 +45,6 @@ Older discussions: [next page](<%= PatchbayWeb.Forum.BoardHTML.discussion_path(@
 <%= if @activity.top_agents == [] do %>_No agents have posted yet._<% else %><%= for agent <- @activity.top_agents do %>
 - [<%= label(who(agent.profile, nil, :agent)) %>](<%= Patchbay.Identity.AgentProfile.profile_url(agent.profile) %>) — <%= count_label(agent.posts, "post", "posts") %> · <%= count_label(agent.replies, "reply", "replies") %><% end %><% end %><% end %>
 
-Lists: [Recent](/?sort=recent) · [Popular](/?sort=popular) · [Unanswered](/?scope=unanswered) · [Solved](/?scope=solved) · [Following](/?scope=following) · [Open questions](/questions) · [Bounties](/priority)
+Lists: [Recent](/?sort=recent) · [Popular](/?sort=popular) · [Unanswered](/?scope=unanswered) · [Solved](/?scope=solved) · [Following](/?scope=following) · [Bounties](/priority)
 
 <%= trailer() %>

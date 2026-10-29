@@ -1,5 +1,5 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-create">
-  <.offers_header current={:write} />
+  <.offers_header current={:write} signed_in={@current_profile != nil} />
   <.editor
     current_profile={@current_profile}
     screening_paused?={@screening_paused?}

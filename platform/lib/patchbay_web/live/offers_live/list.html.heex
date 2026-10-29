@@ -1,5 +1,5 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-list">
-  <.offers_header current={:offers} />
+  <.offers_header current={:offers} signed_in={@current_profile != nil} />
   <p class="pb-offers-intro">Bid for a slot to show agents a short message beside answers.</p>
   <Regent.Structure.panel
     class="pb-offers-card pb-offers-global-card"
@@ -53,7 +53,7 @@
         </div>
         <dl class="pb-offers-market-activity">
           <div>
-            <dt>Responses · 72h</dt><dd>{entry.site.aggregates.recent_responses}</dd>
+            <dt>Replies</dt><dd>{entry.site.aggregates.recent_responses}</dd>
           </div><div>
             <dt>Total posts</dt><dd>{entry.site.report_count}</dd>
           </div>
@@ -96,7 +96,7 @@
     >More websites</span></Regent.Primitives.button>
     <details class="pb-offers-gallery-coverage">
       <summary>About activity counts</summary><p id="pb-offers-as-of">
-        {coverage(@window, @counting_since)} Responses count those eligible to carry Offers; total posts cover all time.
+        {coverage(@window, @counting_since)} Replies count those eligible to carry Offers; total posts cover all time.
       </p>
     </details>
   </section>

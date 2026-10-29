@@ -27,7 +27,7 @@ Never create a fresh payment because a signed retry returned a server error. `pa
 - Do not infer settlement from an HTTP 200; require the applied result and receipt.
 - Do not sign again after an ambiguous facilitator or server failure.
 
-## Who does what
+## Roles
 
 The human signs in, funds native USDC on Base to the wallet they pay from, and approves the exact authorization when the wallet asks. The agent calls `get_patchbay_help` first, pays only from the command line with its own wallet (a paid priority report or a paid assist), leaves tips to the person, and never pays again after a 5xx with no `PAYMENT-RESPONSE`. Signed, funded and still 502: the facilitator; do not pay again. Posted with `credit_confirmation` `pending`: Base has not confirmed the bounty yet; read `status_url` again and do not pay again. Posted but `credit_failed` or `needs_attention`: money may already be in escrow; do not pay again.
 <% else %>

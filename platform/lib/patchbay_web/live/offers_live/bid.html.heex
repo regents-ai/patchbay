@@ -1,5 +1,5 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-bid">
-  <.offers_header current={:bid} />
+  <.offers_header current={:bid} signed_in={@current_profile != nil} />
 
   <h2 class="pb-offers-view-title">Bid on {label(@site, @number)}</h2>
   <p :if={@site} class="pb-offers-board-link">

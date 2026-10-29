@@ -1,5 +1,5 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-expired">
-  <.offers_header current={:history} />
+  <.offers_header current={:history} signed_in={@current_profile != nil} />
 
   <Regent.Primitives.empty_state :if={!@signed_in?} title="Sign in to see your past Offers.">
     <:action>

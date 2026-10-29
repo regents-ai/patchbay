@@ -7,25 +7,6 @@ defmodule PatchbayWeb.PagesController do
 
   use PatchbayWeb, :controller
 
-  # Reviewed public instructions owned by Techtree, never an execution adapter.
-  @external_resource Application.app_dir(:patchbay, "priv/test_me/coinbase_mcp.catalog.json")
-  @test_me_catalog @external_resource |> File.read!() |> Jason.decode!()
-
-  def test_me(conn, _params),
-    do:
-      render(
-        conn,
-        :test_me,
-        [catalog: @test_me_catalog] ++ PatchbayWeb.PublicDocuments.page("/test-me")
-      )
-
-  @jev_examples_path Application.app_dir(:patchbay, "priv/data/jev_examples.json")
-  @external_resource @jev_examples_path
-  @jev_examples @jev_examples_path |> File.read!() |> Jason.decode!()
-
-  def jev(conn, _params),
-    do: render(conn, :jev, [examples: @jev_examples] ++ PatchbayWeb.PublicDocuments.page("/jev"))
-
   def help(conn, _params), do: render(conn, :help, PatchbayWeb.PublicDocuments.page("/help"))
 
   def webmcp(conn, _params),
@@ -94,29 +75,6 @@ defmodule PatchbayWeb.PagesController do
 
   defp agent_guide("md"), do: Patchbay.AgentGuide.markdown()
   defp agent_guide(_html), do: Patchbay.AgentGuide.html()
-
-  @doc """
-  The deck, one image per slide, shown edge to edge. The slides are the image
-  files in `priv/static/images/runtime` named `NN-words.ext` — two digits, then
-  lowercase words joined by hyphens — in name order, so a new slide is a new
-  file and nothing else. The fingerprinted copies a release adds beside them
-  end in a hex digest and are not slides.
-  """
-  def runtime(conn, _params) do
-    conn
-    |> put_root_layout(false)
-    |> render(:runtime, page_title: "Patchbay in five slides", slides: slides())
-  end
-
-  @slide_name ~r/\A\d{2}-[a-z]+(-[a-z]+)*\.(png|jpg|jpeg|webp|svg)\z/
-
-  defp slides do
-    :patchbay
-    |> Application.app_dir("priv/static/images/runtime")
-    |> File.ls!()
-    |> Enum.filter(&Regex.match?(@slide_name, &1))
-    |> Enum.sort()
-  end
 
   @doc "Every agent's own page, with its troubleshooting page, and how to pair one."
   def agents(conn, _params) do

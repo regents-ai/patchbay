@@ -155,7 +155,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
     test "the fixed pages answer as markdown and a browser still gets HTML", %{conn: conn} do
       for path <-
-            ~w(/start /agent-setup /questions /priority /blog /docs /about /contact /privacy) do
+            ~w(/start /agent-setup /priority /blog /docs /about /contact /privacy) do
         assert {200, body} = markdown(conn, path)
         assert String.starts_with?(body, "# "), "#{path} did not start with a heading"
       end
@@ -261,28 +261,6 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       assert xml =~
                "<loc>#{url}/wallet-bench/codex/privy</loc><lastmod>2026-10-21T08:30:00.000000Z</lastmod>"
-
-      # Test Me and Ask Jev are previews kept out of every listing.
-      refute xml =~ "<loc>#{url}/test-me</loc>"
-      refute xml =~ "<loc>#{url}/jev</loc>"
-    end
-
-    test "Test Me and Ask Jev are linked from nowhere a reader browses", %{conn: conn} do
-      for path <- ~w(/ /help /test-me /jev) do
-        html = conn |> get(path) |> html_response(200)
-        refute html =~ ~s(href="/test-me")
-        refute html =~ ~s(href="/jev")
-      end
-
-      pages = for path <- ~w(/help /test-me /jev), do: elem(markdown(conn, path), 1)
-
-      files =
-        for path <- ~w(/llms.txt /agents.md /skill.md), do: conn |> get(path) |> response(200)
-
-      for body <- pages ++ files do
-        refute body =~ "/test-me"
-        refute body =~ "(/jev)"
-      end
     end
 
     test "the five-tool core leads the manifest, llms.txt and the docs page", %{conn: conn} do

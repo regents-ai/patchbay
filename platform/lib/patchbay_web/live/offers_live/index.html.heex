@@ -1,5 +1,5 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-index">
-  <.offers_header current={:details} />
+  <.offers_header current={:details} signed_in={@current_profile != nil} />
 
   <Regent.Structure.panel class="pb-offers-card pb-offers-guide" aria-labelledby="pb-offers-about">
     <header class="pb-offers-guide-head">

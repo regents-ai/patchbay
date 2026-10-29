@@ -106,7 +106,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
 
   @doc "The heading for a grid."
   def grid_title("install"), do: "Install"
-  def grid_title("wallet"), do: "Make a wallet"
+  def grid_title("wallet"), do: "New wallet"
   def grid_title("refund"), do: "Refund"
   def grid_title("paid_call"), do: "Paid call"
   def grid_title("patchbay"), do: "Patchbay sign-in"

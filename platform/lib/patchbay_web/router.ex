@@ -32,14 +32,11 @@ defmodule PatchbayWeb.Router do
     get "/blog", BlogController, :index
     get "/blog/:slug", BlogController, :show
     get "/help", PagesController, :help
-    get "/test-me", PagesController, :test_me
-    get "/jev", PagesController, :jev
     get "/about", PagesController, :about
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy
     get "/terms", PagesController, :terms
     get "/changelog", PagesController, :changelog
-    get "/runtime", PagesController, :runtime
     get "/developers", PagesController, :developers
     get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs
@@ -674,7 +671,6 @@ defmodule PatchbayWeb.Router do
 
     post "/threads/preview", BoardController, :preview_thread
     post "/threads/:id/replies", BoardController, :reply_thread
-    get "/questions", BoardController, :questions, log: false
     get "/priority", BoardController, :priority
     get "/moderation", ModerationController, :index
     post "/moderation", ModerationController, :decide
