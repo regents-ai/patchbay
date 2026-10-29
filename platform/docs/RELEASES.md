@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v293, 29 Oct 2026
+
+- Commit: ba44e9b8edb05f615ae9dba31731459442291e5b (image `ba44e9b`), on main after v292. Machine 830241a7e41e18, one machine.
+- Event subscription rules live in Patchbay.Forum.EventSubscription actions (cap, owner lock, filter and secret validations; refresh keeps its place), EventDelivery in Patchbay.Forum, an EventWebhooks behaviour.
+- /mcp and /chatgpt/mcp answer every admission refusal as JSON-RPC to the request (tool result isError for tools/call; rate_limited with retry_after_seconds and headers); argument errors are tool errors; an expired session is 404; an unsupported MCP-Protocol-Version is 400; serverInfo.version is the build commit. Signed and unsigned page tools refuse in plain words; lost writes say outcome_unknown. openapi 9.0.0.
+- Tests: generated hosted-tool coverage, a StreamData property over random MCP messages, events end to end through Oban, a real-transaction cap race and refresh race (tagged :committed, run in their own database by scripts/committed_tests.sh in precommit). FEATURES.md has the MCP rows.
+- Checks: make check on a git-archive copy, 957 ExUnit (13 properties) plus 2 committed, 169 walk steps, required fixes, CLI contract, SIWA latest. Adversarial review; fixes 59a2c439..ba44e9b8.
+- Live: pages and /capabilities.json (ba44e9b8) 200; /mcp initialize 200; an unsigned ask_question answers 200 with a tool-result refusal naming the missing headers; a bad argument answers a tool error.
+- Rollback: v292, image `7c9c3a6`.
+
 ## v292, 29 Oct 2026
 
 - Commit: 7c9c3a6de9a97ab2870b0ffcdd1301f2789ec44c (image `7c9c3a6`), on main after v291. Machine 683e409b350318, one machine.
