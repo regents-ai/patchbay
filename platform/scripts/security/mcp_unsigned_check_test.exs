@@ -10,7 +10,9 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
 
   The sign-in service is stubbed: it says each time it was asked, and answers
   as the real one does, so the refusal an unsigned write gets can be compared
-  with the one it got when the service was asked. The share is set to the
+  with the one it got when the service was asked. At `/mcp` every refusal is
+  a JSON-RPC answer to the call (status 200, a tool result with `isError`
+  carrying the refusal). The share is set to the
   site's own 120 a minute for the whole site while this runs, so the file runs
   alone (`async: false`).
   """
@@ -66,10 +68,7 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
        %{conn: conn} do
     refused = write(conn, address(), nil)
 
-    assert refused.status == 401,
-           "expected 401 for an unsigned write, saw #{refused.status}"
-
-    assert Jason.decode!(refused.resp_body) == @unsigned_refusal,
+    assert refusal(refused) == @unsigned_refusal,
            "expected the existing refusal, saw #{refused.resp_body}"
 
     refute_received :sign_in_service_asked,
@@ -82,29 +81,30 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
 
     # One signed write and 119 unsigned ones spend the address's 120.
     signed = write(conn, address, "not a signature")
-    assert signed.status == 401
+    assert refusal(signed)["error"]["code"] == "signature_invalid"
     assert [policy] = get_resp_header(signed, "ratelimit-policy")
     assert policy =~ ~s("signed";q=120;w=60)
     assert_received :sign_in_service_asked
 
     for left <- 118..0//-1 do
       unsigned = write(conn, address, nil)
-      assert unsigned.status == 401
+      assert refusal(unsigned) == @unsigned_refusal
       assert [budget] = get_resp_header(unsigned, "ratelimit")
       assert budget =~ ~s("signed";r=#{left};t=)
     end
 
     for signature <- [nil, "not a signature"] do
       over = write(conn, address, signature)
+      error = refusal(over)["error"]
 
-      assert over.status == 429,
-             "expected 429 past the share (signature #{inspect(signature)}), saw #{over.status}"
+      assert error["code"] == "rate_limited",
+             "expected rate_limited past the share (signature #{inspect(signature)}), saw #{over.resp_body}"
 
-      assert json_response(over, 429)["error"]["code"] == "too_many_requests"
       assert [budget] = get_resp_header(over, "ratelimit")
       assert budget =~ ~s("signed";r=0;t=)
       assert [seconds] = get_resp_header(over, "retry-after")
       assert String.to_integer(seconds) in 1..60
+      assert error["retry_after_seconds"] == String.to_integer(seconds)
     end
 
     refute_received :sign_in_service_asked,
@@ -117,7 +117,15 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
     refute Enum.any?(get_resp_header(read, "ratelimit-policy"), &(&1 =~ ~s("signed")))
 
     # Another address has a share of its own.
-    assert write(conn, address(), nil).status == 401
+    assert refusal(write(conn, address(), nil)) == @unsigned_refusal
+  end
+
+  # The refusal a write was answered with, as a tool result for its call.
+  defp refusal(answer) do
+    assert %{"id" => 1, "result" => %{"isError" => true, "structuredContent" => refusal}} =
+             json_response(answer, 200)
+
+    refusal
   end
 
   defp write(conn, address, signature) do

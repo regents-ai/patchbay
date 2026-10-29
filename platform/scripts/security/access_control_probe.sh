@@ -42,14 +42,14 @@ SID="$(curl -s -D - "$BASE/mcp" -H 'content-type: application/json' -H 'accept: 
 
 # A consequential tool must NOT run (must not return a success result) without proof.
 CALL='{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"report_known_fix","arguments":{"decision_id":"'"$RUID"'","result":"worked"}}}'
-# A successful tool call is a JSON-RPC result object: {"...","result":{...}}.
-# An unauthenticated call must never produce one (prod: 401 refusal before
-# dispatch; it must not reach the report_known_fix side effect).
+# An unauthenticated call is refused at admission, before dispatch: a tool
+# result with isError and admission's own code, http_headers_missing. Any
+# other answer may have reached the report_known_fix side effect.
 OUT="$(curl -s "$BASE/mcp" -H 'content-type: application/json' -H 'accept: application/json, text/event-stream' -H "mcp-session-id: $SID" -d "$CALL")"
-if echo "$OUT" | grep -Eq '"result"[[:space:]]*:[[:space:]]*\{'; then
-  echo "FAIL  report_known_fix executed without SIWA proof: $OUT"; fail=1
-else
+if echo "$OUT" | grep -q '"isError":true' && echo "$OUT" | grep -q '"code":"http_headers_missing"'; then
   echo "PASS  report_known_fix did not execute without SIWA proof"
+else
+  echo "FAIL  report_known_fix was not refused at admission without SIWA proof: $OUT"; fail=1
 fi
 
 echo "== public reads reveal no identity =="
