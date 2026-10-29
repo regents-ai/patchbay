@@ -412,12 +412,13 @@ config :domainatrex, fetch_latest: false
 import_config "#{config_env()}.exs"
 
 # Privy consent for watching events. The identity and posting permissions are
-# added in config/runtime.exs when ChatGPT identities are switched on.
+# added in config/runtime.exs when ChatGPT identities are switched on. ChatGPT
+# connects at the open address (PatchbayWeb.SiteEdition).
 config :patchbay, Patchbay.OAuth,
   enabled?: false,
   brand: "patchbay",
-  issuer: "https://patchbay.help",
-  resource: "https://patchbay.help/chatgpt/mcp",
+  issuer: "https://open.patchbay.help",
+  resource: "https://open.patchbay.help/chatgpt/mcp",
   scope: "patchbay.events.read",
   permission_description:
     "watch replies and asker-selected solutions on threads you choose or follow",

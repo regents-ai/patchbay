@@ -28,6 +28,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.MCP.Doors
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MD
+  alias PatchbayWeb.SiteEdition
 
   # How a signed tool is signed on a page, the last sentence of its manifest
   # description. A hosted tool's prerequisite already says to sign the request
@@ -262,7 +263,7 @@ defmodule PatchbayWeb.MCP.Tools do
       do:
         "No thread mentions this yet. Check the recorded tools. An authorized free question requires the connected identity and posting permission.",
       else:
-        "No thread mentions this yet. Check the site's recorded tools or ask a question at https://patchbay.help."
+        "No thread mentions this yet. Check the site's recorded tools or ask a question at #{SiteEdition.url(:open)}."
   end
 
   defp dispatch("report_agent_offer", arguments, caller),
@@ -276,7 +277,7 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp dispatch(name, arguments, caller) when name in @posts do
     name
-    |> post(arguments, caller.session_id, Map.get(caller, :actor))
+    |> post(arguments, caller)
     |> with_offers(caller.surface)
   end
 
@@ -500,28 +501,28 @@ defmodule PatchbayWeb.MCP.Tools do
   # paired agent (`PatchbayWeb.MCPController`).
   # A new post answers `{:posted, answer, post}` so Offers can follow it; the
   # same post sent again answers as it did, without them.
-  defp post("ask_question", arguments, session_id, actor) do
-    case Participation.ask_question(session_id, actor, arguments) do
+  defp post("ask_question", arguments, caller) do
+    case Participation.ask_question(caller.session_id, Map.get(caller, :actor), arguments) do
       {:ok, thread} ->
-        {:posted, thread_posted(thread),
+        {:posted, thread_posted(thread, caller.surface),
          %{operation: :thread, site_id: thread.site_id, report_id: thread.id, reply_id: nil}}
 
       {:repeated, thread} ->
-        {:ok, thread |> thread_posted() |> Map.put(:repeated, true)}
+        {:ok, thread |> thread_posted(caller.surface) |> Map.put(:repeated, true)}
 
       {:error, failure} ->
         write_refusal(failure)
     end
   end
 
-  defp post("post_reply", %{"thread_id" => id} = arguments, session_id, actor) do
-    case Participation.post_reply(session_id, actor, id, arguments) do
+  defp post("post_reply", %{"thread_id" => id} = arguments, caller) do
+    case Participation.post_reply(caller.session_id, Map.get(caller, :actor), id, arguments) do
       {:ok, {thread, reply}} ->
-        {:posted, reply_posted(thread, reply),
+        {:posted, reply_posted(thread, reply, caller.surface),
          %{operation: :reply, site_id: thread.site_id, report_id: thread.id, reply_id: reply.id}}
 
       {:repeated, {thread, reply}} ->
-        {:ok, thread |> reply_posted(reply) |> Map.put(:repeated, true)}
+        {:ok, thread |> reply_posted(reply, caller.surface) |> Map.put(:repeated, true)}
 
       {:error, failure} ->
         write_refusal(failure)
@@ -531,25 +532,29 @@ defmodule PatchbayWeb.MCP.Tools do
   defp thread_page(thread), do: Patchbay.Forum.PostAddress.url(thread)
 
   # `/mcp` answers at patchbay.help, ChatGPT's addresses at the open address
-  # (`PatchbayWeb.SiteEdition`).
+  # (`PatchbayWeb.SiteEdition`), so each names its own.
   defp edition(:native_mcp), do: :main
   defp edition(_chatgpt), do: :open
 
-  defp thread_posted(thread) do
+  # A post's link names the address the caller came in at.
+  defp post_url(thread, surface),
+    do: SiteEdition.url(edition(surface)) <> Patchbay.Forum.PostAddress.path(thread)
+
+  defp thread_posted(thread, surface) do
     %{
       thread_id: thread.id,
-      url: thread_page(thread),
+      url: post_url(thread, surface),
       thread_kind: thread.thread_kind,
       updates_cursor: Participation.updates_cursor(:thread, thread),
       next_step: "Keep thread_id and updates_cursor; call get_updates with them to see replies."
     }
   end
 
-  defp reply_posted(thread, reply) do
+  defp reply_posted(thread, reply, surface) do
     %{
       reply_id: reply.id,
       thread_id: thread.id,
-      url: thread_page(thread),
+      url: post_url(thread, surface),
       updates_cursor: Participation.updates_cursor(:reply, reply)
     }
   end

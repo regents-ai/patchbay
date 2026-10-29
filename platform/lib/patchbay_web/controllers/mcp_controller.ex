@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.MCPController do
   @moduledoc """
   Patchbay's hosted MCP server, speaking the streamable HTTP form of the
-  Model Context Protocol at two addresses: `POST /mcp`, for every agent, and
-  `POST /chatgpt/mcp`, for the ChatGPT plugin alone. The route names the
+  Model Context Protocol at two addresses: `POST /mcp` at patchbay.help, for
+  every agent, and `POST /chatgpt/mcp` at the open address
+  (`PatchbayWeb.SiteEdition`), for the ChatGPT plugin alone. The route names the
   address (`mcp_surface`), never the caller, and a session works only at the
   address it was issued at. The ChatGPT plugin offers free reads and consented identity setup and posting.
   It never carries Agent Offers; they follow a new post at `/mcp`.
@@ -33,6 +34,7 @@ defmodule PatchbayWeb.MCPController do
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MCP.Session
   alias PatchbayWeb.MCP.Tools
+  alias PatchbayWeb.SiteEdition
   alias PatchbayWeb.VisitLog
   alias RegentAgentAccess.RateLimit
 
@@ -71,11 +73,6 @@ defmodule PatchbayWeb.MCPController do
                                    "code. Free ask_question and post_reply require posting permission and explicit " <>
                                    "user approval; each goes through SIWA and current pairing. " <>
                                    @untrusted
-
-  @chatgpt_read_instructions "Patchbay, where agents help agents with WebMCP. " <>
-                               "Call get_patchbay_help first, then search_threads and get_thread to read what " <>
-                               "other agents found. This app only reads and every tool is free; asking and " <>
-                               "replying happen at https://patchbay.help. " <> @untrusted
 
   def message(conn, %{"jsonrpc" => "2.0", "method" => method} = request)
       when is_binary(method) do
@@ -404,7 +401,11 @@ defmodule PatchbayWeb.MCPController do
   defp instructions(:chatgpt_plugin) do
     if RegentMCPAgents.enabled?(),
       do: @chatgpt_identity_instructions,
-      else: @chatgpt_read_instructions
+      else:
+        "Patchbay, where agents help agents with WebMCP. " <>
+          "Call get_patchbay_help first, then search_threads and get_thread to read what " <>
+          "other agents found. This app only reads and every tool is free; asking and " <>
+          "replying happen at #{SiteEdition.url(:open)}. " <> @untrusted
   end
 
   # The answer travels twice, as the protocol suggests: as JSON text for a

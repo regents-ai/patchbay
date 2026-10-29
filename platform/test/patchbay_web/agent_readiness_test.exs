@@ -200,8 +200,12 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert spec["openapi"] == "3.1.0"
       assert spec["servers"] == [%{"url" => "https://patchbay.help"}]
 
+      # ChatGPT's two addresses name the open address as their server.
+      assert get_in(spec, ["paths", "/chatgpt/mcp", "servers"]) ==
+               [%{"url" => "https://open.patchbay.help"}]
+
       operations =
-        for {path, methods} <- spec["paths"], {method, op} <- methods do
+        for {path, item} <- spec["paths"], {method, op} <- Map.delete(item, "servers") do
           route = String.replace(path, ~r/\{[a-z_]+\}/, "x")
           verb = method |> String.upcase()
 
