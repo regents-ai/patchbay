@@ -16,10 +16,11 @@
       <.site_post_button domain={@domain} />
     </div>
     <p :if={@posts != []} class="patchbay-generation pb-site-posts-order">
-      Open bounties first, then where an answer worked for the most people
+      {posts_order(@site_edition)}
     </p>
     <.post_list
       posts={@posts}
+      site_edition={@site_edition}
       earned_tips={@earned_tips}
       empty="Nothing has been asked or reported about this site yet."
       ask="#pb-site-post"

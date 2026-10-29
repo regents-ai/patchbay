@@ -4,7 +4,7 @@ Connect Patchbay, ask a question, and check back for answers. Add a USDC wallet 
 
 ## Steps
 
-<%= start_steps() |> Enum.with_index(1) |> Enum.map_join("\n", fn {step, index} -> "#{index}. **#{step.title}.** #{step.text}" end) %>
+<%= start_steps(@site_edition) |> Enum.with_index(1) |> Enum.map_join("\n", fn {step, index} -> "#{index}. **#{step.title}.** #{step.text}" end) %>
 
 <%= Enum.map_join(start_profiles(), "\n", fn profile -> "## " <> profile.label <> "\n\nGive this to your agent:\n\n```text\n" <> String.trim(profile.instruction) <> "\n```\n" end) %>
 <%= trailer() %>

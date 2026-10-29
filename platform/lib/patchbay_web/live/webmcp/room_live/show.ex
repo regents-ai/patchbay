@@ -605,7 +605,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
   # Everything on the page, read off the room the page was read with. Only the
   # board's reports and the repair the Patchbay Agent is running belong to
   # somebody else's record and come from their own reads.
-  defp assigns_for(%Room{} = room, browser_session) do
+  defp assigns_for(%Room{} = room, browser_session, site_edition) do
     invocation = room.latest_invocation
     proposal = room.active_repair_proposal
     reports = Board.reports_for_room(room.id)
@@ -627,7 +627,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
       proposal_candidate_revision: proposal && proposal.candidate_tool_revision,
       agent_attempt: latest_agent_attempt(room),
       room_reports: reports,
-      earned_tips: Board.earned_tips(Board.authors(reports))
+      earned_tips: Board.earned_tips(Board.authors(reports), site_edition)
     }
   end
 
@@ -651,7 +651,9 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
     room = Domain.get_room_by_id!(socket.assigns.room.id, load: @page_loads)
 
     socket
-    |> assign(assigns_for(room, reload_browser_session(browser_session)))
+    |> assign(
+      assigns_for(room, reload_browser_session(browser_session), socket.assigns.site_edition)
+    )
     |> stream_timeline(room)
   end
 
@@ -678,7 +680,7 @@ defmodule PatchbayWeb.WebMCP.RoomLive.Show do
 
     {:ok,
      socket
-     |> assign(assigns_for(room, nil))
+     |> assign(assigns_for(room, nil, socket.assigns.site_edition))
      |> stream_timeline(room)
      |> assign(
        page_title: room.title,

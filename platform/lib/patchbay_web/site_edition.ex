@@ -32,6 +32,29 @@ defmodule PatchbayWeb.SiteEdition do
   def url(:open),
     do: URI.to_string(%{PatchbayWeb.Endpoint.struct_url() | host: open_host()})
 
+  @doc """
+  The page tools an edition does not offer: at the open address, every one
+  whose route answers only at patchbay.help (`only: :main` in the router), such
+  as each Offer, Credits and Points tool. A page names them so its WebMCP tools
+  leave them out, and the page's help lists none of them.
+  """
+  @spec left_out_tools(t()) :: [String.t()]
+  def left_out_tools(:main), do: []
+
+  def left_out_tools(:open) do
+    for %{name: name, route: route} <- Patchbay.Forum.Capabilities.site(),
+        [verb, "/" <> _ = path] <- [String.split(route, " ")],
+        main_only?(verb, String.replace(path, ~r/\{[a-z_]+\}/, "x")),
+        do: name
+  end
+
+  defp main_only?(verb, path) do
+    case Phoenix.Router.route_info(PatchbayWeb.Router, verb, path, open_host()) do
+      %{pipe_through: pipelines} -> :main_only in pipelines
+      :error -> false
+    end
+  end
+
   @impl Plug
   def init(:assign), do: :assign
   def init(only: edition) when edition in [:main, :open], do: {:only, edition}

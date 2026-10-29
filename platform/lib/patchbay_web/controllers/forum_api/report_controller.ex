@@ -344,11 +344,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   @doc """
   The help a Patchbay page's `get_patchbay_help` tool reads: the same answer
-  the hosted tool gives, for the tools a page offers. The page sends no
-  cookie, so its readiness is what the server sees of an anonymous request.
+  the hosted tool gives, for the tools a page offers at this address. The page
+  sends no cookie, so its readiness is what the server sees of an anonymous
+  request.
   """
   def help(conn, _params) do
-    json(conn, PatchbayWeb.Help.for_page(PatchbayWeb.Forum.Readiness.for_page(nil, nil)))
+    readiness = PatchbayWeb.Forum.Readiness.for_page(nil, nil)
+    json(conn, PatchbayWeb.Help.for_page(readiness, conn.assigns.site_edition))
   end
 
   @doc "The tool manifest: every tool, the operation it runs and where it is offered."

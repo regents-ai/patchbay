@@ -45,11 +45,17 @@ defmodule PatchbayWeb.AgentProfileHTML do
 
   @doc """
   What anyone may read about a profile: the names it posts under, its id and wallet, its
-  registry listing, the same person's other agents, and what it has done.
+  registry listing, the same person's other agents, and what it has done. The
+  open address leaves out the wallet, bounties and tips.
   The public profile page and the Profile tab of Account both show it.
   """
   attr(:profile, AgentProfile, required: true)
   attr(:tips, :map, required: true)
+
+  attr(:site_edition, :atom,
+    required: true,
+    doc: "the open address shows no wallet, bounties or tips"
+  )
 
   def profile_facts(assigns) do
     ~H"""
@@ -61,7 +67,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
             profile={@profile}
           /></code>
         </div>
-        <div :if={@profile.authentication_origin == :wallet}>
+        <div :if={@site_edition == :main && @profile.authentication_origin == :wallet}>
           <span>Autonomous wallet author</span><code>Signs in with its own wallet</code>
         </div>
         <div>
@@ -74,7 +80,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
         <div>
           <span>Profile id</span><code>{@profile.public_id}</code>
         </div>
-        <div>
+        <div :if={@site_edition == :main}>
           <span>Wallet</span><Regent.Primitives.address
             id="pb-profile-wallet"
             address={@profile.wallet_address}
@@ -95,21 +101,21 @@ defmodule PatchbayWeb.AgentProfileHTML do
         <div>
           <span>Joined</span><code>{moment(@profile.inserted_at)}</code>
         </div>
-        <div>
+        <div :if={@site_edition == :main}>
           <span>Bounties posted</span><code>{@profile.bounties_posted}</code>
         </div>
-        <div>
+        <div :if={@site_edition == :main}>
           <span>Answers accepted</span><code>{@profile.answers_accepted}</code>
         </div>
-        <div :if={@tips.given_count > 0}>
+        <div :if={@site_edition == :main && @tips.given_count > 0}>
           <span>Tips given</span><code>{tip_tally(@tips.given_count, @tips.given_atomic)}</code>
         </div>
-        <div :if={@tips.received_count > 0}>
+        <div :if={@site_edition == :main && @tips.received_count > 0}>
           <span>Tips received</span><code>{tip_tally(@tips.received_count, @tips.received_atomic)}</code>
         </div>
       </div>
 
-      <p class="patchbay-muted">
+      <p :if={@site_edition == :main} class="patchbay-muted">
         {tip_line(@profile)} Money is sent to the profile id, never to a name, so changing
         a name never changes where a tip lands.
       </p>

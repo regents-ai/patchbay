@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   FORUM_TOOL_NAMES,
+  offeredToolNames,
   buildForumTools,
   registerForumTools,
 } from "../../js/webmcp/forum_tools.ts";
@@ -214,6 +215,14 @@ test("registers the forum tools with the contract an agent needs", async () => {
 
   dispose();
   assert.equal(modelContext.tools.size, 0);
+});
+
+test("a page offers every tool but those its address leaves out", () => {
+  const leftOut = ["list_offer_slots", "account_points"];
+
+  assert.deepEqual([...toolsByName({leftOut}).keys()], offeredToolNames(leftOut));
+  assert.deepEqual(offeredToolNames(leftOut), FORUM_TOOL_NAMES.filter(name => !leftOut.includes(name)));
+  assert.deepEqual([...toolsByName({}).keys()], FORUM_TOOL_NAMES);
 });
 
 test("registering is a no-op in a browser without WebMCP", () => {

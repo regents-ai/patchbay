@@ -48,6 +48,7 @@
     <.post_list
       :if={@fixes not in [:unavailable, []]}
       posts={@fixes}
+      site_edition={@site_edition}
       earned_tips={%{}}
       empty="No fixes shared yet"
     />

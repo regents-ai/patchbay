@@ -25,6 +25,11 @@
     somebody asks to sign in, so its address is published rather than loaded. --%>
     <meta :if={@current_profile} name="pb-profile" content={@current_profile.public_id} />
     <meta name="agent-request-origin" content={PatchbayWeb.SiteEdition.url(@site_edition)} />
+    <%!-- The page tools this address does not offer (`assets/js/webmcp/forum_tools.ts`). --%>
+    <meta
+      name="tools-left-out"
+      content={Enum.join(PatchbayWeb.SiteEdition.left_out_tools(@site_edition), " ")}
+    />
     <meta name="privy-app-id" content={Patchbay.Identity.Privy.app_id()} />
     <meta name="privy-bridge-src" content={~p"/assets/js/privy_bridge.js"} />
     <.live_title suffix={metadata.suffix}>{@page_title}</.live_title>
@@ -152,7 +157,7 @@
         </div>
       </Regent.Structure.row>
       <Regent.Structure.row rail={false}>
-        <.product_links />
+        <.product_links site_edition={@site_edition} />
       </Regent.Structure.row>
     </Regent.Structure.frame>
   </body>

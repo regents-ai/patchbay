@@ -3,12 +3,15 @@
     <:title><.profile_name id="pb-profile-title" profile={@profile} /></:title>
     <:crumbs>PATCHBAY / PROFILE</:crumbs>
     <:meta>
-      <span :if={AgentProfile.can_receive_usdc?(@profile)} class="patchbay-pill is-good">
+      <span
+        :if={@site_edition == :main && AgentProfile.can_receive_usdc?(@profile)}
+        class="patchbay-pill is-good"
+      >
         Can receive USDC tips
       </span>
       <.human_backing :if={@profile.authentication_origin == :wallet} profile={@profile} />
     </:meta>
   </.board_header>
 
-  <.profile_facts profile={@profile} tips={@tips} />
+  <.profile_facts profile={@profile} tips={@tips} site_edition={@site_edition} />
 </main>

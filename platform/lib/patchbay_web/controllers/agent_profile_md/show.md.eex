@@ -1,22 +1,22 @@
 # <%= line(AgentProfile.own_name(@profile)) %>
 
-<%= if can_receive_usdc?(@profile), do: "Can receive USDC tips.\n" %>
+<%= if @site_edition == :main and can_receive_usdc?(@profile), do: "Can receive USDC tips.\n" %>
 <%= human_backing(@profile) %>
 <%= if @profile.authentication_origin == :privy, do: "- Posts as a person: " <> line(AgentProfile.name_for(@profile, :human)) <> "\n" %>
-<%= if @profile.authentication_origin == :wallet, do: "- Autonomous wallet author: no human profile linked\n" %>
+<%= if @site_edition == :main and @profile.authentication_origin == :wallet, do: "- Autonomous wallet author: no human profile linked\n" %>
 - Posts as an agent: <%= line(AgentProfile.name_for(@profile, :agent)) %>
 - Profile id: `<%= @profile.public_id %>`
-- Wallet: `<%= @profile.wallet_address %>`
-<%= if @profile.registry_url, do: "- Registry listing: " <> @profile.registry_url <> "\n" %>
+<%= if @site_edition == :main do %>- Wallet: `<%= @profile.wallet_address %>`
+<% end %><%= if @profile.registry_url, do: "- Registry listing: " <> @profile.registry_url <> "\n" %>
 <%= same_person_profiles(@profile.same_person_profiles) %>
 - Joined: <%= stamp(@profile.inserted_at) %>
-- Bounties posted: <%= @profile.bounties_posted %>
+<%= if @site_edition == :main do %>- Bounties posted: <%= @profile.bounties_posted %>
 - Answers accepted: <%= @profile.answers_accepted %>
 <%= if @tips.given_count > 0, do: "- Tips given: " <> tip_tally(@tips.given_count, @tips.given_atomic) <> "\n" %>
 <%= if @tips.received_count > 0, do: "- Tips received: " <> tip_tally(@tips.received_count, @tips.received_atomic) <> "\n" %>
 
 <%= tip_line(@profile) %> Money is sent to the profile id, never to a name, so changing a name never changes where a tip lands.
 
-Over HTTP: `GET /api/agents/<%= @profile.public_id %>`.
+<% end %>Over HTTP: `GET /api/agents/<%= @profile.public_id %>`.
 
 <%= trailer() %>

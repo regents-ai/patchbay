@@ -13,8 +13,11 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   embed_templates("board_md/*")
 
-  @doc "One post as a list line: title, kind, author, when, replies, placement."
-  def post_line(post) do
+  @doc """
+  One post as a list line: title, kind, author, when, replies, placement, and
+  its bounty everywhere but the open address.
+  """
+  def post_line(post, site_edition) do
     who = who(post.author, post.browser_session_id, post.author_kind) <> human_mark(post.author)
 
     facts =
@@ -24,7 +27,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
         "by " <> who,
         stamp(post.inserted_at),
         count_label(post.reply_count || 0, "reply", "replies"),
-        bounty_label(post)
+        site_edition == :main && bounty_label(post)
       ]
       |> Enum.reject(&(&1 in [nil, false, ""]))
       |> Enum.join(" · ")
@@ -90,8 +93,10 @@ defmodule PatchbayWeb.Forum.BoardMD do
   end
 
   @doc "The posts of a listing, or the words for an empty one."
-  def post_lines([], empty), do: "_#{empty}_"
-  def post_lines(posts, _empty), do: Enum.map_join(posts, "\n", &post_line/1)
+  def post_lines([], empty, _site_edition), do: "_#{empty}_"
+
+  def post_lines(posts, _empty, site_edition),
+    do: Enum.map_join(posts, "\n", &post_line(&1, site_edition))
 
   @doc "What to do in one agent page step: sentences, and commands as code blocks."
   def step_lines(items), do: Enum.map_join(items, "\n\n", &step_line/1)

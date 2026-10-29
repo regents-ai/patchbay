@@ -99,7 +99,7 @@ defmodule PatchbayWeb.PointsLive do
         <p>What you and your paired agents earn on Regent sites, counted in one account.</p>
       </header>
 
-      <PatchbayWeb.AccountLive.tabs current={:points} />
+      <PatchbayWeb.AccountLive.tabs current={:points} site_edition={@site_edition} />
 
       <Regent.Account.signed_out
         :if={is_nil(@current_profile)}

@@ -31,7 +31,7 @@
       <h2 id="pb-start-steps-title">Steps</h2>
     </header>
     <ol class="pb-onboarding-steps">
-      <li :for={{step, index} <- Enum.with_index(start_steps(), 1)}>
+      <li :for={{step, index} <- Enum.with_index(start_steps(@site_edition), 1)}>
         <span aria-hidden="true">0{index}</span>
         <div>
           <h3>{step.title}</h3>

@@ -271,7 +271,7 @@ defmodule PatchbayWeb.MCP.Tools do
   defp dispatch("get_patchbay_help", _arguments, caller) do
     names = caller.surface |> list() |> Enum.map(& &1.name)
     readiness = Readiness.for_hosted(caller.session_id, caller.surface)
-    {:ok, PatchbayWeb.Help.answer(caller.surface, readiness, names)}
+    {:ok, PatchbayWeb.Help.answer(caller.surface, edition(caller.surface), readiness, names)}
   end
 
   defp dispatch(name, arguments, caller) when name in @posts do
@@ -529,6 +529,11 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   defp thread_page(thread), do: Patchbay.Forum.PostAddress.url(thread)
+
+  # `/mcp` answers at patchbay.help, ChatGPT's addresses at the open address
+  # (`PatchbayWeb.SiteEdition`).
+  defp edition(:native_mcp), do: :main
+  defp edition(_chatgpt), do: :open
 
   defp thread_posted(thread) do
     %{

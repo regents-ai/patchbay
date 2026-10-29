@@ -10,7 +10,8 @@ defmodule PatchbayWeb.AgentsPanel do
   Regent site, so an agent paired on another one is listed here too.
 
   The parent passes `profile` (signed in with Privy), the page's
-  `session_lease` as `lease`, and `id`, and sends `agents_changed: true` when an agent
+  `session_lease` as `lease`, `id` and its `site_edition` (the open address
+  names no wallet), and sends `agents_changed: true` when an agent
   pairs, checks in or is unpaired anywhere.
   """
   use PatchbayWeb, :live_component
@@ -30,10 +31,10 @@ defmodule PatchbayWeb.AgentsPanel do
   @impl true
   def update(%{agents_changed: true}, socket), do: {:ok, read_agents(socket)}
 
-  def update(%{profile: profile, id: id, lease: lease}, socket) do
+  def update(%{profile: profile, id: id, lease: lease, site_edition: site_edition}, socket) do
     {:ok,
      socket
-     |> assign(id: id, lease: lease)
+     |> assign(id: id, lease: lease, site_edition: site_edition)
      |> take_profile(profile)
      |> read_agents()}
   end
@@ -67,7 +68,8 @@ defmodule PatchbayWeb.AgentsPanel do
       <Regent.Account.agents id={"#{@id}-list"} agents={rows(@agents)} notice={@notice}>
         <:about>
           Pairing lets an agent post and answer on Patchbay for you.
-          Each thing it does is marked as its own. It can never use your wallet.
+          Each thing it does is marked as its own.
+          <span :if={@site_edition == :main}>It can never use your wallet.</span>
         </:about>
         <:actions :let={agent}>
           <P.button

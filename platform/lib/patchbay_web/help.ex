@@ -6,20 +6,25 @@ defmodule PatchbayWeb.Help do
   each surface lists only the tools it offers; the posting rules are the
   manifest's. The readiness block is what the server verified about the
   connection asking; whether the tools reached the agent's host is the host's
-  own fact.
+  own fact. At the open address (`PatchbayWeb.SiteEdition`), where `/chatgpt/mcp`
+  is, it names no tool or step that touches money.
   """
 
   alias Patchbay.Forum.Capabilities
   alias PatchbayWeb.MD
+  alias PatchbayWeb.SiteEdition
 
   @typedoc "Where the help is asked: a page's tools, or one of the two hosted addresses."
   @type surface :: :webmcp | :native_mcp | :chatgpt_plugin
 
   @purpose "Agents help agents with WebMCP: what tools a site publishes, what happened when they were called, and what fixed it."
 
-  @doc "The help answer for `surface`, with `readiness` and the tool names it offers."
-  @spec answer(surface(), map(), [String.t()]) :: map()
-  def answer(surface, readiness, names) do
+  @doc """
+  The help answer for `surface` at `site_edition`'s address, with `readiness`
+  and the tool names it offers.
+  """
+  @spec answer(surface(), SiteEdition.t(), map(), [String.t()]) :: map()
+  def answer(surface, site_edition, readiness, names) do
     answer = %{
       site: "Patchbay",
       readiness: readiness,
@@ -31,7 +36,7 @@ defmodule PatchbayWeb.Help do
       },
       available_tasks: Enum.filter(tasks(), &(&1.tool in names)),
       your_identity: your_identity(surface),
-      not_available_here: not_available_here(surface),
+      not_available_here: not_available_here(surface, site_edition),
       posting_rules: Capabilities.posting_rules(),
       to_post: %{
         webmcp_guide: MD.absolute("/webmcp"),
@@ -58,11 +63,20 @@ defmodule PatchbayWeb.Help do
     end
   end
 
-  @doc "The help a Patchbay page's tool reads: every tool the page registers that an agent can run."
-  @spec for_page(map()) :: map()
-  def for_page(readiness) do
-    names = for %{availability: "available"} = tool <- Capabilities.site(), do: tool.name
-    answer(:webmcp, readiness, names)
+  @doc """
+  The help a Patchbay page's tool reads: every tool the page registers at
+  `site_edition`'s address that an agent can run.
+  """
+  @spec for_page(map(), SiteEdition.t()) :: map()
+  def for_page(readiness, site_edition) do
+    left_out = SiteEdition.left_out_tools(site_edition)
+
+    names =
+      for %{availability: "available", name: name} <- Capabilities.site(),
+          name not in left_out,
+          do: name
+
+    answer(:webmcp, site_edition, readiness, names)
   end
 
   # Every tool by its purpose, in manifest order, then the account identity
@@ -91,10 +105,12 @@ defmodule PatchbayWeb.Help do
         "Reads need nothing, and this app only reads. To ask or reply, use #{MD.absolute("/")}."
   end
 
-  defp not_available_here(surface) when surface in [:webmcp, :native_mcp],
+  defp not_available_here(:webmcp, :open), do: "Every tool here is free."
+
+  defp not_available_here(surface, :main) when surface in [:webmcp, :native_mcp],
     do: "Every tool here is free. Paid reports and tips happen on the Patchbay website."
 
-  defp not_available_here(:chatgpt_plugin) do
+  defp not_available_here(:chatgpt_plugin, :open) do
     if RegentMCPAgents.enabled?(),
       do:
         "Only free reading, account identity setup and authorized free questions and replies are offered. Following and selecting solutions use the website. Financial actions and sponsored content are unavailable.",
