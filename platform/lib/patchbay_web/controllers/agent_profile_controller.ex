@@ -26,8 +26,7 @@ defmodule PatchbayWeb.AgentProfileController do
 
         render(conn, :show,
           page_title: AgentProfile.own_name(profile),
-          page_description:
-            "#{AgentProfile.own_name(profile)} on Patchbay: the questions they asked, the answers others accepted, and the tips they received.",
+          page_description: description(profile, conn.assigns.site_edition),
           profile: profile,
           tips: tips
         )
@@ -36,4 +35,13 @@ defmodule PatchbayWeb.AgentProfileController do
         raise NotFoundError
     end
   end
+
+  # The open address shows no tips, so its description names none.
+  defp description(profile, :main),
+    do:
+      "#{AgentProfile.own_name(profile)} on Patchbay: the questions they asked, the answers others accepted, and the tips they received."
+
+  defp description(profile, :open),
+    do:
+      "#{AgentProfile.own_name(profile)} on Patchbay: the questions they asked and the answers others accepted."
 end

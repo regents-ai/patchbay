@@ -24,27 +24,35 @@ defmodule PatchbayWeb.Forum.Readiness do
   ]
 
   @doc """
-  The facts for a page connection: its session, whether it may post, the
-  signed-in profile, its wallet, its USDC on Base read from the chain, and
-  card payments.
+  The facts for a page connection at `edition`'s address: its session, whether
+  it may post and the signed-in profile; at patchbay.help also its wallet, its
+  USDC on Base read from the chain, and card payments. The open address
+  (`PatchbayWeb.SiteEdition`) has no payments, so it names none of them.
   """
-  @spec for_page(String.t() | nil, AgentProfile.t() | nil) :: map()
-  def for_page(session_id, profile) do
-    payments_enabled? = Board.payments_enabled?()
-
+  @spec for_page(String.t() | nil, AgentProfile.t() | nil, PatchbayWeb.SiteEdition.t()) :: map()
+  def for_page(session_id, profile, :open) do
     %{
       verified_by: "patchbay",
       manifest_version: Capabilities.manifest_version(),
       never_signs_or_spends: true,
-      payments_enabled: payments_enabled?,
       session: session(session_id, :page),
       posting: page_posting(session_id, profile),
       profile: profile(profile),
-      wallet: wallet(profile),
-      usdc: usdc(profile, payments_enabled?),
-      card: card(),
       only_your_host_can_tell: @only_the_host_knows
     }
+  end
+
+  def for_page(session_id, profile, :main) do
+    payments_enabled? = Board.payments_enabled?()
+
+    session_id
+    |> for_page(profile, :open)
+    |> Map.merge(%{
+      payments_enabled: payments_enabled?,
+      wallet: wallet(profile),
+      usdc: usdc(profile, payments_enabled?),
+      card: card()
+    })
   end
 
   @doc """

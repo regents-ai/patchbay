@@ -13,17 +13,20 @@ defmodule PatchbayWeb.DiscoveryController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum.Capabilities
+  alias PatchbayWeb.SiteEdition
 
   @directory "priv/public"
-  @files Map.new(~w(openapi.json llms.txt robots.txt agents.md), &{&1, Path.join(@directory, &1)})
+  @files Map.new(
+           ~w(openapi.json llms.txt llms_open.txt robots.txt agents.md),
+           &{&1, Path.join(@directory, &1)}
+         )
   for {_name, path} <- @files, do: @external_resource(path)
 
-  @sources @files
-           |> Map.new(fn {name, path} -> {name, File.read!(path)} end)
-           |> Map.update!(
-             "llms.txt",
-             &String.replace(&1, "{{facts}}", Patchbay.About.facts())
-           )
+  # The open address has its own agent guide, with none of patchbay.help's
+  # payments (`PatchbayWeb.SiteEdition`).
+  @guides %{main: "llms.txt", open: "llms_open.txt"}
+
+  @sources Map.new(@files, fn {name, path} -> {name, File.read!(path)} end)
 
   # The release time: security.txt expires a year after it.
   @released_at DateTime.utc_now() |> DateTime.truncate(:second)
@@ -34,13 +37,21 @@ defmodule PatchbayWeb.DiscoveryController do
   end
 
   def llms(conn, _params) do
-    body = guide(@sources["llms.txt"])
+    edition = conn.assigns.site_edition
+
+    body =
+      @sources[@guides[edition]]
+      |> String.replace("{{facts}}", Patchbay.About.facts(edition))
+      |> guide(edition)
+
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)
   end
 
   def agents(conn, _params) do
     body =
-      @sources["agents.md"] |> guide() |> String.replace("{{origin}}", PatchbayWeb.Endpoint.url())
+      @sources["agents.md"]
+      |> guide(:main)
+      |> String.replace("{{origin}}", PatchbayWeb.Endpoint.url())
 
     conn |> cache(body) |> put_resp_content_type("text/markdown") |> send_resp(200, body)
   end
@@ -61,13 +72,17 @@ defmodule PatchbayWeb.DiscoveryController do
   end
 
   # The guides' tool tables and install lines, from the manifest and the
-  # capability rows, so neither guide names a tool or a release of its own.
-  defp guide(text) do
+  # capability rows, so neither guide names a tool or a release of its own;
+  # each lists only the tools `edition`'s address offers.
+  defp guide(text, edition) do
     cli = Capabilities.cli()
+
+    more_tools =
+      for tool <- Capabilities.more(), SiteEdition.offers?(edition, tool), do: "`#{tool.name}`"
 
     text
     |> String.replace("{{tools}}", Capabilities.tools_markdown())
-    |> String.replace("{{more_tools}}", Enum.map_join(Capabilities.more(), ", ", &"`#{&1.name}`"))
+    |> String.replace("{{more_tools}}", Enum.join(more_tools, ", "))
     |> String.replace("{{cli_install}}", Capabilities.cli_install())
     |> String.replace("{{cli_release}}", cli["release"])
     |> String.replace("{{cli_source}}", cli["source"])

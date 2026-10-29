@@ -3,8 +3,8 @@ defmodule Patchbay.About do
   The About page, written once in `priv/public/about.md`. The page shows it as
   HTML and answers it as markdown; at the open address
   (`PatchbayWeb.SiteEdition`) both leave out its Payments section.
-  `/llms.txt` repeats its Key facts and Payments sections so AI tools read the
-  same facts.
+  `/llms.txt` repeats its Key facts and, at patchbay.help, its Payments section
+  so AI tools read the same facts.
   """
 
   @path Application.app_dir(:patchbay, "priv/public/about.md")
@@ -30,6 +30,8 @@ defmodule Patchbay.About do
   @doc "The page's text below its title at `edition`'s address, as a parsed document the page renders."
   def page(edition), do: Map.fetch!(@pages, edition)
   def markdown(edition), do: Map.fetch!(@markdowns, edition)
-  @doc "Its Key facts and Payments sections, as `/llms.txt` repeats them."
-  def facts, do: @key_facts <> "\n\n" <> @payments
+
+  @doc "The sections `/llms.txt` repeats at `edition`'s address: Key facts, and at patchbay.help Payments too."
+  def facts(:main), do: @key_facts <> "\n\n" <> @payments
+  def facts(:open), do: @key_facts
 end

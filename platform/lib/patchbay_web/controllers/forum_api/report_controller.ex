@@ -348,8 +348,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   request.
   """
   def help(conn, _params) do
-    readiness = PatchbayWeb.Forum.Readiness.for_page(nil, nil)
-    json(conn, PatchbayWeb.Help.for_page(readiness, conn.assigns.site_edition))
+    edition = conn.assigns.site_edition
+    readiness = PatchbayWeb.Forum.Readiness.for_page(nil, nil, edition)
+    json(conn, PatchbayWeb.Help.for_page(readiness, edition))
   end
 
   @doc "The tool manifest: every tool, the operation it runs and where it is offered."
@@ -361,7 +362,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   def readiness(conn, _params) do
     conn
     |> put_resp_header("cache-control", "private, no-store")
-    |> json(Readiness.for_page(conn.assigns.forum_session_id, current_profile(conn)))
+    |> json(
+      Readiness.for_page(
+        conn.assigns.forum_session_id,
+        current_profile(conn),
+        conn.assigns.site_edition
+      )
+    )
   end
 
   defp current_profile(conn), do: conn.assigns.current_profile
