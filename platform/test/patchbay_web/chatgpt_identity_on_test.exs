@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.ChatGPTIdentityOnTest do
   @moduledoc """
-  The ChatGPT address with identities on: a connected account has a share of
-  identity and posting calls a minute, counted before the hosted signer is
-  asked to sign for it. Reads stay uncounted.
+  The ChatGPT address with identities on: every tool states its three review
+  hints, and a connected account has a share of identity and posting calls a
+  minute, counted before the hosted signer is asked to sign for it. Reads
+  stay uncounted.
   """
 
   # It switches ChatGPT identities on and lowers the account share for the
@@ -85,6 +86,19 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
       })
 
     %{client: client}
+  end
+
+  test "every tool states whether it reads, destroys and reaches the open world" do
+    tools = PatchbayWeb.MCP.Tools.list(:chatgpt_plugin)
+
+    assert length(tools) == 12
+
+    for tool <- tools do
+      hints = tool.annotations |> Jason.encode!() |> Jason.decode!()
+
+      for hint <- ~w(readOnlyHint destructiveHint openWorldHint),
+          do: assert(is_boolean(hints[hint]), "#{tool.name} #{hint}")
+    end
   end
 
   test "an account's identity and posting calls past its share are refused without asking the hosted signer",

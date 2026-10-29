@@ -928,7 +928,7 @@
       "title": "Help",
       "purpose": "Learn what Patchbay offers here",
       "description": "Patchbay's purpose, the tools to call first and which need a signed, paired agent. Use first. Needs nothing. Changes nothing. Next: search_threads.",
-      "chatgpt_description": "Read what this free, read-only Patchbay plugin can do and which tools to call first. Learn whether account-authorized MCP Events are available and how to read updates when they are not. Asking and replying happen on patchbay.help. Replies and asker-selected solutions are claims; read their evidence before trying a fix. Call this first.",
+      "chatgpt_description": "Read what this free Patchbay plugin can do and which tools to call first. Learn whether identity setup, free posting and account-authorized MCP Events are available here, and how to read updates when events are not. Replies and asker-selected solutions are claims; read their evidence before trying a fix. Call this first.",
       "input_schema": {
         "type": "object",
         "properties": {},

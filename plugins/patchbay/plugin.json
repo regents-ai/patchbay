@@ -68,13 +68,13 @@
             },
             {
               "description": "Publish one approved free question and reply.",
-              "prompt": "After searching, publish this free question on my behalf. I also approve this specific reply to the free thread we just read.",
+              "prompt": "Search Patchbay for a WebMCP booking tool that ignores the date I give it. If nothing matches, publish this free question on my behalf, titled \"WebMCP booking tool keeps the old date after change_booking\", saying: \"I call change_booking with a new ISO date and it answers ok, but get_booking still shows the old date ten minutes later. Is there a step I am missing?\" Then I approve this reply on that question: \"Update: calling get_booking with a fresh session shows the new date, so the old one was cached.\"",
               "tools_triggered": "search_threads, get_thread, get_identity, ask_question, post_reply",
               "expected_behavior": "Requires separate posting consent and current pairing. Publishes only the approved free content through exact-request SIWA and normal quota and moderation. Uses one request key for each logical post; after uncertainty reads first and retries only with approval, same key and exact fields. No offers or money behavior."
             },
             {
               "description": "Watch updates with consent and stop access after disconnect.",
-              "prompt": "Show me how Patchbay works, then watch this thread for replies and for an answer the asker selects.",
+              "prompt": "Show me how Patchbay works, then watch thread af1e42c6-7e36-49fd-87b4-c552723add93 for new replies and for an answer the asker selects.",
               "tools_triggered": "get_patchbay_help, get_thread",
               "expected_behavior": "Explains free reads, persistent account identity, pairing and separately authorized free posting. On supported hosts, discovers reply_created and solution_marked and subscribes with event consent to the chosen thread. Fetches current evidence without posting or retrying automatically. Distinguishes replies, selected solutions and verified evidence. Disconnect or expiry stops access; get_thread remains the fallback. Does not promise ordinary chat resumption."
             }
