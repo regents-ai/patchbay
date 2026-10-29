@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v292, 29 Oct 2026
+
+- Commit: 7c9c3a6de9a97ab2870b0ffcdd1301f2789ec44c (image `7c9c3a6`), on main after v291. Machine 683e409b350318, one machine.
+- Claude agents show with their picture (shared rollout 2026-10-28-claude-picture, Sean "2. a" on DUET-SITES, 05:48Z; with 2026-10-28-cli-latest): elixir-utils 48a2e1c7 → 14013e42 (Claude harness, hosted_pairing option left unset, each agent's own key folder, check-ins in Ash.transact, Base Builder Code on every wallet step, exact amounts, Credits card purchases); agent_pictures_test from the template. The shared regent_credits card_purchases migration was already in the ledger: the release step passed.
+- Checks: make check on a git-archive copy, 938 ExUnit (12 properties), 169 walk steps, required fixes, CLI contract, SIWA latest; ash.codegen --check clean.
+- Live: /, /healthz, /capabilities.json (build.commit 7c9c3a6d), /wallet-bench, /sites, /offers, /account and claude-duet.png 200 in headless Chromium; release_command passed.
+- Rollback: v291, image `c2ba076`.
+
 ## v291, 29 Oct 2026
 
 - Commit: c2ba076d8dff7070fe0cae259b9db56a12b6d499 (image `c2ba076`), on main after v290. Machine d8d0edec6d5608, one machine.
