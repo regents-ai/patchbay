@@ -76,36 +76,17 @@ defmodule Patchbay.WalletBench.Matrix do
   @spec read() :: {:ok, map()} | {:error, term()}
   @spec read(map()) :: {:ok, map()} | {:error, term()}
   def read(filters \\ %{}) do
-    with {:ok, [results, checks, roster, notes, fixed, summaries, extra_notes]} <-
-           read_at_once([
-             &WalletBench.list_results_without_steps/0,
-             &WalletBench.list_checks/0,
-             &WalletBench.list_roster/0,
-             &WalletBench.list_notes/0,
-             &WalletBench.list_fixed/0,
-             &WalletBench.list_sets/0,
-             &WalletBench.list_extra_notes/0
-           ]) do
+    with {:ok, roster} <- WalletBench.list_roster(),
+         {:ok, notes} <- WalletBench.list_notes(),
+         {:ok, fixed} <- WalletBench.list_fixed(),
+         {:ok, results} <- WalletBench.list_results_without_steps(),
+         {:ok, summaries} <- WalletBench.list_sets(),
+         {:ok, checks} <- WalletBench.list_checks(),
+         {:ok, extra_notes} <- WalletBench.list_extra_notes() do
       {:ok,
        roster
        |> build(notes, fixed, results, summaries, checks, criteria(checks, results), filters)
        |> Map.put(:extra_notes, ExtraNotes.by_release(extra_notes, roster))}
-    end
-  end
-
-  # The board's reads, side by side: the runs and the checks are the two costly
-  # views and start together, and the small reads share a third connection.
-  # Each answers as it would alone; the first error is the answer.
-  defp read_at_once(reads) do
-    reads
-    |> Task.async_stream(& &1.(), max_concurrency: 3, timeout: :infinity)
-    |> Enum.reduce_while({:ok, []}, fn
-      {:ok, {:ok, rows}}, {:ok, acc} -> {:cont, {:ok, [rows | acc]}}
-      {:ok, {:error, _reason} = error}, _acc -> {:halt, error}
-    end)
-    |> case do
-      {:ok, acc} -> {:ok, Enum.reverse(acc)}
-      error -> error
     end
   end
 
