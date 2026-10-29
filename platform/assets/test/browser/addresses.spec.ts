@@ -59,15 +59,28 @@ test("a thread and its authors' profiles draw every address with its copy icon",
     [...new Set(links.map(link => link.getAttribute("href")!))],
   )
   expect(profiles.length).toBeGreaterThanOrEqual(2)
+
+  // A heading that is an address is never cut into words for its entrance, which
+  // would copy its buttons and ids. Each page is watched frame by frame from its
+  // first paint through the entrance.
+  await page.addInitScript(() => {
+    ;(window as unknown as {copiedIds: Promise<string[]>}).copiedIds = new Promise(resolve => {
+      const seen = new Set<string>()
+      const until = performance.now() + 1500
+      const look = () => {
+        const ids = [...document.querySelectorAll("h1 [id]")].map(part => part.id)
+        ids.filter((id, at) => ids.indexOf(id) !== at).forEach(id => seen.add(id))
+        if (performance.now() < until) requestAnimationFrame(look)
+        else resolve([...seen])
+      }
+      requestAnimationFrame(look)
+    })
+  })
   for (const profile of profiles) {
     await expectNoBareAddress(page, profile)
     await expect(page.locator("h1 .rg-address")).toHaveCount(1)
-    // A heading that is an address is never cut into words for its entrance, which
-    // would copy its buttons and ids.
-    await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0)
-    const ids = await page.locator("h1 [id]").evaluateAll(parts => parts.map(part => part.id))
-    expect(ids.length).toBeGreaterThan(0)
-    expect(new Set(ids).size, `ids in the heading: ${ids}`).toBe(ids.length)
+    const copied = await page.evaluate(() => (window as unknown as {copiedIds: Promise<string[]>}).copiedIds)
+    expect(copied, "ids copied in the heading").toEqual([])
     await expect(page.locator("h1 button")).toHaveCount(2)
   }
 })
