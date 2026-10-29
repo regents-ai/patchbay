@@ -16,7 +16,12 @@
 .pb-fix-ask input::placeholder { font-size: min(1em, 4.2vw); }
 .pb-fix-ask input:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
 .pb-fix-more { display: grid; gap: .6rem; }
-.pb-fix-more :is(input:not([type=checkbox]):not([type=radio]), textarea, select) { width: 100%; min-height: 2.5rem; padding: .5rem .7rem; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: .875rem; }
+.pb-fix-more :is(input:not([type=checkbox]):not([type=radio]), textarea, select) { width: 100%; min-height: 2.75rem; padding: .5rem .7rem; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text); font: inherit; font-size: .875rem; }
+/* The fields show from the start, so each is a full finger tall, and a phone
+   does not zoom in on one when it takes focus. */
+@media (pointer: coarse) {
+  .pb-fix-more :is(input:not([type=checkbox]):not([type=radio]), textarea, select) { font-size: 1rem; }
+}
 .pb-fix-more label { display: block; margin-bottom: .25rem; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-fix-more .rg-muted { margin-top: .3rem; font-size: .6875rem; color: var(--pb-text-muted); }
 .pb-fix-goal-hint { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
@@ -71,7 +76,8 @@
   margin: 0; padding: .5rem .75rem; border: 1px solid var(--pb-text); background: var(--pb-surface);
   color: var(--pb-text); font-size: .875rem; font-weight: var(--font-weight-semibold); text-align: center; cursor: pointer;
 }
-.pb-hero-kind input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+/* The hidden choice covers its whole button, border included. */
+.pb-hero-kind input { position: absolute; inset: -1px; margin: 0; opacity: 0; cursor: pointer; }
 .pb-fix-more .pb-hero-kind label:hover { background: var(--pb-accent-wash); }
 .pb-fix-more .pb-hero-kind label:has(input:checked) { background: var(--pb-accent); color: var(--pb-accent-ink); }
 .pb-hero-kind label:has(input:focus-visible) { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }

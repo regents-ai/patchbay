@@ -48,6 +48,9 @@ test.describe("on a phone", () => {
     "/changelog",
     "/offers",
     "/incidents",
+    "/hermes",
+    "/hermes/troubleshooting",
+    "/agents",
   ]
   for (const path of paths) {
     test(`every control on ${path} is a full finger tall`, async ({page}) => {

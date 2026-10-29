@@ -104,7 +104,7 @@
   font-weight: 400;
   letter-spacing: -.02em;
 }
-.pb-agent-section-head a { font-size: .9375rem; white-space: nowrap; }
+.pb-agent-section-head a { display: inline-flex; align-items: center; min-height: 2.75rem; font-size: .9375rem; white-space: nowrap; }
 .pb-agent-steps { margin: 0; padding: 0; list-style: none; counter-reset: agent-step; }
 .pb-agent-step {
   display: grid;
