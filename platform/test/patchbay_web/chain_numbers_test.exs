@@ -168,6 +168,7 @@ defmodule PatchbayWeb.ChainNumbersTest do
     {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request}, payer)
     {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
     {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
+    # The assist worker's own steps, which no actor may reach.
     {:ok, running} = Assist.start_run(run, authorize?: false)
     Assist.finish_run!(running, %{status: :finished, outcome: :reached}, authorize?: false)
   end

@@ -15,9 +15,6 @@ defmodule Patchbay.OperatorWallet do
   whose money the escrow has not yet confirmed as recorded, and the USDC of
   assist fees the operator wallet still holds, waiting, being forwarded or
   failed for a person to look at.
-
-  These are Patchbay's own reads of its own rows, answering to no request,
-  so authorization is set aside deliberately.
   """
 
   require Ash.Query
@@ -36,6 +33,7 @@ defmodule Patchbay.OperatorWallet do
   """
   @spec unconfirmed_sends() :: [{String.t(), DateTime.t() | nil}]
   def unconfirmed_sends do
+    # The site's own rows, read for its health numbers on no one's behalf.
     [
       {"escrow_credit",
        Report
@@ -55,6 +53,7 @@ defmodule Patchbay.OperatorWallet do
   """
   @spec escrow_unrecorded() :: non_neg_integer()
   def escrow_unrecorded do
+    # The site's own rows, read for its health numbers on no one's behalf.
     Report
     |> Ash.Query.filter(
       not is_nil(priority_amount_atomic) and
@@ -66,6 +65,7 @@ defmodule Patchbay.OperatorWallet do
   @doc "USDC of assist fees in the operator wallet not yet deposited to staking."
   @spec assist_fees_unforwarded_usdc() :: float()
   def assist_fees_unforwarded_usdc do
+    # The site's own rows, read for its health numbers on no one's behalf.
     intent_ids =
       Run
       |> Ash.Query.filter(
