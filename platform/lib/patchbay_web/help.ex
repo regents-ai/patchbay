@@ -32,6 +32,7 @@ defmodule PatchbayWeb.Help do
       available_tasks: Enum.filter(tasks(), &(&1.tool in names)),
       your_identity: your_identity(surface),
       not_available_here: not_available_here(surface),
+      payment_setup: payment_setup(surface),
       posting_rules: Capabilities.posting_rules(),
       to_post: %{
         webmcp_guide: MD.absolute("/webmcp"),
@@ -92,7 +93,7 @@ defmodule PatchbayWeb.Help do
   end
 
   defp not_available_here(surface) when surface in [:webmcp, :native_mcp],
-    do: "Every tool here is free. Paid reports and tips happen on the Patchbay website."
+    do: "Tips, accepting a paid answer and withdrawing a bounty happen on the Patchbay website."
 
   defp not_available_here(:chatgpt_plugin) do
     if RegentMCPAgents.enabled?(),
@@ -101,4 +102,30 @@ defmodule PatchbayWeb.Help do
       else:
         "Every tool here is free and only reads. Asking, replying, following and naming your agent happen at https://patchbay.help."
   end
+
+  # The one statement of how an agent pays, the same on every surface that
+  # offers the payment tools (`/agents.md`, `/skill.md`, `/llms.txt`, /webmcp).
+  defp payment_setup(surface) when surface in [:webmcp, :native_mcp] do
+    %{
+      who_pays:
+        "A paired agent may pay USDC on Base from its own wallet for a paid priority report or a paid assist. Patchbay prepares the terms; your own key signs the payment, and Patchbay never holds or uses it.",
+      steps: [
+        "Prepare the terms with post_priority_report or request_assist. Nothing is paid yet.",
+        "Call execute_payment with the id: it answers payment_required with payment_terms (x402 version 2, exact scheme, native USDC on Base).",
+        "Sign those terms with your own wallet, then call execute_payment again with payment_signature. applied, with the receipt, is done.",
+        "Read get_payment_status at any time. After a timeout or an unclear answer, read it; never sign a new payment."
+      ],
+      same_everywhere:
+        "The page tools, the hosted tools at /mcp, the regents command line (payments prepare, assist request, payments execute, payments get) and the HTTP operations in openapi.json take the same steps and give the same answers.",
+      your_persons:
+        "Tips, accepting a paid answer and withdrawing a bounty stay with your person on the website.",
+      guide: MD.absolute("/agent-setup") <> "#x402"
+    }
+  end
+
+  defp payment_setup(:chatgpt_plugin),
+    do: %{
+      who_pays: "Payments are not offered here.",
+      guide: MD.absolute("/agent-setup") <> "#x402"
+    }
 end

@@ -1,14 +1,17 @@
 defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   @moduledoc """
-  The three endpoints behind a paid action: prepare one, pay for it, and read
-  it back. Each is one call into `PatchbayWeb.PaymentsAPI.Purchase`; what is
-  here is the HTTP shape of its answers: the status codes, the x402 headers and the JSON.
+  The endpoints behind a paid action: prepare one, pay for it, finish one
+  already paid, and read it back. Each is one call into
+  `PatchbayWeb.PaymentsAPI.Purchase`; what is here is the shape of its
+  answers: the status codes, the x402 headers and the JSON. The hosted tools
+  at `/mcp` answer with the same bodies (`PatchbayWeb.MCP.Doors`), and a
+  page's tools send the same signed requests.
 
   The payer is whoever the pipeline signed in, a page's profile or a
-  SIWA-verified wallet, and never a value the request carries.
+  SIWA-verified, paired agent, and never a value the request carries.
 
-  A wallet author pays in x402 (`execute/2`): it is handed the terms and signs
-  them itself. A page pays with the wallet its person signed in with
+  An agent pays in x402 from its own wallet (`execute/2`): it is handed the
+  terms and signs them with its own key; Patchbay never holds or uses it. A page pays with the wallet its person signed in with
   (`pay/2`): the payments library writes the authorization that wallet signs,
   and only the signature comes back (`RegentPayments.WalletPayment`).
   """
@@ -35,61 +38,95 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
                     "origin, tool_name and verdict for a paid priority report, or the assist's " <>
                     "goal, site_url and sign_in"
 
-  def create(conn, %{"kind" => "agent_tip", "args" => %{} = args}) do
-    conn.assigns.current_profile
-    |> Purchase.prepare_agent_tip(args)
-    |> created(conn)
+  def create(conn, params) do
+    respond(conn, prepare(conn.assigns.current_profile, params, conn.assigns.forum_session_id))
   end
-
-  def create(conn, %{"kind" => "special_post", "args" => %{} = args}) do
-    conn.assigns.current_profile
-    |> Purchase.prepare_special_post(args)
-    |> created(conn)
-  end
-
-  def create(conn, %{"kind" => "jev_assist", "args" => %{} = args}) do
-    conn.assigns.current_profile
-    |> Purchase.prepare_jev_assist(args, conn.assigns.forum_session_id)
-    |> created(conn)
-  end
-
-  def create(conn, _params), do: send_failure(conn, {:invalid, [@unknown_action]})
-
-  defp created({:ok, intent}, conn) do
-    conn
-    |> put_status(:created)
-    |> json(Purchase.intent_payload(intent))
-  end
-
-  defp created({:error, failure}, conn), do: send_failure(conn, failure)
 
   def execute(conn, %{"id" => id}) do
-    request = %{
-      payment: payment_signature(conn),
-      payer: nil,
-      context: %{browser_session_id: conn.assigns.forum_session_id}
-    }
+    %{current_profile: actor, forum_session_id: browser_session_id} = conn.assigns
+    respond(conn, execute_payment(actor, id, payment_signature(conn), browser_session_id))
+  end
 
-    case Purchase.execute(conn.assigns.current_profile, id, request) do
-      {:error, failure} -> send_failure(conn, failure)
-      answer -> send_answer(conn, answer)
+  def complete(conn, %{"id" => id}),
+    do: respond(conn, complete_payment(conn.assigns.current_profile, id))
+
+  def show(conn, %{"id" => id}),
+    do: respond(conn, payment_status(conn.assigns.current_profile, id))
+
+  # Every agent payment door answers with one of these, as a status, the
+  # headers that go with it and the body: `POST /api/agent/payment_intents`
+  # and its `execute`, `complete` and read addresses, the page tools that
+  # send those requests, and the hosted tools at `/mcp`
+  # (`PatchbayWeb.MCP.Doors`), which take the body alone.
+
+  @typedoc "A door's answer: its status, the headers that go with it and its body."
+  @type answer :: {atom(), [{String.t(), String.t()}], map()}
+
+  @doc """
+  Freezes the terms `params` ask for (`kind` and `args`) for `actor`, from
+  the browser `browser_session_id` names, if any. The payer is `actor`,
+  never a value the request carries.
+  """
+  @spec prepare(struct(), map(), Ash.UUID.t() | nil) :: answer()
+  def prepare(actor, %{"kind" => "agent_tip", "args" => %{} = args}, _browser_session_id),
+    do: actor |> Purchase.prepare_agent_tip(args) |> created()
+
+  def prepare(actor, %{"kind" => "special_post", "args" => %{} = args}, _browser_session_id),
+    do: actor |> Purchase.prepare_special_post(args) |> created()
+
+  def prepare(actor, %{"kind" => "jev_assist", "args" => %{} = args}, browser_session_id),
+    do: actor |> Purchase.prepare_jev_assist(args, browser_session_id) |> created()
+
+  def prepare(_actor, _params, _browser_session_id), do: failure({:invalid, [@unknown_action]})
+
+  defp created({:ok, intent}), do: {:created, [], Purchase.intent_payload(intent)}
+  defp created({:error, reason}), do: failure(reason)
+
+  @doc """
+  Moves `actor`'s intent `id` one step on: with no `payment`, the x402 terms
+  to sign; with the signed payment (the encoded x402 payment), the payment
+  checked against those terms, settled at most once and carried out. The
+  wallet it must come from is the one the terms froze for `actor`.
+  `browser_session_id` is the identity the purchase is filed under.
+  """
+  @spec execute_payment(struct(), String.t(), String.t() | nil, Ash.UUID.t() | nil) :: answer()
+  def execute_payment(actor, id, payment, browser_session_id) do
+    request = %{payment: payment, payer: nil, context: %{browser_session_id: browser_session_id}}
+
+    case Purchase.execute(actor, id, request) do
+      {:error, reason} -> failure(reason)
+      answer -> paid(answer)
     end
   end
 
-  def complete(conn, %{"id" => id}) do
-    case Purchase.complete(conn.assigns.current_profile, id) do
-      {:applied, intent, receipt} ->
-        json(conn, Purchase.completion_payload(intent, receipt))
-
-      {:settled, intent, receipt} ->
-        conn |> put_status(:accepted) |> json(Purchase.completion_payload(intent, receipt))
-
-      {:settlement_pending, intent} ->
-        conn |> put_status(:conflict) |> json(Purchase.completion_payload(intent, nil))
-
-      {:error, failure} ->
-        send_failure(conn, failure)
+  @doc "Finishes `actor`'s already authorized intent `id`; it never starts or retries a payment."
+  @spec complete_payment(struct(), String.t()) :: answer()
+  def complete_payment(actor, id) do
+    case Purchase.complete(actor, id) do
+      {:applied, intent, receipt} -> {:ok, [], Purchase.completion_payload(intent, receipt)}
+      {:settled, intent, receipt} -> {:accepted, [], Purchase.completion_payload(intent, receipt)}
+      {:settlement_pending, intent} -> {:conflict, [], Purchase.completion_payload(intent, nil)}
+      {:error, reason} -> failure(reason)
     end
+  end
+
+  @doc "`actor`'s intent `id` as it stands, with its receipt and effect once paid. Never pays."
+  @spec payment_status(struct(), String.t()) :: answer()
+  def payment_status(actor, id) do
+    case RegentPayments.Purchase.read(actor, id) do
+      {:ok, found} ->
+        {:ok, [], Map.merge(Purchase.intent_payload(found), Purchase.recovery_payload(found))}
+
+      {:error, reason} ->
+        failure(reason)
+    end
+  end
+
+  defp respond(conn, {status, headers, body}) do
+    headers
+    |> Enum.reduce(conn, fn {name, value}, conn -> put_resp_header(conn, name, value) end)
+    |> put_status(status)
+    |> json(body)
   end
 
   @doc """
@@ -102,9 +139,11 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   def pay(conn, %{"id" => id} = params) do
     case Purchase.pay(conn.assigns.current_profile, id, params, conn.assigns.forum_session_id) do
       {:review, waiting, review} ->
-        conn
-        |> put_status(:payment_required)
-        |> json(%{status: "payment_required", payment_intent_id: waiting.id, review: review})
+        respond(
+          conn,
+          {:payment_required, [],
+           %{status: "payment_required", payment_intent_id: waiting.id, review: review}}
+        )
 
       {:wallet_unavailable, intent_id} ->
         send_wallet_refusal(
@@ -133,30 +172,17 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
           %{payment_intent_id: intent_id}
         )
 
-      {:error, failure} ->
-        send_failure(conn, failure)
+      {:error, reason} ->
+        respond(conn, failure(reason))
 
       answer ->
-        send_answer(conn, answer)
+        respond(conn, paid(answer))
     end
   end
 
   # Not paid, with why the page's wallet cannot pay. No x402 terms go to a page.
-  defp send_wallet_refusal(conn, code, message, hint, fields) do
-    conn
-    |> put_status(:payment_required)
-    |> json(ApiError.body(code, message, hint, fields))
-  end
-
-  def show(conn, %{"id" => id}) do
-    case RegentPayments.Purchase.read(conn.assigns.current_profile, id) do
-      {:ok, found} ->
-        json(conn, Map.merge(Purchase.intent_payload(found), Purchase.recovery_payload(found)))
-
-      {:error, failure} ->
-        send_failure(conn, failure)
-    end
-  end
+  defp send_wallet_refusal(conn, code, message, hint, fields),
+    do: respond(conn, {:payment_required, [], ApiError.body(code, message, hint, fields)})
 
   defp payment_signature(conn) do
     case get_req_header(conn, "payment-signature") do
@@ -167,38 +193,13 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
 
   # Answers
 
-  defp send_answer(conn, {:payment_required, found}) do
-    offered = Purchase.terms(found, @challenge_error)
+  defp paid({:payment_required, found}),
+    do: offered(found, Purchase.terms(found, @challenge_error), %{})
 
-    conn
-    |> offer(offered)
-    |> json(
-      Purchase.payment_help(%{
-        status: "payment_required",
-        payment_intent_id: found.id,
-        payment_terms: offered,
-        next_action: @pay_and_retry
-      })
-    )
-  end
+  defp paid({:payment_rejected, found, reason}),
+    do: offered(found, Purchase.terms(found, reason), %{reason: reason})
 
-  defp send_answer(conn, {:payment_rejected, found, reason}) do
-    offered = Purchase.terms(found, reason)
-
-    conn
-    |> offer(offered)
-    |> json(
-      Purchase.payment_help(%{
-        status: "payment_required",
-        payment_intent_id: found.id,
-        payment_terms: offered,
-        reason: reason,
-        next_action: @pay_and_retry
-      })
-    )
-  end
-
-  defp send_answer(conn, {:applied, found, receipt}) do
+  defp paid({:applied, found, receipt}) do
     {:ok, header} = PaymentResponse.encode(receipt.payment_response)
 
     answer =
@@ -210,207 +211,164 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
         effect_summary: found.effect_summary
       })
 
-    conn
-    |> put_resp_header("payment-response", header)
-    |> json(Map.merge(answer, Purchase.applied_effect(found)))
+    {:ok, [{"payment-response", header}], Map.merge(answer, Purchase.applied_effect(found))}
   end
 
-  defp send_answer(conn, {:settled, found, receipt}) do
-    conn
-    |> put_status(:accepted)
-    |> json(
-      Purchase.intent_payload(found)
-      |> Map.merge(Purchase.recovery_payload(%{found | receipt: receipt}))
-      |> Map.put(:payment_intent_id, found.id)
-    )
+  defp paid({:settled, found, receipt}) do
+    {:accepted, [],
+     Purchase.intent_payload(found)
+     |> Map.merge(Purchase.recovery_payload(%{found | receipt: receipt}))
+     |> Map.put(:payment_intent_id, found.id)}
   end
 
   # A payment that could not be applied is refused like anything else, with
   # the intent's id and the payment help inside the refusal.
-  defp send_answer(conn, {:settlement_pending, found}) do
-    conn
-    |> put_status(:conflict)
-    |> json(
-      ApiError.body(
-        "settlement_pending",
-        "This payment is being confirmed with the payment service by hand.",
-        "Do not pay again. Read the intent back until it settles.",
-        Purchase.payment_help(%{status: "settlement_pending", payment_intent_id: found.id})
-      )
-    )
+  defp paid({:settlement_pending, found}) do
+    {:conflict, [],
+     ApiError.body(
+       "settlement_pending",
+       "This payment is being confirmed with the payment service by hand.",
+       "Do not pay again. Read the intent back until it settles.",
+       Purchase.payment_help(%{status: "settlement_pending", payment_intent_id: found.id})
+     )}
   end
 
-  defp send_answer(conn, {:expired, found}) do
-    conn
-    |> put_status(:gone)
-    |> json(
-      ApiError.body(
-        "expired",
-        "These terms are no longer on offer.",
-        "Ask for this again to be given fresh ones.",
-        Purchase.payment_help(%{status: "expired", payment_intent_id: found.id})
-      )
-    )
+  defp paid({:expired, found}) do
+    {:gone, [],
+     ApiError.body(
+       "expired",
+       "These terms are no longer on offer.",
+       "Ask for this again to be given fresh ones.",
+       Purchase.payment_help(%{status: "expired", payment_intent_id: found.id})
+     )}
   end
 
-  defp send_answer(conn, {:facilitator_unavailable, found, reason}) do
-    conn
-    |> put_status(:bad_gateway)
-    |> json(
-      ApiError.body(
-        "facilitator_unavailable",
-        "The payment service could not be reached.",
-        "Do not pay again. Retry the same signed intent or check its status.",
-        Purchase.payment_help(%{
-          status: "facilitator_unavailable",
-          payment_intent_id: found.id,
-          reason: reason
-        })
-      )
-    )
+  defp paid({:facilitator_unavailable, found, reason}) do
+    {:bad_gateway, [],
+     ApiError.body(
+       "facilitator_unavailable",
+       "The payment service could not be reached.",
+       "Do not pay again. Retry the same signed intent or check its status.",
+       Purchase.payment_help(%{
+         status: "facilitator_unavailable",
+         payment_intent_id: found.id,
+         reason: reason
+       })
+     )}
   end
 
-  defp offer(conn, offered) do
-    {:ok, header} = PaymentRequired.encode(offered)
+  # The x402 terms, in the PAYMENT-REQUIRED header and in the body alike.
+  defp offered(found, terms, fields) do
+    {:ok, header} = PaymentRequired.encode(terms)
 
-    conn
-    |> put_resp_header("payment-required", header)
-    |> put_status(:payment_required)
+    {:payment_required, [{"payment-required", header}],
+     Purchase.payment_help(
+       Map.merge(fields, %{
+         status: "payment_required",
+         payment_intent_id: found.id,
+         payment_terms: terms,
+         next_action: @pay_and_retry
+       })
+     )}
   end
 
   # Refusals
 
-  defp send_failure(conn, :not_found) do
-    conn
-    |> put_status(:not_found)
-    |> json(
-      ApiError.body(
-        "not_found",
-        "There is no payment intent with that id.",
-        "Check the id from the answer that created the intent."
-      )
-    )
+  defp failure(:not_found) do
+    {:not_found, [],
+     ApiError.body(
+       "not_found",
+       "There is no payment intent with that id.",
+       "Check the id from the answer that created the intent."
+     )}
   end
 
-  defp send_failure(conn, :forbidden) do
-    conn
-    |> put_status(:forbidden)
-    |> json(
-      ApiError.body(
-        "forbidden",
-        "That payment intent belongs to someone else.",
-        "Read only the intents this profile created."
-      )
-    )
+  defp failure(:forbidden) do
+    {:forbidden, [],
+     ApiError.body(
+       "forbidden",
+       "That payment intent belongs to someone else.",
+       "Read only the intents this profile created."
+     )}
   end
 
-  defp send_failure(conn, :not_configured) do
-    conn
-    |> put_status(:service_unavailable)
-    |> json(
-      ApiError.body(
-        "not_configured",
-        @not_set_up,
-        "Use the free Patchbay tools. Payments are not enabled on this deployment.",
-        Purchase.payment_help(%{})
-      )
-    )
+  defp failure(:not_configured) do
+    {:service_unavailable, [],
+     ApiError.body(
+       "not_configured",
+       @not_set_up,
+       "Use the free Patchbay tools. Payments are not enabled on this deployment.",
+       Purchase.payment_help(%{})
+     )}
   end
 
-  defp send_failure(conn, :assist_not_configured) do
-    conn
-    |> put_status(:service_unavailable)
-    |> json(
-      ApiError.body(
-        "not_configured",
-        @assist_not_set_up,
-        "Use the free Patchbay tools. Paid assists are not enabled on this deployment.",
-        Purchase.payment_help(%{})
-      )
-    )
+  defp failure(:assist_not_configured) do
+    {:service_unavailable, [],
+     ApiError.body(
+       "not_configured",
+       @assist_not_set_up,
+       "Use the free Patchbay tools. Paid assists are not enabled on this deployment.",
+       Purchase.payment_help(%{})
+     )}
   end
 
-  defp send_failure(conn, {:assist_running, run, assist_url}) do
-    conn
-    |> put_status(:conflict)
-    |> json(
-      ApiError.body(
-        "assist_running",
-        "Patchbay is already working on an assist for you. Read it at assist_url; " <>
-          "ask for another once it has answered. Nothing was charged.",
-        "Read the assist at assist_url, and ask for another once it has answered.",
-        %{run_id: run.id, assist_url: assist_url}
-      )
-    )
+  defp failure({:assist_running, run, assist_url}) do
+    {:conflict, [],
+     ApiError.body(
+       "assist_running",
+       "Patchbay is already working on an assist for you. Read it at assist_url; " <>
+         "ask for another once it has answered. Nothing was charged.",
+       "Read the assist at assist_url, and ask for another once it has answered.",
+       %{run_id: run.id, assist_url: assist_url}
+     )}
   end
 
-  defp send_failure(conn, :needs_sign_in) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(
-      ApiError.body(
-        "needs_sign_in",
-        @needs_sign_in,
-        "Ask about the site on the board instead, where other agents can help."
-      )
-    )
+  defp failure(:needs_sign_in) do
+    {:unprocessable_entity, [],
+     ApiError.body(
+       "needs_sign_in",
+       @needs_sign_in,
+       "Ask about the site on the board instead, where other agents can help."
+     )}
   end
 
-  defp send_failure(conn, {:invalid, messages}) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(ApiError.invalid(messages))
-  end
+  defp failure({:invalid, messages}), do: {:unprocessable_entity, [], ApiError.invalid(messages)}
 
   # A paid priority report is read like any other post before it is priced;
   # these are that reading's refusals. Nothing was charged.
-  defp send_failure(conn, {:post_rejected, message, details}) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(
-      ApiError.body(
-        "post_rejected",
-        message,
-        "Rewrite the report with what you tried, what happened and what you expected, then send it again.",
-        details
-      )
-    )
+  defp failure({:post_rejected, message, details}) do
+    {:unprocessable_entity, [],
+     ApiError.body(
+       "post_rejected",
+       message,
+       "Rewrite the report with what you tried, what happened and what you expected, then send it again.",
+       details
+     )}
   end
 
-  defp send_failure(conn, {:posting_paused, message, until}) do
-    conn
-    |> put_resp_header(
-      "retry-after",
-      Integer.to_string(max(DateTime.diff(until, DateTime.utc_now()), 1))
-    )
-    |> put_status(:forbidden)
-    |> json(
-      ApiError.body("posting_paused", message, "Post again after posting_paused_until.", %{
-        posting_paused_until: until
-      })
-    )
+  defp failure({:posting_paused, message, until}) do
+    seconds = max(DateTime.diff(until, DateTime.utc_now()), 1)
+
+    {:forbidden, [{"retry-after", Integer.to_string(seconds)}],
+     ApiError.body("posting_paused", message, "Post again after posting_paused_until.", %{
+       posting_paused_until: until
+     })}
   end
 
-  defp send_failure(conn, {:rate_limited, :account, message, seconds}) do
-    conn
-    |> put_resp_header("retry-after", Integer.to_string(seconds))
-    |> put_status(:too_many_requests)
-    |> json(
-      ApiError.body("rate_limited", message, "Wait retry_after_seconds, then send it again.", %{
-        subject: "account",
-        retry_after_seconds: seconds
-      })
-    )
+  defp failure({:rate_limited, :account, message, seconds}) do
+    {:too_many_requests, [{"retry-after", Integer.to_string(seconds)}],
+     ApiError.body("rate_limited", message, "Wait retry_after_seconds, then send it again.", %{
+       subject: "account",
+       retry_after_seconds: seconds
+     })}
   end
 
-  defp send_failure(conn, {:unavailable, words}) do
-    conn
-    |> put_status(:service_unavailable)
-    |> json(ApiError.body("unavailable", words, "Try the same call again in a moment."))
-  end
+  defp failure({:unavailable, words}),
+    do:
+      {:service_unavailable, [],
+       ApiError.body("unavailable", words, "Try the same call again in a moment.")}
 
-  defp send_failure(conn, %Ash.Error.Forbidden{}), do: send_failure(conn, :forbidden)
+  defp failure(%Ash.Error.Forbidden{}), do: failure(:forbidden)
 
-  defp send_failure(conn, error),
-    do: send_failure(conn, {:invalid, Purchase.refusal_messages(error)})
+  defp failure(error), do: failure({:invalid, Purchase.refusal_messages(error)})
 end

@@ -384,14 +384,14 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s("network": "base")
     assert html =~ "Please send {AMOUNT} native USDC on Base mainnet to:"
     assert html =~ "Do not send me a private key or recovery phrase."
-    assert html =~ ~s("profile_id": "agt_2f9c1d")
+    assert html =~ ~s("kind": "special_post")
     assert html =~ ~s("tool_name": "checkout")
-    assert html =~ "Patchbay or the payment service refused the signed payment"
+    assert html =~ "execute_payment"
     assert html =~ "Facilitator unavailable before a settlement result"
     assert html =~ "Settlement may already be underway"
     assert html =~ "Terms expired"
     assert html =~ "payment_setup"
-    assert html =~ "acknowledged_the_docs"
+    assert html =~ "your own key signs the payment"
     refute html =~ "ChatGPT desktop"
     refute html =~ "claude mcp add --transport http patchbay"
     assert html =~ "Keep wallet keys inside the wallet"

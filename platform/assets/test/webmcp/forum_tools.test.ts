@@ -800,3 +800,49 @@ test("a free fix and a hello are sent signed to their own routes, as given", asy
     assert.deepEqual(fetch.requests.map(({path}) => path), [`${PAGE_ORIGIN}/api/agent/assists`, `${PAGE_ORIGIN}/api/agent/hello`]);
   });
 });
+
+test("an agent's payment is prepared, offered, paid and read back through the page, as the board answers", async () => {
+  const id = "00000000-0000-4000-8000-0000000000aa";
+  const terms = {x402Version: 2, accepts: [{scheme: "exact", network: "eip155:8453", amount: "1000000"}]};
+  const fetch = fakeFetch([
+    {status: 201, body: {id, status: "prepared", kind: "special_post", amount_usdc: "1.00"}},
+    {status: 402, body: {status: "payment_required", payment_intent_id: id, payment_terms: terms}},
+    {status: 200, body: {status: "applied", payment_intent_id: id, receipt: {transaction: "0x01"}}},
+    {status: 200, body: {id, status: "applied", kind: "special_post", amount_usdc: "1.00"}},
+    {status: 409, body: {payment_intent_id: id, status: "settlement_pending", receipt: null}},
+    {status: 404, body: {error: {code: "not_found", message: "There is no payment intent with that id.", hint: "Check the id."}}},
+  ]);
+
+  await onSignedPage(fetch, async () => {
+    const tools = toolsByName({fetch});
+    const prepare = tools.get("prepare_agent_request")!;
+    const report = {kind: "special_post", args: {origin: "https://example.com/a", tool_name: "amend", verdict: "unknown", amount_usdc: "1.00"}};
+    const calls = [
+      ["post_priority_report", report, "POST", "/api/agent/payment_intents", report],
+      ["execute_payment", {payment_intent_id: id}, "POST", `/api/agent/payment_intents/${id}/execute`, {}],
+      ["execute_payment", {payment_intent_id: id, payment_signature: "c2lnbmVk"}, "POST", `/api/agent/payment_intents/${id}/execute`, {payment_signature: "c2lnbmVk"}],
+      ["get_payment_status", {payment_intent_id: id}, "GET", `/api/agent/payment_intents/${id}`, undefined],
+      ["complete_payment", {payment_intent_id: id}, "POST", `/api/agent/payment_intents/${id}/complete`, {}],
+      ["get_payment_status", {payment_intent_id: id}, "GET", `/api/agent/payment_intents/${id}`, undefined],
+    ] as const;
+
+    const answers = [];
+    for (const [name, input, method, path, body] of calls) {
+      const prepared = asAnswer(await prepare.execute({operation: name, input}));
+      assert.equal(prepared.ok, true, name);
+      assert.equal(prepared.request.method, method, name);
+      assert.equal(prepared.request.path, path, name);
+      assert.deepEqual(body === undefined ? undefined : JSON.parse(prepared.request.body), body, name);
+      const proof = method === "GET" ? Object.fromEntries(Object.entries(PROOF).filter(([header]) => header !== "content-digest")) : PROOF;
+      answers.push(asAnswer(await tools.get(name)!.execute({input, request: prepared.request, proof})));
+    }
+
+    // The terms to sign and a payment still being confirmed are answers, whole.
+    assert.deepEqual(answers.map(answer => [answer.ok, answer.status]),
+      [[true, 201], [true, 402], [true, 200], [true, 200], [true, 409], [false, 404]]);
+    assert.deepEqual(answers[1].data.payment_terms, terms);
+    assert.equal(answers[4].data.status, "settlement_pending");
+    assert.equal(answers[5].error.code, "not_found");
+    assert.deepEqual(fetch.requests.map(({path}) => path), calls.map(([, , , path]) => `${PAGE_ORIGIN}${path}`));
+  });
+});

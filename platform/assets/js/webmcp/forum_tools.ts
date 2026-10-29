@@ -366,7 +366,12 @@ async function signed(tool: (typeof PAGE_TOOLS)[number], input: SignedInput, sig
   } catch {
     return unanswered(tool, signal);
   }
-  const result = response.ok
+  // A 4xx body that is not in the refusal shape is the board's answer with
+  // its status, as the same request answers over HTTP: a payment's x402
+  // terms (402) and a payment still being confirmed (409) carry what the
+  // agent needs next. A server failure is always a refusal.
+  const answer = response.ok || (response.status < 500 && body !== null && errorIn(body) === null);
+  const result = answer
     ? answered(body, response.status)
     : refusedWith(errorOf({ok: false, status: response.status, body: waited(response, body)}), response.status);
   if (Object.hasOwn(MY_OFFERS_LIMITS, tool.name)) return bounded(result, MY_OFFERS_LIMITS[tool.name], MY_OFFERS_HINT);
