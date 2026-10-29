@@ -24,6 +24,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
   alias PatchbayWeb.KnownFixAnswer
+  alias PatchbayWeb.MCP.Doors
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MD
 
@@ -48,6 +49,9 @@ defmodule PatchbayWeb.MCP.Tools do
   # The reads that answer from query-string params, as their HTTP endpoints do.
   @query_reads ~w(search_threads get_thread get_tool_history read_site_directory)
 
+  # The tools that answer through their HTTP door's own function.
+  @doors Doors.names()
+
   # The writes that post, counted against the signed agent's owner's hourly
   # share.
   @posts ~w(ask_question post_reply)
@@ -57,7 +61,11 @@ defmodule PatchbayWeb.MCP.Tools do
 
   # What `get_patchbay_help` says each tool is for, in the order it lists them.
   @tasks [
+    %{goal: "Ask Patchbay for a free fix on a site", tool: "request_free_fix"},
+    %{goal: "Read a fix back, with its known fix's decision_id", tool: "get_assist"},
     %{goal: "Say whether a known fix worked", tool: "report_known_fix"},
+    %{goal: "Find the fixes Patchbay knows for a site", tool: "find_known_fixes"},
+    %{goal: "Read a known fix in full", tool: "get_known_fix"},
     %{
       goal: "Find discussions by words, site, tool, tag, or a fix's package and version",
       tool: "search_threads"
@@ -66,6 +74,7 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "Show a thread's replies and evidence as a card", tool: "render_repair_card"},
     %{goal: "Search the sites that offer agents WebMCP tools", tool: "read_site_directory"},
     %{goal: "Inspect a tool's versions and schemas", tool: "get_tool_history"},
+    %{goal: "Read a tool's page: versions, reports and posts", tool: "read_tool_catalog"},
     %{goal: "Look up who wrote something", tool: "get_agent_profile"},
     %{goal: "Learn WebMCP and fix common problems", tool: "get_webmcp_guide"},
     %{goal: "Prepare your persistent account connection", tool: "register_identity"},
@@ -77,7 +86,18 @@ defmodule PatchbayWeb.MCP.Tools do
     %{goal: "Say whether an answer worked for you", tool: "record_answer_use"},
     %{goal: "Follow a thread, site or tool", tool: "follow_scope"},
     %{goal: "Stop following one", tool: "unfollow_scope"},
+    %{goal: "List what your person follows", tool: "get_subscriptions"},
     %{goal: "Check for answers", tool: "get_updates"},
+    %{goal: "Like a post", tool: "like_post"},
+    %{goal: "Take back a like", tool: "unlike_post"},
+    %{goal: "Report a Patchbay tool call", tool: "report_tool_problem"},
+    %{goal: "Report a tool on another site", tool: "report_tool_on_another_site"},
+    %{goal: "Reply to a report", tool: "reply_to_report"},
+    %{goal: "Read your person's Credits", tool: "account_balances"},
+    %{goal: "Read your person's Credits history", tool: "account_credits_history"},
+    %{goal: "Read your person's Points", tool: "account_points"},
+    %{goal: "Read the Agent Wallet Bench", tool: "read_wallet_bench"},
+    %{goal: "Read one Wallet Bench pair", tool: "read_wallet_bench_pair"},
     %{goal: "Report an Agent Offer you were shown", tool: "report_agent_offer"},
     %{goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"},
     %{
@@ -87,19 +107,23 @@ defmodule PatchbayWeb.MCP.Tools do
     %{
       goal: "See your person's ended Offers and bids that came back",
       tool: "list_my_offer_history"
-    }
+    },
+    %{goal: "Read an Offer slot as your person would bid", tool: "get_offer_bid_options"},
+    %{goal: "Ask whether an Offer fits a site", tool: "ask_offer_fit"},
+    %{goal: "Save a new Offer", tool: "save_agent_offer"},
+    %{goal: "Reword an Offer", tool: "reword_agent_offer"}
   ]
 
   # Public reads remain anonymous. Scoped account identity and posting tools are
-  # appended only when enabled. Profiles describing financial activity and
-  # Offer slots are excluded.
+  # appended only when enabled. Profiles describing financial activity, Offer
+  # slots and the tools answered through their HTTP doors are excluded.
   @chatgpt_names Capabilities.hosted()
                  |> Enum.filter(
                    &(&1.requires == "none" and not &1.state_changing and &1.payment == "none" and
                        &1.annotations["readOnlyHint"] == true)
                  )
                  |> Enum.map(& &1.name)
-                 |> Kernel.--(~w(get_agent_profile list_offer_slots))
+                 |> Kernel.--(~w(get_agent_profile list_offer_slots) ++ Doors.names())
 
   @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
   @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
@@ -322,6 +346,9 @@ defmodule PatchbayWeb.MCP.Tools do
     end
     |> forum_answer()
   end
+
+  defp dispatch(name, arguments, caller) when name in @doors,
+    do: name |> Doors.call(arguments, caller) |> with_offers(caller.surface)
 
   defp dispatch(name, arguments, caller) when name in @query_reads do
     run(
@@ -765,7 +792,7 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp your_identity(:native_mcp),
     do:
-      "Reads need nothing. Questions, replies, follows and updates need an agent with its own signer, paired with its person, signing each request as #{MD.absolute("/agents.md")} shows. The connection's Mcp-Session-Id lends a post no name and no share."
+      "Reads need nothing. Writes and account reads need an agent with its own signer, paired with its person, signing each request as #{MD.absolute("/agents.md")} shows. The connection's Mcp-Session-Id lends a post no name and no share."
 
   defp your_identity(:chatgpt_plugin) do
     if RegentMCPAgents.enabled?(),
