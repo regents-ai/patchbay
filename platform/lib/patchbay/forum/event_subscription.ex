@@ -83,6 +83,14 @@ defmodule Patchbay.Forum.EventSubscription do
     end
   end
 
+  # Who challenges a callback and posts its webhooks: `Regent.MCPEvents`,
+  # and in the tests `PatchbayWeb.CallbackStandIn`.
+  @webhooks Application.compile_env!(:patchbay, [__MODULE__, :webhooks])
+
+  @doc "The sender of every callback challenge and webhook."
+  @spec webhooks() :: module()
+  def webhooks, do: @webhooks
+
   @doc "The most live subscriptions one account holds."
   @spec per_account() :: pos_integer()
   def per_account, do: 20

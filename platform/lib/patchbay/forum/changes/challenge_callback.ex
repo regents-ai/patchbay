@@ -5,15 +5,13 @@ defmodule Patchbay.Forum.Changes.ChallengeCallback do
   before the action's transaction opens, so no database transaction waits on
   another server.
 
-  Who sends it is configured: `Regent.MCPEvents`, and in the tests
-  `PatchbayWeb.CallbackStandIn`.
+  Who sends it is `Patchbay.Forum.EventSubscription.webhooks/0`.
   """
 
   use Ash.Resource.Change
 
+  alias Patchbay.Forum.EventSubscription
   alias Patchbay.Forum.EventSubscriptionRefused
-
-  @callbacks Application.compile_env!(:patchbay, [__MODULE__, :callbacks])
 
   @impl true
   def change(changeset, _opts, _context) do
@@ -22,7 +20,7 @@ defmodule Patchbay.Forum.Changes.ChallengeCallback do
       url = Ash.Changeset.get_attribute(changeset, :url)
       secret = Ash.Changeset.get_argument(changeset, :secret)
 
-      case @callbacks.verify_callback(id, url, secret) do
+      case EventSubscription.webhooks().verify_callback(id, url, secret) do
         :ok ->
           changeset
 

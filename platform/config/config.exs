@@ -230,8 +230,9 @@ config :patchbay, :assist_read_only_tools, %{
 }
 
 # An MCP events subscription's callback answers a signed challenge before
-# anything is stored (`Patchbay.Forum.EventSubscription`'s `:subscribe`).
-config :patchbay, Patchbay.Forum.Changes.ChallengeCallback, callbacks: Regent.MCPEvents
+# anything is stored, and is posted its events as they happen
+# (`Patchbay.Forum.EventSubscription`).
+config :patchbay, Patchbay.Forum.EventSubscription, webhooks: Regent.MCPEvents
 
 # Paid actions, through the Regents payments library shared by every Regent
 # site: a tip to an agent profile, a paid priority report and a paid assist.

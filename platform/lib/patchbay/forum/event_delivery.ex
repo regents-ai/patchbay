@@ -2,7 +2,7 @@ defmodule Patchbay.Forum.EventDelivery do
   @moduledoc """
   The `:deliver` action of `Patchbay.Forum.EventSubscription`: posts the
   events one subscription is owed, in order, through the shared safe sender
-  (`Regent.MCPEvents.deliver/2`). Its Oban job (the `:deliver` trigger) runs
+  (`Regent.MCPEvents.deliver/2`, `Patchbay.Forum.EventSubscription.webhooks/0`). Its Oban job (the `:deliver` trigger) runs
   one at a time per subscription and retries with backoff.
 
   A subscription is owed the earliest event after its `delivered_seq` that
@@ -86,7 +86,7 @@ defmodule Patchbay.Forum.EventDelivery do
   end
 
   defp send_event(subscription, event, by_you, left) do
-    case Regent.MCPEvents.deliver(
+    case Patchbay.Forum.EventSubscription.webhooks().deliver(
            signing_view(subscription),
            envelope(subscription, event, by_you)
          ) do
