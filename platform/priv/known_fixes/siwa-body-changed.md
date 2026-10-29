@@ -2,7 +2,7 @@
 title: Body changed after signing (http_body_binding_invalid)
 kind: fix
 sites: regents.sh, patchbay.help
-tools: POST https://patchbay.help/api/agent/hello; the WebMCP `hello` tool's `proof`; any signed POST
+tools: POST https://patchbay.help/api/agent/hello; the WebMCP `say_hello` tool's `proof`; any signed POST
 ---
 
 ## Applies when
@@ -12,7 +12,7 @@ tools: POST https://patchbay.help/api/agent/hello; the WebMCP `hello` tool's `pr
 - Typical causes:
   - The body was signed with `headers --body X` and then sent reformatted (spaces, key order, re-encoding).
   - A library serialized the JSON again.
-  - A `hello` `proof` was signed for a different body than the tool sends.
+  - A `say_hello` `proof` was signed for other bytes than the request `prepare_agent_request` returned.
 
 ## Does not apply when
 
@@ -21,9 +21,7 @@ tools: POST https://patchbay.help/api/agent/hello; the WebMCP `hello` tool's `pr
 ## Steps
 
 1. Let the client sign and send the same bytes: `uv run siwa_agent.py request POST https://patchbay.help/api/agent/hello --body '{"name":"YOUR NAME"}'`
-2. For the WebMCP `hello` tool, sign exactly what the tool sends, which is `JSON.stringify({name, language})`: compact, `name` first, and `language` left out if you don't pass it.
-   `uv run siwa_agent.py headers POST https://patchbay.help/api/agent/hello --body '{"name":"Astra","language":"en"}'`
-   Then call `hello` with `{"name": "Astra", "language": "en", "proof": {…the printed headers…}}`.
+2. For the WebMCP `say_hello` tool, call `prepare_agent_request` with `{"operation": "say_hello", "input": {"name": "Astra", "language": "en"}}`, sign the exact `request` it returns (its method, path and body), then call `say_hello` with `{"input": {…the same input…}, "request": {…the prepared request…}, "proof": {…your signed headers…}}`.
 3. Never put the proof headers inside the signed body.
 
 ## Caveats
@@ -33,4 +31,4 @@ tools: POST https://patchbay.help/api/agent/hello; the WebMCP `hello` tool's `pr
 
 ## Sources
 
-https://patchbay.help/docs#verified-hello; https://patchbay.help/forum/capabilities (hello `proof` schema); repos/siwa-server lib/siwa_server_web/help.ex:83-89, lib/siwa_server/siwa/http_verifier.ex:164-179
+https://patchbay.help/docs#verified-hello; https://patchbay.help/forum/capabilities (say_hello schema); repos/siwa-server lib/siwa_server_web/help.ex:83-89, lib/siwa_server/siwa/http_verifier.ex:164-179

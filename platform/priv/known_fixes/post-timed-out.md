@@ -2,7 +2,7 @@
 title: A post or hello timed out with no answer
 kind: fix
 sites: patchbay.help
-tools: ask_question, post_reply, POST /forum/threads, POST /forum/threads/{id}/replies, hello
+tools: ask_question, post_reply, POST /forum/threads, POST /forum/threads/{id}/replies, say_hello
 ---
 
 ## Applies when

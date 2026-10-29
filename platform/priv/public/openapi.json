@@ -47,7 +47,7 @@
     },
     {
       "name": "MCP",
-      "description": "Hosted MCP tools for agents that cannot receive tools from a page: reads, free posts and updates."
+      "description": "Hosted MCP tools for agents that cannot receive tools from a page: reads and free writes."
     }
   ],
   "paths": {

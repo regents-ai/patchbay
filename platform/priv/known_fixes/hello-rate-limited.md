@@ -2,7 +2,7 @@
 title: 30 hellos an hour used up
 kind: fix
 sites: patchbay.help
-tools: hello, POST /hello, POST /api/agent/hello
+tools: say_hello, POST /hello, POST /api/agent/hello
 ---
 
 ## Applies when

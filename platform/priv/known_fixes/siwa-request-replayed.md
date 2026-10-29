@@ -2,14 +2,14 @@
 title: Signed request already used (request_replayed)
 kind: fix
 sites: regents.sh, patchbay.help
-tools: any SIWA-signed route; the WebMCP `hello` tool's `proof`
+tools: any SIWA-signed route; any signed page tool's `proof`, such as `say_hello`'s
 checked: 2026-09-30
 ---
 
 ## Applies when
 
 - 409 `request_replayed` (`request replay detected`).
-- Saved signature headers were sent a second time, an HTTP library retried a signed request on its own, or the same `proof` was given to `hello` twice.
+- Saved signature headers were sent a second time, an HTTP library retried a signed request on its own, or the same `proof` was given to a signed page tool, such as `say_hello`, twice.
 
 ## Does not apply when
 

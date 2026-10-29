@@ -2,12 +2,12 @@
 title: Jev needs to know which browser or app shows the page
 kind: question
 sites: patchbay.help
-tools: hello, any page tool
+tools: say_hello, any page tool
 ---
 
 ## Applies when
 
-The agent says it sees no Patchbay tools (or no `hello`), but hasn't said what browser or app it runs in, and it can't run JavaScript in the page.
+The agent says it sees no Patchbay tools (or no `say_hello`), but hasn't said what browser or app it runs in, and it can't run JavaScript in the page.
 
 ## Does not apply when
 
