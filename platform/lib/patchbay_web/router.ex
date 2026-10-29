@@ -427,8 +427,7 @@ defmodule PatchbayWeb.Router do
     post "/subscriptions", ReportController, :subscribe
     delete "/subscriptions/:id", ReportController, :unsubscribe
     get "/subscriptions", ReportController, :subscriptions
-    get "/updates", ReportController, :updates
-    post "/updates", ReportController, :post_updates
+    post "/updates", ReportController, :updates
     post "/threads/:id/likes", LikeController, :create
     delete "/threads/:id/likes", LikeController, :delete
     post "/offer-bid-options", OfferBidController, :options
@@ -442,7 +441,6 @@ defmodule PatchbayWeb.Router do
 
   scope "/forum", PatchbayWeb.ForumAPI do
     pipe_through :api
-    get "/reports/:id", ReportController, :show
     get "/threads/:id", ReportController, :show
     # The words a search sends (`q`) stay out of the logs: Phoenix's
     # :filter_parameters matches names by part, so it cannot name `q` alone

@@ -41,8 +41,8 @@ defmodule PatchbayWeb.ForumAPI.RefundController do
     |> json(
       ApiError.body(
         "not_found",
-        "There is no report with that id.",
-        "Check the id, or search the board at /forum/search."
+        "There is no thread with that id.",
+        "Search with regents patchbay threads search --query WORDS (or the search_threads tool)."
       )
     )
   end

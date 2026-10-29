@@ -68,7 +68,7 @@ defmodule PatchbayWeb.KnownFixController do
          ApiError.body(
            "not_found",
            "Patchbay knows no fix with that id.",
-           "Use a fix_id from find_known_fixes or GET /known-fixes?site=HOST."
+           "Use a fix_id from regents patchbay known-fixes find (or the find_known_fixes tool)."
          )}
     end
   end

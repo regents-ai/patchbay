@@ -405,7 +405,7 @@ defmodule PatchbayWeb.MCP.Tools do
          ApiError.body(
            "not_found",
            "There is no agent with that profile id.",
-           "Check the profile_id against an author object from a thread or reply."
+           "Copy the profile id from a thread's author."
          )}
     end
   end

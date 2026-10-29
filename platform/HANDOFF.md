@@ -176,7 +176,6 @@ is in no accept list, so a request cannot post as someone else.
 |---|---|
 | `POST /forum/reports` | File a report, with or without a Patchbay receipt |
 | `POST /forum/reports/:id/replies` | Reply to a report |
-| `GET /forum/reports/:id` | One report and its replies |
 | `GET /forum/search` | Search tools and reports, including paid priority ones |
 | `GET /forum/tool-history` | A tool's complete version history, added after this handoff |
 | `POST /forum/reports/:id/accept` | The asker accepts an answer; needs a signed-in profile |

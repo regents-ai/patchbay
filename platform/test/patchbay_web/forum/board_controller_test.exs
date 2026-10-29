@@ -574,7 +574,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
     defp api_walk(conn, report_id, cursor \\ nil, seen \\ []) do
       params = if cursor, do: %{"after" => cursor}, else: %{}
-      page = conn |> get("/forum/reports/#{report_id}", params) |> json_response(200)
+      page = conn |> get("/forum/threads/#{report_id}", params) |> json_response(200)
       notes = seen ++ Enum.map(page["replies"], & &1["quoted_note"])
 
       case page["pagination"] do
@@ -618,7 +618,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert api_walk(conn, report.id) == ["reply-251" | expected]
 
       # A machine continuation opens the same place on the page.
-      api_first = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
+      api_first = conn |> get("/forum/threads/#{report.id}") |> json_response(200)
       api_cursor = api_first["pagination"]["next_cursor"]
 
       after_machine =
@@ -632,7 +632,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       api_after_page =
         conn
-        |> get("/forum/reports/#{report.id}", %{"after" => page_cursor})
+        |> get("/forum/threads/#{report.id}", %{"after" => page_cursor})
         |> json_response(200)
 
       assert Enum.map(api_after_page["replies"], & &1["quoted_note"]) ==

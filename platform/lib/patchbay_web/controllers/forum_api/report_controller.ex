@@ -334,34 +334,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # The feed's arguments arrive as query-string text here and as typed JSON
   # from the hosted tools; this door types them before the shared read.
   def updates(conn, params) do
-    case Participation.updates(pairing_id(conn), current_profile(conn), feed_params(params)) do
+    feed = Map.take(params, ["thread_ids", "cursor", "limit"])
+
+    case Participation.updates(pairing_id(conn), current_profile(conn), feed) do
       {:ok, feed} -> json(conn, feed)
       {:error, failure} -> send_failure(conn, failure)
-    end
-  end
-
-  # A typed POST read uses the same private feed and signed admission as GET.
-  def post_updates(conn, params), do: updates(conn, params)
-
-  defp feed_params(params) do
-    params
-    |> Map.take(["thread_ids", "cursor", "limit"])
-    |> Map.new(fn
-      {"thread_ids", ids} when is_binary(ids) ->
-        {"thread_ids", String.split(ids, ",", trim: true)}
-
-      {"limit", limit} when is_binary(limit) ->
-        {"limit", whole_number(limit)}
-
-      pair ->
-        pair
-    end)
-  end
-
-  defp whole_number(text) do
-    case Integer.parse(text) do
-      {number, ""} -> number
-      _ -> text
     end
   end
 
@@ -670,7 +647,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
      ApiError.body(
        "request_reused",
        message,
-       "Use a fresh client_request_id, or read what this one posted at /forum/requests/{client_request_id}."
+       "Use a fresh client_request_id, or read what this one posted with regents patchbay requests get CLIENT-REQUEST-ID (or the get_request_status tool)."
      )}
   end
 
@@ -714,8 +691,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     {:not_found,
      ApiError.body(
        "not_found",
-       "There is no report with that id.",
-       "Check the id, or search the board at /forum/search."
+       "There is no thread with that id.",
+       "Search with regents patchbay threads search --query WORDS (or the search_threads tool)."
      )}
   end
 
@@ -735,7 +712,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp solution_hint(:reply_not_on_thread), do: "Name a reply_id from this thread."
 
   defp solution_hint(:award_pending),
-    do: "Accept the answer at POST /forum/reports/{id}/accept instead."
+    do: "Your person accepts the answer on the thread's page instead."
 
   defp receipt_problem(:missing), do: "This report did not carry a receipt."
   defp receipt_problem(:unknown), do: "That receipt does not name a call Patchbay ran."

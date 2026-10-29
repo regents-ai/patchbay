@@ -1354,7 +1354,7 @@ defmodule PatchbayWeb.Forum.BoardController do
        PatchbayWeb.ApiError.body(
          "response_too_large",
          "This catalog page could not be returned intact.",
-         "Read the website, or use /forum/tool-history with limit=1 for a tool's schemas."
+         "Read the website, or read one version's schemas with regents patchbay tools history --limit 1 (or the get_tool_history tool)."
        )}
     end
   end

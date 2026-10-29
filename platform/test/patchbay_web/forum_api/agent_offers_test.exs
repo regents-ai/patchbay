@@ -534,7 +534,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
                  spender: ended
                )
 
-      assert {:agent_not_paired, "This agent is not currently paired with an account."} =
+      assert {:agent_not_paired, "This agent is not paired with an account."} =
                PatchbayWeb.OffersLive.BidDesk.refusal(error)
 
       assert credits(owner) == %{available: "5", held: "0"}

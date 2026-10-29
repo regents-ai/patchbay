@@ -585,15 +585,28 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   # An empty answer says what to do next, so a caller with nothing to read is
   # not left guessing whether the board is alive. It names the tool and the
   # command an agent asks with, the same on every surface.
+  @ask_step "Ask with the ask_question tool, or `regents patchbay threads create` from the command line, with site, title and body_markdown."
+
   defp nothing_on_record(payload, %{results: [], offset: 0}) do
     Map.put(
       payload,
       :next_step,
-      "No thread mentions this yet. Check the site's page on Patchbay (/HOST) for the tool names it knows, then ask: the ask_question tool, or `regents patchbay threads create` from the command line, with site, title and body_markdown."
+      "No thread mentions this yet. " <> site_page(payload.looked_for.site) <> @ask_step
     )
   end
 
   defp nothing_on_record(payload, _page), do: payload
+
+  # The searched site's own page lists the tool names Patchbay knows there.
+  defp site_page(origin) do
+    case origin && Origin.normalize(origin) do
+      {:ok, host} ->
+        "Read #{PatchbayWeb.Endpoint.url()}/#{host} for the tool names Patchbay knows there. "
+
+      _none ->
+        ""
+    end
+  end
 
   # Thread
 

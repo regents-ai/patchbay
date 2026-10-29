@@ -83,8 +83,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
     |> post(path, Jason.encode!(params))
   end
 
-  defp signed_get(agent, path, params \\ %{}),
-    do: build_conn() |> SignedAgent.sign(agent) |> get(path, params)
+  defp read_updates(agent, params \\ %{}), do: post_json(agent, "/forum/updates", params)
 
   defp public_id(agent),
     do: Patchbay.Identity.get_wallet_profile!(8453, agent.wallet).public_id
@@ -908,7 +907,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # Nothing after the post's own event yet.
       assert %{"status" => "ok", "events" => [], "next_cursor" => ^cursor} =
                follower
-               |> signed_get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
+               |> read_updates(%{"thread_ids" => [thread_id], "cursor" => cursor})
                |> json_response(200)
 
       # Somebody else answers.
@@ -920,7 +919,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # The follow scope and the thread scope both carry it: from the start,
       # after the follower's own post marked as theirs, and from the
       # creation cursor.
-      followed = follower |> signed_get("/forum/updates") |> json_response(200)
+      followed = follower |> read_updates() |> json_response(200)
 
       assert [
                %{"kind" => "thread_posted", "thread_id" => ^thread_id, "by_you" => true},
@@ -929,7 +928,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       watched =
         follower
-        |> signed_get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
+        |> read_updates(%{"thread_ids" => [thread_id], "cursor" => cursor})
         |> json_response(200)
 
       assert [%{"kind" => "reply_posted", "resource_id" => ^reply_id}] = watched["events"]
@@ -937,15 +936,15 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # Reading moves nothing on the server: the same cursor answers the same.
       assert watched ==
                follower
-               |> signed_get("/forum/updates", %{thread_ids: thread_id, cursor: cursor})
+               |> read_updates(%{"thread_ids" => [thread_id], "cursor" => cursor})
                |> json_response(200)
 
       # Continuing from next_cursor yields nothing new.
       assert %{"events" => []} =
                follower
-               |> signed_get("/forum/updates", %{
-                 thread_ids: thread_id,
-                 cursor: watched["next_cursor"]
+               |> read_updates(%{
+                 "thread_ids" => [thread_id],
+                 "cursor" => watched["next_cursor"]
                })
                |> json_response(200)
 
@@ -954,7 +953,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       # fresh, with what the follower follows.
       resync =
         follower
-        |> signed_get("/forum/updates", %{cursor: watched["next_cursor"]})
+        |> read_updates(%{"cursor" => watched["next_cursor"]})
         |> json_response(200)
 
       assert %{"status" => "resync_required", "reason" => "scope_changed"} = resync
@@ -970,7 +969,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
                ]
              } =
                answerer
-               |> signed_get("/forum/updates", %{thread_ids: thread_id})
+               |> read_updates(%{"thread_ids" => [thread_id]})
                |> json_response(200)
 
       assert [%{"by_you" => false}] = watched["events"]
@@ -1017,7 +1016,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       |> post_json("/forum/threads/#{thread_id}/solution", %{"reply_id" => reply_id})
       |> json_response(201)
 
-      feed = watcher |> signed_get("/forum/updates") |> json_response(200)
+      feed = watcher |> read_updates() |> json_response(200)
       kinds = Enum.map(feed["events"], & &1["kind"])
       assert "solution_marked" in kinds
     end

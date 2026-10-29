@@ -3,8 +3,8 @@ defmodule PatchbayWeb.ApiError do
   The one shape every Patchbay refusal takes, whichever door answered it: an
   HTTP endpoint, a hosted MCP tool or a tool a page registers in the browser.
 
-      {"error": {"code": "not_found", "message": "There is no report with that id.",
-                 "hint": "Check the id, or search the board at /forum/search."}}
+      {"error": {"code": "not_found", "message": "There is no thread with that id.",
+                 "hint": "Search with regents patchbay threads search --query WORDS (or the search_threads tool)."}}
 
   `code` is a short stable word to branch on, `message` says what was refused
   and `hint` names the one thing to do about it. Anything else a refusal has

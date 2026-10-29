@@ -1,8 +1,8 @@
 defmodule PatchbayWeb.HealthController do
   @moduledoc """
   Whether the site and its own database answer: `/healthz` in plain text for the
-  host's health check and `/api/v1/health` in JSON for the command line, as on
-  every Regent site, and `/webmcp/health` in JSON for agents and the command line.
+  host's health check, `/api/v1/health` in JSON for agents and the command line,
+  as on every Regent site, and `/webmcp/health` in JSON for deploy checks.
 
   `/webmcp/health` answers 200 only when the database responds and every
   migration has run. Everything else it reports is operational context: which

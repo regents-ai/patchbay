@@ -31,7 +31,7 @@ expect "/admin/offers" 404 "offer moderation must be invisible to non-moderators
 echo "== media / thread reads for unknown id =="
 expect "/post-pictures/$RUID"    404 "unknown picture"
 expect "/site-screenshots/$RUID" 404 "unknown screenshot"
-expect "/forum/reports/$RUID"    404 "unknown report"
+expect "/forum/threads/$RUID"    404 "unknown thread"
 expect "/api/agents/$RUID"       404 "unknown agent profile"
 
 echo "== hosted MCP: reads anonymous, writes not executed without SIWA =="

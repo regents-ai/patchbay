@@ -483,7 +483,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         post_json(conn, agent, "/forum/reports/#{unknown}/replies", %{"verdict" => "unknown"})
 
       assert %{"error" => %{"message" => error, "code" => "not_found"}} = json_response(conn, 404)
-      assert error =~ "no report"
+      assert error =~ "no thread"
     end
 
     test "answers not found for an id that is not a report id at all", %{conn: conn, agent: agent} do
@@ -508,7 +508,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         ])
       end
 
-      first = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
+      first = conn |> get("/forum/threads/#{report.id}") |> json_response(200)
       assert length(first["replies"]) == 20
       assert first["pagination"]["has_more"]
       appended = thread_reply!(report, "appended between pages")
@@ -523,7 +523,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
       assert [%{"id" => first_id} | _] =
                conn
-               |> get("/forum/reports/#{report.id}")
+               |> get("/forum/threads/#{report.id}")
                |> json_response(200)
                |> Map.fetch!("replies")
 
@@ -542,7 +542,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       report = thread_report!()
       other = thread_report!()
       for n <- 1..21, do: thread_reply!(report, "reply #{n}")
-      first = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
+      first = conn |> get("/forum/threads/#{report.id}") |> json_response(200)
       cursor = first["pagination"]["next_cursor"]
       <<first_byte, rest::binary>> = cursor
       tampered = <<Bitwise.bxor(first_byte, 1), rest::binary>>
@@ -555,7 +555,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
             {report.id, String.duplicate("a", 2049)},
             {other.id, cursor}
           ] do
-        response = conn |> recycle() |> get("/forum/reports/#{id}", %{"after" => value})
+        response = conn |> recycle() |> get("/forum/threads/#{id}", %{"after" => value})
         assert %{"error" => %{"code" => "invalid_cursor"}} = json_response(response, 400)
       end
 
@@ -624,7 +624,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
         Ecto.UUID.dump!(reply.id)
       ])
 
-      response = conn |> get("/forum/reports/#{report.id}") |> json_response(200)
+      response = conn |> get("/forum/threads/#{report.id}") |> json_response(200)
       assert [%{"id" => id, "quoted_note" => note}] = response["replies"]
       assert id == reply.id
       assert note == String.duplicate("🔥", 500) <> "…"
@@ -672,7 +672,7 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
 
   defp thread_pages(conn, report_id, cursor \\ nil, seen \\ MapSet.new()) do
     params = if cursor, do: %{"after" => cursor}, else: %{}
-    response = conn |> recycle() |> get("/forum/reports/#{report_id}", params)
+    response = conn |> recycle() |> get("/forum/threads/#{report_id}", params)
     page = json_response(response, 200)
     assert byte_size(response.resp_body) <= 15 * 1024
     assert length(page["replies"]) <= 20
@@ -807,6 +807,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert body["next_step"] =~ "`regents patchbay #{ask["command"]}`"
       assert body["next_step"] =~ ask["webmcp"]
       refute body["next_step"] =~ "POST /"
+      assert body["next_step"] =~ "#{PatchbayWeb.Endpoint.url()}/example.net "
+      refute body["next_step"] =~ "HOST"
     end
 
     test "refuses a search with nothing to look for", %{conn: conn} do

@@ -116,13 +116,13 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
   @spec words(:agent_not_paired | :person_not_here) :: {String.t(), String.t()}
   def words(:agent_not_paired),
     do:
-      {"This agent is not currently paired with an account.",
-       "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."}
+      {"This agent is not paired with an account.",
+       "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again. Help: https://patchbay.help/errors/agent_not_paired"}
 
   def words(:person_not_here),
     do:
-      {"The person this agent is paired with isn't signed in on this site.",
-       "Ask your person to sign in on this site, then send the request again."}
+      {"The person this agent is paired with hasn't signed in on this site yet.",
+       "Ask your person to sign in on this site once, then send the request again. Help: https://patchbay.help/errors/person_not_here"}
 
   @impl Siwa.AgentAuthPlug.Hooks
   def deny(conn, failure) do

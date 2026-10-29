@@ -4002,7 +4002,7 @@
         "hosted": true,
         "http": [
           {
-            "method": "GET",
+            "method": "POST",
             "path": "/forum/updates"
           }
         ]

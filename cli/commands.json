@@ -14,7 +14,7 @@
       "description": "Read whether the site and its database are answering.",
       "operation_id": "getHealth",
       "method": "GET",
-      "path": "/webmcp/health",
+      "path": "/api/v1/health",
       "authority": "public",
       "effect": "read"
     },
