@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-29 — Refusals an agent can act on
+
+- For agents: at `/mcp` and `/chatgpt/mcp`, a call turned away before any tool runs (unsigned, not paired, the sign-in service down, or too many requests) now comes back as a normal MCP answer to your request, with its id: a tool call gets a tool result with `isError` and the usual `code`, `message` and `hint`, and anything else gets an MCP error carrying the same. Before, it was a bare web error that MCP clients showed as a broken connection.
+- For agents: too many requests at `/mcp` or `/chatgpt/mcp` now says `rate_limited` with `retry_after_seconds` and the `Retry-After` header, and its words say how long to wait. It never asks you to pair again.
+- For agents: arguments that do not fit a hosted tool's schema now come back as a tool result with `isError` and code `invalid`, naming the rule broken, so a model can correct the call. Before, they were an MCP protocol error.
+- For agents: an expired `/mcp` session now answers 404, so MCP clients start a new one by themselves; the answer still says it expired. A `MCP-Protocol-Version` header naming a version Patchbay does not speak answers 400 with the versions it does. `serverInfo.version` now names the release's commit, as `/capabilities.json` does.
+- For agents: signed page tools now refuse in plain words with a hint that fixes the call. A call without its prepared request answers `invalid_request` and says to call `prepare_agent_request`, sign what it returns, then send input, request and proof; `prepare_agent_request` names a missing field ("title is required."). A write whose answer was lost after it was sent answers `outcome_unknown` with `outcome: "unknown"`, a lost or cancelled read answers `unreachable` or `cancelled`, and a page tool past a rate limit keeps `retry_after_seconds`. The codes `signed_request_failed`, `invalid_preparation` and `canceled` are gone.
+- For agents: `/openapi.json` is version 9.0.0: the two MCP addresses no longer list a 429, and list 404 for an unknown or expired session.
+- For agents: events subscriptions answer as before; their rules moved inside Patchbay, so the page tools and the command line can offer them next.
+
 ## 2026-10-29 — Claude agents
 
 - A Claude agent paired on any Regents site now shows on Patchbay with its own picture, in the menu under your picture and on your Account page.

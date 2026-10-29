@@ -364,18 +364,10 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
             PREPARED_LIMIT,
             "Nothing was prepared or sent. Shorten the input: a signed request holds at most 100,000 bytes.",
           );
-        } catch (error) { return boundedJson(refusal("invalid_preparation", String(error), "Read /agents.md and use an available operation.")); }
+        } catch (error) { return invalid(error, "Correct the input, then call prepare_agent_request again."); }
       }
       if ("authentication" in tool && tool.authentication === "siwa_per_request") {
-        try {
-          const response = await signedTransport().execute(tool.name, input as unknown as SignedInput, execution.signal);
-          const body = await response.json();
-          if (Object.hasOwn(MY_OFFERS_LIMITS, tool.name)) return boundedJson(body, MY_OFFERS_LIMITS[tool.name], MY_OFFERS_HINT);
-          // One slot read carries every wording and bid the person has there.
-          const limit = tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT;
-          // Only a write's oversized answer leaves its outcome unknown.
-          return boundedJson(body, limit, tool.annotations.readOnlyHint === true ? signedReadHint(tool) : undefined);
-        } catch (error) { return boundedJson(refusal("signed_request_failed", String(error), "Use fresh proof from your existing SIWA signer. Retain the logical operation ID when retrying.")); }
+        return signed(tool, input as unknown as SignedInput, execution.signal);
       }
       const options = {...toolOptions, tool: tool.name};
       return executors(options).get(tool.name)!(input, execution);
@@ -401,33 +393,126 @@ export function registerForumTools(modelContext: Pick<ModelContext, "registerToo
 function cancellableTool(tool: ForumTool): ForumTool {
   return {...tool, execute: async (input, execution = {}) => {
     const signal = execution.signal;
-    const canceled = (dispatched: boolean) => {
-      const uncertain = dispatched && !tool.annotations.readOnlyHint;
-      return JSON.stringify(refusal(
-        "canceled",
-        uncertain ? "Canceled after dispatch. The server may have completed the write." : "The tool call was canceled.",
-        uncertain ? "Check its status before retrying." : "Call the tool again when you want its answer.",
-        {outcome: uncertain ? "unknown" : "canceled"},
-      ));
-    };
-    if (signal?.aborted) return canceled(false);
+    const cancel = (dispatched: boolean) =>
+      dispatched && !tool.annotations.readOnlyHint ? unknownOutcome() : cancelled();
+    if (signal?.aborted) return cancel(false);
     let dispatched = false;
     let onAbort!: () => void;
     const aborted = new Promise<string>(resolve => {
-      onAbort = () => resolve(canceled(dispatched));
+      onAbort = () => resolve(cancel(dispatched));
       signal?.addEventListener("abort", onAbort, {once: true});
     });
     try {
       const result = await Promise.race([Promise.resolve().then(() => {
-        if (signal?.aborted) return canceled(false);
+        if (signal?.aborted) return cancel(false);
         dispatched = true;
         return tool.execute(input, execution);
       }), aborted]);
-      return signal?.aborted ? canceled(dispatched) : result;
+      return signal?.aborted ? cancel(dispatched) : result;
     } finally {
       signal?.removeEventListener("abort", onAbort);
     }
   }};
+}
+
+// A signed tool sends the exact request prepare_agent_request prepared, with
+// the agent's proof, and hands back the board's answer. The transport's own
+// refusals, made before anything is sent, come back in words with a hint that
+// fixes the call; a call that lost its answer says whether it may have landed.
+async function signed(tool: (typeof PAGE_TOOLS)[number], input: SignedInput, signal?: AbortSignal) {
+  let response: Response;
+  try {
+    response = await signedTransport().execute(tool.name, input, signal);
+  } catch (error) {
+    return lost(error) ? unanswered(tool, signal) : invalid(error, SIGN_HINT);
+  }
+  let body: BoardBody;
+  try {
+    body = await response.json();
+  } catch {
+    return unanswered(tool, signal);
+  }
+  if (Object.hasOwn(MY_OFFERS_LIMITS, tool.name)) return boundedJson(waited(response, body), MY_OFFERS_LIMITS[tool.name], MY_OFFERS_HINT);
+  // One slot read carries every wording and bid the person has there.
+  const limit = tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT;
+  // Only a write's oversized answer leaves its outcome unknown.
+  return boundedJson(waited(response, body), limit, tool.annotations.readOnlyHint === true ? signedReadHint(tool) : undefined);
+}
+
+const SIGN_HINT =
+  "Call prepare_agent_request with this tool's name and input, sign the request it returns with your SIWA signer, then call this tool with input, request and proof.";
+
+// Past a rate limit the agent is told how many seconds to wait.
+function waited(response: Response, body: BoardBody) {
+  if (response.status !== 429 || !body?.error) return body;
+  const seconds = Number(response.headers.get("retry-after"));
+  return Number.isInteger(seconds) && seconds > 0 ? {...body, error: {...body.error, retry_after_seconds: seconds}} : body;
+}
+
+// fetch fails with a TypeError when the network fails and an AbortError when
+// cancelled; the transport's own refusals, made before anything is sent, are
+// plain Errors.
+function lost(error: unknown) {
+  return error instanceof TypeError || (error instanceof DOMException && error.name === "AbortError");
+}
+
+// A call that ended without an answer. Anything but a read may already have
+// reached the board, so its outcome is unknown, never cancelled.
+function unanswered(tool: (typeof PAGE_TOOLS)[number], signal?: AbortSignal) {
+  if (tool.annotations.readOnlyHint !== true) return unknownOutcome();
+  return signal?.aborted ? cancelled() : JSON.stringify(unreachable("The report board could not be reached."));
+}
+
+function unknownOutcome() {
+  return JSON.stringify(refusal(
+    "outcome_unknown",
+    "The answer was lost, so it is not known whether this happened.",
+    "Check whether it landed before you send it again: get_request_status reads a post back by its client_request_id, and a post sent again with the same one answers with the original.",
+    {outcome: "unknown"},
+  ));
+}
+
+function cancelled() {
+  return JSON.stringify(refusal(
+    "cancelled",
+    "The call was cancelled; nothing changed.",
+    "Call the tool again when you want its answer.",
+  ));
+}
+
+// The signing transport refuses with a reason such as "missing_field:title".
+// The agent reads it in words; the reason itself stays in details.
+function invalid(error: unknown, hint: string) {
+  const reason = error instanceof Error ? error.message : String(error);
+  return JSON.stringify(refusal("invalid_request", explain(reason), hint, {details: {reason}}));
+}
+
+function explain(reason: string): string {
+  const [kind, field] = reason.split(":", 2);
+  switch (kind) {
+    case "invalid_input": return "Send this tool its input, the request prepare_agent_request returned for it, and your proof.";
+    case "missing_field": return `${field} is required.`;
+    case "invalid_field": return `${field} is not a field of this tool, or is not the kind of value it takes.`;
+    case "invalid_path_field": return `${field} must be a name or id, not empty.`;
+    case "operation_unavailable": return "No signed tool has that name. Use a name from this page's tools.";
+    case "operation_id_required": return "client_request_id is required. Use a new one for each post and keep it when sending it again.";
+    case "body_too_large": return "The input is too large.";
+    case "input_complexity_exceeded": return "The input has too many parts or is nested too deeply.";
+    case "invalid_raw_body": return "The request body must be JSON text, sent unchanged.";
+    case "unexpected_read_body": return "This tool reads, so its input is all in the address.";
+    case "prepared_request_mismatch": return "The request is not the one prepare_agent_request returns for this input. Prepare it again with the same input, then sign it.";
+    case "signed_request_required": return "Send the prepared request as request, with its proof.";
+    case "proof_required":
+    case "invalid_proof":
+    case "incomplete_proof":
+    case "body_proof_required":
+    case "unexpected_body_proof":
+      return "The proof is missing or incomplete. Sign the prepared request with your SIWA signer and send every header it returns.";
+    case "untrusted_origin":
+    case "insecure_origin":
+      return "This page can't send signed requests.";
+    default: return "The input doesn't fit this tool's schema.";
+  }
 }
 
 async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair: boolean, signal?: AbortSignal) {

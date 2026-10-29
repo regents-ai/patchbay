@@ -38,7 +38,7 @@ type SentRequest = RequestInit & {method: string; headers: Record<string, string
 
 type FakeAnswer = {status: number; body?: unknown};
 
-type FakeResponse = {ok: boolean; status: number; json: () => Promise<unknown>};
+type FakeResponse = {ok: boolean; status: number; headers?: Headers; json: () => Promise<unknown>};
 
 /** The options the tests build tools with: a fake stands in for fetch. */
 type FakeOptions = Omit<ForumToolOptions, "fetch"> & {
@@ -532,8 +532,7 @@ test("pre-canceled non-payment calls make no request", async () => {
   for (const tool of tools.values()) {
     if (tool.annotations.consequentialHint) continue;
     const result = JSON.parse(await tool.execute({}, {signal: controller.signal}));
-    assert.equal(result.error.code, "canceled", tool.name);
-    assert.equal(result.error.outcome, "canceled", tool.name);
+    assert.equal(result.error.code, "cancelled", tool.name);
   }
   assert.equal(fetch.requests.length, 0);
 });
@@ -560,7 +559,7 @@ test("cancellation forwards the signal and discards late write success", async (
     assert.equal(request.signal, controller.signal);
     controller.abort();
     const result = JSON.parse(await pending);
-    assert.equal(result.error.code, "canceled");
+    assert.equal(result.error.code, "outcome_unknown");
     assert.equal(result.error.outcome, "unknown");
     assert.equal(result.reply_id, undefined);
     finish({ok: true, status: 201, json: async () => ({reply_id: "late", report_id: "report"})});
@@ -707,5 +706,78 @@ test("a question of several kilobytes is prepared whole, and one past the reques
     const {error} = JSON.parse(await prepare.execute({operation: "ask_question", input: tooLong}));
     assert.equal(error.code, "response_too_large");
     assert.equal("outcome" in error, false);
+  });
+});
+
+test("a signed tool called without its prepared request says to prepare and sign it, in words", async () => {
+  await onSignedPage(fakeFetch([]), async () => {
+    const whoami = toolsByName({}).get("agent_whoami")!;
+
+    for (const input of [{}, {input: {}}, {input: {}, request: {}, proof: {}}]) {
+      const {error} = JSON.parse(await whoami.execute(input));
+      assert.equal(error.code, "invalid_request", JSON.stringify(input));
+      assert.match(error.message + " " + error.hint, /prepare_agent_request/);
+      assert.doesNotMatch(error.message, /Error:/);
+      assert.notEqual(error.message, error.details.reason);
+      assert.equal(typeof error.details.reason, "string");
+    }
+  });
+});
+
+test("prepare_agent_request names the field an input is missing", async () => {
+  await onSignedPage(fakeFetch([]), async () => {
+    const prepare = toolsByName({}).get("prepare_agent_request")!;
+    const {error} = JSON.parse(await prepare.execute({operation: "ask_question", input: {site: "example.com", client_request_id: "q-1"}}));
+    assert.equal(error.code, "invalid_request");
+    assert.equal(error.message, "title is required.");
+    assert.deepEqual(error.details, {reason: "missing_field:title"});
+  });
+});
+
+/** Prepares `name` with `input` and calls it with the agent's proof. */
+async function callSigned(name: string, input: Record<string, unknown>) {
+  const tools = toolsByName({});
+  const prepared = JSON.parse(await tools.get("prepare_agent_request")!.execute({operation: name, input}));
+  // A read with no body is signed without a body digest.
+  const proof = prepared.request.body === undefined
+    ? Object.fromEntries(Object.entries(PROOF).filter(([header]) => header !== "content-digest"))
+    : PROOF;
+  return JSON.parse(await tools.get(name)!.execute({input, request: prepared.request, proof}));
+}
+
+const LIKE = {thread_id: "00000000-0000-4000-8000-000000000000"};
+
+test("a write whose answer was lost after it was sent says its outcome is unknown", async () => {
+  const dropped = () => Promise.reject(new TypeError("Failed to fetch"));
+  await onSignedPage(dropped, async () => {
+    const {error} = await callSigned("like_post", LIKE);
+    assert.equal(error.code, "outcome_unknown");
+    assert.equal(error.outcome, "unknown");
+  });
+
+  // A gateway page in place of the board's JSON is a lost answer too.
+  const gateway = () => Promise.resolve({ok: false, status: 502, json: async () => { throw new SyntaxError("Unexpected token <"); }});
+  await onSignedPage(gateway, async () => {
+    const {error} = await callSigned("like_post", LIKE);
+    assert.equal(error.code, "outcome_unknown");
+  });
+
+  // A read that lost its answer changed nothing.
+  await onSignedPage(dropped, async () => {
+    const {error} = await callSigned("agent_whoami", {});
+    assert.equal(error.code, "unreachable");
+    assert.equal("outcome" in error, false);
+  });
+});
+
+test("a rate-limited signed call keeps the seconds to wait", async () => {
+  const limited = () => Promise.resolve({
+    ok: false, status: 429, headers: new Headers({"retry-after": "7"}),
+    json: async () => ({error: {code: "rate_limited", message: "Too Many Requests", hint: "Wait the number of seconds in Retry-After, then send the request again."}}),
+  });
+  await onSignedPage(limited, async () => {
+    const {error} = await callSigned("like_post", LIKE);
+    assert.equal(error.code, "rate_limited");
+    assert.equal(error.retry_after_seconds, 7);
   });
 });
