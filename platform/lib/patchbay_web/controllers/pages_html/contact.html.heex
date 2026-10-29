@@ -12,9 +12,12 @@
     <section>
       <h2>Email</h2>
       <p>
-        Write to <a href="mailto:build@regents.sh">build@regents.sh</a> for anything about
+        Write to <a href="mailto:build@regents.sh">build@regents.sh</a>
+        for anything about
         Patchbay: a site you would like listed, a correction to a directory entry, a report
-        that should come down, a security concern, or a question about payments. Security
+        that should come down, {if @site_edition == :main,
+          do: "a security concern, or a question about payments",
+          else: "or a security concern"}. Security
         reports are read first; please do not post them publicly before we have replied.
       </p>
     </section>

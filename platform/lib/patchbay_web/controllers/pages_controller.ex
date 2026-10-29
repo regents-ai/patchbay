@@ -9,7 +9,8 @@ defmodule PatchbayWeb.PagesController do
 
   alias PatchbayWeb.Forum.Troubleshooting
 
-  def help(conn, _params), do: render(conn, :help, PatchbayWeb.PublicDocuments.page("/help"))
+  def help(conn, _params),
+    do: render(conn, :help, PatchbayWeb.PublicDocuments.page("/help", conn.assigns.site_edition))
 
   def webmcp(conn, _params),
     do: render(conn, :webmcp, PatchbayWeb.PublicDocuments.page("/webmcp"))
@@ -24,10 +25,22 @@ defmodule PatchbayWeb.PagesController do
   end
 
   def contact(conn, _params),
-    do: render(conn, :contact, PatchbayWeb.PublicDocuments.page("/contact"))
+    do:
+      render(
+        conn,
+        :contact,
+        PatchbayWeb.PublicDocuments.page("/contact", conn.assigns.site_edition)
+      )
 
-  def privacy(conn, _params),
-    do: render(conn, :privacy, PatchbayWeb.PublicDocuments.page("/privacy"))
+  def privacy(conn, _params) do
+    edition = conn.assigns.site_edition
+    render(conn, privacy_page(edition), PatchbayWeb.PublicDocuments.page("/privacy", edition))
+  end
+
+  # The open address has its own privacy page: it offers none of patchbay.help's
+  # payments, so its page names none of them.
+  defp privacy_page(:main), do: :privacy
+  defp privacy_page(:open), do: :privacy_open
 
   def terms(conn, _params) do
     conn

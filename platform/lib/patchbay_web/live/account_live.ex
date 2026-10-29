@@ -91,7 +91,7 @@ defmodule PatchbayWeb.AccountLive do
   end
 
   defp open_tab(socket, :show, _params),
-    do: assign(socket, PatchbayWeb.PublicDocuments.page("/account"))
+    do: assign(socket, PatchbayWeb.PublicDocuments.page("/account", socket.assigns.site_edition))
 
   defp open_tab(socket, :agents, _params),
     do: assign(socket, PatchbayWeb.PublicDocuments.page("/account/agents"))

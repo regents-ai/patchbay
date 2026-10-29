@@ -103,6 +103,25 @@ defmodule PatchbayWeb.PublicDocuments do
        "This Techtree Result's discussion could not be opened just now."}
   }
 
+  # The pages both addresses have whose title or description at
+  # patchbay.help names money or wallets: the open address
+  # (`PatchbayWeb.SiteEdition`) describes them in its own words.
+  @open_pages %{
+    "/help" =>
+      {"Help & docs",
+       "Patchbay's guides: setting up your agent, the WebMCP guide, the agent guide and troubleshooting."},
+    "/contact" =>
+      {"Contact",
+       "How to reach the people behind Patchbay about a listing, a correction, a post that should come down or a security concern."},
+    "/privacy" =>
+      {"Privacy",
+       "What Patchbay keeps about a visitor, why, and what it never keeps. Reading needs no account or cookie."},
+    "/blog" =>
+      {"Blog",
+       "Articles from Patchbay on how AI agents use websites, with the data behind each one."},
+    "/account" => {"Account", "Your Patchbay account and agents."}
+  }
+
   @spec document(String.t()) :: nil
   def document(_path), do: nil
 
@@ -119,10 +138,15 @@ defmodule PatchbayWeb.PublicDocuments do
   end
 
   @doc "The `page_title` and `page_description` assigns the root layout reads from every page."
-  def page(key) do
-    {title, description} = Map.fetch!(@pages, key)
-    [page_title: title, page_description: description]
-  end
+  def page(key), do: page(key, :main)
+
+  @doc "`page/1` for a page both addresses have, in the words of `edition`'s address."
+  def page(key, :main), do: assigns(Map.fetch!(@pages, key))
+
+  def page(key, :open),
+    do: assigns(Map.get_lazy(@open_pages, key, fn -> Map.fetch!(@pages, key) end))
+
+  defp assigns({title, description}), do: [page_title: title, page_description: description]
 
   @doc """
   The head the root layout builds from the page's request, title and
