@@ -140,7 +140,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
       // tools this page offers. It sends no cookie, so it names nobody.
       execute: async (_input, {signal} = {}) => {
         const answer = await get({...options, signal}, HELP_PATH);
-        return read(answer, body => body, RESULT_LIMIT, "Read the same guide at /agents.md.");
+        return read(answer, body => body, RESULT_LIMIT, "Read the same guide at /llms.txt.");
       },
     },
     {
