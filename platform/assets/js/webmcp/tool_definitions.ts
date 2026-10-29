@@ -38,6 +38,9 @@ export const PERMANENT_TOOL_NAMES = [
 export const VERIFIED_REPORTING_NOTE =
   "This page verifies tool results against what is visible on screen; a mismatch can be reported with report_tool_problem using the receipt from the result.";
 
+// A room read that is too large changed nothing; the room's page shows it all.
+const ROOM_READ_HINT = "Nothing was changed. Read the room's state on its page.";
+
 export function withReportingNote(description: string) {
   return `${description} ${VERIFIED_REPORTING_NOTE}`;
 }
@@ -74,7 +77,7 @@ export function buildPermanentTools(hook: PermanentToolsHook) {
             status: metadata.repairStatus,
             owner_approved: metadata.repairApproved,
           },
-        });
+        }, 1100, ROOM_READ_HINT);
       }, BUSY_RESULT),
     },
     {
@@ -86,7 +89,7 @@ export function buildPermanentTools(hook: PermanentToolsHook) {
       execute: singleFlight(async () => {
         try {
           const verification = await verifyUpliftGoal(hook.el?.ownerDocument ?? document);
-          return boundedJson({summary: verificationSummary(verification), ...verification});
+          return boundedJson({summary: verificationSummary(verification), ...verification}, 1100, ROOM_READ_HINT);
         } catch (error) {
           // A verification that cannot run is reported in the same shape as one
           // that ran and failed, so the agent never has to parse a bare error.
@@ -98,7 +101,7 @@ export function buildPermanentTools(hook: PermanentToolsHook) {
             detail: sentence((error as {message?: unknown} | null | undefined)?.message ?? "the visible room could not be verified"),
             observed_generation: null,
             ui_revision: null,
-          });
+          }, 1100, ROOM_READ_HINT);
         }
       }, BUSY_RESULT),
     },
@@ -117,7 +120,7 @@ export function buildPermanentTools(hook: PermanentToolsHook) {
       annotations: {readOnlyHint: true, untrustedContentHint: true},
       // The raw body appears twice in the exact signing envelope. Preserve
       // it intact up to the site's 100 KB request bound, including escaping.
-      execute: async (input: ToolInput) => boundedJson(await prepareRoomRequest(hook, input), 512_000),
+      execute: async (input: ToolInput) => boundedJson(await prepareRoomRequest(hook, input), 512_000, "Nothing was prepared or sent. Shorten arguments_json."),
     },
     ...["finish_patchbay_room_call", "cancel_patchbay_room_call"].map(name => ({
       name, description: withReportingNote(name === "finish_patchbay_room_call" ? "Submit fresh proof over the observation captured after the editor changed. The server's existing verifier decides success." : "Cancel your own room invocation with a fresh signed request."),

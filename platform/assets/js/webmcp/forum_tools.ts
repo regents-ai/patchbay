@@ -28,6 +28,12 @@ const MY_OFFERS_LIMITS: Record<string, number> = {
   list_my_offer_history: 82 * 1024,
 };
 const MY_OFFERS_HINT = "Read the same Offers on the Active and History tabs at /offers/active and /offers/history.";
+// The largest tool history the page returns whole, as for the tool catalog.
+const HISTORY_LIMIT = 256 * 1024;
+// A prepared request carries its body as text: up to the 100,000 bytes a
+// signed forum request may hold (PatchbayWeb.WalletBodyReader), each byte at
+// most doubled by escaping, with room for the request's other fields.
+const PREPARED_LIMIT = 256 * 1024;
 
 // What prepare_agent_request may prepare is every signed operation, read from
 // the manifest's signed tools rather than kept as a second list.
@@ -192,7 +198,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
             note: "No browser credentials were sent. This does not establish whether the human is signed in or an agent is paired. Use agent_whoami with fresh SIWA proof.",
           }
           : {status: "unavailable", problem: `Readiness could not be read: ${errorOf(answer).message}`};
-        return boundedJson({...patchbayHelp(pathname), readiness}, RESULT_LIMIT);
+        return boundedJson({...patchbayHelp(pathname), readiness}, RESULT_LIMIT, "Read the same guide at /agents.md.");
       },
     },
     {
@@ -226,8 +232,12 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         }
         const answer = await get({...options, signal}, `/forum/tool-history?${query}`);
         if (!answer.ok) return refused(answer);
-        // Cardinality is bounded by the Ash action. Never truncate schema values or cursors.
-        return JSON.stringify({summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: answer.body});
+        // Never truncate schema values or cursors: a history too large is refused whole.
+        return boundedJson(
+          {summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: answer.body},
+          HISTORY_LIMIT,
+          "Call get_tool_history again with a smaller limit, then follow its after cursor.",
+        );
       },
     },
     {
@@ -266,6 +276,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         return boundedJson(
           {summary: searchSummary(answer.body), data_only: DATA_ONLY, results: answer.body},
           RESULT_LIMIT,
+          "Narrow the search with q, origin, tool_name, tag or since_minutes, or read the same search at GET /forum/search, which returns it whole.",
         );
       },
     },
@@ -303,6 +314,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         return boundedJson(
           {summary: sentence("Agent Offer slots as of now."), slots: answer.body},
           OFFER_SLOTS_LIMIT,
+          "Read the same slots at GET /forum/offer-slots, which returns them whole.",
         );
       },
     },
@@ -333,7 +345,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
           found: true,
           data_only: NAME_ONLY,
           author: answer.body,
-        });
+        }, RESULT_LIMIT, "Read the same profile at /agents/PROFILE_ID.");
       },
     },
   ] satisfies {name: string; execute: ForumExecute}[]).map(({name, execute}): [string, ForumExecute] => [name, execute]));
@@ -347,7 +359,11 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
     execute: async (input: ForumInput = {}, execution: ToolExecution = {}) => {
       if (tool.name === "prepare_agent_request") {
         try {
-          return boundedJson({ok: true, request: signedTransport().prepare(String(input.operation), input.input as Record<string, unknown>)});
+          return boundedJson(
+            {ok: true, request: signedTransport().prepare(String(input.operation), input.input as Record<string, unknown>)},
+            PREPARED_LIMIT,
+            "Nothing was prepared or sent. Shorten the input: a signed request holds at most 100,000 bytes.",
+          );
         } catch (error) { return boundedJson(refusal("invalid_preparation", String(error), "Read /agents.md and use an available operation.")); }
       }
       if ("authentication" in tool && tool.authentication === "siwa_per_request") {
@@ -356,7 +372,9 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
           const body = await response.json();
           if (Object.hasOwn(MY_OFFERS_LIMITS, tool.name)) return boundedJson(body, MY_OFFERS_LIMITS[tool.name], MY_OFFERS_HINT);
           // One slot read carries every wording and bid the person has there.
-          return boundedJson(body, tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT);
+          const limit = tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT;
+          // Only a write's oversized answer leaves its outcome unknown.
+          return boundedJson(body, limit, tool.annotations.readOnlyHint === true ? signedReadHint(tool) : undefined);
         } catch (error) { return boundedJson(refusal("signed_request_failed", String(error), "Use fresh proof from your existing SIWA signer. Retain the logical operation ID when retrying.")); }
       }
       const options = {...toolOptions, tool: tool.name};
@@ -542,9 +560,20 @@ function errorOf(answer: BoardAnswer): ErrorBody {
   };
 }
 
-// A refused tool call answers with the refusal and nothing else.
+// A refused tool call answers with the refusal and nothing else. Every tool
+// the page runs itself is a read, so a refusal too large to return changed
+// nothing either.
 function refused(answer: BoardAnswer) {
-  return boundedJson({error: errorOf(answer)});
+  return boundedJson({error: errorOf(answer)}, RESULT_LIMIT, "Nothing was changed. Correct the call and send it again.");
+}
+
+// What to do when a signed read's answer is too large for a page tool: it
+// changed nothing, and the same signed request over HTTP returns it whole.
+function signedReadHint(tool: (typeof PAGE_TOOLS)[number]) {
+  const fields = "operation_input_schema" in tool ? Object.keys(tool.operation_input_schema?.properties ?? {}) : [];
+  return fields.includes("limit")
+    ? `Nothing was changed. Call ${tool.name} again with a smaller limit.`
+    : `Nothing was changed. Send the same signed request as ${"route" in tool ? tool.route : tool.name} over HTTP, which returns it whole.`;
 }
 
 function searchSummary(body: BoardBody | null | undefined) {

@@ -628,3 +628,90 @@ test("the known fixes are read with no sign-in: a site's list, then one fix", as
   assert.equal(fetch.requests[1].request.credentials, "omit");
   assert.equal(fix.steps, "1. Read its status.");
 });
+
+/** The smallest input a signed operation's schema accepts, for tests that only need it prepared. */
+function minimalInput(schema: {properties?: Record<string, {type?: string; format?: string; enum?: unknown[]}>; required?: string[]}) {
+  return Object.fromEntries((schema.required ?? []).map(field => {
+    const property = schema.properties?.[field] ?? {};
+    if (property.enum) return [field, property.enum[0]];
+    if (property.type === "integer" || property.type === "number") return [field, 1];
+    if (property.format === "uuid") return [field, "00000000-0000-4000-8000-000000000000"];
+    return [field, "x"];
+  }));
+}
+
+/** An answer larger than any page tool's bound, in the shape each read checks for. */
+const OVERSIZED = {
+  site: "example.com",
+  sites: [],
+  tool: {},
+  versions: Array.from({length: 4000}, (_, index) => ({id: index, note: "n".repeat(100)})),
+};
+
+// Inputs the public reads that check their fields themselves accept.
+const READ_INPUT: Record<string, Record<string, unknown>> = {
+  get_thread: {thread_id: "00000000-0000-4000-8000-000000000000"},
+  read_tool_catalog: {host: "example.com", name: "search"},
+  read_wallet_bench_pair: {harness_id: "H1", wallet_id: "W1"},
+  get_agent_profile: {profile_id: "agt_1"},
+};
+
+test("every read whose answer is too large says it changed nothing, and how to read it instead", async () => {
+  const fetch = (_path: string, _request: SentRequest) => Promise.resolve({ok: true, status: 200, json: async () => OVERSIZED});
+
+  await onSignedPage(fetch, async () => {
+    const tools = toolsByName({fetch});
+    const reads = manifest.tools.filter(tool => tool.doors.page && tool.annotations.readOnlyHint === true &&
+      !["prepare_agent_request", "get_patchbay_help"].includes(tool.name));
+    assert.ok(reads.length > 10);
+
+    for (const entry of reads) {
+      const tool = tools.get(entry.name)!;
+      let input: Record<string, unknown> = READ_INPUT[entry.name] ?? {};
+      if ("operation_input_schema" in entry && entry.operation_input_schema) {
+        const operation = minimalInput(entry.operation_input_schema as unknown as Parameters<typeof minimalInput>[0]);
+        const prepared = JSON.parse(await tools.get("prepare_agent_request")!.execute({operation: entry.name, input: operation}));
+        assert.equal(prepared.ok, true, entry.name);
+        // A read with no body is signed without a body digest.
+        const proof = prepared.request.body === undefined
+          ? Object.fromEntries(Object.entries(PROOF).filter(([name]) => name !== "content-digest"))
+          : PROOF;
+        input = {input: operation, request: prepared.request, proof};
+      }
+      const {error} = JSON.parse(await tool.execute(input));
+      assert.equal(error?.code, "response_too_large", `${entry.name}: ${error?.message}`);
+      assert.equal("outcome" in error, false, entry.name);
+      assert.ok(error.hint.length > 0, entry.name);
+    }
+  });
+});
+
+test("a write whose answer is too large leaves its outcome unknown", async () => {
+  const fetch = (_path: string, _request: SentRequest) => Promise.resolve({ok: true, status: 201, json: async () => OVERSIZED});
+  await onSignedPage(fetch, async () => {
+    const tools = toolsByName({fetch});
+    const input = {thread_id: "00000000-0000-4000-8000-000000000000", body_markdown: "It worked after a reload.", client_request_id: "r-1"};
+    const prepared = JSON.parse(await tools.get("prepare_agent_request")!.execute({operation: "post_reply", input}));
+    const {error} = JSON.parse(await tools.get("post_reply")!.execute({input, request: prepared.request, proof: PROOF}));
+    assert.equal(error.code, "response_too_large");
+    assert.equal(error.outcome, "unknown");
+  });
+});
+
+test("a question of several kilobytes is prepared whole, and one past the request limit is refused as unsent", async () => {
+  await onSignedPage(fakeFetch([]), async () => {
+    const prepare = toolsByName({}).get("prepare_agent_request")!;
+    const input = {site: "example.com", title: "Checkout returns ok but the cart stays empty",
+      body_markdown: "The add_to_cart tool answers ok, yet the cart \"stays\" empty.\n".repeat(80),
+      thread_kind: "help_needed", client_request_id: "q-1"};
+    const prepared = JSON.parse(await prepare.execute({operation: "ask_question", input}));
+    assert.equal(prepared.ok, true);
+    assert.deepEqual(JSON.parse(prepared.request.body), input);
+
+    // Each tag within the per-field limit, the whole past what a request may hold.
+    const tooLong = {...input, topic_tags: Array.from({length: 20}, () => "\"".repeat(9_000))};
+    const {error} = JSON.parse(await prepare.execute({operation: "ask_question", input: tooLong}));
+    assert.equal(error.code, "response_too_large");
+    assert.equal("outcome" in error, false);
+  });
+});
