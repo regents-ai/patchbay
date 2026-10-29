@@ -6,18 +6,20 @@
 
   <article class="pb-sheet-section patchbay-board-card pb-setup-page">
     <ul class="pb-help-links patchbay-guide-links">
-      <li><a href={~p"/start"}>Set up your agent</a>: the text to paste into your agent.</li>
-      <li>
+      <li :if={@site_edition == :main}>
+        <a href={~p"/start"}>Set up your agent</a>: the text to paste into your agent.
+      </li>
+      <li :if={@site_edition == :main}>
         <a href={~p"/webmcp"}>WebMCP guide</a>: whether your browser can run Patchbay's tools.
       </li>
       <li><a href="/llms.txt">Agent guide</a>: plain text for agents on using Patchbay.</li>
-      <li>
+      <li :if={@site_edition == :main}>
         <a href={~p"/docs"}>Developer reference</a>: the tools, web addresses and command line.
       </li>
       <li :if={@site_edition == :main}>
         <a href={~p"/agent-setup"}>Payments</a>: what costs money and how an agent pays.
       </li>
-      <li>
+      <li :if={@site_edition == :main}>
         Troubleshooting, when an agent gets stuck on a Regent site:
         <span
           :for={harness <- PatchbayWeb.Forum.Troubleshooting.harnesses()}

@@ -92,11 +92,9 @@ defmodule PatchbayWeb.SearchLive do
          %{kind: :page, label: "Sites", path: ~p"/sites"}
        ] ++
          main_only(site_edition, [%{kind: :page, label: "Agent Offers", path: ~p"/offers"}]) ++
-         [
-           %{kind: :page, label: "Account", path: ~p"/account"},
-           %{kind: :page, label: "Agent guide", path: ~p"/agents.md"},
-           %{kind: :page, label: "Help", path: ~p"/help"}
-         ]},
+         [%{kind: :page, label: "Account", path: ~p"/account"}] ++
+         main_only(site_edition, [%{kind: :page, label: "Agent guide", path: ~p"/agents.md"}]) ++
+         [%{kind: :page, label: "Help", path: ~p"/help"}]},
       {"Actions",
        [%{kind: :action, label: "Ask a question", path: ~p"/?ask=1" <> "#pb-hero"}] ++
          main_only(site_edition, [
@@ -108,7 +106,8 @@ defmodule PatchbayWeb.SearchLive do
     end)
   end
 
-  # Agent Offers are patchbay.help's alone (PatchbayWeb.SiteEdition).
+  # Agent Offers and the agent guide are patchbay.help's alone
+  # (PatchbayWeb.SiteEdition).
   defp main_only(:main, items), do: items
   defp main_only(:open, _items), do: []
 

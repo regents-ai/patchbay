@@ -44,7 +44,6 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
     assert help["not_available_here"] =~ "happen at #{open}."
 
     assert help["to_post"] == %{
-             "webmcp_guide" => open <> "/webmcp",
              "http_reference" => open <> "/openapi.json",
              "ask_in_a_browser" => open <> "/"
            }

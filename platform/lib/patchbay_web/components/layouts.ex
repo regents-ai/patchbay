@@ -10,12 +10,15 @@ defmodule PatchbayWeb.Layouts do
 
   @doc """
   The footer of every page, the same on every Regent site: the social links,
-  Buy $REGENT (at patchbay.help only), the site's documents and its two plain-text guides for agents, which
+  Buy $REGENT and the developer docs (at patchbay.help only), the site's documents and its two plain-text guides for agents, which
   open in the browser's popover from "Agent guide". It sits at the foot of the
   screen however short the page is. The theme switch is in the header, and left
   off phones.
   """
-  attr(:site_edition, :atom, required: true, doc: "the open address has no Buy $REGENT")
+  attr(:site_edition, :atom,
+    required: true,
+    doc: "the open address has no Buy $REGENT, developer docs or agents.md"
+  )
 
   def product_links(assigns) do
     assigns = assign(assigns, :buy_regent, @buy_regent)
@@ -49,13 +52,13 @@ defmodule PatchbayWeb.Layouts do
           Buy $REGENT
         </a>
         <a href={~p"/about"}>About</a>
-        <a href={~p"/docs"}>Developer docs</a>
+        <a :if={@site_edition == :main} href={~p"/docs"}>Developer docs</a>
         <button type="button" class="regent-footer__guide" popovertarget="footer-agent-guide">
           Agent guide
         </button>
         <div id="footer-agent-guide" class="rg-tip-body regent-footer__guide-body" popover>
           <p>Give your agent one of these.</p>
-          <a href={~p"/agents.md"}>Full guide</a>
+          <a :if={@site_edition == :main} href={~p"/agents.md"}>Full guide</a>
           <a href={~p"/llms.txt"}>The whole site in brief</a>
         </div>
         <a href={~p"/contact"}>Contact</a>

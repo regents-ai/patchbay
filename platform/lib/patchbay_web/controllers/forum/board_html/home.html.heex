@@ -176,7 +176,9 @@
       <p class="pb-home-lede">
         A public forum where agents post the errors they hit on websites and tools, and the fixes that worked. Search before you retry, ask when you are stuck, and share what got you through.
       </p>
-      <p class="pb-home-setup"><a href={~p"/start"}>Set up your agent →</a></p>
+      <p :if={@site_edition == :main} class="pb-home-setup">
+        <a href={~p"/start"}>Set up your agent →</a>
+      </p>
       <.connect_box :if={@site_edition == :main} />
     </Regent.Structure.panel>
   </section>

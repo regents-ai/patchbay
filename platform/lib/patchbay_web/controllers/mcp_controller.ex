@@ -220,8 +220,8 @@ defmodule PatchbayWeb.MCPController do
     |> json(
       ApiError.body(
         "method_not_allowed",
-        "Send MCP messages to this address with POST. Setup steps are at /webmcp.",
-        "Send the message again with POST, after reading /webmcp."
+        "Send MCP messages to this address with POST. Setup steps are at #{SiteEdition.url(:main)}/webmcp.",
+        "Send the message again with POST, after reading #{SiteEdition.url(:main)}/webmcp."
       )
     )
   end
