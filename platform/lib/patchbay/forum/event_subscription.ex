@@ -8,6 +8,13 @@ defmodule Patchbay.Forum.EventSubscription do
   again with the same four is a refresh of this row, never a second one, and
   nobody can name another owner's subscription.
 
+  `:subscribe` (`Patchbay.Forum.subscribe_to_events/2`) holds every rule
+  for starting one: its callback answers a signed challenge before anything
+  is stored; an account holds at most `per_account/0` live ones, whichever of
+  its connections made them, counted before the challenge and again under
+  the account's lock; refreshing a live one is never refused. `:unsubscribe`
+  (`Patchbay.Forum.unsubscribe_from_events/2`) ends the actor's own.
+
   Delivery reads the committed event stream (`ForumEvent`) forward from
   `delivered_seq`, the last event the callback acknowledged. The `:deliver`
   trigger runs one Oban job per subscription at a time, queued when a board
@@ -76,6 +83,10 @@ defmodule Patchbay.Forum.EventSubscription do
     end
   end
 
+  @doc "The most live subscriptions one account holds."
+  @spec per_account() :: pos_integer()
+  def per_account, do: 20
+
   relationships do
     # The whole board event stream; the trigger's filter picks what is owed.
     has_many :events, Patchbay.Forum.ForumEvent do
@@ -103,51 +114,69 @@ defmodule Patchbay.Forum.EventSubscription do
     end
 
     create :subscribe do
-      description("Starts a subscription whose callback has just answered its challenge.")
+      description("""
+      Starts a subscription, or refreshes the one with the same event, filter
+      and callback, once its callback has answered a challenge.
+      """)
 
-      accept([
-        :id,
-        :owner_id,
-        :name,
-        :arguments,
-        :url,
-        :secret_ciphertext,
+      # The id is derived from the actor, the event, the filter and the
+      # callback, so a second subscribe with the same four refreshes this
+      # row, keeping its place in the stream.
+      upsert?(true)
+
+      upsert_fields([
         :expires_at,
         :verified_at,
-        :delivered_seq
+        :active,
+        :last_error,
+        :secret_ciphertext,
+        :previous_secret_ciphertext,
+        :secret_rotation_expires_at,
+        :acting_agent_id,
+        :beneficiary_profile_id,
+        :human_account_id,
+        :pairing_id,
+        :oauth_token_id,
+        :oauth_client_id
       ])
 
+      accept([:name, :arguments, :url])
+      argument(:secret, :string, allow_nil?: false, sensitive?: true)
+      # At most a day; a day when left out.
+      argument(:ttl_ms, :integer, constraints: [min: 1])
+      argument(:cursor, :string)
+      metadata(:truncated, :boolean, allow_nil?: false)
+
+      change(Patchbay.Forum.Changes.DeriveEventSubscription)
+      # Looked at before the callback is sent anything ...
+      validate(Patchbay.Forum.Validations.EventSubscriptionRoom)
+      change(Patchbay.Forum.Changes.ChallengeCallback)
+      # ... and again under the account's lock, just before the save.
+      change(Patchbay.Forum.Changes.LockEventOwner)
+      validate(Patchbay.Forum.Validations.EventSubscriptionRoom, before_action?: true)
+      change(Patchbay.Forum.Changes.ResumeEventStream)
       change(Patchbay.OAuth.AttributeEventAuthority)
       change(run_oban_trigger(:deliver))
     end
 
-    update :refresh do
-      description("""
-      Extends a subscription and resumes it, keeping its place in the stream.
-      A stopped subscription starts again at the event it stopped on.
-      """)
-
-      require_atomic?(false)
-      accept([:expires_at, :verified_at])
-      argument(:secret_ciphertext, :string, allow_nil?: false, sensitive?: true)
-      argument(:rotation_ends_at, :utc_datetime_usec, allow_nil?: false)
-
-      change(set_attribute(:active, true))
-      change(set_attribute(:last_error, nil))
-      change(Patchbay.Forum.Changes.RotateEventSecret)
-      change(Patchbay.OAuth.AttributeEventAuthority)
-      change(run_oban_trigger(:deliver))
+    action :unsubscribe do
+      description("Ends the actor's own subscription to one event, filter and callback.")
+      transaction?(true)
+      argument(:name, :string, allow_nil?: false)
+      argument(:arguments, :map, allow_nil?: false)
+      argument(:url, :string, allow_nil?: false)
+      run(Patchbay.Forum.Actions.UnsubscribeFromEvents)
     end
 
     update :deliver do
       description("""
       Posts the events the subscriber is owed, in order, each outside any
-      transaction. Run by the `:deliver` trigger; see `PatchbayWeb.MCP.EventDelivery`.
+      transaction. Run by the `:deliver` trigger; see `Patchbay.Forum.EventDelivery`.
       """)
 
       transaction?(false)
       require_atomic?(false)
-      manual(PatchbayWeb.MCP.EventDelivery)
+      manual(Patchbay.Forum.EventDelivery)
     end
 
     destroy :forget do
@@ -170,8 +199,13 @@ defmodule Patchbay.Forum.EventSubscription do
   end
 
   policies do
-    policy action([:subscribe, :refresh, :destroy]) do
+    policy action([:subscribe, :destroy]) do
       authorize_if(Patchbay.OAuth.EventAccess)
+    end
+
+    # Ending one is authorized again on the subscription itself (`:destroy`).
+    policy action(:unsubscribe) do
+      authorize_if(actor_present())
     end
   end
 

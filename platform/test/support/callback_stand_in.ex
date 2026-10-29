@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.CallbackStandIn do
   @moduledoc """
   Stands in for `Regent.MCPEvents`' callback challenge in tests
-  (`config :patchbay, PatchbayWeb.MCP.Events, :callbacks`), so no test sends
+  (`config :patchbay, Patchbay.Forum.Changes.ChallengeCallback, :callbacks`), so no test sends
   anything to a callback address.
 
   A callback on `answers.test` answers its challenge when the test says so:

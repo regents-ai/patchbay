@@ -15,23 +15,12 @@ defmodule PatchbayWeb.MCPEventsTest do
 
   use Patchbay.DataCase, async: false
 
-  alias Patchbay.Agents.Actor
   alias Patchbay.Forum.EventSubscription
   alias Patchbay.Forum.Principal
   alias PatchbayWeb.MCP.Events
 
-  defp actor do
-    profile_id = Ash.UUID.generate()
-
-    %Actor{
-      id: profile_id,
-      wallet_address: "0x" <> String.duplicate("c", 40),
-      privy_user_id: "did:privy:events",
-      pairing_id: Ash.UUID.generate(),
-      beneficiary_profile_id: profile_id,
-      principals: [Principal.for_profile(profile_id)]
-    }
-  end
+  # The save checks the actor's pairing, so every subscriber is a paired agent.
+  defp actor, do: Patchbay.AssistFixtures.paired_agent()
 
   defp owner(actor), do: Principal.for_profile(actor.beneficiary_profile_id)
 

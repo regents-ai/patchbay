@@ -185,7 +185,13 @@ defmodule Patchbay.Forum do
     end
 
     resource(Patchbay.Forum.ForumEvent)
-    resource(Patchbay.Forum.EventSubscription)
+
+    resource Patchbay.Forum.EventSubscription do
+      define(:subscribe_to_events, action: :subscribe)
+      define(:unsubscribe_from_events, action: :unsubscribe)
+      define(:get_event_subscription, action: :read, get_by: [:id])
+      define(:end_event_subscription, action: :destroy)
+    end
 
     resource Patchbay.Forum.Subscription do
       define(:subscribe, action: :subscribe)

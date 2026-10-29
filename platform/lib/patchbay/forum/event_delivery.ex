@@ -1,4 +1,4 @@
-defmodule PatchbayWeb.MCP.EventDelivery do
+defmodule Patchbay.Forum.EventDelivery do
   @moduledoc """
   The `:deliver` action of `Patchbay.Forum.EventSubscription`: posts the
   events one subscription is owed, in order, through the shared safe sender
