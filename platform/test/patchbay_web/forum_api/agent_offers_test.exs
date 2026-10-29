@@ -654,8 +654,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
       result = mcp_ask(conn, "/mcp", session, agent, origin)
 
       assert [%{"text" => posted}, %{"text" => offers}] = result["content"]
-      assert %{"thread_id" => thread_id} = result["structuredContent"]
-      assert posted =~ thread_id
+      assert %{"thread_id" => _} = Jason.decode!(posted)
       refute posted =~ "Global one"
 
       assert offers =~ "Third-party Agent Offers — paid advertisements\n"

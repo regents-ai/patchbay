@@ -36,35 +36,58 @@ defmodule PatchbayWeb.MCP.Arguments do
 
     units
     |> Enum.flat_map(fn unit ->
-      Enum.flat_map(unit.errors, &line(&1, field(unit.instanceLocation), unit, schema))
+      rule = at(schema, unit.schemaLocation)
+      Enum.flat_map(unit.errors, &line(&1, field(unit.instanceLocation), rule))
     end)
     |> Enum.uniq()
   end
 
   # A unit that only says one of its fields or items broke a rule, or that a
   # field is refused by `additionalProperties: false`, repeats a line another
-  # unit gives with its field named.
-  defp line(%{kind: kind}, _field, _unit, _schema)
+  # unit gives with its field named. A count of fields beside `oneOf` says
+  # again what the `oneOf` line says.
+  defp line(%{kind: kind}, _field, _rule)
        when kind in [:properties, :items, :boolean_schema],
        do: []
 
-  defp line(%{kind: :required, ctx: %{missing: missing}}, field, _unit, _schema),
+  defp line(%{kind: kind}, _field, %{"oneOf" => _})
+       when kind in [:minProperties, :maxProperties],
+       do: []
+
+  defp line(%{kind: :required, ctx: %{missing: missing}}, field, _rule),
     do: Enum.map(missing, &"#{join(field, &1)}: is required.")
 
-  defp line(%{kind: :additionalProperties, ctx: %{property: property}}, field, _unit, _schema),
+  defp line(%{kind: :additionalProperties, ctx: %{property: property}}, field, _rule),
     do: ["#{join(field, property)}: is not a field of this tool."]
 
-  defp line(%{kind: :oneOf}, field, unit, schema) do
-    choices =
-      schema
-      |> at(unit.schemaLocation)
-      |> Map.fetch!("oneOf")
-      |> Enum.flat_map(& &1["required"])
+  defp line(%{kind: kind}, field, rule), do: ["#{label(field)}: #{words(kind, rule)}."]
 
-    ["#{label(field)}: name exactly one of #{Enum.join(choices, ", ")}."]
-  end
+  defp words(:oneOf, %{"oneOf" => choices}),
+    do: "name exactly one of " <> Enum.map_join(choices, ", ", &hd(&1["required"]))
 
-  defp line(%{message: message}, field, _unit, _schema), do: ["#{label(field)}: #{message}."]
+  defp words(:type, %{"type" => type}), do: "must be " <> kind_of(type)
+  defp words(:format, %{"format" => "uuid"}), do: "must be a UUID"
+
+  defp words(:format, %{"format" => "date-time"}),
+    do: "must be a date and time, such as 2026-10-29T12:00:00Z"
+
+  defp words(:enum, %{"enum" => values}), do: "must be one of " <> Enum.join(values, ", ")
+  defp words(:minLength, %{"minLength" => 1}), do: "must not be empty"
+  defp words(:minLength, %{"minLength" => n}), do: "must be at least #{n} characters"
+  defp words(:maxLength, %{"maxLength" => n}), do: "must be at most #{n} characters"
+  defp words(:minimum, %{"minimum" => n}), do: "must be at least #{n}"
+  defp words(:maximum, %{"maximum" => n}), do: "must be at most #{n}"
+  defp words(:minItems, %{"minItems" => n}), do: "must list at least #{n}"
+  defp words(:maxItems, %{"maxItems" => n}), do: "must list at most #{n}"
+  defp words(:minProperties, %{"minProperties" => n}), do: "must name at least #{n} fields"
+  defp words(:maxProperties, %{"maxProperties" => n}), do: "must name at most #{n} fields"
+  defp words(:pattern, _rule), do: "is not in the form this field takes"
+
+  defp kind_of("string"), do: "text"
+  defp kind_of("integer"), do: "a whole number"
+  defp kind_of("boolean"), do: "true or false"
+  defp kind_of("array"), do: "a list"
+  defp kind_of("object"), do: "an object"
 
   # "#/fix/updates/0/at" is the field fix.updates[0].at; "#" is the input itself.
   defp field("#"), do: nil

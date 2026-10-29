@@ -42,6 +42,9 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
 
       assert Enum.any?(lines, &String.starts_with?(&1, field <> ":")),
              "#{tool}: #{inspect(lines)} does not name #{field} for #{inspect(broken)}"
+
+      # Plain words, never the validator's own.
+      refute Enum.any?(lines, &(&1 =~ ~r/schema|value |conform|respect/)), inspect(lines)
     end
   end
 
@@ -56,8 +59,10 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
       answer = conn |> recycle() |> SignedAgent.sign(agent) |> mcp(tool, broken)
       assert answer.status == 200
 
-      assert %{"isError" => true, "structuredContent" => %{"error" => error}} =
+      assert %{"isError" => true, "content" => [%{"text" => text}]} =
                Jason.decode!(answer.resp_body)["result"]
+
+      assert %{"error" => error} = Jason.decode!(text)
 
       assert error["code"] == "invalid", "#{tool}: #{inspect(error)}"
       assert Enum.any?(error["details"], &String.starts_with?(&1, field <> ":")), tool
@@ -81,14 +86,15 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
       assert answer.status == 200, "#{tool}: #{answer.status}"
 
       result = Jason.decode!(answer.resp_body)["result"]
-      code = get_in(result, ["structuredContent", "error", "code"])
 
-      refute code == "invalid" and
-               Enum.any?(
-                 get_in(result, ["structuredContent", "error", "details"]),
-                 &(&1 =~ "is not a field of this tool")
-               ),
-             "#{tool} did not reach its tool: #{inspect(result)}"
+      if result["isError"] do
+        %{"content" => [%{"text" => text}]} = result
+        error = Jason.decode!(text)["error"]
+
+        refute error["code"] == "invalid" and
+                 Enum.any?(error["details"], &(&1 =~ "is not a field of this tool")),
+               "#{tool} did not reach its tool: #{text}"
+      end
     end
   end
 
@@ -219,6 +225,7 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
   defp outside(%{"type" => "string"} = field) do
     [{17, false}] ++
       if(most = field["maxLength"], do: [{String.duplicate("a", most + 1), true}], else: []) ++
+      if(Map.get(field, "minLength", 0) > 0, do: [{"", true}], else: []) ++
       if(field["format"] == "uuid", do: [{"not-a-uuid", true}], else: [])
   end
 
@@ -230,6 +237,7 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
 
   defp outside(%{"type" => "array"} = field) do
     [{"one", false}] ++
+      if(Map.get(field, "minItems", 0) > 0, do: [{[], true}], else: []) ++
       if(most = field["maxItems"],
         do: [{Enum.map(1..(most + 1), &"item-#{&1}"), true}],
         else: []

@@ -766,17 +766,17 @@ read, and each write whose second sending changes nothing, with its HTTP door.
 
 Each hosted tool's entry in `priv/tool_manifest.json` carries the facts `/mcp` and
 `/chatgpt/mcp` list it with: `purpose` (what `get_patchbay_help` lists it for),
-`destructive` and `idempotent`, from which `Patchbay.Forum.Capabilities.mcp_hints/1`
-derives all four MCP hints (`annotations` stays the page's WebMCP hints), and
-`output_schema`, sent as `outputSchema`. Its description has one shape: purpose, when
+`destructive`, `idempotent` and `open_world`, from which
+`Patchbay.Forum.Capabilities.mcp_hints/1` derives all four MCP hints (`annotations`
+stays the page's WebMCP hints), and `output_schema`, sent as `outputSchema`. Its description has one shape: purpose, when
 to use it, what it needs ("Needs nothing." or "Needs a signed, paired agent
 (agent_not_paired)."), what it changes, and the next tool.
 
 `PatchbayWeb.MCP.Arguments` checks a call's arguments against the tool's input schema
 with JSV (JSON Schema 2020-12, formats asserted) before anything runs, and refuses
 with code `invalid`, one line per field. The page's `prepare_agent_request` reads the
-same schemas. An answer travels once, as `structuredContent`, beside a short text
-summary. `test/patchbay_web/mcp_arguments_property_test.exs` generates arguments from
+same schemas. An answer travels as `structuredContent` and as the same JSON text; a
+refusal is `isError` with its JSON as text and no `structuredContent`. `test/patchbay_web/mcp_arguments_property_test.exs` generates arguments from
 every hosted schema and its negations and holds `/mcp` and the HTTP doors to the same
 refusals; `mcp_hosted_tools_test.exs` checks each answer against its `outputSchema`.
 

@@ -204,9 +204,11 @@ defmodule PatchbayWeb.MCPRefusalsTest do
 
   defp refused_tool(conn, id \\ "unsigned-1") do
     assert %{"jsonrpc" => "2.0", "id" => ^id, "result" => result} = json_response(conn, 200)
-    assert %{"isError" => true, "structuredContent" => %{"error" => error}} = result
-    assert [%{"type" => "text", "text" => text}] = result["content"]
-    assert text == error["message"] <> " " <> error["hint"]
+    # The refusal's JSON is the one text block, with no structured content a
+    # client would check against the tool's outputSchema and so never show.
+    assert %{"isError" => true, "content" => [%{"type" => "text", "text" => text}]} = result
+    refute Map.has_key?(result, "structuredContent")
+    assert %{"error" => %{"message" => _, "hint" => _} = error} = Jason.decode!(text)
     error
   end
 

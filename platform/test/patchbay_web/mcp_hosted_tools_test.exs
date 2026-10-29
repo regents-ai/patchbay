@@ -35,10 +35,8 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
 
       %{"result" => result} = tools_call(conn, nil, tool.name, %{}) |> json_response(200)
 
-      assert %{"isError" => true, "structuredContent" => %{"error" => %{"code" => code}}} =
-               result,
-             "#{tool.name} answered an unsigned call"
-
+      assert result["isError"], "#{tool.name} answered an unsigned call"
+      code = code(result)
       assert code == @unsigned, "#{tool.name} was not refused at admission: #{code}"
     end
   end
@@ -48,7 +46,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       %{"result" => result} =
         tools_call(conn, nil, tool.name, %{}) |> json_response(200)
 
-      refute get_in(result, ["structuredContent", "error", "code"]) == @unsigned,
+      refute result["isError"] and code(result) == @unsigned,
              "#{tool.name} asked an anonymous reader to sign"
     end
   end
@@ -70,23 +68,32 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
     end
   end
 
-  # An answer, as opposed to a refusal, has the shape its tool's outputSchema
-  # in tools/list promises, so a client that checks it accepts it. It travels
-  # once: the text beside it is a short summary, never a second copy.
-  defp shaped(_name, %{"isError" => true}), do: :ok
+  # An answer has the shape its tool's outputSchema in tools/list promises,
+  # so a client that checks it accepts it, and its text is the same answer as
+  # JSON for a client that reads only text. A refusal carries no structured
+  # content for a client to check against that schema: its text is the
+  # refusal's JSON.
+  defp shaped(name, %{"isError" => true} = result) do
+    refute Map.has_key?(result, "structuredContent"), name
+    assert %{"error" => %{"code" => _, "message" => _, "hint" => _}} = refusal(result)
+  end
 
-  defp shaped(name, %{"structuredContent" => answer, "content" => [%{"text" => text} | _]}) do
+  defp shaped(name, %{"structuredContent" => answer, "content" => [%{"text" => text}]}) do
     schema = Map.fetch!(output_schemas(), name)
 
     assert {:ok, _} = JSV.validate(answer, JSV.build!(schema)),
            "#{name} answered outside its outputSchema: #{inspect(answer, limit: 8)}"
 
-    assert byte_size(text) < 600 and text =~ "structuredContent", "#{name}: #{text}"
-
-    for {key, id} when is_binary(id) <- answer, String.ends_with?(key, "_id") do
-      assert text =~ id, "#{name}'s summary leaves out #{key}"
-    end
+    assert Jason.decode!(text) == answer, "#{name}'s text is not its answer"
   end
+
+  defp refusal(%{"content" => [%{"text" => text}]}), do: Jason.decode!(text)
+
+  defp code(result), do: refusal(result)["error"]["code"]
+
+  # The answer either way: the structured answer, or the refusal's JSON.
+  defp body(%{"isError" => true} = result), do: refusal(result)
+  defp body(result), do: result["structuredContent"]
 
   defp output_schemas do
     Map.new(PatchbayWeb.MCP.Tools.list(:native_mcp), &{&1.name, &1.outputSchema})
@@ -242,7 +249,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       |> put_req_header("accept", "application/json")
       |> dispatch(PatchbayWeb.Endpoint, method, path, body && Jason.encode!(body))
 
-    assert comparable(result["structuredContent"]) ==
+    assert comparable(body(result)) ==
              over_http.resp_body |> Jason.decode!() |> free() |> comparable(),
            "#{name} answered differently from #{method} #{path}"
 
@@ -259,24 +266,20 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
         conn |> recycle() |> put_req_header("accept", "application/json") |> get(path)
       end)
 
-    assert result["isError"] and result["structuredContent"] == Jason.decode!(body),
+    assert result["isError"] and refusal(result) == Jason.decode!(body),
            "#{name} answered differently from GET #{path}"
   end
 
   defp answered(name, result, :ok, _conn, _agent),
-    do: refute(result["isError"], "#{name}: #{inspect(result["structuredContent"])}")
+    do: refute(result["isError"], "#{name}: #{inspect(body(result))}")
 
   defp answered(name, result, {:refused, code}, _conn, _agent),
-    do:
-      assert(
-        %{"isError" => true, "structuredContent" => %{"error" => %{"code" => ^code}}} = result,
-        name
-      )
+    do: assert(result["isError"] and code(result) == code, name)
 
   # An answer from the tool, a refusal of its input included, but never the
   # door's own: the call reached the tool.
   defp answered(name, result, :answered, _conn, _agent) do
-    code = get_in(result, ["structuredContent", "error", "code"])
+    code = if result["isError"], do: code(result)
 
     refute code in ["agent_not_paired", "http_headers_missing", "rate_limited"],
            "#{name} did not reach its tool: #{code}"

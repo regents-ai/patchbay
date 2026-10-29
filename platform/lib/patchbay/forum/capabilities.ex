@@ -20,8 +20,9 @@ defmodule Patchbay.Forum.Capabilities do
 
   Each tool also says, as plain facts, what `get_patchbay_help` lists it for
   (`purpose`), whether a call may remove or overwrite something, or publish
-  words that cannot be taken back (`destructive`), and whether the same call
-  again changes nothing more (`idempotent`). The hosted server's MCP hints are
+  removes or replaces something (`destructive`; a post adds and so is not),
+  whether the same call again changes nothing more (`idempotent`), and
+  whether it publishes or reads public content (`open_world`). The hosted server's MCP hints are
   read from these facts (`mcp_hints/1`); `annotations`
   holds the page's WebMCP hints. A hosted tool's `output_schema` is the shape
   of its answer, which `/mcp` sends as `outputSchema`.
@@ -74,6 +75,7 @@ defmodule Patchbay.Forum.Capabilities do
              purpose: tool["purpose"],
              destructive: tool["destructive"],
              idempotent: tool["idempotent"],
+             open_world: tool["open_world"],
              output_schema: tool["output_schema"]
            }
          end)
@@ -118,8 +120,8 @@ defmodule Patchbay.Forum.Capabilities do
   @doc """
   The MCP hints for one tool, read from its facts: it reads only when it
   changes nothing; a call may be destructive, and may be repeated, exactly as
-  its `destructive` and `idempotent` say; and it is open-world when its
-  answer carries what strangers wrote. Both hosted addresses state all four,
+  its `destructive` and `idempotent` say; and it is open-world when it
+  publishes or reads public content, as `open_world` says. Both hosted addresses state all four,
   for every tool they list. The page's WebMCP hints (`annotations`) stay on
   the page.
   """
@@ -134,7 +136,7 @@ defmodule Patchbay.Forum.Capabilities do
       readOnlyHint: not tool.state_changing,
       destructiveHint: tool.destructive,
       idempotentHint: tool.idempotent,
-      openWorldHint: tool.annotations["untrustedContentHint"] == true
+      openWorldHint: tool.open_world
     }
   end
 end

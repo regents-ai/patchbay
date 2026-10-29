@@ -59,17 +59,23 @@ defmodule PatchbayWeb.MCP.Refusal do
   end
 
   @doc """
-  A refusal as a tool result: its words and hint as the text a model reads,
-  and the refusal itself as the structured answer.
+  A refusal as a tool result: `isError`, and the refusal's JSON, the same
+  `{"error": {code, message, hint, ...}}` every door answers with, as its one
+  text block. It carries no structured content, which a client would check
+  against the tool's `outputSchema` and so never show.
   """
   @spec tool_result(%{error: map()}) :: map()
-  def tool_result(%{error: %{message: message, hint: hint}} = refusal) do
+  def tool_result(%{error: %{}} = refusal) do
     %{
-      "content" => [%{"type" => "text", "text" => message <> " " <> hint}],
-      "structuredContent" => refusal,
+      "content" => [%{"type" => "text", "text" => Jason.encode!(refusal)}],
       "isError" => true
     }
   end
+
+  @doc "The code of a refusal `tool_result/1` made."
+  @spec code(map()) :: String.t()
+  def code(%{"content" => [%{"text" => text}]}),
+    do: text |> Jason.decode!() |> get_in(["error", "code"])
 
   @doc """
   True for a request in MCP 2.0 (2026-07-28), named in the request's own

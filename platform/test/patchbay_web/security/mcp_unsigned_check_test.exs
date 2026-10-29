@@ -119,10 +119,10 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
 
   # The refusal a write was answered with, as a tool result for its call.
   defp refusal(answer) do
-    assert %{"id" => 1, "result" => %{"isError" => true, "structuredContent" => refusal}} =
+    assert %{"id" => 1, "result" => %{"isError" => true, "content" => [%{"text" => text}]}} =
              json_response(answer, 200)
 
-    refusal
+    Jason.decode!(text)
   end
 
   defp write(conn, address, signature) do

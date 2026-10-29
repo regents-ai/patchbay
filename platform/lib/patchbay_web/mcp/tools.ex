@@ -209,21 +209,28 @@ defmodule PatchbayWeb.MCP.Tools do
   # into the one refusal shape every Patchbay tool answers with.
   defp hosted_post(name, arguments, principal) do
     with {:ok, arguments} <- free_arguments(name, arguments),
-         {:ok, %{"result" => %{"structuredContent" => answer, "isError" => error?}}} <-
-           RegentMCPAgents.post(principal, name, arguments) do
-      posted(answer, error?)
+         {:ok, %{"result" => result}} <- RegentMCPAgents.post(principal, name, arguments) do
+      posted(result)
     else
       {:invalid_arguments, _} = invalid -> invalid
       _ -> {:error, RegentMCPAgents.Tools.refusal()}
     end
   end
 
-  defp posted(answer, false), do: {:ok, answer}
+  defp posted(%{"isError" => false, "structuredContent" => answer}), do: {:ok, answer}
 
-  defp posted(%{"error" => %{"code" => code, "message" => message, "hint" => hint}}, true),
-    do: {:error, ApiError.body(code, message, hint)}
+  # A refusal's JSON is its one text block (`PatchbayWeb.MCP.Refusal.tool_result/1`).
+  defp posted(%{"isError" => true, "content" => [%{"text" => text}]}) do
+    case Jason.decode(text) do
+      {:ok, %{"error" => %{"code" => code, "message" => message, "hint" => hint}}} ->
+        {:error, ApiError.body(code, message, hint)}
 
-  defp posted(_answer, true), do: {:error, RegentMCPAgents.Tools.refusal()}
+      _ ->
+        {:error, RegentMCPAgents.Tools.refusal()}
+    end
+  end
+
+  defp posted(_result), do: {:error, RegentMCPAgents.Tools.refusal()}
 
   # Every thread kind the schema allows is a free one.
   defp free_arguments(name, arguments) do

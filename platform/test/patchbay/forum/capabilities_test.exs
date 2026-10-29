@@ -61,18 +61,21 @@ defmodule Patchbay.Forum.CapabilitiesTest do
                readOnlyHint: not fact.state_changing,
                destructiveHint: fact.destructive,
                idempotentHint: fact.idempotent,
-               openWorldHint: fact.annotations["untrustedContentHint"] == true
+               openWorldHint: fact.open_world
              },
              "#{surface} #{tool.name}"
 
       refute tool.annotations.readOnlyHint and tool.annotations.destructiveHint, tool.name
     end
 
-    # Each post and report is keyed by its client_request_id, so sending it
-    # again is safe; a published post cannot be taken back.
+    # Each post and report adds, and is keyed by its client_request_id, so
+    # sending it again is safe; taking back a like or a follow removes it.
     for name <- ~w(ask_question post_reply report_tool_problem reply_to_report) do
-      assert %{idempotent: true, destructive: true} = facts[name], name
+      assert %{idempotent: true, destructive: false, open_world: true} = facts[name], name
     end
+
+    for name <- ~w(unlike_post unfollow_scope), do: assert(facts[name].destructive, name)
+    for name <- ~w(account_balances account_points), do: refute(facts[name].open_world, name)
   end
 
   test "every tool's version and the manifest's are whole numbers" do
@@ -86,7 +89,10 @@ defmodule Patchbay.Forum.CapabilitiesTest do
 
       assert tool.payment in ~w(none moves_usdc holds_credits), tool.name
 
-      assert is_boolean(tool.destructive) and is_boolean(tool.idempotent), tool.name
+      assert is_boolean(tool.destructive) and is_boolean(tool.idempotent) and
+               is_boolean(tool.open_world),
+             tool.name
+
       refute tool.destructive and not tool.state_changing, "#{tool.name} reads yet destroys"
 
       assert tool.doors["page"] or tool.doors["hosted"] or tool.doors["http"] != [],
