@@ -8,8 +8,8 @@ defmodule PatchbayWeb.CurrentProfile do
 
   A signed-in page is checked again before every navigation, event, message and
   background result reaches it, because a page can stay open past the sign-in's
-  lifetime, and what the page unlocked when it opened (a room owner's controls,
-  a paid fix) must end with it. The same check the plug makes is run on the
+  lifetime, and what the page unlocked when it opened (the account's
+  own controls, a paid fix) must end with it. The same check the plug makes is run on the
   session the page was mounted with: while it still holds, the page goes on
   with the profile as it reads now. Once it has lapsed, the navigation, event,
   message or result is dropped. A navigation then goes to the front page. The

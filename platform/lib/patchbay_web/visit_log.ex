@@ -173,7 +173,7 @@ defmodule PatchbayWeb.VisitLog do
     end
   end
 
-  @doc "Where a request or page lands, as its route (`/rooms/:room`), never its own path."
+  @doc "Where a request or page lands, as its route (`/posts/:id/:slug`), never its own path."
   def route(router, method, path, host) do
     case Phoenix.Router.route_info(router, method, path, host) do
       %{route: route} -> route

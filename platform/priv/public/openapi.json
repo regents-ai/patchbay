@@ -11205,7 +11205,7 @@
           },
           "scope": {
             "type": "string",
-            "description": "The tool's place: site on every Patchbay page, page:<path> on those pages only, hosted at /mcp only, owner for the person's own actions on the website."
+            "description": "The tool's place: site on every Patchbay page, hosted at /mcp only, owner for the person's own actions on the website."
           },
           "hosted": {
             "type": "boolean",

@@ -1402,7 +1402,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-error-inner .pb-kicker { margin: 0; }
 .patchbay-notice.rg-panel { background: transparent; border: 0; }
 .patchbay-card { min-width: 0; }
- .patchbay-facts > div { flex-wrap: wrap; }
+.patchbay-facts > div { flex-wrap: wrap; }
 .patchbay-pill, .pb-chip { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
 .pb-post-row { border-bottom: 1px solid var(--pb-line); padding-block: var(--space-2); }
 .pb-name-forms { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
