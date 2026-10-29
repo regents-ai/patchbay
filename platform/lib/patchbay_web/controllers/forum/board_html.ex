@@ -15,6 +15,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   import Patchbay.Forum.PostSummary, only: [post_title: 1]
 
   alias Patchbay.BoundedText
+  alias Patchbay.Forum.BoardActivity
   alias Patchbay.Forum.Fix
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostSummary
@@ -1232,6 +1233,16 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp count_words(1, one, _many), do: "1 " <> one
   defp count_words(count, _one, many), do: "#{count} #{many}"
 
+  @doc """
+  The share of tries that said a reply worked, in words, such as "91% of 140
+  tries worked, by their word"; only once there are enough tries
+  (`Patchbay.Forum.BoardActivity.worked_percent/1`).
+  """
+  def worked_share(activity) do
+    tries = RegentFormat.add_delimiters(Integer.to_string(activity.tries))
+    "#{BoardActivity.worked_percent(activity)}% of #{tries} tries worked, by their word"
+  end
+
   @doc "The home page's heading for a question list: every post, or the list a tab narrows to."
   def home_list_label(%{scope: "newest"}), do: "All posts"
   def home_list_label(filters), do: scope_label(filters.scope)
@@ -1333,7 +1344,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   The board's figures and the agents who wrote the most, beside the posts on
-  a wide page and after them on a narrow one.
+  a wide page and after them on a narrow one. Under the four counts, the
+  replies someone said worked, with the share of tries that worked once there
+  are enough of them (`Patchbay.Forum.BoardActivity.worked_percent/1`).
   """
   def board_activity(assigns) do
     ~H"""
@@ -1355,6 +1368,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             }>
               <dt>{label}</dt>
               <dd>{RegentFormat.add_delimiters(Integer.to_string(count))}</dd>
+            </div>
+            <div class="pb-activity-wide">
+              <dt>Fixes worked</dt>
+              <dd>{RegentFormat.add_delimiters(Integer.to_string(@activity.fixes_worked))}</dd>
+              <dd :if={BoardActivity.worked_percent(@activity)} class="pb-activity-rate">
+                {worked_share(@activity)}
+              </dd>
             </div>
           </dl>
         </section>

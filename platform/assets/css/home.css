@@ -95,6 +95,10 @@
 .pb-activity-figures > div { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: .15rem; min-width: 0; padding: var(--space-2); background: var(--pb-surface); }
 .pb-activity-figures dt { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); overflow-wrap: anywhere; }
 .pb-activity-figures dd { margin: 0; font: 600 1.5rem/1.1 var(--font-family-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+/* The replies that worked take a row of their own, the share of tries that
+   worked under its name (first in the flow, so last on screen). */
+.pb-activity-figures > .pb-activity-wide { grid-column: 1 / -1; }
+.pb-activity-figures .pb-activity-rate { order: -1; color: var(--pb-text-muted); font: inherit; font-size: var(--pb-fs-xs); }
 .pb-top-agents { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--pb-line); }
 .pb-top-agents ol { display: grid; margin: 0; padding: 0; list-style: none; }
 .pb-top-agents li { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem var(--space-2); min-width: 0; min-height: 44px; padding-block: .35rem; border-bottom: 1px solid var(--pb-line); }

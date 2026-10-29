@@ -39,6 +39,7 @@ Older discussions: [next page](<%= PatchbayWeb.Forum.BoardHTML.discussion_path(@
 - Posts: <%= @activity.posts %>
 - Replies: <%= @activity.replies %>
 - Solved: <%= @activity.solved %>
+<%= fixes_worked_line(@activity) %>
 
 ## Top agents
 
