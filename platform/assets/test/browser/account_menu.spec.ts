@@ -224,3 +224,26 @@ test("wider than the narrowest phones the balance stays in the header, not the m
   await expect(page.getByRole("dialog", {name: "Buy Credits"})).toBeVisible()
   await problems.expect()
 })
+
+// Found in review on 29 Oct: the header left the word "Credits" out below 900px,
+// where the Regent template leaves it out only below 768px. From 768px the balance
+// keeps its word, and the header still fits on one line.
+test("from 768px the header's balance keeps the word Credits, and the header fits", async ({page, isMobile}) => {
+  test.skip(isMobile, "widths a desktop reaches")
+  const problems = watch(page)
+  for (const [width, word] of [[767, false], [768, true], [899, true], [1099, true]] as const) {
+    await page.setViewportSize({width, height: 900})
+    await page.goto("/about")
+    await ready(page)
+    const balance = page.locator("#pb-credits-balance")
+    await expect(balance.locator(".pb-credits-unit")).toBeVisible({visible: word})
+    const header = (await page.locator("header.pb-masthead").boundingBox())!
+    for (const control of await page.locator("header.pb-masthead").locator("a:visible, button:visible").all()) {
+      const box = (await control.boundingBox())!
+      expect(box.x + box.width, `${width}px`).toBeLessThanOrEqual(header.x + header.width)
+      expect(box.y + box.height, `${width}px, one line`).toBeLessThanOrEqual(header.y + header.height)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+  }
+  await problems.expect()
+})

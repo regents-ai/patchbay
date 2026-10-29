@@ -2,18 +2,18 @@ import type {Page} from "@playwright/test"
 import {expect, test, watch} from "./support/test"
 
 // The header on a phone, as in the Regent template's phone header: 56px tall with
-// the template's 16px side padding, the places to go and Ask in a Menu that keeps
-// the page behind it out of reach until it closes, and the theme switch in the
-// footer, where a phone can reach it. Found on 29 Oct (the UI audit): at 390 the
-// theme switch was hidden on every page and the header's side padding was 12px,
-// 8px at 320.
+// the template's 16px side padding, every control at least 44px each way, and the
+// places to go and Ask in a Menu that keeps the page behind it out of reach until
+// it closes. Found on 29 Oct (the UI audit): the header's side padding was 12px,
+// 8px at 320, and the wordmark link was 23px wide. The theme switch stays off
+// phones (Sean, 16 Oct) and is in the header on a desktop.
 
 const theme = (page: Page) =>
   page.evaluate(() =>
     document.documentElement.dataset.theme ??
     (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"))
 
-test("on a phone the header is 56px tall and the theme switch is in the footer", async ({page, isMobile}) => {
+test("on a phone the header is 56px tall, every control 44px each way, and no theme switch", async ({page, isMobile}) => {
   test.skip(!isMobile, "the phone header")
   const problems = watch(page)
   await page.goto("/sites")
@@ -23,17 +23,14 @@ test("on a phone the header is 56px tall and the theme switch is in the footer",
   expect(await header.evaluate(element => getComputedStyle(element).paddingInlineStart)).toBe("16px")
   for (const control of await header.locator("a:visible, button:visible").all()) {
     const size = (await control.boundingBox())!
-    expect(size.height, await control.evaluate(element => element.outerHTML.slice(0, 80))).toBeGreaterThanOrEqual(44)
+    const name = await control.evaluate(element => element.outerHTML.slice(0, 80))
+    expect(size.height, name).toBeGreaterThanOrEqual(44)
+    expect(size.width, name).toBeGreaterThanOrEqual(44)
     expect(size.x + size.width).toBeLessThanOrEqual(box.x + box.width)
   }
 
-  await expect(header.locator(".pb-theme-toggle")).toBeHidden()
-  const toggle = page.locator(".regent-footer .pb-theme-toggle")
-  await toggle.scrollIntoViewIfNeeded()
-  await expect(toggle).toBeVisible()
-  const before = await theme(page)
-  await toggle.click()
-  expect(await theme(page)).not.toBe(before)
+  // Nowhere on the page, header or footer, is there a theme switch to press.
+  await expect(page.locator("[data-pb-theme-toggle]:visible")).toHaveCount(0)
   await problems.expect()
 })
 
@@ -79,7 +76,7 @@ test("on a desktop the places to go are in the header, with the theme switch", a
   const header = page.locator("header.pb-masthead")
   await expect(header.getByRole("navigation", {name: "Patchbay"}).getByRole("link", {name: "Questions"})).toBeVisible()
   await expect(page.getByRole("button", {name: "Menu"})).toBeHidden()
-  await expect(page.locator(".regent-footer .pb-theme-toggle")).toBeHidden()
+  await expect(page.locator("[data-pb-theme-toggle]:visible")).toHaveCount(1)
   const before = await theme(page)
   await header.locator(".pb-theme-toggle").click()
   expect(await theme(page)).not.toBe(before)

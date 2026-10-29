@@ -1382,15 +1382,18 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-header-tools { display: flex; flex: 1 1 auto; align-items: center; gap: var(--space-2); }
 /* As the window narrows, the header gives up words before it gives up a line:
    first "a question"; then the wordmark's name and the signed-in name, leaving
-   the picture that opens the account menu; then the search's word and the word
-   "Credits" beside the balance; on a phone Ask (it lives on the questions page);
-   on the narrowest phones the balance itself, which the account menu then shows. */
+   the picture that opens the account menu; then the search's word; then the word
+   "Credits" beside the balance; on a phone the places to go and Ask move into the
+   Menu and the theme switch is left off; on the narrowest phones the balance
+   itself goes, which the account menu then shows. */
 body { container: pb-page / inline-size; }
 @container pb-page (max-width: 1439px) {
   .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .pb-account-chip { max-width: 13.5rem; }
 }
 @container pb-page (max-width: 1099px) {
+  /* The mark alone stays a full-size press. */
+  .pb-wordmark { min-width: 2.75rem; justify-content: center; }
   .pb-wordmark > span:not(.patchbay-mark) { display: none; }
   /* The picture opens the menu and keeps the name for screen readers. */
   .pb-account-chip { padding-inline-start: .5rem; }
@@ -1405,21 +1408,22 @@ body { container: pb-page / inline-size; }
   .pb-header-search__icon { width: 1.25rem; height: 1.25rem; }
   .pb-header-search__prompt { display: none; }
   .pb-account-chip { padding-inline-end: .5rem; }
-  .pb-credits-balance .pb-credits-unit { display: none; }
   .pb-masthead .pb-ask-button.rg-button, .pb-account-button.rg-button { gap: 0; padding-inline: 12px; white-space: nowrap; }
   .pb-masthead .pb-ask-button.rg-button::after, .pb-account-button.rg-button::after { display: none; }
 }
+/* Below 768px, as in the Regent template, the balance keeps its figure and leaves
+   the word "Credits" out. */
+@container pb-page (max-width: 767px) {
+  .pb-credits-balance .pb-credits-unit { display: none; }
+}
 /* On a phone the header is the Regent template's: 56px tall, the template's side
-   padding, and the places to go and Ask in the Menu; the theme switch moves to the
-   footer. */
+   padding, and the places to go and Ask in the Menu. The theme switch is left off
+   phones (Sean, 16 Oct). */
 @container pb-page (max-width: 599px) {
   .pb-masthead, .pb-header-tools { gap: 4px; }
   .pb-masthead { min-height: 3.5rem; padding: 6px var(--space-2); }
   .pb-masthead .pb-site-nav, .pb-masthead .pb-ask-button, .pb-masthead .pb-theme-toggle { display: none; }
   .pb-menu-button { display: inline-flex; }
-}
-@container pb-page (min-width: 600px) {
-  .regent-footer .pb-theme-toggle { display: none; }
 }
 /* Narrower than 22.5rem the header has no room for the balance: the account menu
    shows it instead, as its balance row, which opens the same dialog. The menu's
@@ -2479,9 +2483,19 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-offers-view-title { margin: 0 0 var(--space-3); font-size: 1.375rem; }
 .pb-offers-board-link { margin: 0 0 var(--space-2); font-size: .875rem; }
 /* On a phone the tabs stay on one line and the row scrolls sideways inside
-   itself, never the page. */
+   itself, never the page. Its right edge fades out, so a tab past it shows as
+   cut off, and a thin scrollbar sits under it; the row ends in room the width of
+   the fade, so the last tab, scrolled to, stands clear of it. */
 @container pb-page (max-width: 599px) {
-  .pb-offers-nav, .pb-wb-tabs { flex-wrap: nowrap; column-gap: var(--space-2); overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+  .pb-offers-nav, .pb-wb-tabs {
+    flex-wrap: nowrap;
+    column-gap: var(--space-2);
+    padding-inline-end: var(--space-3);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    mask-image: linear-gradient(to left, transparent, #000 var(--space-3));
+  }
 }
 
 /* Offers opens on its audience gallery; supporting details stay compact. */
