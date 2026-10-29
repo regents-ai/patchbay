@@ -166,7 +166,7 @@ defmodule Patchbay.Patchbay.BrowserSession do
   @spec permanent_tool_names() :: [String.t()]
   def permanent_tool_names do
     for tool <- Patchbay.Forum.Capabilities.tools(),
-        String.starts_with?(tool.scope, "page:"),
+        tool.scope == "page:/webmcp/rooms/*",
         tool.name != "uplift_current_skill_vN",
         do: tool.name
   end

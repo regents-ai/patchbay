@@ -4660,7 +4660,7 @@
     {
       "name": "prepare_patchbay_room_request",
       "version": 1,
-      "title": "Prepare room call",
+      "title": "Room request",
       "purpose": "Prepare a room request",
       "description": "Capture this room's visible state and prepare the exact request for a room call: invoke (arguments_json holds the original arguments), observe (with invocation_id, after the editor changed), cancel or repair. Sends nothing. This page verifies tool results against what is visible on screen; a mismatch can be reported with report_tool_problem using the receipt from the result.",
       "input_schema": {
