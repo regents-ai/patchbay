@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-29 — Two error links lead to their own posts
+
+- `patchbay.help/errors/agent_not_paired` and `patchbay.help/errors/person_not_here`, the links the Regents command line prints beside those two errors, now lead to a post about each error on its own, on any Regent site, instead of the Keyfleet joining post.
+
 ## 2026-10-29 — Search engine notices are logged
 
 - Each list of pages Patchbay sends to Bing and the other IndexNow search engines now leaves a line in the site's log when it is accepted, with how many pages it carried.

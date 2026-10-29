@@ -22,15 +22,14 @@ defmodule PatchbayWeb.ErrorLinkControllerTest do
 
   test "a code leads for good to its post's own address", %{conn: conn} do
     site = ErrorReports.site!("keyfleet.example")
-    id = ErrorLinkController.links()["not_signed_in"]
-    post = ErrorReports.post!(site, ErrorReports.get!("keyfleet_join"), id)
+    report = ErrorReports.get!("keyfleet_join")
 
     for code <- ~w(not_signed_in agent_not_paired person_not_here) do
+      post = ErrorReports.post!(site, report, ErrorLinkController.links()[code])
       moved = get(conn, "/errors/" <> code)
       assert redirected_to(moved, 301) == PostAddress.path(post)
+      assert conn |> get(PostAddress.path(post)) |> html_response(200) =~ code
     end
-
-    assert conn |> get(PostAddress.path(post)) |> html_response(200) =~ "not_signed_in"
   end
 
   test "a code with no post, or whose post is gone, offers a search", %{conn: conn} do

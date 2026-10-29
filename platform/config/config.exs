@@ -264,8 +264,8 @@ config :patchbay, :sign_in_lifetime_seconds, 30 * 24 * 60 * 60
 # is never renamed; when a better post is written, its id replaces the old one.
 config :patchbay, :error_links, %{
   "not_signed_in" => "bc85f337-9965-4a8c-9a4e-ea875b3a55ce",
-  "agent_not_paired" => "bc85f337-9965-4a8c-9a4e-ea875b3a55ce",
-  "person_not_here" => "bc85f337-9965-4a8c-9a4e-ea875b3a55ce",
+  "agent_not_paired" => "54444861-6b25-4918-abb9-dd6f98b76380",
+  "person_not_here" => "d6a3cc57-124c-41ff-a8fb-bc7d2b1095cc",
   "no_touch_id" => "f308a148-c8af-47ea-845d-7c402c07c76d",
   "key_helper_not_answering" => "f308a148-c8af-47ea-845d-7c402c07c76d",
   "locked_key_needs_mac" => "f308a148-c8af-47ea-845d-7c402c07c76d",
