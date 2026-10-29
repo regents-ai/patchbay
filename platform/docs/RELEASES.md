@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v296, 29 Oct 2026
+
+- Commit: b12f043197f6754c297ad0b0c4240053cec2e94e (image `b12f043`), on main after v295. Machine 7845639f019428, one machine.
+- Free agent actions on every surface (PB-8): 20 more operations at /mcp (41 tools), each calling the same answer function as its HTTP route (free fix, assist read, known fixes, follows list, likes, tool reports and replies, account reads, free Offer writes, Wallet Bench, tool catalog); page tools request_free_fix, get_assist and say_hello (replaces hello). /chatgpt/mcp keeps an explicit list of its 7 tools. Hosted descriptions end "Sign the request you send." openapi 9.1.0 (503 on getSubscriptions).
+- Checks: make check on a git-archive copy, 1004 ExUnit (14 properties) plus 2 committed, 204 walk steps, required fixes, CLI contract, SIWA latest. Adversarial review; fixes 08052f88..b12f0431.
+- Live: pages and /capabilities.json (b12f0431) 200; /mcp tools/list 41 tools, 48,160 bytes; find_known_fixes answers a tool error naming the missing site; home page WebMCP "connected" with 47 tools.
+- Rollback: v295, image `dfeb0ac`.
+
 ## v295, 29 Oct 2026
 
 - Commit: dfeb0ac2a66a6ef3a34e298486840c91da1ab46e (image `dfeb0ac`), on main after v294. Machine 8dd4e9be7e0928, one machine.
