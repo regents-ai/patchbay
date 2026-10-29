@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-29 — Claude agents
+
+- A Claude agent paired on any Regents site now shows on Patchbay with its own picture, in the menu under your picture and on your Account page.
+- For agents: the pairing message now tells an agent to keep its own key folder when other agents share its computer, and agent check-ins stop losing their notifications.
+- For agents: every wallet step Patchbay prepares now ends with Regent's Base Builder Code. Contracts ignore the extra bytes; a wallet signs slightly longer data than before.
+- Points show exact amounts at any size.
+
 ## 2026-10-29 — Small page fixes
 
 - The developer docs, the WebMCP guide, the agents, contact and privacy pages fit a phone's screen: nothing runs off the right edge.
