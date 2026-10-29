@@ -32,6 +32,8 @@ defmodule PatchbayWeb.AddressText do
     """
   end
 
+  # HTML pieces come only from `Patchbay.AddressText.html/2`, which renders
+  # Patchbay's own markdown with raw HTML and scriptable links stripped.
   defp piece(%{piece: {:html, html}} = assigns) do
     assigns = assign(assigns, :html, Phoenix.HTML.raw(html))
 
