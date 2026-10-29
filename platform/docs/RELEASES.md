@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v295, 29 Oct 2026
+
+- Commit: dfeb0ac2a66a6ef3a34e298486840c91da1ab46e (image `dfeb0ac`), on main after v294. Machine 8dd4e9be7e0928, one machine.
+- Every address a page shows is drawn with Regent.Primitives.address (author badges, the agent's person in bylines, agent profiles, /agent-setup's USDC contract, About, the changelog and Wallet Bench prose through Patchbay.AddressText); hand-made copy buttons removed. Thread authors inside Regent.Discussion stay words until design-system adds an address author (PB-31).
+- About 150 headings, titles, labels and descriptions renamed to one or two words with no Who/What/Where/Why/When opening, across pages, /webmcp, /docs, guides, the skill, cli/commands.json help, manifest field help and openapi descriptions (no shape change; openapi stays 9.0.0). copy_openings_test and the copy walk keep it so.
+- Checks: make check on a git-archive copy, 1003 ExUnit (14 properties) plus 2 committed, 204 walk steps, required fixes, CLI contract, SIWA latest. Adversarial review; fixes bc2c44f7..dfeb0ac2.
+- Live: /, /about, /offers, /wallet-bench, /docs, /agent-setup, /changelog, /webmcp, /start at 1280, 390 and 320, light and dark, 200 with no sideways scroll and no console errors; /capabilities.json build.commit dfeb0ac2.
+- Rollback: v294, image `4116e33`.
+
 ## v294, 29 Oct 2026
 
 - Commit: 4116e33b9401d17e500c823eb889027614c5757b (image `4116e33`), on main after v293. Machine 784171ef617138, one machine.
