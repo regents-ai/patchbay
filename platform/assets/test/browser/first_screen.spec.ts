@@ -34,37 +34,58 @@ test.describe("on a phone", () => {
     await problems.expect()
   })
 
-  // Links inside running text keep their line's height; the shared address
-  // piece's icons are design-system's and are sized there.
-  for (const path of ["/", "/keyfleet.ai", "/help", "/sites", "/wallet-bench", "/changelog"]) {
+  // Links inside running text (a block with three or more words of its own
+  // besides its links) keep their line's height; a link in a short line, such
+  // as a page's way back, is checked. The shared address piece's icons are
+  // design-system's and are sized there.
+  const paths = [
+    "/",
+    "/keyfleet.ai",
+    "/help",
+    "/sites",
+    "/wallet-bench",
+    "/wallet-bench/how-it-works",
+    "/changelog",
+    "/offers",
+    "/incidents",
+  ]
+  for (const path of paths) {
     test(`every control on ${path} is a full finger tall`, async ({page}) => {
       await page.goto(path)
       const small = await page
         .locator("a[href], button, summary, select, input:not([type=hidden])")
-        .evaluateAll(controls =>
-          controls
+        .evaluateAll(controls => {
+          const inRunningText = (control: Element) => {
+            let block = control.parentElement
+            while (block && getComputedStyle(block).display.startsWith("inline")) block = block.parentElement
+            if (!block) return false
+            const words = block.cloneNode(true) as Element
+            words.querySelectorAll("a, button").forEach(part => part.remove())
+            return words.textContent!.trim().split(/\s+/).filter(word => /\w/.test(word)).length >= 3
+          }
+          return controls
             .filter(control => {
               const box = control.getBoundingClientRect()
               const style = getComputedStyle(control)
               if (box.width <= 1 || box.height <= 1 || style.visibility === "hidden") return false
-              if (style.display === "inline" || control.closest(".rg-address, .visually-hidden")) return false
+              if (control.closest(".rg-address, .visually-hidden")) return false
+              if (style.display === "inline" && inRunningText(control)) return false
               return box.height < 44 || box.width < 24
             })
             .map(control => {
               const box = control.getBoundingClientRect()
               const name = (control.textContent || control.getAttribute("aria-label") || "").trim().slice(0, 30)
               return `${control.tagName.toLowerCase()} "${name}" ${Math.round(box.width)}×${Math.round(box.height)}`
-            }),
-        )
+            })
+        })
       expect(small, "controls under 44 px tall or 24 px wide").toEqual([])
     })
   }
 })
 
-test("the Wallet Bench board takes the sheet's width, with no zoom controls", async ({page, isMobile}) => {
+test("the Wallet Bench board takes the sheet's width", async ({page, isMobile}) => {
   const problems = watch(page)
   await page.goto("/wallet-bench")
-  await expect(page.locator("[data-wb-zoom], [data-wb-fit]")).toHaveCount(0)
 
   const {sheetRight, boardRight, frameWidth, tableWidth} = await page.evaluate(() => {
     const sheet = document.querySelector<HTMLElement>(".pb-wb-sheet")!

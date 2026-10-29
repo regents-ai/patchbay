@@ -797,6 +797,11 @@ body:has(#patchbay-room) {
 .patchbay-board .patchbay-card { width: 100%; margin-inline: auto; }
 .patchbay-board .patchbay-card { margin-top: var(--space-2); }
 .patchbay-board .patchbay-kicker a { color: inherit; text-decoration: none; }
+/* On a touch screen a link in a small kicker line (a page's way back, the
+   bench's Patchbay) is pressed over 44 px without making the line taller. */
+@media (pointer: coarse), (hover: none) {
+  :is(.patchbay-kicker, .pb-wb-kicker, .pb-incident-kicker, .pb-incident-meta) a { display: inline-block; padding-block: 16px; margin-block: -16px; }
+}
 .patchbay-board .patchbay-kicker a:hover { text-decoration: underline; }
 .patchbay-board h3 a { color: inherit; text-decoration: none;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .patchbay-board h3 a:hover { text-decoration: underline;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
@@ -2383,7 +2388,7 @@ h1, h2, h3, h4, h5, h6 {
 .pb-wb-meanings > div { display: grid; grid-template-columns: minmax(7rem, max-content) 1fr; gap: var(--space-2); align-items: baseline; }
 .pb-wb-meanings dd { margin: 0; font-size: var(--pb-fs-sm); }
 .pb-wb-more { margin: 0; font-size: var(--pb-fs-sm); }
-.pb-wb-more a { color: var(--pb-wb-ink); text-decoration: underline; text-underline-offset: .2em; }
+.pb-wb-more a { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--pb-wb-ink); text-decoration: underline; text-underline-offset: .2em; }
 /* Techtree's extra notes: a release, then what the bench saw about it. */
 .pb-wb-extra-notes { display: grid; gap: var(--space-2); margin: 0; }
 .pb-wb-extra-notes > div { display: grid; gap: .3rem; }
@@ -2538,6 +2543,9 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .pb-offers-market-logo { grid-area: logo; display: grid; place-items: center; width: 3rem; height: 3rem; object-fit: contain; padding: .25rem; background: var(--pb-surface-sunk); color: var(--pb-text-muted); font: 400 1.125rem/1 var(--font-family-title); }
 .pb-offers-market-name { grid-area: name; min-width: 0; }
 .pb-offers-market-name h3 { margin: 0; font-size: 1rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (pointer: coarse), (hover: none) {
+  .pb-offers-market-name h3 a { display: block; overflow: hidden; text-overflow: ellipsis; line-height: 2.75rem; }
+}
 .pb-offers-market-name span { display: block; overflow: hidden; color: var(--pb-text-muted); font-size: .75rem; text-overflow: ellipsis; white-space: nowrap; }
 .pb-offers-market-activity { grid-area: activity; display: flex; gap: var(--space-3); margin: 0; text-align: end; }
 .pb-offers-market-activity dt { color: var(--pb-text-muted); font-size: .75rem; }
@@ -2706,6 +2714,7 @@ a.pb-slot:focus-visible::before { box-shadow: inset 0 0 0 1px var(--pb-text); }
 .pb-wb-pair-head h2 { margin: 0; overflow-wrap: anywhere; }
 .pb-wb-detail-links { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
 .pb-wb-return, .pb-wb-detail-links a { color: var(--pb-wb-ink); text-underline-offset: .2em; }
+.pb-wb-return { display: inline-flex; align-items: center; min-height: 2.75rem; }
 .pb-wb-pair { min-width: 0; }
 .pb-wb-tabs a:focus-visible, .pb-wb-return:focus-visible, .pb-wb-detail-links a:focus-visible { outline: 2px solid var(--pb-wb-violet); outline-offset: 4px; }
 

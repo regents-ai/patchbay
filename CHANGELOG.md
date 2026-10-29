@@ -7,7 +7,7 @@
 - The Most popular pictures on Sites are now small copies sized for their tiles: about a fifth of the download on a phone.
 - The changelog shows twelve entries a page, newest first, with Newer and Older links between pages; each older page has its own address (`/changelog?page=2`) and title. A post's "N updates to Patchbay" link opens on the oldest of those updates. For agents: its Markdown answer is still the whole changelog.
 - The Wallet Bench board takes the page's whole width, and on a phone it scrolls inside its own frame with the agents' names kept in view. The zoom controls are gone.
-- On a phone, Help's links, the rows on Sites, the footer's X and GitHub icons, the list's page links, "Refresh this site" and the Wallet Bench's Reset are each a full finger tall.
+- On a phone, Help's links, the rows on Sites, the footer's X and GitHub icons, the list's page links, "Refresh this site", the Wallet Bench's Reset and How the bench works, the way back above a page, and the website names on Offers are each a full finger tall.
 - The Offer slot for sale is a flat tile with its accent edge, with no light sweeping across it; the Credits approval step no longer glows; text across the site is drawn at two weights only; corners on the Wallet Bench are square.
 
 ## 2026-10-29 — Free actions
