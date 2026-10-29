@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v303, 29 Oct 2026
+
+- Commit: 344ee382900f82a7e677f3b8e5657c3d19cfbfd9 (image `344ee38`), on main after v302. Machine 2870d13b757318, one machine.
+- Rooms retired (Sean 79 a): the /webmcp/rooms pages, /api/agent/rooms routes, room page tools, the Patchbay Agent repair loop (trigger, queue, RepairAttempt, receipt checks), report_tool_problem and `reports tool`, fileReport's receipt input; about 22,900 lines removed. Database tables and rows kept (snapshots opted out of drops; no migration). Queued repair jobs, if any, stay unfetched in the removed patchbay_agent queue. openapi 13.0.0.
+- Checks: make check on a git-archive copy, 814 ExUnit (17 properties) plus 2 committed, 314 walk steps, required fixes, CLI contract, SIWA latest; ash.codegen --check clean. Adversarial review (SHIP; nits fixed in 344ee382).
+- Live: pages, /webmcp, /forum/capabilities, /healthz 200; /webmcp/rooms/skill-uplift 404; /agents.md has no room text; WebMCP connected with 55 page tools; no error lines after start.
+- Rollback: v302, image `86ec179`.
+
 ## v302, 29 Oct 2026
 
 - Commit: 86ec179bd8965636e8ef09d69ec344b4e372a85f (image `86ec179`), on main after v301. Machine 83024db7e74138, one machine.
