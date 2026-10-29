@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v301, 29 Oct 2026
+
+- Commit: bf694e78dea54a819436f7ec21d409ef3852fce6 (image `bf694e7`), on main after v300. Machine 86d926ceed1e28, one machine. The first deploy attempt stopped before building because its local log file was removed; the retry built and released the same commit.
+- Wallet Bench read once a minute and shared with every visitor (PB-34): ash-template's SharedReading copied as Patchbay.SharedReading with its heal job (Oban cron, new `default: 1` queue); the Patchbay.WalletBench.Board producer reads Techtree's seven views in one transaction under a 5 s Postgres statement_timeout and hibernates after each pass; visits read ETS (no queries); filtered boards build at most four at a time (503 busy beyond, Retry-After 5); a failed cold read answers 503 not_ready; a failed refresh keeps the last board marked stale. openapi 11.1.0.
+- Checks: make check on a git-archive copy, 1029 ExUnit (17 properties) plus 2 committed, 314 walk steps, required fixes, CLI contract, SIWA latest. Adversarial review; fixes fd1a7382, bf694e78.
+- Live: /wallet-bench 32–35 ms after the first load (was 401–440 ms on v297), /wallet-bench/how-it-works 23–31 ms, /api/wallet-bench 22–24 ms; the page says "Results read from Techtree 1 minute ago." One failed health check at 16:13:47Z while the machine started (the boot read), then passing.
+- Rollback: v300, image `a96df20`.
+
 ## v300, 29 Oct 2026
 
 - Commit: a96df20dbb7a6ef66abd820985e357955d5f4e75 (image `a96df20`), on main after v299. Machine 8d5206fe213d08, one machine.
