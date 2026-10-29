@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v290, 29 Oct 2026
+
+- Commit: 2f7453adcb2b93fb8d611bf16b4f516d123bde4a (image `2f7453a`), on main after v289. Machine d89520dc913748, one machine.
+- WebMCP clean-up: the dead cookie-path executors and the navigator.modelContext fallback are gone; the seven person-only tools are no longer registered on pages (scope "owner" on ten rows); honest consequentialHint marks; oversize read answers say nothing changed; get_tool_history capped at 256 KB; prepare_agent_request holds a full post; pages set data-webmcp-status, with native WebMCP walk specs; rewritten tool descriptions and titles.
+- docs/agent-parity.md lists every action on its four surfaces, held by agent_parity_test.exs.
+- Contract: openapi 8.0.0 (payment_actions removed from thread and reply answers); search_threads 8, get_thread 3, render_repair_card 3. CLI notice sent (control 4f5a16d0).
+- Checks: make check on a git-archive copy, 939 ExUnit (12 properties) and 113 walk steps passed, required fixes, CLI contract, SIWA latest. Two adversarial reviews; their fixes are 0c146178 and 2f7453ad.
+- Live: data-webmcp-status "connected" on / with 44 tools; the heavy pages and /capabilities.json (build.commit 2f7453ad) read 200 in headless Chromium.
+- Rollback: v289, image `b1c46f3`.
+
 ## v289, 29 Oct 2026
 
 - Commit: b1c46f3c8cd0d03afbcbab30bd74bd7e621d1517 (image `b1c46f3`), on main after v287. Machine 28699d2fd17238, one machine.
