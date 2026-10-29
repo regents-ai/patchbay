@@ -15,8 +15,19 @@ defmodule PatchbayWeb.WalletBenchController do
   alias Patchbay.WalletBench.PublicRun
   alias Patchbay.WalletBench.Sets
   alias PatchbayWeb.Forum.NotFoundError
+  alias PatchbayWeb.WalletBenchHTML
+  alias PatchbayWeb.WalletBenchJSON
 
   def index(conn, params) do
+    assigns = board(params)
+
+    conn
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
+    |> render(:index, assigns ++ [page_data: [WalletBenchHTML.dataset(assigns[:matrix])]])
+  end
+
+  # One test's board, as the page and `GET /api/wallet-bench` show it.
+  defp board(params) do
     context = bench_context(params)
     test = context["test"]
     filters = Map.take(context, Sets.filters())
@@ -24,13 +35,31 @@ defmodule PatchbayWeb.WalletBenchController do
 
     unless Sets.valid_filters?(filters, matrix.options), do: raise(NotFoundError)
 
-    conn
-    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
-    |> render(:index,
-      matrix: matrix,
-      test: Enum.find(matrix.grids, &(&1.grid == test)),
-      page_data: [PatchbayWeb.WalletBenchHTML.dataset(matrix)]
-    )
+    [matrix: matrix, test: Enum.find(matrix.grids, &(&1.grid == test))]
+  end
+
+  @doc """
+  The board for one test, as a status and the body `GET /api/wallet-bench`
+  answers with for the same query: the `read_wallet_bench` tool.
+  """
+  @spec read_wallet_bench(map()) :: {atom(), map()}
+  def read_wallet_bench(params), do: read(fn -> WalletBenchJSON.index(Map.new(board(params))) end)
+
+  @doc """
+  One pair's runs, as a status and the body
+  `GET /api/wallet-bench/{harness_id}/{wallet_id}` answers with for the same
+  query: the `read_wallet_bench_pair` tool.
+  """
+  @spec read_wallet_bench_pair(map()) :: {atom(), map()}
+  def read_wallet_bench_pair(params),
+    do: read(fn -> WalletBenchJSON.show(Map.new(pair(params))) end)
+
+  # A bench address that names nothing raises NotFoundError, which the HTTP
+  # door answers with the site's 404 body; a tool answers with the same.
+  defp read(answer) do
+    {:ok, answer.()}
+  rescue
+    NotFoundError -> {:not_found, PatchbayWeb.ErrorJSON.render("404.json", %{})}
   end
 
   def method(conn, _params) do
@@ -43,7 +72,10 @@ defmodule PatchbayWeb.WalletBenchController do
     )
   end
 
-  def show(conn, %{"harness_id" => harness_id, "wallet_id" => wallet_id} = params) do
+  def show(conn, params), do: render(conn, :show, pair(params))
+
+  # One pair's runs, as the page and its JSON show them.
+  defp pair(%{"harness_id" => harness_id, "wallet_id" => wallet_id} = params) do
     context = bench_context(params)
     test = context["test"]
     {harness, wallet} = pair!(harness_id, wallet_id)
@@ -77,7 +109,7 @@ defmodule PatchbayWeb.WalletBenchController do
     validate_check!(check, test)
     {report, report_error} = report(selected_run)
 
-    render(conn, :show,
+    [
       page_title: "Can #{harness.name} use a #{wallet.name} wallet?",
       page_description:
         "How #{harness.name} did with #{wallet.name} on the Agent Wallet Bench: test by test, each run on a fresh machine.",
@@ -99,7 +131,7 @@ defmodule PatchbayWeb.WalletBenchController do
       report_error: report_error,
       selected_check: check,
       focus: focus(check, selected_run)
-    )
+    ]
   end
 
   defp validate_selection!(selection, sets) do

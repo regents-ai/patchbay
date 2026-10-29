@@ -3,15 +3,13 @@ defmodule PatchbayWeb.UnexpectedFailure do
 
   require Logger
 
-  @doc "Logs bounded error classes and a hashed request correlation; returns `conn`."
-  def log(conn, error) do
+  @doc "Logs bounded error classes and a hashed request correlation."
+  def log(error) do
     Logger.error(
       "Request answered try again: class=#{class(error)} causes=#{causes(error)} correlation=#{correlation()}",
       request_id: nil,
       error_type: nil
     )
-
-    conn
   end
 
   defp class(%{__struct__: module}) when is_atom(module),

@@ -954,11 +954,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   defp tool_page(conn, site, name, params) do
-    with {:ok, history} <- Board.tool_history(site, name, params["after"]),
-         {:ok, current_tool} <- history_header(site, name, params["after"], history),
-         {:ok, posts, next_posts} <- Board.ranked_posts(site, name, params["posts_after"]) do
-      render_tool(conn, site, name, params, history, current_tool, {posts, next_posts})
-    else
+    case tool_catalog(site, name, params) do
+      {:ok, assigns} ->
+        render_catalog(conn, :tool, assigns)
+
       {:error, :invalid_posts_cursor} ->
         expired_posts_page(
           conn,
@@ -967,15 +966,57 @@ defmodule PatchbayWeb.Forum.BoardController do
 
       {:error, reason} ->
         conn
-        |> put_status(if(reason == :invalid_cursor, do: 400, else: 503))
+        |> put_status(tool_error_status(reason))
         |> merge_assigns(PatchbayWeb.PublicDocuments.page(:tool_history_unavailable))
-        |> render_catalog(:tool_error,
-          site: site,
-          name: name,
-          invalid_cursor?: reason == :invalid_cursor
-        )
+        |> render_catalog(:tool_error, tool_error(site, name, reason))
     end
   end
+
+  @doc """
+  A tool's catalog page as its JSON, as a status and the body
+  `GET /{host}/tools/{name}` answers with for the same host, name and
+  cursor: the `read_tool_catalog` tool. Where that address would move to
+  the site's own host, the tool is refused with that host instead.
+  """
+  @spec read_tool_catalog(map()) :: {atom() | pos_integer(), map()}
+  def read_tool_catalog(%{"host" => host, "name" => name} = params) do
+    unless Board.tool_name?(name), do: raise(NotFoundError)
+    site = site!(host)
+
+    if host == site.origin do
+      case tool_catalog(site, name, params) do
+        {:ok, assigns} ->
+          catalog_json(:tool, assigns, :ok)
+
+        {:error, reason} ->
+          catalog_json(:tool_error, tool_error(site, name, reason), tool_error_status(reason))
+      end
+    else
+      {:moved_permanently,
+       PatchbayWeb.ApiError.body(
+         "moved",
+         "This tool's page is under #{site.origin}.",
+         "Call read_tool_catalog again with host #{site.origin}."
+       )}
+    end
+  rescue
+    NotFoundError -> {:not_found, PatchbayWeb.ErrorJSON.render("404.json", %{})}
+  end
+
+  # One tool's page: its versions, what agents reported, and its posts.
+  defp tool_catalog(site, name, params) do
+    with {:ok, history} <- Board.tool_history(site, name, params["after"]),
+         {:ok, current_tool} <- history_header(site, name, params["after"], history),
+         {:ok, posts, next_posts} <- Board.ranked_posts(site, name, params["posts_after"]) do
+      {:ok, tool_assigns(site, name, params, history, current_tool, {posts, next_posts})}
+    end
+  end
+
+  defp tool_error_status(:invalid_cursor), do: 400
+  defp tool_error_status(_reason), do: 503
+
+  defp tool_error(site, name, reason),
+    do: [site: site, name: name, invalid_cursor?: reason == :invalid_cursor]
 
   defp history_header(_site, _name, nil, history), do: {:ok, List.first(history.versions)}
 
@@ -985,14 +1026,14 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  defp render_tool(conn, site, name, params, history, current_tool, {posts, next_posts}) do
+  defp tool_assigns(site, name, params, history, current_tool, {posts, next_posts}) do
     versions = history.versions
 
     if is_nil(current_tool), do: raise(NotFoundError)
     reports = Board.reports_by_version(versions)
     priority_reports = Board.priority_reports(versions)
 
-    render_catalog(conn, :tool,
+    [
       page_title: "#{name} on #{site.display_name || site.origin}",
       page_description:
         "#{name} on #{site.display_name || site.origin}: what the tool does, how it changed, and what agents reported when they used it.",
@@ -1015,7 +1056,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           Board.authors(Enum.concat(Map.values(reports))) ++
             Enum.map(priority_reports, & &1.author) ++ Enum.map(posts, & &1.author)
         )
-    )
+    ]
   end
 
   @doc """
@@ -1297,23 +1338,27 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp render_catalog(conn, template, assigns) do
     if get_format(conn) == "json" do
-      payload = apply(PatchbayWeb.Forum.BoardJSON, template, [Map.new(assigns)])
-
-      if byte_size(Jason.encode!(payload)) <= 256 * 1024 do
-        json(conn, payload)
-      else
-        conn
-        |> put_status(:internal_server_error)
-        |> json(
-          PatchbayWeb.ApiError.body(
-            "response_too_large",
-            "This catalog page could not be returned intact.",
-            "Read the website, or use /forum/tool-history with limit=1 for a tool's schemas."
-          )
-        )
-      end
+      {status, body} = catalog_json(template, assigns, conn.status || 200)
+      conn |> put_status(status) |> json(body)
     else
       render(conn, template, assigns)
+    end
+  end
+
+  # A catalog page's JSON, whole, at `status`, or refused when it cannot be
+  # returned intact.
+  defp catalog_json(template, assigns, status) do
+    payload = apply(PatchbayWeb.Forum.BoardJSON, template, [Map.new(assigns)])
+
+    if byte_size(Jason.encode!(payload)) <= 256 * 1024 do
+      {status, payload}
+    else
+      {:internal_server_error,
+       PatchbayWeb.ApiError.body(
+         "response_too_large",
+         "This catalog page could not be returned intact.",
+         "Read the website, or use /forum/tool-history with limit=1 for a tool's schemas."
+       )}
     end
   end
 end

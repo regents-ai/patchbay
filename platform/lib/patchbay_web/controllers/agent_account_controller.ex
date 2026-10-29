@@ -7,55 +7,78 @@ defmodule PatchbayWeb.AgentAccountController do
 
   @points_off "Earning Points is off on this site."
 
-  def balances(conn, _params) do
-    actor = credit_actor(conn)
+  def balances(conn, _params), do: send_answer(conn, account_balances(conn.assigns.agent_actor))
+
+  def credits_history(conn, _params),
+    do: send_answer(conn, account_credits_history(conn.assigns.agent_actor, conn.body_params))
+
+  def points(conn, _params), do: send_answer(conn, account_points(conn.assigns.agent_actor))
+
+  defp send_answer(conn, {status, body}), do: conn |> put_status(status) |> json(body)
+
+  @doc """
+  `actor`'s person's Credits and its own spending grant, as a status and a
+  body: `GET /tools/account/balances` and the `account_balances` tool.
+  """
+  @spec account_balances(Patchbay.Agents.Actor.t()) :: {atom(), map()}
+  def account_balances(actor) do
+    credit_actor = credit_actor(actor)
 
     permission =
-      RegentCredits.agent_permissions!(actor: actor)
+      RegentCredits.agent_permissions!(actor: credit_actor)
       |> Enum.find(
-        &(&1.agent_address == actor.agent_address and &1.pairing_id == actor.pairing_id)
+        &(&1.agent_address == credit_actor.agent_address and
+            &1.pairing_id == credit_actor.pairing_id)
       )
 
     budget =
       if permission do
         Map.take(permission, [:enabled, :max_per_spend, :daily_limit, :sites])
         |> Map.put(:enabled, permission.enabled and RegentCredits.agent_grants_enabled?())
-        |> Map.put(:used_24h, RegentCredits.AgentSpending.spent_today(actor))
+        |> Map.put(:used_24h, RegentCredits.AgentSpending.spent_today(credit_actor))
       else
         %{enabled: false}
       end
 
-    json(conn, %{
-      account_id: conn.assigns.agent_actor.human_account_id,
-      pairing_id: actor.pairing_id,
-      credits: RegentCredits.balance(actor.privy_user_id),
-      spending_grant: budget
-    })
+    {:ok,
+     %{
+       account_id: actor.human_account_id,
+       pairing_id: credit_actor.pairing_id,
+       credits: RegentCredits.balance(credit_actor.privy_user_id),
+       spending_grant: budget
+     }}
   end
 
-  def credits_history(%{body_params: %{"after" => cursor}} = conn, _params)
-      when not is_binary(cursor),
-      do: invalid_cursor(conn)
+  @doc """
+  One page of `actor`'s person's Credits history after the cursor `params`
+  may carry, as a status and a body: `POST /tools/account/credits/history`
+  and the `account_credits_history` tool.
+  """
+  @spec account_credits_history(Patchbay.Agents.Actor.t(), map()) :: {atom(), map()}
+  def account_credits_history(_actor, %{"after" => cursor}) when not is_binary(cursor),
+    do: invalid_cursor()
 
-  def credits_history(conn, _params) do
+  def account_credits_history(actor, params) do
     args =
-      case conn.body_params do
-        %{"after" => cursor} when is_binary(cursor) -> %{after: cursor}
+      case params do
+        %{"after" => cursor} -> %{after: cursor}
         _ -> %{}
       end
 
-    case RegentCredits.history(args, actor: credit_actor(conn)) do
+    case RegentCredits.history(args, actor: credit_actor(actor)) do
       {:ok, history} ->
-        json(conn, %{
-          entries: history.entries,
-          pagination: %{has_more: history.more?, next_cursor: history.next}
-        })
+        {:ok,
+         %{
+           entries: history.entries,
+           pagination: %{has_more: history.more?, next_cursor: history.next}
+         }}
 
       {:error, error} ->
         if cursor_error?(error) do
-          invalid_cursor(conn)
+          invalid_cursor()
         else
-          conn |> UnexpectedFailure.log(error) |> unavailable()
+          UnexpectedFailure.log(error)
+          unavailable()
         end
     end
   end
@@ -68,22 +91,24 @@ defmodule PatchbayWeb.AgentAccountController do
 
   defp cursor_error?(_error), do: false
 
-  defp invalid_cursor(conn) do
-    conn
-    |> put_status(422)
-    |> json(
-      PatchbayWeb.ApiError.body(
-        "invalid_cursor",
-        "That history cursor is invalid.",
-        "Send after as the previous page's pagination.next_cursor, unchanged, or omit it for the newest entries."
-      )
-    )
+  defp invalid_cursor do
+    {:unprocessable_entity,
+     PatchbayWeb.ApiError.body(
+       "invalid_cursor",
+       "That history cursor is invalid.",
+       "Send after as the previous page's pagination.next_cursor, unchanged, or omit it for the newest entries."
+     )}
   end
 
-  # Points as decimal text, as the Points page shows them. While earning is
-  # off, the daily limits are left empty, as on the Points page.
-  def points(conn, _params) do
-    case RegentPoints.summary(actor: conn.assigns.agent_actor) do
+  @doc """
+  `actor`'s person's Points as decimal text, as the Points page shows them,
+  as a status and a body: `GET /tools/account/points` and the
+  `account_points` tool. While earning is off, the daily limits are left
+  empty, as on the Points page.
+  """
+  @spec account_points(Patchbay.Agents.Actor.t()) :: {atom(), map()}
+  def account_points(actor) do
+    case RegentPoints.summary(actor: actor) do
       {:ok, summary} ->
         earning_off? = Rules.active() == []
 
@@ -105,10 +130,11 @@ defmodule PatchbayWeb.AgentAccountController do
           more: summary.more?
         }
 
-        json(conn, with_points_note(answer, earning_off?))
+        {:ok, with_points_note(answer, earning_off?)}
 
       {:error, error} ->
-        conn |> UnexpectedFailure.log(error) |> unavailable()
+        UnexpectedFailure.log(error)
+        unavailable()
     end
   end
 
@@ -120,9 +146,7 @@ defmodule PatchbayWeb.AgentAccountController do
   defp with_points_note(answer, true), do: Map.put(answer, :note, @points_off)
   defp with_points_note(answer, false), do: answer
 
-  defp credit_actor(conn) do
-    actor = conn.assigns.agent_actor
-
+  defp credit_actor(actor) do
     RegentCredits.Actor.agent(
       actor.privy_user_id,
       actor.wallet_address,
@@ -131,15 +155,12 @@ defmodule PatchbayWeb.AgentAccountController do
     )
   end
 
-  defp unavailable(conn),
+  defp unavailable,
     do:
-      conn
-      |> put_status(503)
-      |> json(
-        PatchbayWeb.ApiError.body(
-          "unavailable",
-          "This account read is unavailable.",
-          "Try again with fresh proof."
-        )
-      )
+      {:service_unavailable,
+       PatchbayWeb.ApiError.body(
+         "unavailable",
+         "This account read is unavailable.",
+         "Try again with fresh proof."
+       )}
 end

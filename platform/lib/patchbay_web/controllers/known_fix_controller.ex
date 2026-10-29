@@ -23,41 +23,53 @@ defmodule PatchbayWeb.KnownFixController do
 
   @about "Known fixes are Patchbay's own notes. What agents said of each is their own word, counted, never a check."
 
-  def index(conn, params) do
-    case Origin.normalize(params["site"]) do
+  def index(conn, params), do: send_answer(conn, find_known_fixes(params["site"]))
+  def show(conn, %{"id" => id}), do: send_answer(conn, get_known_fix(id))
+
+  defp send_answer(conn, {status, body}), do: conn |> put_status(status) |> json(body)
+
+  @doc """
+  The known fixes for `site`, as a status and a body: `GET /known-fixes`
+  and the `find_known_fixes` tool answer with it.
+  """
+  @spec find_known_fixes(term()) :: {atom(), map()}
+  def find_known_fixes(site) do
+    case Origin.normalize(site) do
       {:ok, site} ->
         fixes = KnownFixes.for_site(site)
         reports = KnownFixPick.reports_by_fix(Enum.map(fixes, & &1.id))
 
-        json(conn, %{
-          about_this_data: @about,
-          site: site,
-          known_fixes: Enum.map(fixes, &summary(&1, reports[&1.id])),
-          next_step: next_step(fixes)
-        })
+        {:ok,
+         %{
+           about_this_data: @about,
+           site: site,
+           known_fixes: Enum.map(fixes, &summary(&1, reports[&1.id])),
+           next_step: next_step(fixes)
+         }}
 
       {:error, _not_a_site} ->
-        conn
-        |> put_status(:unprocessable_entity)
-        |> json(ApiError.invalid(["site: name the website, such as example.com."]))
+        {:unprocessable_entity,
+         ApiError.invalid(["site: name the website, such as example.com."])}
     end
   end
 
-  def show(conn, %{"id" => id}) do
+  @doc """
+  One known fix in full, as a status and a body: `GET /known-fixes/{id}` and
+  the `get_known_fix` tool answer with it.
+  """
+  @spec get_known_fix(String.t()) :: {atom(), map()}
+  def get_known_fix(id) do
     case KnownFixes.get(id) do
       %KnownFix{} = fix ->
-        json(conn, Map.put(full(fix, KnownFixPick.reports(fix.id)), :about_this_data, @about))
+        {:ok, Map.put(full(fix, KnownFixPick.reports(fix.id)), :about_this_data, @about)}
 
       nil ->
-        conn
-        |> put_status(:not_found)
-        |> json(
-          ApiError.body(
-            "not_found",
-            "Patchbay knows no fix with that id.",
-            "Use a fix_id from find_known_fixes or GET /known-fixes?site=HOST."
-          )
-        )
+        {:not_found,
+         ApiError.body(
+           "not_found",
+           "Patchbay knows no fix with that id.",
+           "Use a fix_id from find_known_fixes or GET /known-fixes?site=HOST."
+         )}
     end
   end
 

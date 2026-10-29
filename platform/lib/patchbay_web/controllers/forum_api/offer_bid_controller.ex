@@ -19,25 +19,54 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   alias PatchbayWeb.ForumAPI.OfferBidding
   alias PatchbayWeb.Plugs.PairedAgent
 
-  def options(conn, params), do: answer(conn, :ok, OfferBidding.options(person(conn), params))
+  def options(conn, params), do: send_answer(conn, get_offer_bid_options(agent(conn), params))
 
   def create(conn, params),
-    do: answer(conn, :created, OfferBidding.bid(person(conn), spender(conn), params))
+    do: send_answer(conn, answer(:created, OfferBidding.bid(person(conn), spender(conn), params)))
 
-  def fit(conn, params), do: answer(conn, :created, OfferBidding.ask_fit(person(conn), params))
-  def save(conn, params), do: answer(conn, :created, OfferBidding.save(person(conn), params))
-
-  def reword(conn, params),
-    do: answer(conn, :created, OfferBidding.reword(person(conn), params))
+  def fit(conn, params), do: send_answer(conn, ask_offer_fit(agent(conn), params))
+  def save(conn, params), do: send_answer(conn, save_agent_offer(agent(conn), params))
+  def reword(conn, params), do: send_answer(conn, reword_agent_offer(agent(conn), params))
 
   def active(conn, params),
-    do: answer(conn, :ok, MyOffers.active(conn.assigns.agent_actor, params))
+    do: send_answer(conn, answer(:ok, MyOffers.active(agent(conn), params)))
 
   def history(conn, params),
-    do: answer(conn, :ok, MyOffers.history(conn.assigns.agent_actor, params))
+    do: send_answer(conn, answer(:ok, MyOffers.history(agent(conn), params)))
+
+  @doc """
+  One slot as `actor`'s person would bid on it, as a status and a body:
+  `POST /forum/offer-bid-options` and the `get_offer_bid_options` tool.
+  Holds and changes nothing.
+  """
+  @spec get_offer_bid_options(Patchbay.Agents.Actor.t(), map()) :: {atom(), map()}
+  def get_offer_bid_options(actor, params),
+    do: answer(:ok, OfferBidding.options(person(actor), params))
+
+  @doc "Asks whether a wording fits a site, as `POST /forum/offer-fit-checks` does. Free."
+  @spec ask_offer_fit(Patchbay.Agents.Actor.t(), map()) :: {atom(), map()}
+  def ask_offer_fit(actor, params),
+    do: answer(:created, OfferBidding.ask_fit(person(actor), params))
+
+  @doc "Saves a new Offer for screening, as `POST /forum/my-offers` does. Free."
+  @spec save_agent_offer(Patchbay.Agents.Actor.t(), map()) :: {atom(), map()}
+  def save_agent_offer(actor, params),
+    do: answer(:created, OfferBidding.save(person(actor), params))
+
+  @doc "Saves new wording for an Offer, as `POST /forum/my-offers/{creative_id}/versions` does. Free."
+  @spec reword_agent_offer(Patchbay.Agents.Actor.t(), map()) :: {atom(), map()}
+  def reword_agent_offer(actor, params),
+    do: answer(:created, OfferBidding.reword(person(actor), params))
+
+  defp agent(conn), do: conn.assigns.agent_actor
+
+  defp send_answer(conn, {status, body}), do: conn |> put_status(status) |> json(body)
 
   # The paired person, whom the pairing check already found active here.
-  defp person(conn), do: Identity.get_profile!(conn.assigns.agent_actor.beneficiary_profile_id)
+  defp person(%Patchbay.Agents.Actor{} = actor),
+    do: Identity.get_profile!(actor.beneficiary_profile_id)
+
+  defp person(conn), do: person(agent(conn))
 
   defp spender(conn) do
     actor = conn.assigns.agent_actor
@@ -50,17 +79,16 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
     )
   end
 
-  defp answer(conn, status, {:ok, payload}), do: conn |> put_status(status) |> json(payload)
+  defp answer(status, {:ok, payload}), do: {status, payload}
 
-  defp answer(conn, _status, {:error, :invalid_cursor}),
-    do: conn |> put_status(:unprocessable_entity) |> json(MyOffers.invalid_cursor())
+  defp answer(_status, {:error, :invalid_cursor}),
+    do: {:unprocessable_entity, MyOffers.invalid_cursor()}
 
-  defp answer(conn, _status, {:error, {:invalid, messages}}),
-    do: conn |> put_status(:unprocessable_entity) |> json(ApiError.invalid(messages))
+  defp answer(_status, {:error, {:invalid, messages}}),
+    do: {:unprocessable_entity, ApiError.invalid(messages)}
 
-  defp answer(conn, _status, {:error, {:not_enough_credits, words}}) do
+  defp answer(_status, {:error, {:not_enough_credits, words}}) do
     refuse(
-      conn,
       :unprocessable_entity,
       "not_enough_credits",
       words,
@@ -68,9 +96,8 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
     )
   end
 
-  defp answer(conn, _status, {:error, {:agent_spending, words}}) do
+  defp answer(_status, {:error, {:agent_spending, words}}) do
     refuse(
-      conn,
       :forbidden,
       "agent_spending_refused",
       words,
@@ -78,14 +105,13 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
     )
   end
 
-  defp answer(conn, _status, {:error, {:agent_not_paired, words}}) do
+  defp answer(_status, {:error, {:agent_not_paired, words}}) do
     {_words, hint} = PairedAgent.words(:agent_not_paired)
-    refuse(conn, :forbidden, "agent_not_paired", words, hint)
+    refuse(:forbidden, "agent_not_paired", words, hint)
   end
 
-  defp answer(conn, _status, {:error, {:refused, words}}) do
+  defp answer(_status, {:error, {:refused, words}}) do
     refuse(
-      conn,
       :unprocessable_entity,
       "bid_refused",
       words,
@@ -93,9 +119,8 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
     )
   end
 
-  defp answer(conn, _status, {:error, {:not_saved, words}}) do
+  defp answer(_status, {:error, {:not_saved, words}}) do
     refuse(
-      conn,
       :unprocessable_entity,
       "not_saved",
       words,
@@ -103,9 +128,8 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
     )
   end
 
-  defp answer(conn, _status, {:error, {:unavailable, words}}),
-    do: refuse(conn, :service_unavailable, "unavailable", words, "Try again in a moment.")
+  defp answer(_status, {:error, {:unavailable, words}}),
+    do: refuse(:service_unavailable, "unavailable", words, "Try again in a moment.")
 
-  defp refuse(conn, status, code, words, hint),
-    do: conn |> put_status(status) |> json(ApiError.body(code, words, hint))
+  defp refuse(status, code, words, hint), do: {status, ApiError.body(code, words, hint)}
 end

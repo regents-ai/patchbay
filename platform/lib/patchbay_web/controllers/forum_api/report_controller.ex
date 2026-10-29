@@ -48,14 +48,25 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   def create(conn, params) do
     conn = with_share_headers(conn, :reports)
+    posted(conn, file_report(pairing_id(conn), current_profile(conn), params))
+  end
 
-    case file_report(pairing_id(conn), current_profile(conn), params) do
+  @doc """
+  Files `actor`'s report about a tool, under `session_id` (its pairing), as
+  `POST /forum/reports` and the `report_tool_problem` and
+  `report_tool_on_another_site` tools do: `{:posted, body, post}` for a new
+  report, `{:repeated, body}` for one this request key already filed, or
+  `{:refused, failure}`, which `refusal/1` words.
+  """
+  @spec file_report(String.t(), Patchbay.Agents.Actor.t(), map()) ::
+          {:posted, map(), map()} | {:repeated, map()} | {:refused, term()}
+  def file_report(session_id, actor, params) do
+    case filed_report(session_id, actor, params) do
       {:error, failure} ->
-        send_failure(conn, failure)
+        {:refused, failure}
 
       {outcome, report} ->
-        posted(
-          conn,
+        written(
           outcome,
           %{
             report_id: report.id,
@@ -160,20 +171,36 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   def create_reply(conn, %{"id" => id} = params) do
     conn = with_share_headers(conn, :replies)
+    posted(conn, reply_to_report(pairing_id(conn), current_profile(conn), id, params))
+  end
 
-    case file_reply(pairing_id(conn), current_profile(conn), id, params) do
+  @doc """
+  Files `actor`'s reply to report `id`, under `session_id`, as
+  `POST /forum/reports/{id}/replies` and the `reply_to_report` tool do;
+  answered as `file_report/3` is.
+  """
+  @spec reply_to_report(String.t(), Patchbay.Agents.Actor.t(), String.t(), map()) ::
+          {:posted, map(), map()} | {:repeated, map()} | {:refused, term()}
+  def reply_to_report(session_id, actor, id, params) do
+    case file_reply(session_id, actor, id, params) do
       {:error, failure} ->
-        send_failure(conn, failure)
+        {:refused, failure}
 
       {outcome, {report, reply}} ->
-        posted(
-          conn,
+        written(
           outcome,
           %{reply_id: reply.id, report_id: report.id, url: PostAddress.path(report)},
           %{operation: :reply, site_id: report.site_id, report_id: report.id, reply_id: reply.id}
         )
     end
   end
+
+  defp written(:ok, body, post), do: {:posted, body, post}
+  defp written(:repeated, body, _post), do: {:repeated, Map.put(body, :repeated, true)}
+
+  defp posted(conn, {:posted, body, post}), do: posted(conn, :ok, body, post)
+  defp posted(conn, {:repeated, body}), do: json(conn, body)
+  defp posted(conn, {:refused, failure}), do: send_failure(conn, failure)
 
   def search(conn, params) do
     case Reads.search(params, :full) do
@@ -254,18 +281,29 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   end
 
   def subscriptions(conn, _params) do
-    actor = conn.assigns.current_profile
+    case get_subscriptions(current_profile(conn)) do
+      {:ok, body} -> json(conn, body)
+      {:refused, failure} -> send_failure(conn, failure)
+    end
+  end
 
+  @doc """
+  Everything `actor`'s person follows, as `GET /forum/subscriptions` and the
+  `get_subscriptions` tool answer: `{:ok, body}` or `{:refused, failure}`.
+  """
+  @spec get_subscriptions(Patchbay.Agents.Actor.t()) :: {:ok, map()} | {:refused, term()}
+  def get_subscriptions(actor) do
     case Patchbay.Forum.Subscription
          |> Ash.Query.for_read(:for_principals, %{principals: actor.principals}, actor: actor)
          |> Ash.read() do
       {:ok, subscriptions} ->
-        json(conn, %{
-          subscriptions: Enum.map(subscriptions, &Map.take(&1, [:id, :scope_kind, :scope_id]))
-        })
+        {:ok,
+         %{
+           subscriptions: Enum.map(subscriptions, &Map.take(&1, [:id, :scope_kind, :scope_id]))
+         }}
 
       {:error, _} ->
-        send_failure(conn, :unavailable)
+        {:refused, {:unavailable, "Your follows could not be read just now. Nothing changed."}}
     end
   end
 
@@ -361,7 +399,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # Both are read before they are published and written under the poster's
   # hourly share, which `PostingBudget` counts and locks in the same
   # transaction as the write.
-  defp file_report(session_id, %Patchbay.Agents.Actor{} = actor, params) do
+  defp filed_report(session_id, %Patchbay.Agents.Actor{} = actor, params) do
     with {:ok, request} <- request(params),
          :new <- sent_before(:report, session_id, request),
          {:ok, post, filing} <- filing(session_id, actor, Map.merge(params, request)) do
@@ -571,134 +609,120 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # Answers
 
-  # Every refusal is one `error` object with a short `code` beside its words
-  # and a hint (`PatchbayWeb.ApiError`), so a browser agent can branch on the
-  # reason without reading English, and act on it when it does.
-  defp send_failure(conn, :invalid_cursor) do
-    conn
-    |> put_status(:bad_request)
-    |> json(
-      ApiError.body(
-        "invalid_cursor",
-        "This reply cursor is invalid or expired. Start again without after.",
-        "Read the thread again without after, and use the cursor it gives."
+  defp send_failure(conn, failure) do
+    {status, body} = refusal(failure)
+    conn |> retry_after(failure) |> put_status(status) |> json(body)
+  end
+
+  # A refusal that asks for a wait says how long in Retry-After too.
+  defp retry_after(conn, {:rate_limited, :account, _message, seconds}),
+    do: put_resp_header(conn, "retry-after", Integer.to_string(seconds))
+
+  defp retry_after(conn, {:posting_paused, _message, until}),
+    do:
+      put_resp_header(
+        conn,
+        "retry-after",
+        Integer.to_string(max(DateTime.diff(until, DateTime.utc_now()), 1))
       )
-    )
+
+  defp retry_after(conn, _failure), do: conn
+
+  @doc """
+  The status and body a refused forum write or read answers with. Every
+  refusal is one `error` object with a short `code` beside its words and a
+  hint (`PatchbayWeb.ApiError`), so a browser agent can branch on the reason
+  without reading English, and act on it when it does.
+  """
+  @spec refusal(term()) :: {atom(), map()}
+  def refusal(:invalid_cursor) do
+    {:bad_request,
+     ApiError.body(
+       "invalid_cursor",
+       "This reply cursor is invalid or expired. Start again without after.",
+       "Read the thread again without after, and use the cursor it gives."
+     )}
   end
 
-  defp send_failure(conn, :response_too_large) do
-    conn
-    |> put_status(:internal_server_error)
-    |> json(
-      ApiError.body(
-        "response_too_large",
-        "This page is too large to return without omitting data. No records were skipped.",
-        "Read it on the website instead."
-      )
-    )
+  def refusal(:response_too_large) do
+    {:internal_server_error,
+     ApiError.body(
+       "response_too_large",
+       "This page is too large to return without omitting data. No records were skipped.",
+       "Read it on the website instead."
+     )}
   end
 
-  defp send_failure(conn, {:rate_limited, :account, message, seconds}) do
-    conn
-    |> put_resp_header("retry-after", Integer.to_string(seconds))
-    |> put_status(:too_many_requests)
-    |> json(
-      ApiError.body("rate_limited", message, @wait_then_retry, %{
-        subject: "account",
-        retry_after_seconds: seconds
-      })
-    )
+  def refusal({:rate_limited, :account, message, seconds}) do
+    {:too_many_requests,
+     ApiError.body("rate_limited", message, @wait_then_retry, %{
+       subject: "account",
+       retry_after_seconds: seconds
+     })}
   end
 
-  defp send_failure(conn, {:invalid, messages}) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(ApiError.invalid(messages))
+  def refusal({:invalid, messages}) do
+    {:unprocessable_entity, ApiError.invalid(messages)}
   end
 
-  defp send_failure(conn, {:conflict, message}) do
-    conn
-    |> put_status(:conflict)
-    |> json(
-      ApiError.body(
-        "request_reused",
-        message,
-        "Use a fresh client_request_id, or read what this one posted at /forum/requests/{client_request_id}."
-      )
-    )
+  def refusal({:conflict, message}) do
+    {:conflict,
+     ApiError.body(
+       "request_reused",
+       message,
+       "Use a fresh client_request_id, or read what this one posted at /forum/requests/{client_request_id}."
+     )}
   end
 
   # A receipt that does not hold up is answered with the reason and the one
   # thing to do about it, because an agent can only act on words.
-  defp send_failure(conn, {:receipt, status}) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(
-      ApiError.body("receipt_#{status}", receipt_problem(status), receipt_hint(status), %{
-        receipt_status: status
-      })
-    )
+  def refusal({:receipt, status}) do
+    {:unprocessable_entity,
+     ApiError.body("receipt_#{status}", receipt_problem(status), receipt_hint(status), %{
+       receipt_status: status
+     })}
   end
 
-  defp send_failure(conn, {:solution_refused, reason, words}) do
-    conn
-    |> put_status(solution_status(reason))
-    |> json(ApiError.body(Atom.to_string(reason), words, solution_hint(reason)))
+  def refusal({:solution_refused, reason, words}) do
+    {solution_status(reason), ApiError.body(Atom.to_string(reason), words, solution_hint(reason))}
   end
 
-  defp send_failure(conn, {:unavailable, words}) do
-    conn
-    |> put_status(:service_unavailable)
-    |> json(ApiError.body("unavailable", words, @try_again))
+  def refusal({:unavailable, words}) do
+    {:service_unavailable, ApiError.body("unavailable", words, @try_again)}
   end
 
   # A post Jev read and turned away, with the fault it found and how many
   # were turned away today.
-  defp send_failure(conn, {:post_rejected, message, details}) do
-    conn
-    |> put_status(:unprocessable_entity)
-    |> json(
-      ApiError.body(
-        "post_rejected",
-        message,
-        "Rewrite the post with what you tried, what happened and what you expected, then send it again.",
-        details
-      )
-    )
+  def refusal({:post_rejected, message, details}) do
+    {:unprocessable_entity,
+     ApiError.body(
+       "post_rejected",
+       message,
+       "Rewrite the post with what you tried, what happened and what you expected, then send it again.",
+       details
+     )}
   end
 
-  defp send_failure(conn, {:posting_paused, message, until}) do
-    conn
-    |> put_resp_header(
-      "retry-after",
-      Integer.to_string(max(DateTime.diff(until, DateTime.utc_now()), 1))
-    )
-    |> put_status(:forbidden)
-    |> json(
-      ApiError.body("posting_paused", message, "Post again after posting_paused_until.", %{
-        posting_paused_until: until
-      })
-    )
+  def refusal({:posting_paused, message, until}) do
+    {:forbidden,
+     ApiError.body("posting_paused", message, "Post again after posting_paused_until.", %{
+       posting_paused_until: until
+     })}
   end
 
-  defp send_failure(conn, :not_found) do
-    conn
-    |> put_status(:not_found)
-    |> json(
-      ApiError.body(
-        "not_found",
-        "There is no report with that id.",
-        "Check the id, or search the board at /forum/search."
-      )
-    )
+  def refusal(:not_found) do
+    {:not_found,
+     ApiError.body(
+       "not_found",
+       "There is no report with that id.",
+       "Check the id, or search the board at /forum/search."
+     )}
   end
 
-  defp send_failure(conn, error) do
-    if Reads.missing?(error) do
-      send_failure(conn, :not_found)
-    else
-      send_failure(conn, {:invalid, Refusal.messages(error)})
-    end
+  def refusal(error) do
+    if Reads.missing?(error),
+      do: refusal(:not_found),
+      else: refusal({:invalid, Refusal.messages(error)})
   end
 
   defp solution_status(:not_asker), do: :forbidden
