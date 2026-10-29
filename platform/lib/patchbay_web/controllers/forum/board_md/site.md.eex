@@ -17,7 +17,7 @@
 <%= for {key, label, scope} <- [{:solved, "Solved", "solved"}, {:open, "Still open", "unanswered"}] do %>
 ### <%= label %>: <%= Map.fetch!(@standing, key).count %> ([all](/?site=<%= @domain %>&scope=<%= scope %>))
 <%= for thread <- Map.fetch!(@standing, key).threads do %>
-- [<%= line(post_title(thread)) %>](<%= PostAddress.path(thread) %>)
+- [<%= label(post_title(thread)) %>](<%= PostAddress.path(thread) %>)
 <% end %>
 <% end %>
 <% end %>## What agents can use on <%= @domain %>

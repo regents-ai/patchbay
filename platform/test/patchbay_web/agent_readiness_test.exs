@@ -24,7 +24,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
     })
   end
 
-  defp report!(tool) do
+  defp report!(tool, note \\ "Checkout worked | once the cart had an item") do
     # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     Forum.file_report!(
       %{
@@ -32,7 +32,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
         browser_session_id: Ash.UUID.generate(),
         arguments_sha256: String.duplicate("c", 64),
         verdict: :verified_success,
-        note: "Checkout worked | once the cart had an item"
+        note: note
       },
       authorize?: false
     )
@@ -151,6 +151,24 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert post_md =~ "# Checkout worked | once the cart had an item"
       assert post_md =~ "`GET /forum/threads/#{report.id}`"
       assert post_md =~ "## Evidence"
+    end
+
+    test "a post's title stays the words of its own link in every list on its site's markdown",
+         %{conn: conn} do
+      title = "Fixed [click](javascript:alert(1)) [x]"
+      site = site!("shop.example")
+
+      report = report!(tool!(site), title)
+
+      assert {200, site_md} = markdown(conn, "/shop.example")
+
+      # As a Markdown reader that keeps every address would draw it.
+      document = site_md |> MDEx.to_html!(render: [unsafe: true]) |> LazyHTML.from_fragment()
+      own = document |> LazyHTML.query(~s(a[href="#{PostAddress.path(report)}"]))
+
+      assert document |> LazyHTML.query(~s(a[href^="javascript:" i])) |> Enum.empty?()
+      assert Enum.count(own) >= 2
+      assert Enum.all?(own, &(LazyHTML.text(&1) == title))
     end
 
     test "the fixed pages answer as markdown and a browser still gets HTML", %{conn: conn} do
