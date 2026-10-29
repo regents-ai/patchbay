@@ -51,10 +51,7 @@ defmodule Patchbay.Security.OutboundFetchCheckTest do
   @moduledoc """
   Checks that every Patchbay feature that reads an address someone else
   named stays off this machine, private networks and cloud metadata, judged
-  by whether anything actually connects. Kept out of the regular suite. Run
-  from `platform/` with:
-
-      MIX_ENV=test mix test scripts/security/outbound_fetch_check_test.exs
+  by whether anything actually connects.
 
   A plain TCP listener is opened on 127.0.0.1 (and ::1, on the same port)
   and counts every connection it accepts. Every outbound connection Finch

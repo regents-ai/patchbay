@@ -1,10 +1,7 @@
 defmodule Patchbay.Security.AiInputCheckTest do
   @moduledoc """
   Checks how untrusted text reaches Patchbay's model questions, and what a
-  model's answer can make Patchbay do. Kept out of the regular suite. Run
-  from `platform/` with:
-
-      MIX_ENV=test mix test scripts/security/ai_input_check_test.exs
+  model's answer can make Patchbay do.
 
   The features, and the text each one carries in that someone else wrote:
 
@@ -176,6 +173,7 @@ defmodule Patchbay.Security.AiInputCheckTest do
     do: Report |> Ash.Query.filter(title == ^title) |> Ash.read!(authorize?: false)
 
   defp moderator_actions, do: ModerationAction |> Ash.read!(authorize?: false)
+  # Every post check the checker wrote, whoever it was for.
   defp post_checks, do: PostCheck |> Ash.read!(authorize?: false)
 
   # ---------------------------------------------------------------------------

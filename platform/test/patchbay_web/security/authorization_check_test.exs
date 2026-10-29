@@ -1,9 +1,6 @@
 defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   @moduledoc """
-  Access-rule checks for Patchbay, kept out of the regular suite. Run from
-  `platform/` with:
-
-      MIX_ENV=test mix test scripts/security/authorization_check_test.exs
+  Access-rule checks for Patchbay, part of the regular suite.
 
   Three people take part: `a`, who owns the posts, agents and records under
   test; `b`, another signed-in person who tries to reach them; and a moderator
@@ -21,6 +18,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   require Ash.Query
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Reply
   alias Patchbay.Forum.Report
   alias Patchbay.Identity
@@ -229,14 +227,8 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         expect("#{method} #{path} as b", 404, status)
       end
 
-      for {record, action} <- [{thread, :set_visibility}, {reply, :set_visibility}] do
-        result =
-          record
-          |> Ash.Changeset.for_update(action, %{visibility: :redacted}, actor: b)
-          |> Ash.update()
-
-        expect("#{inspect(record.__struct__)}.#{action} as b", :forbidden, refusal_kind(result))
-      end
+      expect("Report.set_visibility as b", :forbidden, redact_as(thread, b))
+      expect("Reply.set_visibility as b", :forbidden, redact_as(reply, b))
 
       expect("thread title after b's attempts", thread.title, Ash.get!(Report, thread.id).title)
       expect("reply visibility", :published, Ash.get!(Reply, reply.id).visibility)
@@ -530,7 +522,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       }
 
       posted = form_post(as(a), Map.merge(typed, extras(b)), extras(b))
-      [_, id] = Regex.run(~r{/posts/(.+)}, redirected_to(posted))
+      [_, id] = Regex.run(~r{^/posts/([^/?]+)}, redirected_to(posted))
       thread = Ash.get!(Report, id)
 
       expect("form thread: what the caller could not set", @clean, untouched(thread, b))
@@ -859,7 +851,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       pages =
         Enum.map(~w(dots claude grokbot hermes muse), &"/#{&1}") ++
           Enum.map(Troubleshooting.harnesses(), &Troubleshooting.path/1) ++
-          ["/" <> @site, "/posts/#{published.id}"]
+          ["/" <> @site, PostAddress.path(published)]
 
       expect("troubleshooting pages", 10, length(Troubleshooting.harnesses()))
 
@@ -879,7 +871,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
       judge("public pages", rows)
 
-      post_page = get(as(nil), "/posts/#{published.id}").resp_body
+      post_page = get(as(nil), PostAddress.path(published)).resp_body
       expect_present("the post page as a visitor", post_page, "authz public answer")
 
       expect_present(
@@ -900,7 +892,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
     boundary = "authzboundary"
 
     body =
-      "--#{boundary}\r\ncontent-disposition: form-data; name=\"ask[pictures][]\"; filename=\"big.png\"\r\n" <>
+      ~s(--#{boundary}\r\ncontent-disposition: form-data; name="ask[pictures][]"; filename="big.png"\r\n) <>
         "content-type: image/png\r\n\r\n" <>
         :binary.copy("x", size) <> "\r\n--#{boundary}--\r\n"
 
@@ -1303,22 +1295,29 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         |> json_response(201)
 
       %{"thread_id" => link_id} = a_agent |> ask(@link_title) |> json_response(201)
+      link_report = Ash.get!(Report, link_id)
+      link_path = PostAddress.path(link_report)
 
       tag = a_agent |> ask("authz tag check", %{"topic_tags" => ["<b>x</b>"]})
       name = as(a) |> post("/api/me/agent_name", %{"agent_name" => "<b>n</b>"})
 
       escaped = "&lt;script&gt;alert(&quot;authz-title&quot;)&lt;/script&gt;"
       site_page = get(as(nil), "/" <> @site).resp_body
-      post_page = get(as(nil), "/posts/#{id}").resp_body
+      post_path = PostAddress.path(Ash.get!(Report, id))
+      post_page = get(as(nil), post_path).resp_body
 
-      {:ok, view, _html} = live_isolated(build_conn(), PatchbayWeb.SearchLive)
+      {:ok, view, _html} =
+        live_isolated(build_conn(), PatchbayWeb.SearchLive,
+          session: %{"visitor" => "authz-visitor-" <> Ash.UUID.generate()}
+        )
+
       render_hook(view, "open", %{"recent" => []})
       render_async(view)
       view |> form("#shell-search-form", %{"q" => "alert"}) |> render_change()
       search = render_async(view)
 
       markdown_conn =
-        build_conn() |> put_req_header("accept", "text/markdown") |> get("/posts/#{id}")
+        build_conn() |> put_req_header("accept", "text/markdown") |> get(post_path)
 
       site_markdown =
         build_conn() |> put_req_header("accept", "text/markdown") |> get("/" <> @site)
@@ -1337,24 +1336,26 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
          markdown_headers(markdown_conn) == {"text/markdown", "nosniff"},
          ~s({"text/markdown", "nosniff"}), markdown_headers(markdown_conn)},
         {"site page as Markdown, rendered: the title stays the words of its own link",
-         markdown_links(site_markdown.resp_body, link_id) == {[], true},
-         "no javascript: link, and one link to the post",
-         markdown_links(site_markdown.resp_body, link_id)}
+         markdown_links(site_markdown.resp_body, link_path) == {[], true},
+         "no javascript: link, and every link to the post is its whole title",
+         markdown_links(site_markdown.resp_body, link_path)}
       ]
 
       judge("escaping", rows)
-      assert Ash.get!(Report, link_id).title == @link_title
+      assert link_report.title == @link_title
     end
   end
 
   # The links a Markdown reader that keeps every address would draw: any
-  # javascript: link, and whether the post's own link carries its whole title.
-  defp markdown_links(markdown, id) do
+  # javascript: link, and whether every link to the post carries its whole title.
+  defp markdown_links(markdown, path) do
     html = MDEx.to_html!(markdown, render: [unsafe: true])
     document = LazyHTML.from_fragment(html)
     scripted = document |> LazyHTML.query(~s(a[href^="javascript:" i])) |> LazyHTML.text()
-    own = document |> LazyHTML.query(~s(a[href="/posts/#{id}"])) |> LazyHTML.text()
-    {List.wrap(if(scripted != "", do: scripted)), own == @link_title}
+    own = document |> LazyHTML.query(~s(a[href="#{path}"])) |> Enum.map(&LazyHTML.text/1)
+
+    {List.wrap(if(scripted != "", do: scripted)),
+     own != [] and Enum.all?(own, &(&1 == @link_title))}
   end
 
   defp markdown_headers(conn) do
@@ -1362,11 +1363,19 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
     {type, conn |> get_resp_header("x-content-type-options") |> List.first()}
   end
 
+  # Reads every follow row, whoever owns it, to see what a request really saved.
   defp site_follows(principal) do
     Forum.Subscription
     |> Ash.Query.filter(principal == ^principal and scope_kind == :site)
     |> Ash.read!(authorize?: false)
     |> Enum.map(& &1.scope_id)
+  end
+
+  defp redact_as(record, actor) do
+    record
+    |> Ash.Changeset.for_update(:set_visibility, %{visibility: :redacted}, actor: actor)
+    |> Ash.update()
+    |> refusal_kind()
   end
 
   defp refusal_kind({:error, %Ash.Error.Forbidden{}}), do: :forbidden

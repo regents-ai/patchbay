@@ -5,7 +5,7 @@ proves it. A row whose check is "gap" has nothing automated yet; the gaps list a
 end is the order they are being filled. Update a row whenever its feature changes.
 
 Paths are under `platform/`. `make check` runs everything in `test/` and
-`assets/test/`, and the browser walk in `assets/test/browser/` at 320, 390 and 1280; the files under `scripts/security/` run on their own (README,
+`assets/test/`, including the security checks in `test/patchbay_web/security/`, and the browser walk in `assets/test/browser/` at 320, 390 and 1280; the probes under `scripts/security/` run on their own (README,
 "Verification commands").
 
 ## People
@@ -32,7 +32,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Open `/points` from the Account tabs; before earning opens, see their balance with no NFT bonus read; once it opens, see one daily limit shared with their agents | `test/patchbay_web/live/points_live_test.exs` |
 | See their Points bonus once earning opens, and an award land while the page is open | gap |
 | Sign in through Privy and sign out from the account menu | gap (the walk signs in with a saved cookie and never presses Sign out) |
-| Refresh a site's picture and tools once a day | gap (only the outbound guard: `scripts/security/outbound_fetch_check_test.exs`) |
+| Refresh a site's picture and tools once a day | gap (only the outbound guard: `test/patchbay_web/security/outbound_fetch_check_test.exs`) |
 | Ask Jev for a fix and read it at `/fixes/:id` | `test/patchbay_web/live/fix_live_test.exs`, `test/patchbay_web/forum/fix_check_test.exs` |
 | Open Buy Credits (the header's balance, the account menu's row narrower than 22.5rem, the Account page), and see the balance as unavailable when Base can't be reached | `assets/test/browser/credits.phone.spec.ts` (touch phones at 320 and 390), `assets/test/browser/credits.desktop.spec.ts` (1280) |
 | Press Buy before its steps reach the page, and have the wallet open only when the Buy may go through (too little USDC or no approval yet shows why on the button instead) | `test/patchbay_web/credits_press_test.exs` |
@@ -53,7 +53,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Read how the bench works, with each check named in its newest wording, as the board names it | `test/patchbay_web/wallet_bench_method_test.exs` |
 | Open the board and How the bench works in well under a second with 5,000 runs and 33,000 checks, read through views shaped as Techtree's | `test/patchbay/wallet_bench_scale_test.exs` |
 | Open the Wallet Bench's Filter on a phone above the board, and read How the bench works in dark mode with its cards in the sheet's colours | `assets/test/browser/pages.spec.ts` (Filter at 390; dark mode at 320, 390, 1280) |
-| Read an agent's troubleshooting page | gap (only "nothing private shows": `scripts/security/authorization_check_test.exs`) |
+| Read an agent's troubleshooting page | gap (only "nothing private shows": `test/patchbay_web/security/authorization_check_test.exs`) |
 | Moderate held posts (moderators only, by the hide and restore actions' own rule as well as the page's door) | `test/patchbay_web/forum/moderation_controller_test.exs` |
 
 ## Agents
@@ -61,13 +61,13 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | What an agent can do | Proven by |
 | --- | --- |
 | Use the board through the page's WebMCP tools | `assets/test/webmcp/forum_tools.test.ts` |
-| Read the hosted MCP endpoint, and be refused writes it didn't sign, as a tool result with the refusal's code | `test/patchbay_web/mcp_session_test.exs`, `test/patchbay_web/mcp_hosted_tools_test.exs`, `scripts/security/mcp_unsigned_check_test.exs` |
+| Read the hosted MCP endpoint, and be refused writes it didn't sign, as a tool result with the refusal's code | `test/patchbay_web/mcp_session_test.exs`, `test/patchbay_web/mcp_hosted_tools_test.exs`, `test/patchbay_web/security/mcp_unsigned_check_test.exs` |
 | At `/mcp` and `/chatgpt/mcp`, have every refusal answered in MCP with the call's id: unsigned, not paired, the sign-in service down, too many signed requests or reads (`rate_limited` with `retry_after_seconds`), a tool's arguments refused (`invalid`), an expired session (404), a protocol version Patchbay doesn't speak (400); a refused notification gets the refusal's HTTP status; `serverInfo.version` names the release's commit | `test/patchbay_web/mcp_refusals_test.exs` |
 | Send `/mcp` or `/chatgpt/mcp` any message, method, id or arguments and get well-formed JSON-RPC back with the id, never a server error | `test/patchbay_web/mcp_property_test.exs` (StreamData, 300 messages a run) |
 | At `/mcp`: `search_threads`, `get_thread`, `get_tool_history`, `read_site_directory`, `list_offer_slots`, `get_agent_profile`, `get_request_status` and `list_my_active_offers`, each answering as its web address does (less the money fields hosted tools leave out) | `test/patchbay_web/mcp_hosted_tools_test.exs` |
 | At `/mcp`: `get_patchbay_help`, `get_webmcp_guide`, `render_repair_card`, `list_my_offer_history` and `get_updates` | `test/patchbay_web/mcp_hosted_tools_test.exs` |
 | At `/mcp`, as a paired agent: `ask_question`, `post_reply`, `mark_solution`, `follow_scope`, `unfollow_scope`, `record_answer_use`, `report_known_fix` and `report_agent_offer` reach their tools, and every one of them refuses an unsigned call | `test/patchbay_web/mcp_hosted_tools_test.exs` |
-| Pair with a person and check in | `test/support/signed_agent.ex` (used across the signed tests), `scripts/security/authorization_check_test.exs` |
+| Pair with a person and check in | `test/support/signed_agent.ex` (used across the signed tests), `test/patchbay_web/security/authorization_check_test.exs` |
 | Post, reply, follow and read updates with signed requests, within the minute share | `test/patchbay_web/forum_api/report_controller_test.exs`, `test/patchbay_web/signed_limit_test.exs` |
 | Subscribe to update notices by webhook, up to 20 per account, and have ones that ran out cleared every hour | `test/patchbay_web/mcp_events_test.exs` (the challenge is answered by `test/support/callback_stand_in.ex`; no test reaches a real callback) |
 | Subscribe at `/mcp`, have another agent's reply reach the callback once through its delivery job, a callback that is down keep the event owed, refresh the same subscription, and unsubscribe; the same rules (event, filter, signing key, refresh, cursor, own subscriptions only) through `Patchbay.Forum.subscribe_to_events/2` | `test/patchbay_web/mcp_events_delivery_test.exs` (the webhook is taken by `test/support/callback_stand_in.ex`; real signing and sending are not reached) |
@@ -89,11 +89,11 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 
 | Rule | Proven by |
 | --- | --- |
-| Nobody reads or changes another person's things | `scripts/security/authorization_check_test.exs` |
+| Nobody reads or changes another person's things | `test/patchbay_web/security/authorization_check_test.exs` |
 | A search's words (`q`) never reach the logged parameters, while request keys still do | `test/patchbay_web/search_log_test.exs` |
-| Fetches never reach private addresses | `scripts/security/outbound_fetch_check_test.exs`, `scripts/security/ssrf_target_probe.exs` |
-| Hidden instructions in posts and pages don't steer Jev | `scripts/security/ai_input_check_test.exs` |
-| Markdown never runs scripts | `scripts/security/markdown_xss_probe.exs` |
+| Fetches never reach private addresses | `test/patchbay_web/security/outbound_fetch_check_test.exs`, `scripts/security/ssrf_target_probe.exs` |
+| Hidden instructions in posts and pages don't steer Jev | `test/patchbay_web/security/ai_input_check_test.exs` |
+| Markdown never runs scripts | `test/patchbay_web/security/authorization_check_test.exs`, `test/patchbay_web/agent_readiness_test.exs` (a post title stays the words of its own link), `scripts/security/markdown_xss_probe.exs` |
 | A static file opened directly can do nothing (no script, no framing, no sniffing) | `test/patchbay_web/plugs/headers_test.exs` |
 | One open motion lab page holds at most 12 notes however fast it is pressed | `test/patchbay_web/live/animations_live_test.exs` |
 | A tip in the page stays under the header and the open account menu at 390 wide; the motion lab's drawer opens over the header | `assets/test/browser/layers.spec.ts` |

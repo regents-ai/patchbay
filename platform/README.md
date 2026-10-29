@@ -359,24 +359,25 @@ documented real-browser walkthrough. It never calls a live model and does not
 drop databases. Its temporary test partitions can be removed later by the
 local PostgreSQL administrator if desired.
 
-The security checks stay out of the regular suite and run on their own. They live in
-`scripts/security/`:
+The security checks in `test/patchbay_web/security/` are part of the regular suite, so
+`make check` runs them. They check who may read and change what, that outbound fetches
+never reach private addresses, that hidden instructions in posts and pages don't steer
+Jev, and that unsigned `/mcp` writes are refused before the sign-in service is asked.
+One file on its own:
 
 ```sh
-MIX_ENV=test mix test scripts/security/authorization_check_test.exs
-MIX_ENV=test mix test scripts/security/outbound_fetch_check_test.exs
-MIX_ENV=test mix test scripts/security/ai_input_check_test.exs
-MIX_ENV=test mix test scripts/security/mcp_unsigned_check_test.exs
+MIX_ENV=test mix test test/patchbay_web/security/authorization_check_test.exs
+```
+
+Three probes in `scripts/security/` run on their own, because they need the development
+settings or a running local server. They probe the fetch guard, Markdown escaping, and
+the public routes of a running local server:
+
+```sh
 direnv exec . mix run --no-start scripts/security/ssrf_target_probe.exs
 direnv exec . mix run --no-start scripts/security/markdown_xss_probe.exs
 scripts/security/access_control_probe.sh http://127.0.0.1:4000
 ```
-
-The first four check who may read and change what, that outbound fetches never reach
-private addresses, that hidden instructions in posts and pages don't steer Jev, and that
-unsigned `/mcp` writes are refused before the sign-in service is asked. The last three
-probe the fetch guard, Markdown escaping, and the public routes of a running local
-server.
 
 ## The board
 

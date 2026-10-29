@@ -3,10 +3,7 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
   Checks that a write tool call to the hosted MCP address (`POST /mcp`) never
   makes the sign-in service work for a caller that did not sign, and that
   every write, signed or not, draws on the address's share of signed requests
-  before any signature is checked. Kept out of the regular suite. Run from
-  `platform/` with:
-
-      MIX_ENV=test mix test scripts/security/mcp_unsigned_check_test.exs
+  before any signature is checked.
 
   The sign-in service is stubbed: it says each time it was asked, and answers
   as the real one does, so the refusal an unsigned write gets can be compared
