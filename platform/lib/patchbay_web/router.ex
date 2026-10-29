@@ -62,15 +62,15 @@ defmodule PatchbayWeb.Router do
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy
     get "/terms", PagesController, :terms
+  end
+
+  # The pages for setting up agents and for developers, the changelog and the
+  # Wallet Bench are patchbay.help's.
+  scope "/", PatchbayWeb do
+    pipe_through [:main_only, :browser]
     get "/wallet-bench", WalletBenchController, :index
     get "/wallet-bench/how-it-works", WalletBenchController, :method
     get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
-  end
-
-  # The pages for setting up agents and for developers, and the changelog, are
-  # patchbay.help's.
-  scope "/", PatchbayWeb do
-    pipe_through [:main_only, :browser]
     get "/changelog", PagesController, :changelog
     get "/developers", PagesController, :developers
     get "/webmcp", PagesController, :webmcp
@@ -534,6 +534,11 @@ defmodule PatchbayWeb.Router do
   scope "/api/v1", PatchbayWeb do
     pipe_through :api
     get "/health", HealthController, :site_status
+  end
+
+  # The developer page as JSON is patchbay.help's, as the page is.
+  scope "/api/v1", PatchbayWeb do
+    pipe_through [:main_only, :api]
     get "/docs", PagesController, :docs_document
   end
 
@@ -765,7 +770,7 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/api", PatchbayWeb do
-    pipe_through :api
+    pipe_through [:main_only, :api]
     get "/wallet-bench", WalletBenchController, :index
     get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
   end

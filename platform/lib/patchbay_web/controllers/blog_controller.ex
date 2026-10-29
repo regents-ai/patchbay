@@ -2,11 +2,18 @@ defmodule PatchbayWeb.BlogController do
   use PatchbayWeb, :controller
   alias PatchbayWeb.Blog
 
-  def index(conn, _params),
-    do: render(conn, :index, [posts: Blog.all()] ++ PatchbayWeb.PublicDocuments.page("/blog"))
+  def index(conn, _params) do
+    edition = conn.assigns.site_edition
+
+    render(
+      conn,
+      :index,
+      [posts: Blog.all(edition)] ++ PatchbayWeb.PublicDocuments.page("/blog", edition)
+    )
+  end
 
   def show(conn, %{"slug" => slug}) do
-    case Blog.get(slug) do
+    case Blog.get(slug, conn.assigns.site_edition) do
       nil ->
         conn
         |> put_status(:not_found)

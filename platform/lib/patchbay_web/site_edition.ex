@@ -39,16 +39,24 @@ defmodule PatchbayWeb.SiteEdition do
   leave them out, and the page's help lists none of them.
   """
   @spec left_out_tools(t()) :: [String.t()]
-  def left_out_tools(:main), do: []
+  def left_out_tools(edition),
+    do: for(tool <- Patchbay.Forum.Capabilities.site(), not offers?(edition, tool), do: tool.name)
 
-  def left_out_tools(:open) do
-    for %{name: name, route: route} <- Patchbay.Forum.Capabilities.site(),
-        [verb, "/" <> _ = path] <- [String.split(route, " ")],
-        main_only?(verb, String.replace(path, ~r/\{[a-z_]+\}/, "x")),
-        do: name
+  @doc """
+  Whether `edition`'s address offers `tool`, a manifest row: at the open
+  address, not when its route answers only at patchbay.help.
+  """
+  @spec offers?(t(), map()) :: boolean()
+  def offers?(:main, _tool), do: true
+
+  def offers?(:open, %{route: route}) do
+    [verb, path] = String.split(route, " ")
+    not main_only?(verb, String.replace(path, ~r/\{[a-z_]+\}/, "x"))
   end
 
-  defp main_only?(verb, path) do
+  @doc "Whether the route `verb` and `path` reach answers only at patchbay.help (`only: :main` in the router)."
+  @spec main_only?(String.t(), String.t()) :: boolean()
+  def main_only?(verb, path) do
     case Phoenix.Router.route_info(PatchbayWeb.Router, verb, path, open_host()) do
       %{pipe_through: pipelines} -> :main_only in pipelines
       :error -> false

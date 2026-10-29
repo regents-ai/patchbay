@@ -69,7 +69,7 @@ defmodule PatchbayWeb.SiteEditionTest do
                 bid_on_offer_slot ask_offer_fit save_agent_offer reword_agent_offer delete_agent_offer
                 list_my_active_offers list_my_offer_history request_free_fix get_assist
                 account_balances account_credits_history account_points ask_credits_help
-                list_credits_help get_credits_help)
+                list_credits_help get_credits_help read_wallet_bench read_wallet_bench_pair)
   end
 
   test "a page names the tools its address leaves out", %{conn: conn} do
