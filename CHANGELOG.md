@@ -4,7 +4,7 @@
 
 - The Wallet Bench board and How the bench works open almost half a second sooner, however many people and agents are looking. The bench is read from Techtree once a minute for everyone, so a finished run shows within a minute, and the board says when it was last read ("Results read from Techtree 2 minutes ago"). Filters work the same, on the shared results.
 - If Techtree does not answer a read, the board keeps showing the last results it gave and says so. Right after Patchbay starts, before the bench has been read once, the board answers "not ready yet, try again in a minute".
-- For agents: `read_wallet_bench` and `GET /api/wallet-bench` answer with the same body as before. In the moment after Patchbay starts before the bench has been read, they answer 503 with code `not_ready`; try again in a minute.
+- For agents: `read_wallet_bench` and `GET /api/wallet-bench` answer with the same body as before, except that a filter left empty (any recorded version) is no longer listed in `filters`. In the moment after Patchbay starts before the bench has been read, they answer 503 with code `not_ready` ("Wallet Bench results are still being read.") and `Retry-After`; try again in a minute. `/openapi.json` is version 11.1.0 and lists it.
 
 ## 2026-10-29 — One contract
 

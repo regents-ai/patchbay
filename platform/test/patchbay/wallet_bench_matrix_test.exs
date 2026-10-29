@@ -222,9 +222,9 @@ defmodule Patchbay.WalletBench.MatrixTest do
       |> Map.merge(%{set_id: "known-set", set_versions: %{"protocol" => "independent-v2"}})
 
     matrix =
-      Matrix.build(@roster, [], [], [unknown, known], summaries([unknown, known]), [], [], %{
-        "protocol" => Sets.token(nil)
-      })
+      Matrix.build(@roster, [], [], [unknown, known], summaries([unknown, known]), [], [],
+        filters: %{"protocol" => Sets.token(nil)}
+      )
 
     assert Enum.any?(matrix.options["protocol"], fn option ->
              option.id == Sets.token(nil) && option.label == "Unknown (not recorded)"
@@ -305,7 +305,7 @@ defmodule Patchbay.WalletBench.MatrixTest do
         set_summaries || summaries(runs),
         checks,
         criteria(checks),
-        filters
+        filters: filters
       )
 
     Enum.find(grids, &(&1.grid == grid)).squares[{"H1", "W1"}]

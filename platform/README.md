@@ -62,10 +62,16 @@ works never read Techtree's views on a visit. `Patchbay.WalletBench.Board` reads
 whole bench once a minute, when the Oban schedule's `Patchbay.SharedReading.Heal`
 asks, and keeps it in `Patchbay.SharedReading` (copied from ash-template): the board
 as most visits see it, the rows a visit with filters builds its own board from in
-memory, and How the bench works. A visit holds no database connection for the bench.
-The board says when it was read ("Results read from Techtree 2 minutes ago"). A read
-that fails or takes over five seconds on one view keeps the last board on show, marked
-so the page says the latest read got no answer, and logs one warning. The first read
+memory, and How the bench works. A visit with filters copies only the rows and the
+checks of the test it shows, and builds only that test's grid (every grid for the
+Markdown page); a filter left at any version is no filter and gets the shared board.
+A visit holds no database connection for the bench.
+The board says when it was read ("Results read from Techtree 2 minutes ago"). The read
+runs in one transaction with Postgres' `statement_timeout` at five seconds, so Postgres
+cancels a slow view and frees the connection. A read that fails or is cancelled keeps
+the last board on show, marked so the page says the latest read got no answer, and
+logs one warning. Both addresses count against each address's share of reads a minute
+(`PatchbayWeb.Plugs.ReadBudget`), as every page does. The first read
 happens as the site starts, before it serves a page; if that one fails, the board and
 How the bench works answer 503 `not_ready` ("Try again in a minute") until the next
 minute's read. `health.shared_reading.*` measures how old the reading is. A pair's

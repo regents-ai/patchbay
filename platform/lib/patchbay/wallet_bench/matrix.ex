@@ -85,34 +85,40 @@ defmodule Patchbay.WalletBench.Matrix do
           results: [map()],
           summaries: [map()],
           checks: [map()],
-          extra_notes: [map()]
+          extra_notes: [map()],
+          criteria: [map()]
         }
 
   @doc """
   Every row the board and How the bench works are built from, read now from
   Techtree's views as plain maps: each resource's attributes, and of the runs
-  everything but their steps, which the board never shows. One read a minute
-  shares them with every visitor (`Patchbay.WalletBench.Board`); `opts` go to
-  each read, so its producer can bound how long one may take.
+  everything but their steps, which the board never shows. `criteria` is each
+  grid's checks once (`criteria/2`), worked out here because it takes every
+  check and every run. One read a minute shares them with every visitor
+  (`Patchbay.WalletBench.Board`).
   """
-  @spec read_rows(keyword()) :: {:ok, rows()} | {:error, term()}
-  def read_rows(opts \\ []) do
-    with {:ok, roster} <- WalletBench.list_roster(opts),
-         {:ok, notes} <- WalletBench.list_notes(opts),
-         {:ok, fixed} <- WalletBench.list_fixed(opts),
-         {:ok, results} <- WalletBench.list_results_without_steps(opts),
-         {:ok, summaries} <- WalletBench.list_sets(opts),
-         {:ok, checks} <- WalletBench.list_checks(opts),
-         {:ok, extra_notes} <- WalletBench.list_extra_notes(opts) do
+  @spec read_rows() :: {:ok, rows()} | {:error, term()}
+  def read_rows do
+    with {:ok, roster} <- WalletBench.list_roster(),
+         {:ok, notes} <- WalletBench.list_notes(),
+         {:ok, fixed} <- WalletBench.list_fixed(),
+         {:ok, results} <- WalletBench.list_results_without_steps(),
+         {:ok, summaries} <- WalletBench.list_sets(),
+         {:ok, checks} <- WalletBench.list_checks(),
+         {:ok, extra_notes} <- WalletBench.list_extra_notes() do
+      results = plain(results, Result, [:turns])
+      checks = plain(checks, Check)
+
       {:ok,
        %{
          roster: plain(roster, RosterEntry),
          notes: plain(notes, Note),
          fixed: plain(fixed, Fixed),
-         results: plain(results, Result, [:turns]),
+         results: results,
          summaries: plain(summaries, SetSummary),
-         checks: plain(checks, Check),
-         extra_notes: plain(extra_notes, ExtraNote)
+         checks: checks,
+         extra_notes: plain(extra_notes, ExtraNote),
+         criteria: criteria(checks, results)
        }}
     end
   end
@@ -127,13 +133,14 @@ defmodule Patchbay.WalletBench.Matrix do
   end
 
   @doc """
-  Everything the board shows, built from `rows` (`read_rows/1`) under
+  Everything the board shows, built from `rows` (`read_rows/0`) under
   `filters`: the agents and wallets, Techtree's notes by key, its extra notes
-  by release, and for each grid its checks and its squares by
-  `{harness_id, wallet_id}`.
+  by release, and for each of `grids` its checks and its squares by
+  `{harness_id, wallet_id}`. Only the checks of `grids` are read, so `rows`
+  may carry only theirs.
   """
-  @spec board(rows(), map()) :: map()
-  def board(rows, filters \\ %{}) do
+  @spec board(rows(), map(), [String.t()]) :: map()
+  def board(rows, filters \\ %{}, grids \\ @grids) do
     rows.roster
     |> build(
       rows.notes,
@@ -141,23 +148,22 @@ defmodule Patchbay.WalletBench.Matrix do
       rows.results,
       rows.summaries,
       rows.checks,
-      criteria(rows.checks, rows.results),
-      filters
+      rows.criteria,
+      filters: filters,
+      grids: grids
     )
     |> Map.put(:extra_notes, ExtraNotes.by_release(rows.extra_notes, rows.roster))
   end
 
   @doc """
   What the page explaining the bench shows, built from `rows`
-  (`read_rows/1`): Techtree's notes by key, and each grid with its checks.
+  (`read_rows/0`): Techtree's notes by key, and each grid with its checks.
   """
   @spec method(rows()) :: map()
   def method(rows) do
-    criteria = criteria(rows.checks, rows.results)
-
     %{
       notes: notes(rows.notes),
-      grids: Enum.map(@grids, &%{grid: &1, criteria: for_grid(criteria, &1)})
+      grids: Enum.map(@grids, &%{grid: &1, criteria: for_grid(rows.criteria, &1)})
     }
   end
 
@@ -187,9 +193,13 @@ defmodule Patchbay.WalletBench.Matrix do
   def notes(notes), do: Map.new(notes, &{&1.key, &1.text})
 
   @doc """
-  The page's grids from the views' rows. `criteria` is each grid's checks
-  once (`criteria/2`), as the page explaining the bench lists them, so both
-  name every check alike.
+  The page's grids from the views' rows under `opts[:filters]` (none unless
+  given), for each of `opts[:grids]` (every grid unless given) in the order
+  the page shows them. `criteria` is each grid's checks once (`criteria/2`),
+  as the page explaining the bench lists them, so both name every check
+  alike. A wallet is left out when every grid, built or not, holds only
+  placeholders for it, which needs the runs of every grid but the checks of
+  `grids` only.
   """
   @spec build(
           [struct()],
@@ -199,9 +209,21 @@ defmodule Patchbay.WalletBench.Matrix do
           [struct()],
           [struct()],
           [struct()],
-          map()
+          keyword()
         ) :: map()
-  def build(roster, notes, fixed, results, summaries, checks, criteria, filters \\ %{}) do
+  def build(
+        roster,
+        notes,
+        fixed,
+        results,
+        summaries,
+        checks,
+        criteria,
+        opts \\ []
+      ) do
+    filters = Keyword.get(opts, :filters, %{})
+    grids = Keyword.get(opts, :grids, @grids)
+
     options = Sets.options(results)
     results = Sets.filter(results, filters)
     roster = Enum.sort_by(roster, & &1.id)
@@ -218,7 +240,9 @@ defmodule Patchbay.WalletBench.Matrix do
     published = Map.new(checks, &{{&1.grid, &1.attempt_id, &1.criterion_id}, &1})
 
     grids =
-      Enum.map(@grids, fn grid ->
+      @grids
+      |> Enum.filter(&(&1 in grids))
+      |> Enum.map(fn grid ->
         grid_criteria = for_grid(criteria, grid)
 
         squares =
@@ -239,11 +263,15 @@ defmodule Patchbay.WalletBench.Matrix do
         %{grid: grid, criteria: grid_criteria, squares: squares}
       end)
 
+    placeholder? = fn grid, h, w ->
+      placeholder?(Map.get(by_square, {grid, h.id, w.id}, []), fixed_for(fixed, grid, h.id, w.id))
+    end
+
     visible_wallets =
       Enum.reject(wallets, fn wallet ->
         harnesses != [] and
-          Enum.all?(grids, fn grid ->
-            Enum.all?(harnesses, &placeholder?(grid.squares[{&1.id, wallet.id}]))
+          Enum.all?(@grids, fn grid ->
+            Enum.all?(harnesses, &placeholder?.(grid, &1, wallet))
           end)
       end)
 
@@ -251,8 +279,7 @@ defmodule Patchbay.WalletBench.Matrix do
       Enum.map(grids, fn grid ->
         visible_harnesses =
           Enum.reject(harnesses, fn harness ->
-            wallets != [] and
-              Enum.all?(wallets, &placeholder?(grid.squares[{harness.id, &1.id}]))
+            wallets != [] and Enum.all?(wallets, &placeholder?.(grid.grid, harness, &1))
           end)
 
         squares =
@@ -446,9 +473,11 @@ defmodule Patchbay.WalletBench.Matrix do
   # each grid, so comparing those across install and wallet would be wrong.
   defp chronology(run), do: {DateTime.to_unix(run.finished_at, :microsecond), run.attempt_id}
 
-  defp placeholder?(square) do
-    square.runs == 0 and square.fixed != [] and
-      Enum.all?(square.fixed, &(&1.fixed_outcome in ["WAITING_HUMAN", "NOT_RUN"]))
+  # A square with no runs (no set) whose fixed outcomes only wait or never
+  # run.
+  defp placeholder?(sets, fixed) do
+    sets == [] and fixed != [] and
+      Enum.all?(fixed, &(&1.fixed_outcome in ["WAITING_HUMAN", "NOT_RUN"]))
   end
 
   defp progress(squares) do

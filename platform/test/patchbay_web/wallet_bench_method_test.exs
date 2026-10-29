@@ -109,7 +109,7 @@ defmodule PatchbayWeb.WalletBenchMethodTest do
     assert board =~ "The wallet tool answers with its version number."
     refute board =~ "The wallet tool prints a version."
 
-    {:ok, %{grids: grids}, _read} = Board.board(%{})
+    {:ok, %{grids: grids}, _read} = Board.board(%{}, Patchbay.WalletBench.Matrix.grids())
     install = Enum.find(grids, &(&1.grid == "install"))
 
     assert install.criteria == [

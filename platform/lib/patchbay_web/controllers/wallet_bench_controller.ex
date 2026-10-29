@@ -24,7 +24,7 @@ defmodule PatchbayWeb.WalletBenchController do
   alias PatchbayWeb.WalletBenchJSON
 
   def index(conn, params) do
-    case board(params) do
+    case board(params, every_grid?: get_format(conn) == "md") do
       {:ok, assigns} ->
         conn
         |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
@@ -36,13 +36,16 @@ defmodule PatchbayWeb.WalletBenchController do
   end
 
   # One test's board, as the page and `GET /api/wallet-bench` show it, from
-  # the bench as last read.
-  defp board(params) do
+  # the bench as last read. A filter left at "Any recorded version" is no
+  # filter. With filters, only the test shown is built, or every test for the
+  # Markdown page, which lists them all.
+  defp board(params, every_grid?: every_grid?) do
     context = bench_context(params)
     test = context["test"]
-    filters = Map.take(context, Sets.filters())
+    filters = context |> Map.take(Sets.filters()) |> Map.reject(fn {_key, id} -> id == "" end)
+    grids = if every_grid?, do: Matrix.grids(), else: [test]
 
-    with {:ok, matrix, read} <- Board.board(filters) do
+    with {:ok, matrix, read} <- Board.board(filters, grids) do
       unless Sets.valid_filters?(filters, matrix.options), do: raise(NotFoundError)
       {:ok, [matrix: matrix, test: Enum.find(matrix.grids, &(&1.grid == test)), read: read]}
     end
@@ -51,14 +54,28 @@ defmodule PatchbayWeb.WalletBenchController do
   # The bench has not been read since the site started: the site's 503 page,
   # in the format asked for, with no crash to log on every visit.
   defp unread(conn) do
-    conn
-    |> put_status(:service_unavailable)
-    |> put_resp_header("retry-after", "60")
-    |> put_root_layout(false)
-    |> put_layout(false)
-    |> put_view(html: PatchbayWeb.ErrorHTML, json: PatchbayWeb.ErrorJSON, md: PatchbayWeb.ErrorMD)
-    |> render(:"503")
+    conn = conn |> put_status(:service_unavailable) |> put_resp_header("retry-after", "60")
+
+    case get_format(conn) do
+      "json" ->
+        json(conn, not_ready())
+
+      _page ->
+        conn
+        |> put_root_layout(false)
+        |> put_layout(false)
+        |> put_view(html: PatchbayWeb.ErrorHTML, md: PatchbayWeb.ErrorMD)
+        |> render(:"503")
+    end
   end
+
+  defp not_ready,
+    do:
+      PatchbayWeb.ApiError.body(
+        "not_ready",
+        "Wallet Bench results are still being read.",
+        "Try again in a minute."
+      )
 
   @doc """
   The board for one test, as a status and the body `GET /api/wallet-bench`
@@ -67,9 +84,9 @@ defmodule PatchbayWeb.WalletBenchController do
   @spec read_wallet_bench(map()) :: {atom(), map()}
   def read_wallet_bench(params) do
     read(fn ->
-      case board(params) do
+      case board(params, every_grid?: false) do
         {:ok, assigns} -> {:ok, WalletBenchJSON.index(Map.new(assigns))}
-        :unread -> {:service_unavailable, PatchbayWeb.ErrorJSON.render("503.json", %{})}
+        :unread -> {:service_unavailable, not_ready()}
       end
     end)
   end

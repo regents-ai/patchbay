@@ -78,6 +78,8 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
       {conn, views} = SharedBench.views_read(fn -> get(conn, path) end)
       assert conn.status == 200, path
       assert views == [], "#{path} read #{inspect(views)}"
+      # Each visit counts against the address's share of reads a minute.
+      assert [~s("reads") <> _] = get_resp_header(conn, "ratelimit-policy")
     end
 
     page = conn |> get("/wallet-bench?test=install") |> html_response(200)
@@ -100,9 +102,17 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     latest = Map.new(filtered["squares"], &{&1["wallet_id"], &1["latest_attempt"]})
     assert %{"W1" => nil, "W2" => %{"outcome" => "FAILED_TECHNICAL"}} = latest
 
-    {:ok, rows} = Matrix.read_rows()
-    assert {:ok, board, _read} = Board.board(%{"model" => model_b})
-    assert board == Matrix.board(rows, %{"model" => model_b})
+    # With a filter, only the test shown is built, and a wallet with runs in
+    # no other test is still shown.
+    assert {:ok, %{grids: [install], wallets: wallets}, _read} =
+             Board.board(%{"model" => model_b}, ["install"])
+
+    assert install.grid == "install" and Enum.map(wallets, & &1.id) == ["W1", "W2"]
+
+    # "Any recorded version" is no filter: the board built once answers.
+    any = conn |> get("/api/wallet-bench?test=install&model=&harness=") |> json_response(200)
+    assert any["filters"] == %{}
+    assert any == conn |> get("/api/wallet-bench?test=install") |> json_response(200)
 
     # A filter naming no recorded version is still not found.
     assert_error_sent 404, fn -> get(conn, "/wallet-bench?model=#{Sets.token("model-z")}") end
@@ -110,20 +120,20 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
 
   test "a run that finishes shows on the next read, not before" do
     SharedBench.share!()
-    {:ok, before, _read} = Board.board(%{})
+    {:ok, before, _read} = Board.board(%{}, ["install"])
 
     run!("W1", "model-c", "FAILED_SAFETY", ~N[2026-10-28 12:00:00])
-    assert {:ok, ^before, _read} = Board.board(%{})
+    assert {:ok, ^before, _read} = Board.board(%{}, ["install"])
 
     :ok = Board.refresh()
-    {:ok, board, _read} = Board.board(%{})
+    {:ok, board, _read} = Board.board(%{}, ["install"])
     install = Enum.find(board.grids, &(&1.grid == "install"))
     assert install.squares[{"H1", "W1"}].display_run.outcome == "FAILED_SAFETY"
   end
 
   test "a failed read keeps the last board on show, marked, and logs one warning", %{conn: conn} do
     SharedBench.share!()
-    {:ok, board, %{at: at, degraded?: false}} = Board.board(%{})
+    {:ok, board, %{at: at, degraded?: false}} = Board.board(%{}, ["install"])
 
     # Techtree's roster view goes missing for one read, then comes back.
     Repo.query!("ALTER TABLE techtree_app.wallet_bench_roster RENAME TO wallet_bench_roster_gone")
@@ -133,7 +143,8 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     assert {:error, _reason} = failed
     assert [_one] = Regex.scan(~r/\[warning\].*Wallet Bench/, log)
     assert log =~ ~s|relation "techtree_app.wallet_bench_roster" does not exist|
-    assert {:ok, ^board, %{at: ^at, degraded?: true}} = Board.board(%{})
+    refute log =~ "Bread Crumbs"
+    assert {:ok, ^board, %{at: ^at, degraded?: true}} = Board.board(%{}, ["install"])
     assert {:ok, _method, %{degraded?: true}} = Board.method()
 
     page = conn |> get("/wallet-bench?test=install") |> html_response(200)
@@ -141,12 +152,44 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     assert page =~ "Wallet Two"
 
     :ok = Board.refresh()
-    assert {:ok, ^board, %{degraded?: false}} = Board.board(%{})
+    assert {:ok, ^board, %{degraded?: false}} = Board.board(%{}, ["install"])
+  end
+
+  test "a view slower than the limit is cancelled by Postgres, which frees the connection" do
+    SharedBench.share!()
+    {:ok, board, _read} = Board.board(%{}, ["install"])
+
+    # Techtree's notes view takes three seconds; the test's limit is one.
+    Repo.query!("ALTER TABLE techtree_app.wallet_bench_notes RENAME TO wallet_bench_notes_kept")
+
+    Repo.query!("""
+    CREATE VIEW techtree_app.wallet_bench_notes AS
+    SELECT key, text FROM techtree_app.wallet_bench_notes_kept, pg_sleep(3)
+    """)
+
+    {{elapsed, failed}, log} = with_log(fn -> :timer.tc(&Board.refresh/0) end)
+
+    Repo.query!("DROP VIEW techtree_app.wallet_bench_notes")
+    Repo.query!("ALTER TABLE techtree_app.wallet_bench_notes_kept RENAME TO wallet_bench_notes")
+
+    assert {:error, _reason} = failed
+    assert elapsed < 2_500_000, "the read took #{div(elapsed, 1000)} ms"
+    assert log =~ "canceling statement due to statement timeout"
+    refute log =~ "Bread Crumbs"
+
+    # Nothing is left running on the server, and the last board stays.
+    assert %{rows: [[0]]} =
+             Repo.query!("""
+             SELECT count(*)::integer FROM pg_stat_activity
+             WHERE state = 'active' AND query LIKE '%pg_sleep(3)%' AND pid <> pg_backend_pid()
+             """)
+
+    assert {:ok, ^board, %{degraded?: true}} = Board.board(%{}, ["install"])
   end
 
   test "before the first read the board answers 503 at every door, and the producer reads as it starts",
        %{conn: conn} do
-    assert Board.board(%{}) == :unread
+    assert Board.board(%{}, ["install"]) == :unread
 
     html = conn |> get("/wallet-bench") |> html_response(503)
     assert html =~ "This page is not ready yet."
@@ -170,7 +213,7 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     # The producer's first read happens inside its start, so the board is
     # there once the site begins to serve.
     start_supervised!(Board)
-    assert {:ok, _board, %{degraded?: false}} = Board.board(%{})
+    assert {:ok, _board, %{degraded?: false}} = Board.board(%{}, ["install"])
     assert conn |> get("/wallet-bench?test=install") |> html_response(200) =~ "Wallet Two"
 
     # The minute's scheduled heal reaches the producer, which reads again.
@@ -178,7 +221,7 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     assert :ok = perform_job(Patchbay.SharedReading.Heal, %{kind: "wallet_bench"})
     :sys.get_state(Board)
 
-    {:ok, board, _read} = Board.board(%{})
+    {:ok, board, _read} = Board.board(%{}, ["install"])
     install = Enum.find(board.grids, &(&1.grid == "install"))
     assert install.squares[{"H1", "W1"}].display_run.outcome == "FAILED_SAFETY"
   end

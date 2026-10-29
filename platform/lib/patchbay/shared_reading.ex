@@ -68,16 +68,17 @@ defmodule Patchbay.SharedReading do
   # bytes: the largest reading, measured as `:erlang.external_size/1`.
   # within: the seconds inside which a working producer reads every key again.
   @kinds %{
-    # Three keys (`Patchbay.WalletBench.Board`): the board as most visits see
-    # it, the bench's rows for a visit with filters, and How the bench works.
-    # The rows are the large one: 13 MB at 2,000 finished attempts (5,000 runs
-    # and 33,000 checks), the bench `Patchbay.WalletBench.ScaleTest` seeds as
-    # production's size and beyond, so the limit leaves room to grow.
+    # Eight keys (`Patchbay.WalletBench.Board`): the board as most visits see
+    # it, How the bench works, and for a visit with filters the bench's rows
+    # and each of the five tests' checks. The checks are the large part: 8 MB
+    # at 2,000 finished attempts (5,000 runs and 33,000 checks), the bench
+    # `Patchbay.WalletBench.ScaleTest` seeds as production's size and beyond,
+    # so the limit leaves room to grow.
     wallet_bench: %{
       open:
         "Techtree publishes the bench for anyone to read (Patchbay.WalletBench's " <>
           "resources, read policy authorize_if always()); every visitor sees the same board",
-      keys: 3,
+      keys: 8,
       bytes: 48_000_000,
       within: 150
     }

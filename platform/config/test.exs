@@ -97,3 +97,7 @@ config :patchbay, :answer_watch_req_options, plug: {Req.Test, Patchbay.AnswerWat
 
 # IndexNow is answered by the test itself (Patchbay.IndexNow).
 config :patchbay, :indexnow_req, plug: {Req.Test, Patchbay.IndexNow}
+
+# A view the Wallet Bench test makes slow on purpose is cancelled after one
+# second instead of five.
+config :patchbay, Patchbay.WalletBench.Board, statement_timeout: 1_000

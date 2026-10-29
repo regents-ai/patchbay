@@ -67,7 +67,7 @@ defmodule Patchbay.WalletBench.ScaleTest do
     {read_us, :ok} = :timer.tc(&Board.refresh/0)
     assert read_us < @bound_microseconds, "the read took #{div(read_us, 1000)} ms"
 
-    {:ok, matrix, _read} = Board.board(%{})
+    {:ok, matrix, _read} = Board.board(%{}, Matrix.grids())
     {:ok, key, _read} = Board.method()
 
     # Both pages name the same checks, every grid's in full.
@@ -85,11 +85,14 @@ defmodule Patchbay.WalletBench.ScaleTest do
       assert visit_us < @visit_microseconds, "#{path} took #{div(visit_us, 1000)} ms"
     end
 
-    # A filter applied in memory gives the board a read of the views would.
-    {:ok, rows} = Matrix.read_rows()
+    # Every run here has the one model, so filtering by it leaves each
+    # test's board as it is without a filter.
     filters = %{"model" => model}
-    assert {:ok, filtered, _read} = Board.board(filters)
-    assert filtered == Matrix.board(rows, filters)
-    assert Sets.valid_filters?(filters, filtered.options)
+    assert Sets.valid_filters?(filters, matrix.options)
+
+    for grid <- matrix.grids do
+      assert {:ok, %{grids: [filtered]}, _read} = Board.board(filters, [grid.grid])
+      assert filtered == grid
+    end
   end
 end

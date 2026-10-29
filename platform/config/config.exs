@@ -174,6 +174,8 @@ config :patchbay, Oban,
     outside_calls: 2,
     patchbay_agent: 1,
     escrow_reads: 2,
+    # The template runs 5 here; Patchbay's only job on it is the minute's
+    # SharedReading.Heal, which sends one message, so one is enough.
     default: 1
   ],
   # AshOban adds each trigger's minute sweep here.
@@ -191,6 +193,10 @@ config :patchbay, Oban,
   ],
   pruner: [max_age: {7, :days}],
   lifeline: [rescue_after: {10, :minutes}]
+
+# The Wallet Bench's minute read (`Patchbay.WalletBench.Board`): Postgres
+# cancels any one view's read that runs longer, so it frees its connection.
+config :patchbay, Patchbay.WalletBench.Board, statement_timeout: 5_000
 
 # Metrics listen on loopback, on a port the system picks, so this site runs
 # beside the others; production names the port Fly reads (config/prod.exs).
