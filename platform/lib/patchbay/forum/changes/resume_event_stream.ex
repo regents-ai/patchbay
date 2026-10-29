@@ -32,6 +32,8 @@ defmodule Patchbay.Forum.Changes.ResumeEventStream do
     |> Ash.Changeset.before_action(fn changeset ->
       id = Ash.Changeset.get_attribute(changeset, :id)
 
+      # The id is derived from this actor, so it names only its own row; the
+      # save itself is authorized.
       {:ok, existing} =
         Patchbay.Forum.get_event_subscription(id, authorize?: false, not_found_error?: false)
 
