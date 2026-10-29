@@ -31,6 +31,9 @@
       content={Enum.join(PatchbayWeb.SiteEdition.left_out_tools(@site_edition), " ")}
     />
     <meta name="privy-app-id" content={Patchbay.Identity.Privy.app_id()} />
+    <%!-- The open address offers email as its only sign-in choice and shows no
+    wallet screens (`assets/js/privy/provider.ts`). --%>
+    <meta :if={@site_edition == :open} name="privy-sign-in" content="email" />
     <meta name="privy-bridge-src" content={~p"/assets/js/privy_bridge.js"} />
     <.live_title suffix={metadata.suffix}>{@page_title}</.live_title>
     <Regent.AgentMetadata.head
@@ -105,14 +108,18 @@
       it stands above all of them. --%>
           <%!-- Every wallet the account links, the only ones that send for it, and
           its main wallet, which sends when the tab holds several of them and Privy
-          names none (privy/wallet_choice.ts). The Credits panel takes the same list. --%>
+          names none (privy/wallet_choice.ts). The Credits panel takes the same list.
+          Only patchbay.help sends from a wallet, so the open address lists none. --%>
           <div
             id="pb-account"
             class="pb-account"
             data-account-wallets={
-              @current_profile && Enum.join(@current_profile.account_wallets, " ")
+              @site_edition == :main && @current_profile &&
+                Enum.join(@current_profile.account_wallets, " ")
             }
-            data-account-wallet={@current_profile && @current_profile.wallet_address}
+            data-account-wallet={
+              @site_edition == :main && @current_profile && @current_profile.wallet_address
+            }
           >
             <Regent.ThemeToggle.button
               id="pb-theme-toggle"

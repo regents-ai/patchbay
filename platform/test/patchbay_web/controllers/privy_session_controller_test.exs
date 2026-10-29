@@ -9,6 +9,7 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
 
   import Phoenix.ConnTest
   import Plug.Conn, only: [put_req_header: 3]
+  import PatchbayWeb.ConnCase, only: [on_open: 1]
 
   @endpoint PatchbayWeb.Endpoint
   @own "0x" <> String.duplicate("e", 40)
@@ -66,6 +67,37 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
     assert refused |> recycle([]) |> get("/account") |> html_response(200) =~ @sign_in_button
   end
 
+  test "at the open address email is the only sign-in choice and no wallet is named", %{key: key} do
+    assert build_conn() |> on_open() |> get("/account") |> html_response(200) =~
+             ~s(<meta name="privy-sign-in" content="email">)
+
+    refute build_conn() |> get("/account") |> html_response(200) =~ ~s(name="privy-sign-in")
+
+    did = "did:privy:open-email-#{System.unique_integer([:positive])}"
+    signed_in = sign_in(key, did, [@email, wallet(@made, 1_001, "privy")], &on_open/1)
+    assert json_response(signed_in, 200)
+
+    page = signed_in |> recycle([]) |> on_open() |> get("/account") |> html_response(200)
+    refute page =~ @sign_in_button
+    refute page =~ "data-account-wallet"
+
+    refused =
+      sign_in(
+        key,
+        "did:privy:open-no-wallet-#{System.unique_integer([:positive])}",
+        [@email],
+        &on_open/1
+      )
+
+    assert %{
+             "error" => %{
+               "code" => "no_wallet",
+               "message" => "Your account is not ready yet.",
+               "hint" => "Sign in again to finish."
+             }
+           } = json_response(refused, 422)
+  end
+
   test "a wallet sign-in keeps the person's own wallet after Privy makes theirs", %{key: key} do
     did = "did:privy:own-wallet-#{System.unique_integer([:positive])}"
     sign_in(key, did, [wallet(@own, 2_000, "metamask")])
@@ -82,13 +114,14 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
 
   # The browser's steps: a page for its CSRF token, then Privy's two tokens on
   # the sign-in step.
-  defp sign_in(key, did, linked_accounts) do
-    page = build_conn() |> get("/account")
+  defp sign_in(key, did, linked_accounts, at \\ & &1) do
+    page = build_conn() |> at.() |> get("/account")
     [_, csrf] = Regex.run(~r/<meta name="csrf-token" content="([^"]+)"/, html_response(page, 200))
     proof = proof(key, did, linked_accounts)
 
     page
     |> recycle()
+    |> at.()
     |> put_req_header("accept", "application/json")
     |> put_req_header("x-csrf-token", csrf)
     |> put_req_header("authorization", "Bearer " <> proof.access)

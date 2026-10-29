@@ -8,13 +8,14 @@ import {installAccountControl, requestAccountAction} from "../../js/privy/accoun
 // and a page Privy brought back from Google finishes that sign-in by itself.
 type Status = {textContent: string; hidden: boolean}
 
-function page(search = "", signedOut = true) {
+function page(search = "", signedOut = true, choices: string | null = null) {
   const status: Status = {textContent: "", hidden: true}
   const doc = {
     location: {search},
     addEventListener: () => {},
     querySelector: (selector: string) => {
       if (selector === 'meta[name="privy-app-id"]') return {getAttribute: () => "app-1"}
+      if (selector === 'meta[name="privy-sign-in"]') return choices === null ? null : {getAttribute: () => choices}
       if (selector === "#account-auth-status") return status
       if (selector === "[data-account-target='sign-in']") return signedOut ? {} : null
       return null
@@ -48,6 +49,14 @@ test("a sign-in whose wallet never appears sends nothing and says so", async () 
   assert.equal(reloaded, false)
   assert.equal(status.hidden, false)
   assert.equal(status.textContent, "Your account has no wallet yet. Sign in again to get one.")
+})
+
+test("at the open address a sign-in whose wallet never appears says the account is not ready", async () => {
+  const {doc, status} = page("", true, "email")
+  const {sent, fetch} = session({status: 200})
+  await requestAccountAction("sign-in", doc, {fetch, loadBridge: bridge({ok: false, reason: "no_wallet"})})
+  assert.deepEqual(sent, [])
+  assert.equal(status.textContent, "Your account is not ready yet. Sign in again to finish.")
 })
 
 test("a sign-in Patchbay refuses shows the refusal's words and stays on the page", async () => {

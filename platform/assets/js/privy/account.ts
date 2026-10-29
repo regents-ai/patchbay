@@ -1,4 +1,5 @@
 import type * as PrivyBridge from "../privy_bridge.tsx"
+import {signInChoices} from "./provider.ts"
 import {returnedFromOAuth} from "./sign_in.ts"
 import type {Proof, Refusal} from "./sign_in.ts"
 
@@ -23,8 +24,12 @@ type AccountOptions = {
 }
 
 // Patchbay refuses a sign-in whose Privy account has no wallet; the page says so
-// in the server's words when the account's wallet never appears here either.
-const NO_WALLET = "Your account has no wallet yet. Sign in again to get one."
+// in the server's words when the account's wallet never appears here either. The
+// open address, which shows no wallets, says the account is not ready.
+const NO_WALLET = {
+  email: "Your account is not ready yet. Sign in again to finish.",
+  dashboard: "Your account has no wallet yet. Sign in again to get one.",
+}
 
 /**
  * Wires every `data-account-target` control on the page to Privy: the account
@@ -97,7 +102,7 @@ async function signIn(proving: Promise<Proof | Refusal>, doc: Document, options:
   showStatus(doc, null)
   const proof = await proving
   if (!proof.ok) {
-    if (proof.reason === "no_wallet") showStatus(doc, NO_WALLET)
+    if (proof.reason === "no_wallet") showStatus(doc, NO_WALLET[signInChoices(doc) ?? "dashboard"])
     return
   }
 

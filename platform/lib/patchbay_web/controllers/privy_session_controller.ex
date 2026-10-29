@@ -99,6 +99,12 @@ defmodule PatchbayWeb.PrivySessionController do
     end
   end
 
+  # The open address shows no wallets, so it says the account is not ready.
+  defp refusal("no_wallet", :open),
+    do: {:unprocessable_entity, "Your account is not ready yet.", "Sign in again to finish."}
+
+  defp refusal(code, _site_edition), do: Map.fetch!(@refusals, code)
+
   # A deployment that was never told which Privy application it belongs to says
   # so plainly, because there is nothing the visitor can do about it.
   defp code(:configuration, :missing_privy_config), do: "not_configured"
@@ -112,7 +118,7 @@ defmodule PatchbayWeb.PrivySessionController do
   end
 
   defp refuse(conn, code) do
-    {status, message, hint} = Map.fetch!(@refusals, code)
+    {status, message, hint} = refusal(code, conn.assigns.site_edition)
 
     conn
     |> put_status(status)

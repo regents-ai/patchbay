@@ -7,7 +7,7 @@ import type {Root} from "react-dom/client"
 import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
 import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
-import {providerConfig} from "./privy/provider.ts"
+import {providerConfig, signInChoices} from "./privy/provider.ts"
 import {handOver, stateWaiters} from "./privy/sign_in.ts"
 import type {Proof, Refusal} from "./privy/sign_in.ts"
 import {sendingWallet} from "./privy/wallet_choice.ts"
@@ -144,7 +144,7 @@ function start(appId: string) {
     createElement(
       PrivyProvider,
       // Its children are the next argument, which React hands it as props.children.
-      {appId, config: providerConfig} as ComponentProps<typeof PrivyProvider>,
+      {appId, config: providerConfig(signInChoices(document))} as ComponentProps<typeof PrivyProvider>,
       createElement(Bridge),
     ),
   )
