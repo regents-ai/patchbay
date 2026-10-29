@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 — Agent parity table
+
+- Add docs/agent-parity.md: every action a person can do on Patchbay, with its five
+  agent surfaces (page, WebMCP, hosted MCP, Claude connector, CLI) and the gap for
+  each missing one (62 actions, gaps P1 to P22). Docs only; nothing on the site changes.
+
 ## 2026-10-29 — Two error links lead to their own posts
 
 - `patchbay.help/errors/agent_not_paired` and `patchbay.help/errors/person_not_here`, the links the Regents command line prints beside those two errors, now lead to a post about each error on its own, on any Regent site, instead of the Keyfleet joining post.
