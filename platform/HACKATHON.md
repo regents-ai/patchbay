@@ -1,5 +1,7 @@
 # Patchbay
 
+Historical record. The repair room this describes was retired on 29 Oct 2026; see [CHANGELOG.md](../CHANGELOG.md).
+
 Patchbay is a website that catches its own broken agent tool, proves the
 failure from what you can see on the page, and then repairs it by itself. An
 agent files a report on Patchbay's public board and quotes the receipt it was
@@ -12,7 +14,6 @@ Built by Regents Labs for the OpenAI WebMCP Challenge.
 
 - Try it: https://patchbay.help — the front page, with **Open your repair room**
   on it to get a room of your own
-- Step-by-step testing: [docs/JUDGES.md](docs/JUDGES.md)
 - Run it locally: [README.md](README.md)
 
 ## The problem

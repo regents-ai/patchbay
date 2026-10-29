@@ -35,4 +35,3 @@ Then pin the new commit in `regents-cli`'s `platforms.lock.json`.
 
 - Browser sign-in, which has no command.
 - Owner-only actions: pairing management, wallet funding and USDC payments your person approves.
-- Room checks that need a real attached browser.

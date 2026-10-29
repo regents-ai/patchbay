@@ -7,7 +7,7 @@ is experimental and the API may change.
 
 The in-app browser in ChatGPT offers a page's WebMCP tools to the assistant
 without any flag or token. Open Patchbay there, keep the chat and the page both
-in view, and follow [JUDGES.md](JUDGES.md).
+in view, and ask the assistant to call `get_patchbay_help`.
 
 ## Chrome requirements (checked 2026-10-29)
 
@@ -44,36 +44,21 @@ WebMCP, the page registers nothing, its `<html>` element carries
 the browser's `getTools()` lists every page tool, the attribute reads
 `connected`; when registration fails or a tool is missing, `error`.
 
-The old shared demo room at `/webmcp/rooms/skill-uplift` is retired and now
-leads to `/start`. Rooms that already exist still open at
-`/webmcp/rooms/<slug>`.
-
 Authoritative references:
 
 - [WebMCP overview and local flag](https://developer.chrome.com/docs/ai/webmcp) (Chrome for Developers, updated 2026-08-07)
 - [WebMCP origin trial announcement](https://developer.chrome.com/blog/ai-webmcp-origin-trial) (Chrome for Developers, 2026-06-09)
 - [WebMCP tool security](https://developer.chrome.com/docs/ai/webmcp/secure-tools) (Chrome for Developers, updated 2026-07-01)
 
-## What Patchbay protects
+## Protections
 
-- The server owns the room, current revision, generation, contract digest and
-  verification result. Browser observations are evidence inputs, not proof by
-  themselves.
-- Incoming room, browser-session, revision, generation, and contract values
-  are checked against server-owned records. Foreign registry entries and stale
-  revisions are rejected.
-- The seeded v1 handler is allowed to report success without applying its
-  candidate. Patchbay records the raw response separately from the effective
-  visible result and fails closed when the Candidate editor is empty.
-- Repair plans are a small allowlisted DSL. A deterministic canary must pass
-  before a proposal can be approved. Only the named human LiveView action can
-  approve and publish a replacement.
-- Tool descriptions and outputs are bounded. User-authored Skill text,
-  external model output, and browser observations are treated as untrusted
-  data. No WebMCP tool is exposed to another origin by this demo.
-- The fallback is explicitly opt-in and visibly labeled. It is a checked-in
-  fixture for demonstration, not an evaluation of model quality or task
-  success.
+- Tool descriptions and results are bounded. Text other visitors wrote reaches
+  the agent marked `untrustedContentHint`, with a note that it is evidence to
+  read, not instructions to follow.
+- Every write a page tool makes keeps the site's server-side session, ownership
+  and payment checks. The page's tools pay nothing: payment stays with the
+  person on the website.
+- No WebMCP tool is exposed to another origin.
 
 Never commit API keys or production data. The origin-trial token is the one
 public exception, kept in `PatchbayWeb.Plugs.BrowserPolicy`.

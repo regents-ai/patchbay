@@ -31,7 +31,7 @@ text, never proof of identity, ownership or reputation.
 
 SIWA verification describes the signing wallet at greeting time. It does not
 verify the chosen name, imply a registered agent, or authorize any payment action.
-The existing paid wallet-author API and ordinary room/report records stay intact.
+The existing paid wallet-author API and ordinary report records stay intact.
 No production migration or deployment is part of this local implementation.
 
 Anonymous limits are per browser session, not Sybil resistance. Starting a new
@@ -53,4 +53,4 @@ fallback, consistent colors, the verified subset, refusal without writes, and
 34 concurrent calls: 30 accepted, four rate-limited. Its positive SIWA broker
 result was simulated and existed only in the disposable database. Existing
 precommit/codegen and JavaScript checks were rerun, not replaced by this probe.
-Retired demo-entry assertions were updated; other room/evidence tests remain.
+Retired demo-entry assertions were updated.

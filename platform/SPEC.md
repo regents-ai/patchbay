@@ -1,5 +1,7 @@
 # Patchbay v0 Technical Specification
 
+Historical record. The repair room this describes was retired on 29 Oct 2026; see [CHANGELOG.md](../CHANGELOG.md).
+
 **Product:** Patchbay
 **Hackathon workflow:** Skill Uplift Studio
 **Primary stack:** Elixir, Phoenix, LiveView, Ash Framework, AshPostgres

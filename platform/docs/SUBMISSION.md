@@ -1,5 +1,7 @@
 # Devpost submission fields
 
+Historical record. The repair room this describes was retired on 29 Oct 2026; see [CHANGELOG.md](../../CHANGELOG.md).
+
 Paste-ready text for the WebMCP Challenge entry form. The longer versions of
 the same answers are in [HACKATHON.md](../HACKATHON.md).
 
@@ -160,9 +162,6 @@ esbuild, Tailwind CSS.
    steps 2 and 3, then use **Diagnose & propose repair** and **Approve &
    hot-swap**. No tool an agent can call approves or publishes either way.
 9. **Reset demo** at the bottom of the page restores the starting state.
-
-Full walkthrough, including what to do if the agent does not re-inspect the
-page's tools: [docs/JUDGES.md](JUDGES.md).
 
 ## Repository
 

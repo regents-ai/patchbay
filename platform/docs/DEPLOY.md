@@ -1,4 +1,4 @@
-# Deploying the public Patchbay room
+# Deploying Patchbay
 
 Patchbay ships as a standard Phoenix release in a Docker image and runs on one
 Fly.io machine behind HTTPS. The commands below are the whole deployment; run
@@ -16,10 +16,8 @@ command below, and set `PHX_HOST` to the matching hostname.
 
 ## No volume is required
 
-All durable state lives in Postgres: rooms, tool revisions, invocations,
-verifications, repair proposals and the timeline. Skill text entered in the page
-is stored as a database column, and nothing a visitor submits is ever written to
-the machine's disk. A machine can be replaced at any time without data loss, so
+All durable state lives in Postgres, and nothing a visitor submits is ever
+written to the machine's disk. A machine can be replaced at any time without data loss, so
 no Fly volume is created or attached.
 
 ## 1. Create the app
@@ -62,23 +60,12 @@ fly secrets set --app patchbay-regents \
 without them. `PHX_HOST` must be the exact public hostname, because the
 LiveView socket rejects connections from any other origin.
 
-Live inference is optional. Set the key only if the demo should call OpenAI:
+`OPENAI_API_KEY` is used only for the weekly ChatGPT questions
+(`Patchbay.AnswerWatch`):
 
 ```sh
 fly secrets set --app patchbay-regents OPENAI_API_KEY="sk-..."
 ```
-
-For a deterministic public walkthrough with no model calls, leave
-`OPENAI_API_KEY` unset and enable the checked-in fallback instead. The page
-labels fallback provenance:
-
-```sh
-fly secrets set --app patchbay-regents PATCHBAY_DEMO_FALLBACK=true
-```
-
-Turn it off again with `fly secrets unset --app patchbay-regents
-PATCHBAY_DEMO_FALLBACK`. Never set both a real key and the fallback if the
-demo is meant to show live inference.
 
 Error reports go to Sentry once `SENTRY_DSN` is set; `SENTRY_ENVIRONMENT` and
 `SENTRY_RELEASE` label them. Unset, errors are only logged.
@@ -88,47 +75,30 @@ values are never displayed.
 
 ### Spend limits
 
-The room is public and needs no sign-in, so anyone with the link can ask for a
-model call, and every call is billed to the key above. Four limits bound that,
-and all four have working defaults that need no configuration:
+A free fix from the home page needs no sign-in, so anyone can start model
+calls, and every call is billed to the deployment's own keys. Two limits bound
+that, and both have working defaults that need no configuration:
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `PATCHBAY_ROOM_COOLDOWN_SECONDS` | `20` | Shortest gap between two candidate generations in one room |
-| `PATCHBAY_ROOM_DAILY_MODEL_CALLS` | `30` | Model calls one room may make in any rolling 24 hours |
-| `PATCHBAY_DAILY_MODEL_CALLS` | `2000` | Model calls the whole deployment may make in that window |
+| `PATCHBAY_DAILY_MODEL_CALLS` | `2000` | Model calls the whole deployment may make in any rolling 24 hours |
 | `PATCHBAY_DAILY_FREE_FIXES` | `200` | Free fixes the home page gives in that window, across every visitor |
 
-Rooms are created on demand, so two more limits bound how many can exist:
-
-| Variable | Default | What it does |
-| --- | --- | --- |
-
-Asking for a room first sweeps away rooms nobody used past that window, which
-is what keeps crawlers and uptime checks from filling the database. If the
-deployment is still full afterwards, the visitor is asked to come back in a few
-minutes rather than being given a room.
-
-Candidate generations and repair plans both count. Repeats of a request that
-was already answered are served from the cache and cost nothing, so they are
-not counted and never refused. When a limit is reached the room says the call
-was refused and why, and no candidate is produced.
-
-Lower them for a walkthrough that should stay cheap:
+Lower them to keep spending down:
 
 ```sh
 fly secrets set --app patchbay-regents \
   PATCHBAY_DAILY_MODEL_CALLS=100 \
-  PATCHBAY_ROOM_DAILY_MODEL_CALLS=10
+  PATCHBAY_DAILY_FREE_FIXES=10
 ```
 
 A value that is not a whole number is ignored and the default stands, so read
 the value back with `fly secrets list` after changing one.
 
-These limits protect the demo from a burst of traffic; they are not a billing
-guarantee. Also set a hard monthly spend limit on the OpenAI project that
-issued `OPENAI_API_KEY`, so a mistake anywhere in this stack cannot run up an
-unbounded bill.
+These limits protect the site from a burst of traffic; they are not a billing
+guarantee. Also set a hard monthly spend limit on the accounts behind
+`OPENROUTER_API_KEY` and `OPENAI_API_KEY`, so a mistake anywhere in this stack
+cannot run up an unbounded bill.
 
 ## 4. Deploy
 
@@ -158,7 +128,7 @@ image built without it stops at the Dockerfile's check, so nothing is
 released.
 
 `--ha=false` is required: without it Fly creates a second machine for high
-availability, and this demo is deliberately one shared-cpu-1x 512MB machine.
+availability, and this site is deliberately one shared-cpu-1x 512MB machine.
 
 The image is built from `platform/Dockerfile` with the monorepo root as its context. Before the new machine takes traffic, Fly
 runs the release command `/app/bin/migrate`, which applies every pending
@@ -169,7 +139,7 @@ Deploys are blue-green (`strategy = "bluegreen"` in `platform/fly.toml`): Fly
 starts a new machine beside the running one and moves traffic to it only once
 it answers `/healthz` with `ok`, which needs its database to answer. A new
 release that never answers is removed and
-the previous one keeps serving. Open rooms reconnect when traffic moves.
+the previous one keeps serving. Open pages reconnect when traffic moves.
 
 ## 5. Verify
 
@@ -190,27 +160,13 @@ Expected:
 {
     "status": "ok",
     "database": "ok",
-    "migrations": "current",
-    "sample_enabled": true,
-    "live_inference_configured": false
+    "migrations": "current"
 }
 ```
 
-That body is the deterministic mode: the checked-in sample is on and no key
-is present. In live-inference mode the last two fields are the other way round:
-
-```json
-    "sample_enabled": false,
-    "live_inference_configured": true
-```
-
-Both `true` means a key is present but the sample would still be used when a
-call fails, which is usually not what a public demo should be showing.
-
 The endpoint answers `503` whenever the database is unreachable or a migration
 is still pending, which is also what the platform health check in `fly.toml`
-polls, so a bad release is taken out of rotation instead of serving errors. The
-API key itself is never included in the response.
+polls, so a bad release is taken out of rotation instead of serving errors.
 
 ## 5. Custom domain (patchbay.help)
 
