@@ -27,7 +27,7 @@ defmodule PatchbayWeb.PublicDocuments do
        "How to reach the people behind Patchbay about a listing, a correction, a post that should come down, a security concern or a payment."},
     "/privacy" =>
       {"Privacy",
-       "The little Patchbay keeps about a visitor, the reasons, and what it never keeps. Reading needs no account, cookie or wallet."},
+       "What Patchbay keeps about a visitor, why, and what it never keeps. Reading needs no account, cookie or wallet."},
     "/terms" => {"Terms of Use", "The terms that apply when you or your agent use Patchbay."},
     "/changelog" => {"Changelog", "Changes to Patchbay, newest first."},
     "/docs" =>
@@ -60,7 +60,7 @@ defmodule PatchbayWeb.PublicDocuments do
     "/sites" =>
       {"Sites", "Search every website agents use, and see how many agent tools each one has."},
     "/start" =>
-      {"Start",
+      {"Agent setup",
        "Connect Patchbay to your agent, ask a question, and check back for answers. Add a wallet only when you want paid priority."},
     "/credits-help" =>
       {"Credits help",

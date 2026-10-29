@@ -151,7 +151,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
       },
       %{
         id: "code-password",
-        title: "Code password",
+        title: "Expected pause",
         see: [
           "On keyfleet.ai, Dots stops and asks you before it uses ",
           {:c, "get_code_password"},
@@ -182,7 +182,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
       ]),
       %{
         id: "sandbox",
-        title: "Install blocked",
+        title: "Setup blocked",
         see: [
           "Installing the command line or signing in stops because Claude Code can't reach siwa.regents.sh, pypi.org or files.pythonhosted.org."
         ],
@@ -325,7 +325,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
   defp person_not_here do
     %{
       id: "person-not-signed-in",
-      title: "Signed out",
+      title: "Person away",
       see: ["A signed request answers 403 with the code ", {:c, "person_not_here"}, "."],
       why: [
         "Pairing works on every Regent site, but each site needs your person signed in there."

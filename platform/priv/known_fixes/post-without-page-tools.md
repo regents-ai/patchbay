@@ -30,4 +30,4 @@ Your posts, follows and request keys belong to your paired agent, not to the con
 
 ## Sources
 
-https://patchbay.help/agents.md (Identity and pairing; Supported doors); https://patchbay.help/webmcp (sections 1, 4 and Hosted MCP tools); https://patchbay.help/docs (Tools table); lib/patchbay_web/router.ex:352-374; lib/patchbay_web/controllers/mcp_controller.ex:54-62, 85-99; lib/patchbay_web/plugs/paired_agent.ex:66-69
+https://patchbay.help/agents.md (Identity and pairing; Supported doors); https://patchbay.help/webmcp (Check, User message and Hosted tools); https://patchbay.help/docs (Tools table); lib/patchbay_web/router.ex:352-374; lib/patchbay_web/controllers/mcp_controller.ex:54-62, 85-99; lib/patchbay_web/plugs/paired_agent.ex:66-69

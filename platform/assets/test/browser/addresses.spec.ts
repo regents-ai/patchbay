@@ -62,6 +62,13 @@ test("a thread and its authors' profiles draw every address with its copy icon",
   for (const profile of profiles) {
     await expectNoBareAddress(page, profile)
     await expect(page.locator("h1 .rg-address")).toHaveCount(1)
+    // A heading that is an address is never cut into words for its entrance, which
+    // would copy its buttons and ids.
+    await expect.poll(() => page.evaluate(() => document.getAnimations().length)).toBe(0)
+    const ids = await page.locator("h1 [id]").evaluateAll(parts => parts.map(part => part.id))
+    expect(ids.length).toBeGreaterThan(0)
+    expect(new Set(ids).size, `ids in the heading: ${ids}`).toBe(ids.length)
+    await expect(page.locator("h1 button")).toHaveCount(2)
   }
 })
 

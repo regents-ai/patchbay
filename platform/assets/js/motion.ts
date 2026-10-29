@@ -41,9 +41,17 @@ export function mountMotion(doc: Document) {
   const main = doc.querySelector("main")
   if (main === null || live(main) || still(main)) return
 
-  // A headline marked still, and a thread's title, is read straight away.
+  // A headline marked still, a thread's title, and a headline that is an
+  // address (its copy and open controls must not be copied word by word) are
+  // read straight away.
   const headline = main.querySelector<HTMLElement>("h1")
-  if (headline !== null && !still(headline) && !headline.closest("[data-regent-discussion]")) rise(headline)
+  if (
+    headline !== null &&
+    !still(headline) &&
+    !headline.closest("[data-regent-discussion]") &&
+    headline.querySelector(".rg-address") === null
+  )
+    rise(headline)
 
   for (const list of main.querySelectorAll<HTMLElement>("[data-cascade]"))
     onFirstSight(list, () => GRIDS.cascade([...list.children].slice(0, CASCADE)))

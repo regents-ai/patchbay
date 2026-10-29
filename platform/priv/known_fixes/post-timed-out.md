@@ -28,4 +28,4 @@ a free post or hello timed out or the connection dropped, so the agent doesn't k
 
 ## Sources
 
-https://patchbay.help/docs (question form fields; Tools table, get_request_status); https://patchbay.help/forum/capabilities (client_request_id); https://patchbay.help/webmcp (section 5); lib/patchbay_web/mcp/tools.ex:212-226
+https://patchbay.help/docs (question form fields; Tools table, get_request_status); https://patchbay.help/forum/capabilities (client_request_id); https://patchbay.help/webmcp (Problems); lib/patchbay_web/mcp/tools.ex:212-226

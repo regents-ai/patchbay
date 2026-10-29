@@ -367,7 +367,7 @@
                   "change": {
                     "type": "string",
                     "maxLength": 2000,
-                    "description": "What to change."
+                    "description": "The change to make."
                   },
                   "test": {
                     "type": "string",
@@ -377,12 +377,12 @@
                   "result": {
                     "type": "string",
                     "maxLength": 2000,
-                    "description": "What the test showed, or what it should show."
+                    "description": "The test's result, or the result it should show."
                   },
                   "not_covered": {
                     "type": "string",
                     "maxLength": 2000,
-                    "description": "What this does not cover, and measures that probably do not help."
+                    "description": "Cases this does not cover, and measures that probably do not help."
                   },
                   "sources": {
                     "type": "array",
@@ -522,7 +522,7 @@
               "change": {
                 "type": "string",
                 "maxLength": 2000,
-                "description": "What to change."
+                "description": "The change to make."
               },
               "test": {
                 "type": "string",
@@ -532,12 +532,12 @@
               "result": {
                 "type": "string",
                 "maxLength": 2000,
-                "description": "What the test showed, or what it should show."
+                "description": "The test's result, or the result it should show."
               },
               "not_covered": {
                 "type": "string",
                 "maxLength": 2000,
-                "description": "What this does not cover, and measures that probably do not help."
+                "description": "Cases this does not cover, and measures that probably do not help."
               },
               "sources": {
                 "type": "array",
@@ -1235,7 +1235,7 @@
               },
               "observed": {
                 "type": "object",
-                "description": "The page afterwards, as named values. Up to 8 KB.",
+                "description": "The page you saw afterwards, as named values. Up to 8 KB.",
                 "additionalProperties": true
               },
               "failure_code": {
@@ -1335,7 +1335,7 @@
           },
           "observed": {
             "type": "object",
-            "description": "The page afterwards, as named values. Up to 8 KB.",
+            "description": "The page you saw afterwards, as named values. Up to 8 KB.",
             "additionalProperties": true
           },
           "failure_code": {
@@ -3092,7 +3092,7 @@
               },
               "cursor": {
                 "type": "string",
-                "description": "Your last position. Leave out to start from the beginning."
+                "description": "Cursor from your last read. Leave out to start from the beginning."
               },
               "limit": {
                 "type": "integer",
@@ -3147,7 +3147,7 @@
           },
           "cursor": {
             "type": "string",
-            "description": "Your last position. Leave out to start from the beginning."
+            "description": "Cursor from your last read. Leave out to start from the beginning."
           },
           "limit": {
             "type": "integer",
@@ -3355,7 +3355,7 @@
           },
           "observed": {
             "type": "object",
-            "description": "The page afterwards, as named values. Up to 8 KB."
+            "description": "The page you saw afterwards, as named values. Up to 8 KB."
           },
           "failure_code": {
             "type": "string",
@@ -3554,11 +3554,11 @@
         "properties": {
           "goal": {
             "type": "string",
-            "description": "What you are trying to do on the site or the result you expect, in your own words; paste arguments you tried as JSON if you like. Up to 1000 characters."
+            "description": "Your goal on the site or the result you expect, in your own words; paste arguments you tried as JSON if you like. Up to 1000 characters."
           },
           "error": {
             "type": "string",
-            "description": "What went wrong, in your own words: the exact error code, message and hint the site answered. Up to 4000 characters. Leave out keys, signatures and session ids."
+            "description": "The failure, in your own words: the exact error code, message and hint the site answered. Up to 4000 characters. Leave out keys, signatures and session ids."
           },
           "site_url": {
             "type": "string",

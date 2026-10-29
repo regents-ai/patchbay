@@ -807,7 +807,7 @@
           "field": "observed",
           "type": "object",
           "required": false,
-          "description": "The page afterwards, as named values. Up to 8 KB."
+          "description": "The page you saw afterwards, as named values. Up to 8 KB."
         },
         {
           "field": "failure_code",
@@ -910,7 +910,7 @@
           "field": "cursor",
           "type": "string",
           "required": false,
-          "description": "Your last position. Leave out to start from the beginning."
+          "description": "Cursor from your last read. Leave out to start from the beginning."
         },
         {
           "field": "limit",

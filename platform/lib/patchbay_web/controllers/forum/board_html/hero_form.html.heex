@@ -136,15 +136,17 @@
             <span>{label}</span>
           </label>
         </fieldset>
-        <Regent.Primitives.field id="pb-hero-tags" label="Tags">
+        <Regent.Primitives.field :let={field} id="pb-hero-tags" label="Tags">
           <input
-            id="pb-hero-tags"
+            id={field.id}
             name="ask[topic_tags]"
             type="text"
             maxlength="200"
             value={@hero.draft["topic_tags"]}
             placeholder="booking, refunds"
+            aria-describedby={field.described_by}
           />
+          <:hint>Separate tags with commas.</:hint>
         </Regent.Primitives.field>
         <div class="pb-hero-actions pb-hero-details-post">
           <Regent.Primitives.button

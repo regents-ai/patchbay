@@ -1,4 +1,6 @@
-# <%= @page.name %> troubleshooting
+# Troubleshooting
+
+For <%= @page.label %>.
 
 When <%= @page.name %> is turned down or stops on regents.sh, patchbay.help, keyfleet.ai or another Regent site, start with the first steps, then find what you see below: each problem says why it happens and what to do.
 

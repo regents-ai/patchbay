@@ -32,4 +32,4 @@ A page that loaded is not proof of WebMCP. Only a tool list that names the tools
 
 ## Sources
 
-https://patchbay.help/webmcp (sections 1, 2 and 5)
+https://patchbay.help/webmcp (Check, Switch on and Problems)

@@ -10,13 +10,11 @@ import {expect, signedIn, test} from "./support/test"
 //
 // Left out until their owners change them, each named in the hand-off:
 // - /privacy and /terms, which are versioned and change only on Sean's go;
-// - /webmcp and the developer page's Hosted MCP section, which the agent-tools
-//   branch is rewriting;
 // - the blog's index heading, which design-system draws for every Regent site.
 // An incident's title and a changelog entry's are their articles' titles, as written.
-const skippedPages = ["/privacy", "/terms", "/webmcp"]
+const skippedPages = ["/privacy", "/terms"]
 const content =
-  ".rg-discussion__body, .rg-discussion__title, .rg-blog, .pb-incident-head h1, .pb-changelog__release, #mcp"
+  ".rg-discussion__body, .rg-discussion__title, .rg-blog, .pb-incident-head h1, .pb-changelog__release"
 
 const wWord = /^\s*(who|what|where|why|when)\b/i
 

@@ -1,9 +1,10 @@
 defmodule PatchbayWeb.CopyOpeningsTest do
   @moduledoc """
   Patchbay's own words for agents never open with who, what, where, why or when
-  (founder, 28 Oct 2026): the command line's help, the tools' titles, the API's
-  summaries, and the headings and bold leads of the agent guides, the skills and
-  the incident pages, and every page's Markdown answer. The pages themselves are read by the browser walk
+  (founder, 28 Oct 2026): the command line's help, the tools' titles and field
+  help, the API's summaries and descriptions, and the headings and bold leads of
+  the agent guides, the skills, the incident pages and every page's Markdown
+  answer. The pages themselves are read by the browser walk
   (assets/test/browser/copy.desktop.spec.ts).
   """
 
@@ -12,11 +13,11 @@ defmodule PatchbayWeb.CopyOpeningsTest do
   @root Path.expand("../../..", __DIR__)
   @opening ~r/\A\s*(who|what|where|why|when)\b/i
 
-  test "the command line's help, the tools' titles and the API's summaries" do
+  test "the command line's help, the tools' titles and field help, and the API's summaries and descriptions" do
     for {file, keys} <- [
           {"cli/commands.json", ~w(title summary description help)},
-          {"platform/priv/tool_manifest.json", ~w(title)},
-          {"platform/priv/public/openapi.json", ~w(summary)}
+          {"platform/priv/tool_manifest.json", ~w(title description)},
+          {"platform/priv/public/openapi.json", ~w(summary description)}
         ] do
       found = file |> read_json() |> openings(keys, [])
       assert found == [], "#{file} opens with a W-word at #{inspect(found)}"
@@ -24,11 +25,10 @@ defmodule PatchbayWeb.CopyOpeningsTest do
   end
 
   test "the headings and bold leads of the guides, skills, incident pages and Markdown pages" do
-    # The privacy and terms pages are versioned and change only on Sean's go; the
-    # WebMCP guide is being rewritten on the agent-tools branch.
+    # The privacy and terms pages are versioned and change only on Sean's go.
     twins =
       Path.wildcard(Path.join(@root, "platform/lib/patchbay_web/**/*.md.eex"))
-      |> Enum.reject(&(Path.basename(&1) in ~w(privacy.md.eex terms.md.eex webmcp.md.eex)))
+      |> Enum.reject(&(Path.basename(&1) in ~w(privacy.md.eex terms.md.eex)))
 
     files =
       twins ++

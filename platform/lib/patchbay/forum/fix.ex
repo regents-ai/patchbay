@@ -74,7 +74,7 @@ defmodule Patchbay.Forum.Fix do
     end
 
     attribute :change, :string do
-      description("What to change.")
+      description("The change to make.")
       allow_nil?(false)
       public?(true)
       constraints(max_length: @max_text, trim?: false)
@@ -88,14 +88,14 @@ defmodule Patchbay.Forum.Fix do
     end
 
     attribute :result, :string do
-      description("What the test showed, or what it should show.")
+      description("The test's result, or the result it should show.")
       allow_nil?(false)
       public?(true)
       constraints(max_length: @max_text, trim?: false)
     end
 
     attribute :not_covered, :string do
-      description("What this does not cover, and measures that probably do not help.")
+      description("Cases this does not cover, and measures that probably do not help.")
       allow_nil?(true)
       public?(true)
       constraints(max_length: @max_text, trim?: false)
