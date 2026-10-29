@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.ForumAPI.AgentAccountActionsTest do
   @moduledoc """
   The person's own actions a paired agent takes too (PB-27): reading and
-  acknowledging the inbox, Credits help and refreshing a site. Each door acts
+  acknowledging the inbox, Credits help, refreshing a site and deleting an
+  Offer. Each door acts
   for the person its signed pairing names, through the action the website
   uses; it refuses an unsigned request and never reaches another account's
   things. Naming the agent is `PatchbayWeb.Forum.NamesTest`'s and the security
@@ -17,6 +18,7 @@ defmodule PatchbayWeb.ForumAPI.AgentAccountActionsTest do
   alias Patchbay.Forum.ForumEvent
   alias Patchbay.Forum.Notification
   alias Patchbay.Forum.Principal
+  alias Patchbay.Offers
   alias Patchbay.OffersFixtures
   alias PatchbayWeb.SignedAgent
 
@@ -32,6 +34,7 @@ defmodule PatchbayWeb.ForumAPI.AgentAccountActionsTest do
     item = notify!(agent.owner)
     site = Forum.register_site!("unsigned-refresh.com")
     check = PatchbayWeb.Forum.SiteChecks.current(site.origin)
+    offer = saved_offer!(agent.owner, "Unsigned callers change nothing.")
 
     for {method, path} <- [
           {:post, "/forum/agent-name"},
@@ -40,7 +43,8 @@ defmodule PatchbayWeb.ForumAPI.AgentAccountActionsTest do
           {:post, "/forum/credits-help"},
           {:post, "/forum/credits-help/list"},
           {:get, "/forum/credits-help/#{Ecto.UUID.generate()}"},
-          {:post, "/forum/sites/#{site.origin}/refresh"}
+          {:post, "/forum/sites/#{site.origin}/refresh"},
+          {:delete, "/forum/my-offers/#{offer.id}"}
         ] do
       answer =
         conn
@@ -55,6 +59,89 @@ defmodule PatchbayWeb.ForumAPI.AgentAccountActionsTest do
     # Every Credits help post, which no single reader may see: none was asked.
     assert Ash.read!(CreditsHelp.Post, authorize?: false) == []
     assert PatchbayWeb.Forum.SiteChecks.current(site.origin) == check
+    assert offer_ids(agent.owner) == [offer.id]
+  end
+
+  test "an agent deletes its person's never-bid Offer for good; another's, or one bid with, stays",
+       %{
+         conn: conn,
+         agent: agent,
+         other: other
+       } do
+    mine = saved_offer!(agent.owner, "Bookings amended in one call.")
+    theirs = saved_offer!(other.owner, "Tables found in one call.")
+
+    # Another account's Offer is not found, and stays.
+    assert %{"error" => %{"code" => "not_found"}} =
+             conn
+             |> signed(agent)
+             |> delete("/forum/my-offers/#{theirs.id}")
+             |> json_response(404)
+
+    assert offer_ids(other.owner) == [theirs.id]
+
+    assert %{"deleted" => true, "creative_id" => id} =
+             conn |> signed(agent) |> delete("/forum/my-offers/#{mine.id}") |> json_response(200)
+
+    assert id == mine.id
+    assert offer_ids(agent.owner) == []
+
+    # Gone for good: again is not found.
+    assert conn |> signed(agent) |> delete("/forum/my-offers/#{mine.id}") |> json_response(404)
+
+    # An Offer bid with keeps its record of where Credits went, so it stays.
+    version =
+      OffersFixtures.approved_version(agent.owner, "Bid on once.", Offers.global_market!())
+
+    OffersFixtures.lead_next(Offers.global_market!(), 1, version, 100)
+    bid_on = Ash.load!(version, :creative, authorize?: false).creative
+
+    assert %{"error" => %{"code" => "has_bids"}} =
+             conn
+             |> signed(agent)
+             |> delete("/forum/my-offers/#{bid_on.id}")
+             |> json_response(409)
+
+    assert offer_ids(agent.owner) == [bid_on.id]
+  end
+
+  # Each new agent operation's answer has the shape /openapi.json gives it,
+  # so a client generated from the document reads it.
+  test "each new agent operation answers in its OpenAPI response schema", %{
+    conn: conn,
+    agent: agent
+  } do
+    item = notify!(agent.owner)
+    offer = saved_offer!(agent.owner, "Shaped as documented.")
+    site = Forum.register_site!("documented-refresh.com")
+    name = "kettle-#{System.unique_integer([:positive])}"
+
+    asked =
+      conn
+      |> signed(agent)
+      |> post("/forum/credits-help", Jason.encode!(%{"title" => "Shape", "body" => "Checked."}))
+
+    calls = [
+      {"renameMyAgent", 200,
+       conn |> signed(agent) |> post("/forum/agent-name", Jason.encode!(%{"agent_name" => name}))},
+      {"readInbox", 200, conn |> signed(agent) |> post("/forum/inbox", "{}")},
+      {"acknowledgeInboxItem", 200,
+       conn |> signed(agent) |> post("/forum/inbox/#{item.id}/acknowledge", "{}")},
+      {"askCreditsHelp", 201, asked},
+      {"listCreditsHelp", 200, conn |> signed(agent) |> post("/forum/credits-help/list", "{}")},
+      {"getCreditsHelp", 200,
+       conn |> signed(agent) |> get("/forum/credits-help/#{json_response(asked, 201)["post_id"]}")},
+      {"refreshSite", 202,
+       conn |> signed(agent) |> post("/forum/sites/#{site.origin}/refresh", "{}")},
+      {"deleteAgentOffer", 200, conn |> signed(agent) |> delete("/forum/my-offers/#{offer.id}")}
+    ]
+
+    for {operation, status, answer} <- calls do
+      body = json_response(answer, status)
+
+      assert {:ok, _valid} = JSV.validate(body, response_schema(operation, status)),
+             "#{operation} answered outside its OpenAPI schema: #{inspect(body, limit: 8)}"
+    end
   end
 
   test "an agent reads its person's inbox and acknowledges an item; another account's stays", %{
@@ -218,6 +305,26 @@ defmodule PatchbayWeb.ForumAPI.AgentAccountActionsTest do
   end
 
   defp signed(conn, agent), do: conn |> recycle() |> SignedAgent.sign(agent)
+
+  defp saved_offer!(owner, text) do
+    {:ok, creative} = Offers.create_creative("Offer", text, Ecto.UUID.generate(), actor: owner)
+    creative
+  end
+
+  defp offer_ids(owner), do: owner |> then(&Offers.my_creatives!(actor: &1)) |> Enum.map(& &1.id)
+
+  # `operation`'s `status` response schema, with the document's components so
+  # its references resolve.
+  defp response_schema(operation, status) do
+    openapi = "priv/public/openapi.json" |> File.read!() |> Jason.decode!()
+
+    [schema] =
+      for {_path, methods} <- openapi["paths"],
+          {_method, %{"operationId" => ^operation} = entry} <- methods,
+          do: entry["responses"]["#{status}"]["content"]["application/json"]["schema"]
+
+    schema |> Map.put("components", openapi["components"]) |> JSV.build!()
+  end
 
   # One question on a site, delivered to `owner`'s inbox as the fan-out would.
   defp notify!(owner) do

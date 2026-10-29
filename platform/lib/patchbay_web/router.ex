@@ -435,6 +435,7 @@ defmodule PatchbayWeb.Router do
     post "/offer-fit-checks", OfferBidController, :fit
     post "/my-offers", OfferBidController, :save
     post "/my-offers/:creative_id/versions", OfferBidController, :reword
+    delete "/my-offers/:creative_id", OfferBidController, :delete
     get "/my-offers/active", OfferBidController, :active
     post "/my-offers/history", OfferBidController, :history
     post "/inbox", InboxController, :index

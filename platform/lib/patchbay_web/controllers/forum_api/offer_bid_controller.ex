@@ -8,16 +8,25 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
 
   Two reads show the person's own Offers as the Active and History tabs do
   (`PatchbayWeb.ForumAPI.MyOffers`); they hold, pay and change nothing.
+  Deleting a saved Offer that was never bid with is the person's Delete on
+  `/offers/create`, and holds or returns no Credits either.
   """
 
   use PatchbayWeb, :controller
 
+  require Ash.Query
+
   alias Patchbay.Credits
   alias Patchbay.Identity
+  alias Patchbay.Offers
+  alias Patchbay.Offers.Creative
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.ForumAPI.MyOffers
   alias PatchbayWeb.ForumAPI.OfferBidding
   alias PatchbayWeb.Plugs.PairedAgent
+  alias PatchbayWeb.UnexpectedFailure
+
+  @not_deleted "That Offer could not be deleted just now."
 
   def options(conn, params), do: send_answer(conn, get_offer_bid_options(agent(conn), params))
 
@@ -31,6 +40,9 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   def fit(conn, params), do: send_answer(conn, ask_offer_fit(agent(conn), params))
   def save(conn, params), do: send_answer(conn, save_agent_offer(agent(conn), params))
   def reword(conn, params), do: send_answer(conn, reword_agent_offer(agent(conn), params))
+
+  def delete(conn, %{"creative_id" => id}),
+    do: send_answer(conn, delete_agent_offer(agent(conn), id))
 
   def active(conn, params),
     do: send_answer(conn, answer(:ok, MyOffers.active(agent(conn), params)))
@@ -61,6 +73,54 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   @spec reword_agent_offer(Patchbay.Agents.Actor.t(), map()) :: {atom(), map()}
   def reword_agent_offer(actor, params),
     do: answer(:created, OfferBidding.reword(person(actor), params))
+
+  @doc """
+  Deletes one of `actor`'s person's saved Offers for good, with every wording
+  and screening it had, as Delete on `/offers/create` does: the same `:delete`
+  action and policy. An Offer ever bid with cannot be deleted, so this never
+  touches Credits. Another account's Offer, or one put away, is not found.
+  `DELETE /forum/my-offers/{creative_id}` and the `delete_agent_offer` tool.
+  """
+  @spec delete_agent_offer(Patchbay.Agents.Actor.t(), String.t()) :: {atom(), map()}
+  def delete_agent_offer(actor, id) do
+    person = person(actor)
+
+    with {:ok, uuid} <- Ecto.UUID.cast(id),
+         {:ok, [creative]} <-
+           Offers.my_creatives(
+             actor: person,
+             query: Ash.Query.filter(Creative, id == ^uuid and is_nil(archived_at))
+           ),
+         :ok <- Offers.delete_creative(creative, actor: person) do
+      {:ok, %{deleted: true, creative_id: uuid}}
+    else
+      {:error, %Ash.Error.Invalid{errors: [%{field: :id, message: message} | _rest]}} ->
+        refuse(
+          :conflict,
+          "has_bids",
+          "That Offer #{message}.",
+          "Nothing was deleted. Leave it, or stop using it for new bids."
+        )
+
+      {:error, error} ->
+        UnexpectedFailure.log(error)
+
+        refuse(
+          :service_unavailable,
+          "unavailable",
+          @not_deleted,
+          "Nothing was deleted. Try again in a moment."
+        )
+
+      _missing ->
+        refuse(
+          :not_found,
+          "not_found",
+          "Your person has no saved Offer with that creative_id.",
+          "Use a creative_id from list_my_active_offers or the Offer you saved."
+        )
+    end
+  end
 
   defp agent(conn), do: conn.assigns.agent_actor
 

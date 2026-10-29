@@ -223,6 +223,8 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       {"list_credits_help", %{}, {:http, :answer, :post, "/forum/credits-help/list", %{}}},
       {"get_credits_help", %{"post_id" => missing},
        {:http, :refusal, :get, "/forum/credits-help/#{missing}"}},
+      {"delete_agent_offer", %{"creative_id" => missing},
+       {:http, :refusal, :delete, "/forum/my-offers/#{missing}", %{}}},
       {"refresh_site", %{"site" => "nowhere.example.org"},
        {:http, :refusal, :post, "/forum/sites/nowhere.example.org/refresh", %{}}},
       {"read_wallet_bench", %{}, {:http, :answer, :get, "/api/wallet-bench"}},

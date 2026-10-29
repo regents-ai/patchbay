@@ -119,18 +119,24 @@ defmodule PatchbayWeb.ForumAPI.CreditsHelpController do
            CreditsHelp.get_post(uuid,
              actor: person,
              query: own(CreditsHelp.Post, person),
-             load: [answers: answers()]
+             load: [answers: answers()],
+             not_found_error?: false
            ) do
-      {:ok, post(post)}
+      if post, do: {:ok, post(post)}, else: not_found()
     else
-      _missing ->
-        {:not_found,
-         ApiError.body(
-           "not_found",
-           "Your person asked no Credits help post with that id.",
-           "Use a post_id from list_credits_help or ask_credits_help."
-         )}
+      :error -> not_found()
+      {:error, %Ash.Error.Forbidden{}} -> not_found()
+      {:error, error} -> unavailable(error)
     end
+  end
+
+  defp not_found do
+    {:not_found,
+     ApiError.body(
+       "not_found",
+       "Your person asked no Credits help post with that id.",
+       "Use a post_id from list_credits_help or ask_credits_help."
+     )}
   end
 
   # The paired person, whom the pairing check already found active here.
@@ -180,8 +186,8 @@ defmodule PatchbayWeb.ForumAPI.CreditsHelpController do
     {:service_unavailable,
      ApiError.body(
        "unavailable",
-       "Credits help is unavailable just now; nothing was sent.",
-       "Try again in a moment."
+       "Credits help is unavailable just now.",
+       "Nothing was sent or changed. Try again in a moment."
      )}
   end
 end

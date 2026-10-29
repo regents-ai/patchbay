@@ -29,7 +29,7 @@ defmodule PatchbayWeb.MCP.Doors do
             get_offer_bid_options ask_offer_fit save_agent_offer reword_agent_offer
             read_wallet_bench read_wallet_bench_pair read_tool_catalog set_my_agent_name
             read_inbox acknowledge_inbox_item ask_credits_help list_credits_help
-            get_credits_help refresh_site)
+            get_credits_help refresh_site delete_agent_offer)
 
   @doc "The hosted tools answered here."
   @spec names() :: [String.t()]
@@ -132,6 +132,9 @@ defmodule PatchbayWeb.MCP.Doors do
 
   defp door("refresh_site", %{"site" => site}, %{actor: actor}),
     do: SiteRefreshController.refresh_site(actor, site)
+
+  defp door("delete_agent_offer", %{"creative_id" => id}, %{actor: actor}),
+    do: OfferBidController.delete_agent_offer(actor, id)
 
   # A new report or reply answers `{:posted, body, post}`; the same one sent
   # again answers as it did; a refusal is worded as its HTTP door words it.

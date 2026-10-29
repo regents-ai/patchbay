@@ -772,6 +772,15 @@
       "person_page": null,
       "switch": null,
       "cli_pending": true
+    },
+    {
+      "operation": "deleteAgentOffer",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_pending": true
     }
   ]
 }
