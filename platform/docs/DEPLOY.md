@@ -238,22 +238,15 @@ fly secrets set --app patchbay-regents PHX_HOST="patchbay.help"
 
 Until `PHX_HOST` changes, the page loads on the new domain but its live
 connection is refused, so do both steps together. The `fly.dev` hostname keeps
-working afterwards only if `PHX_HOST` still names it, so give judges the final
-domain only after this step is verified with `curl -sI https://patchbay.help/`
-returning a `302` to a room.
+working afterwards only if `PHX_HOST` still names it, so give the final domain
+out only after this step is verified with `curl -sI https://patchbay.help/`
+returning a `200`.
 
-Then open the site. The bare domain and the published
-`/webmcp/rooms/skill-uplift` link both hand the visitor a room, so either URL
-works:
+Then open the site:
 
 ```sh
 fly open --app patchbay-regents
 ```
-
-Each browser session gets its own room; the room and its `v1` revision are
-created together on first visit, so there is no seeding command to run after a
-deploy. The **Reset demo** control in the page returns that visitor's room to
-generation 1 between walkthroughs.
 
 Useful follow-ups:
 
@@ -262,25 +255,22 @@ fly status --app patchbay-regents
 fly logs --app patchbay-regents
 ```
 
-## 6. Enabling the WebMCP origin trial later
+## 6. The WebMCP origin trial
 
-A public origin needs an origin-trial token before Chrome exposes
-`document.modelContext`; the local `chrome://flags` path used in
-[LOCAL_WEBMCP.md](LOCAL_WEBMCP.md) does not apply to visitors. Register the
-exact origin (`https://patchbay-regents.fly.dev`) on Chrome's origin trials
-site, then deliver the token one of two ways:
+A public origin needs Chrome's WebMCP origin-trial token before Chrome offers
+`document.modelContext` to visitors; the local `chrome://flags` path in
+[LOCAL_WEBMCP.md](LOCAL_WEBMCP.md) does not apply to them. Patchbay's token is
+registered for `https://patchbay.help` and expires on 17 November 2026.
 
-- **Response header** (preferred, covers every page): add
-  `Origin-Trial: <token>` in `PatchbayWeb.Plugs.BrowserPolicy`, reading the
-  token from an environment variable and setting it with
-  `fly secrets set --app patchbay-regents WEBMCP_ORIGIN_TRIAL_TOKEN=...`.
-- **Meta tag** (one page): add
-  `<meta http-equiv="origin-trial" content={@origin_trial_token} />` to the
-  `<head>` in `lib/patchbay_web/components/layouts/root.html.heex`.
+The token is public, so it is kept in the source:
+`PatchbayWeb.Plugs.BrowserPolicy` (`lib/patchbay_web/plugs/browser_policy.ex`)
+sends it as an `Origin-Trial` response header on every page, beside
+`Permissions-Policy: tools=(self)`. To renew it, register the same origin again
+on Chrome's origin trials site, replace the token in that file, update the
+expiry in the comment beside it, and release. No Fly secret is involved.
 
-The token is origin-specific and expires, so it belongs in a secret, never in
-this repository. Do not send `Origin-Agent-Cluster: ?0`; WebMCP is only exposed
-in origin-isolated documents.
+Do not send `Origin-Agent-Cluster: ?0`; WebMCP is only exposed in
+origin-isolated documents.
 
 ## 7. Rollback
 

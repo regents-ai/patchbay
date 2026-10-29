@@ -2,10 +2,10 @@
 // `onchain_lab.ts`. It holds anvil's first three accounts, one provider each,
 // and signs through the lab page on the lab's copy of Base; the network, a
 // refused switch, a decline, a slow answer and a signature ending in 0 or 1
-// are the tester's to set. The Tip button runs the page's own `payForIntent`
-// with this wallet in Privy's place, and every press reaches it.
-import {payForIntent} from "../../assets/js/webmcp/paid_actions.ts"
-import type {PaymentWallet} from "../../assets/js/webmcp/paid_actions.ts"
+// are the tester's to set. The Tip button runs the lab's `payForIntent`
+// (paid_actions.ts) with this wallet in Privy's place, and every press reaches it.
+import {payForIntent} from "./paid_actions.ts"
+import type {PaymentWallet} from "./paid_actions.ts"
 import type {EthereumProvider} from "../../assets/js/wallet_actions/send_step.ts"
 
 type WalletReply = {result?: string; error?: {code: number; message: string}}

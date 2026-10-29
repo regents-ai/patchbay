@@ -13,7 +13,7 @@ export function refusal(code: string, message: string, hint: string, extra: Reco
   return {error: {...extra, code, message, hint}};
 }
 
-export function isErrorBody(value: unknown): value is ErrorBody {
+function isErrorBody(value: unknown): value is ErrorBody {
   if (typeof value !== "object" || value === null) return false;
   const {code, message, hint} = value as {code?: unknown; message?: unknown; hint?: unknown};
   return typeof code === "string" && typeof message === "string" && typeof hint === "string";

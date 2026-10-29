@@ -1,4 +1,4 @@
-import {errorIn, isErrorBody, refusal} from "../api_error.ts";
+import {errorIn, refusal} from "../api_error.ts";
 import type {ErrorBody, Refusal} from "../api_error.ts";
 import {signedInProfileId} from "./profile.ts";
 
@@ -182,18 +182,6 @@ export function paymentHelp() {
   };
 }
 
-export function withPaymentHelp<T extends object>(result: T): T & {payment_help: ReturnType<typeof paymentHelp>} {
-  return {...result, payment_help: paymentHelp()};
-}
-
-// The payment help rides inside a refusal, because nothing stands beside
-// its `error`; on any other result it rides beside the fields.
-export function withHelp(result: object) {
-  return "error" in result && isErrorBody(result.error)
-    ? {error: {...result.error, payment_help: paymentHelp()}}
-    : withPaymentHelp(result);
-}
-
 export function needsSignIn(): NeedsSignIn {
   return {
     status: "needs_human_sign_in",
@@ -278,19 +266,8 @@ export function mapBalanceHttp(answer: BalanceAnswer): BalanceReadout {
   };
 }
 
-export function mapUnsignedReason(unsigned: string | undefined): NotConfigured | NeedsSignIn | null {
-  if (unsigned === "unconfigured") {
-    return notConfigured({
-      message: "Signing in is not set up on this Patchbay, so no wallet can sign here.",
-    });
-  }
-  if (unsigned === "signed_out") return needsSignIn();
-  return null;
-}
-
 /**
- * The one balance path the rail, get_my_usdc_balance and get_patchbay_help
- * share. Unsigned and unconfigured pages never hit HTTP.
+ * The one balance path the USDC Balance card reads. Unsigned and unconfigured pages never hit HTTP.
  */
 export async function readPaymentReadiness(options: ReadinessOptions = {}): Promise<PaymentReadiness> {
   if (resolvePaymentsEnabled(options) === false) return notConfigured();

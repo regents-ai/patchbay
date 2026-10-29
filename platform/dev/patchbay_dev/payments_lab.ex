@@ -1,10 +1,11 @@
 defmodule PatchbayDev.PaymentsLab do
   @moduledoc """
-  The payments lab: a page's tip paid for real on a copy of Base on this
-  machine, through the same page code and the same payment door a person's
-  browser uses. Two things stand in for the real ones: the wallet app (the
-  page's stand-in, `dev/assets/payments_lab.ts`, after the template's
-  `onchain_lab.ts`) and the payment service (`PatchbayDev.LabFacilitator`).
+  The payments lab: a tip paid for real on a copy of Base on this machine,
+  through the payment door a person's browser uses, by the lab's own payer
+  (`dev/assets/paid_actions.ts`). Two things stand in for the real ones: the
+  wallet app (the page's stand-in, `dev/assets/payments_lab.ts`, after the
+  template's `onchain_lab.ts`) and the payment service
+  (`PatchbayDev.LabFacilitator`).
 
   Start the copy of Base, then the site with the stand-in payment service:
 

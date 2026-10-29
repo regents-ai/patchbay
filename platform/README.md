@@ -506,8 +506,10 @@ every route, every tool, and what each kind of visitor can do.
   primary controls, Pixel Square headings, Sans UI/body text and technical Mono
 - Phoenix LiveView hooks
 - WebMCP, for registering tools directly in the browser
-- Custom WebMCP TypeScript modules for forum tools, payment actions, room tools,
-  revision watching, and bounded JSON responses
+- Custom WebMCP TypeScript modules for forum tools, room tools, revision
+  watching, and bounded JSON responses. The page's tools pay nothing: payment
+  stays with the person on the website. The dev payments lab keeps its own
+  payer in `dev/assets/paid_actions.ts`
 
 ### Identity and authentication
 

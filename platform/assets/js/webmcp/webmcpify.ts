@@ -64,7 +64,7 @@ export interface ModelContext extends EventTarget {
   getTools?(): Promise<RegisteredToolInfo[]>;
 }
 
-type WithModelContext<T> = T & { modelContext?: ModelContext };
+type WithModelContext = Document & { modelContext?: ModelContext };
 
 export interface ToolScopeOptions {
   exposedTo?: string[];
@@ -75,11 +75,10 @@ export interface ToolScopeOptions {
 
 type CompletionDetail = { ok?: unknown; message?: string; error?: string };
 
+// The WebMCP draft's only entry point is document.modelContext.
 export function getModelContext(): ModelContext | undefined {
-  if (typeof document !== 'undefined' && (document as WithModelContext<Document>).modelContext) return (document as WithModelContext<Document>).modelContext;
-  // Deprecated surface used by the Chrome 149 origin trial; remove when obsolete.
-  if (typeof navigator !== 'undefined' && (navigator as WithModelContext<Navigator>).modelContext) return (navigator as WithModelContext<Navigator>).modelContext;
-  return undefined;
+  if (typeof document === 'undefined') return undefined;
+  return (document as WithModelContext).modelContext;
 }
 
 export function isWebMCPAvailable() {
@@ -252,8 +251,8 @@ function shouldValidate(options?: { validate?: boolean }): boolean {
 
 function validateTool(tool: ModelContextTool) {
   const problems: string[] = [];
-  if (!/^[a-zA-Z0-9_.-]{1,30}$/.test(tool.name)) {
-    problems.push(`name "${tool.name}" should be 1-30 chars of [a-zA-Z0-9_.-]`);
+  if (!/^[a-zA-Z0-9_.-]{1,128}$/.test(tool.name)) {
+    problems.push(`name "${tool.name}" should be 1-128 chars of [a-zA-Z0-9_.-]`);
   }
   if (!tool.description) problems.push(`tool "${tool.name}" is missing a description`);
   else if (tool.description.length > 500) {

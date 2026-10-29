@@ -40,10 +40,9 @@ type FakeAnswer = {status: number; body?: unknown};
 
 type FakeResponse = {ok: boolean; status: number; json: () => Promise<unknown>};
 
-/** The options the tests build tools with: fakes stand in for fetch and payForIntent. */
-type FakeOptions = Omit<ForumToolOptions, "fetch" | "payForIntent"> & {
+/** The options the tests build tools with: a fake stands in for fetch. */
+type FakeOptions = Omit<ForumToolOptions, "fetch"> & {
   fetch?: (path: string, request: SentRequest) => Promise<FakeResponse>;
-  payForIntent?: (options: ForumToolOptions) => unknown;
 };
 
 class ModelContext {
@@ -138,7 +137,7 @@ function invalid(line: string) {
 
 test("registers the forum tools with the contract an agent needs", async () => {
   const modelContext = new ModelContext();
-  const dispose = registerForumTools(modelContext, {fetch: fakeFetch([]), csrfToken: "token"});
+  const dispose = registerForumTools(modelContext, {fetch: fakeFetch([])});
   assert.equal(await dispose.ready, true);
 
   assert.deepEqual(modelContext.calls, FORUM_TOOL_NAMES);
@@ -271,7 +270,7 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
   ]);
 
   await onSignedPage(fetch, async () => {
-    const tools = toolsByName({fetch, csrfToken: "csrf-value"});
+    const tools = toolsByName({fetch});
     const input = {
       receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg",
       note: "It said it worked but the page did nothing.",
@@ -416,13 +415,7 @@ test("every board result opens with one sentence about what happened", async () 
 
 test("an owner's action answers that it belongs to the owner's page, and sends nothing", async () => {
   const fetch = fakeFetch([]);
-  const tools = toolsByName({
-    fetch,
-    csrfToken: "token",
-    profileId: "agt_1",
-    paymentsEnabled: true,
-    payForIntent: () => assert.fail("unexpected payment invocation"),
-  });
+  const tools = toolsByName({fetch, profileId: "agt_1"});
   const ownerTools = manifest.tools.filter(
     tool => tool.doors.page && "authentication" in tool && tool.authentication === "owner_only",
   );
@@ -582,7 +575,7 @@ test("pre-canceled non-payment calls make no request", async () => {
   const controller = new AbortController();
   controller.abort();
   const fetch = fakeFetch([]);
-  const tools = toolsByName({fetch, profileId: "agt_1", paymentsEnabled: true});
+  const tools = toolsByName({fetch, profileId: "agt_1"});
   for (const tool of tools.values()) {
     if (tool.annotations.consequentialHint) continue;
     const result = JSON.parse(await tool.execute({}, {signal: controller.signal}));
@@ -628,7 +621,7 @@ test("search_threads lists a site's threads without a query and takes a recency 
     {status: 200, body: {results: [{id: "t-1"}], tools: [], pagination: {has_more: false}}},
     {status: 422, body: invalid("since_minutes: give whole minutes between 1 and 43200.")},
   ]);
-  const tool = toolsByName({fetch, csrfToken: "token"}).get("search_threads")!;
+  const tool = toolsByName({fetch}).get("search_threads")!;
 
   // No q at all — a site listing is a legal call.
   assert.equal(tool.inputSchema.required, undefined);
@@ -651,7 +644,7 @@ test("get_thread returns the thread with everyone who wrote on it", async () => 
     pagination: {has_more: false},
   };
   const fetch = fakeFetch([{status: 200, body}]);
-  const tool = toolsByName({fetch, csrfToken: "token"}).get("get_thread")!;
+  const tool = toolsByName({fetch}).get("get_thread")!;
 
   const result = JSON.parse(await tool.execute({thread_id: "t-9"}));
   assert.equal(result.thread.participants.named.length, 1);
@@ -663,7 +656,7 @@ test("the known fixes are read with no sign-in: a site's list, then one fix", as
     {status: 200, body: {site: "patchbay.help", known_fixes: [{fix_id: "post-timed-out", url: "/known-fixes/post-timed-out"}]}},
     {status: 200, body: {fix_id: "post-timed-out", title: "A post timed out", steps: "1. Read its status."}},
   ]);
-  const tools = toolsByName({fetch, csrfToken: "token"});
+  const tools = toolsByName({fetch});
 
   const listed = JSON.parse(await tools.get("find_known_fixes")!.execute({site: "patchbay.help"}));
   assert.equal(fetch.requests[0].path, "/known-fixes?site=patchbay.help");

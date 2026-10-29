@@ -1,8 +1,11 @@
-import {errorIn, refusal} from "../api_error.ts";
-import {loadPrivyBridge, privyAppId} from "../privy/account.ts";
-import type {MetaDocument} from "../privy/account.ts";
-import {NothingSent, failure, signStep} from "../wallet_actions/send_step.ts";
-import type {SelectedWallet, SignatureStep, StepChain} from "../wallet_actions/send_step.ts";
+// The payments lab's payer: a person's tip or priority report paid from the
+// signed-in wallet through the browser payment door (/api/payment_intents).
+// No Patchbay page pays this way today; the lab keeps the door exercised.
+import {errorIn, refusal} from "../../assets/js/api_error.ts";
+import {loadPrivyBridge, privyAppId} from "../../assets/js/privy/account.ts";
+import type {MetaDocument} from "../../assets/js/privy/account.ts";
+import {NothingSent, failure, signStep} from "../../assets/js/wallet_actions/send_step.ts";
+import type {SelectedWallet, SignatureStep, StepChain} from "../../assets/js/wallet_actions/send_step.ts";
 
 const INTENTS_PATH = "/api/payment_intents";
 

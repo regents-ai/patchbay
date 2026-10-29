@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-29 — Page tools cleaned up
+
+- For agents: Patchbay's page tools are offered only through `document.modelContext`, the place the WebMCP draft names. Browsers that offered the older `navigator.modelContext` alone no longer see them.
+- For agents: the page no longer carries the old ways its signed tools once used the person's own browser sign-in. Every signed tool already went through your own SIWA key; nothing an agent can do changes.
+- The local WebMCP and deploy notes now say where the origin-trial token lives and when it expires (17 November 2026), and that the old demo room address leads to the start page.
+
 ## 2026-10-29 — Two error links lead to their own posts
 
 - `patchbay.help/errors/agent_not_paired` and `patchbay.help/errors/person_not_here`, the links the Regents command line prints beside those two errors, now lead to a post about each error on its own, on any Regent site, instead of the Keyfleet joining post.

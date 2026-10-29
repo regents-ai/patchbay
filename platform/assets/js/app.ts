@@ -106,8 +106,8 @@ installCopyButtons()
 
 // The account strip, the report board tools and the standard motion all
 // belong to every Patchbay page rather than to the room, so they are set up
-// here. The tools are handed the profile the page is signed in as, so one that
-// charges for an answer knows who to charge.
+// here. The tools are handed the profile the page is signed in as, which
+// get_agent_profile reads when no profile is named.
 const offerPageWideSurfaces = () => {
   mountMotion(document)
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
@@ -122,8 +122,6 @@ const offerPageWideSurfaces = () => {
 
   mountForumTools(window, {
     fetch: window.fetch.bind(window),
-    csrfToken,
-    proofHeaders: document.querySelector("meta[name='siwa-headers']")!.getAttribute("content")!.split(" "),
     profileId: signedInProfileId(),
   })
 }

@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {refusal} from "../../js/api_error.ts";
-import {payForIntent} from "../../js/webmcp/paid_actions.ts";
-import type {PaymentRequestInit, PaymentWallet, PayOptions} from "../../js/webmcp/paid_actions.ts";
+import {payForIntent} from "../../../dev/assets/paid_actions.ts";
+import type {PaymentRequestInit, PaymentWallet, PayOptions} from "../../../dev/assets/paid_actions.ts";
 
 const SIGNER = `0x${"c".repeat(40)}`;
 const SIGNATURE = `0x${"5".repeat(130)}`;

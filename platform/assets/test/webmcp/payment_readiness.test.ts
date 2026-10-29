@@ -5,7 +5,6 @@ import {
   USDC_CONTRACT,
   fundingHandoffText,
   mapBalanceHttp,
-  mapUnsignedReason,
   needsSignIn,
   notConfigured,
   pageSignedIn,
@@ -110,10 +109,4 @@ test("pageSignedIn reads the pb-profile meta and never invents a session", () =>
     }),
     false,
   );
-});
-
-test("unsigned wallet reasons from payForIntent use the same status words", () => {
-  assert.equal(mapUnsignedReason("signed_out")!.status, "needs_human_sign_in");
-  assert.equal(mapUnsignedReason("unconfigured")!.status, "not_configured");
-  assert.equal(mapUnsignedReason("refused"), null);
 });

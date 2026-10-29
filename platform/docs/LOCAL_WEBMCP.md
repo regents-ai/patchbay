@@ -9,36 +9,40 @@ The in-app browser in ChatGPT offers a page's WebMCP tools to the assistant
 without any flag or token. Open Patchbay there, keep the chat and the page both
 in view, and follow [JUDGES.md](JUDGES.md).
 
-## Chrome requirements (checked 2026-09-01)
+## Chrome requirements (checked 2026-10-29)
 
 Chrome's current WebMCP documentation describes WebMCP as a proposed standard.
-The WebMCP origin trial is available from Chrome 149. For local development,
-Chrome documents a flag that avoids needing an origin-trial token:
+The WebMCP origin trial runs from Chrome 149. For local development, Chrome
+documents a flag that needs no origin-trial token:
 
 1. Open `chrome://flags/#enable-webmcp-testing`.
 2. Set **WebMCP** to **Enabled**.
-3. Relaunch Chrome and open Patchbay — the published link, or the local one at
-   <http://localhost:4000/webmcp/rooms/skill-uplift>.
+3. Relaunch Chrome and open Patchbay, the published site or the local one at
+   <http://localhost:4000/>. Every page registers the site's tools.
 
-That address hands you a room of your own rather than one everybody shares, and
-your browser remembers it, so reloading returns you to the same room. Only so
-many rooms can exist at once; rooms nobody is using are cleared away after a
-while, and if none is free you are asked to come back in a few minutes.
+A headless Chromium started by Playwright takes the same switch as
+`--enable-features=WebMCPTesting`.
 
-For a real origin-trial deployment, request a token for the exact origin and
-deliver it as an `Origin-Trial` response header or HTML meta tag. Do not put a
-token in this repository. The token is not needed for the local flag path.
+On https://patchbay.help the origin-trial token does the same for visitors.
+It is a public token, tied to that one host, and it expires on 17 November
+2026. It lives in `PatchbayWeb.Plugs.BrowserPolicy`
+(`lib/patchbay_web/plugs/browser_policy.ex`), which sends it as an
+`Origin-Trial` response header beside `Permissions-Policy: tools=(self)` on
+every page. Renew it there, with its new expiry in the comment beside it,
+before it runs out.
 
 WebMCP is available only in origin-isolated documents. Do not opt the page out
 with `document.domain` or an `Origin-Agent-Cluster: ?0` response header. The
-`tools` Permissions Policy defaults to `self`, which covers a top-level page
-and same-origin contexts. A cross-origin iframe needs `allow="tools"` and
-should be used only when that origin is trusted.
+`tools` Permissions Policy is `self`, which covers a top-level page and
+same-origin contexts. A cross-origin iframe needs `allow="tools"` and should be
+used only when that origin is trusted.
 
-Patchbay feature-detects `document.modelContext` and keeps the older
-`navigator.modelContext` surface as compatibility for early origin-trial
-builds. If neither surface exists, the hook reports WebMCP unavailable and
-leaves the room's human controls usable.
+Patchbay reads `document.modelContext` and nothing else. When a browser has no
+WebMCP, the page registers nothing and every page still works by hand.
+
+The old shared demo room at `/webmcp/rooms/skill-uplift` is retired and now
+leads to `/start`. Rooms that already exist still open at
+`/webmcp/rooms/<slug>`.
 
 Authoritative references:
 
@@ -67,4 +71,5 @@ Authoritative references:
   fixture for demonstration, not an evaluation of model quality or task
   success.
 
-Never commit API keys, origin-trial tokens, or production data.
+Never commit API keys or production data. The origin-trial token is the one
+public exception, kept in `PatchbayWeb.Plugs.BrowserPolicy`.
