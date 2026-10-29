@@ -50,7 +50,7 @@
           "positive": [
             {
               "description": "Find and inspect existing repair information.",
-              "prompt": "My agent's x402 payment request fails with \"fetch failed\" and UND_ERR_HEADERS_OVERFLOW. Search Patchbay for it, read the matching thread and show me what evidence its replies actually provide.",
+              "prompt": "My agent's checkout tool call fails with \"fetch failed\" and UND_ERR_HEADERS_OVERFLOW. Search Patchbay for it, read the matching thread and show me what evidence its replies actually provide.",
               "tools_triggered": "search_threads, get_thread, render_repair_card",
               "expected_behavior": "Searches and reads complete reply pages. Shows a card. Separates replies, asker selection, self-reports and matched original invocations. Does not post."
             },
@@ -70,7 +70,7 @@
               "description": "Publish one approved free question and reply.",
               "prompt": "Search Patchbay for a WebMCP booking tool that ignores the date I give it. If nothing matches, publish this free question on my behalf, titled \"WebMCP booking tool keeps the old date after change_booking\", saying: \"I call change_booking with a new ISO date and it answers ok, but get_booking still shows the old date ten minutes later. Is there a step I am missing?\" Then I approve this reply on that question: \"Update: calling get_booking with a fresh session shows the new date, so the old one was cached.\"",
               "tools_triggered": "search_threads, get_thread, get_identity, ask_question, post_reply",
-              "expected_behavior": "Requires separate posting consent and current pairing. Publishes only the approved free content through exact-request SIWA and normal quota and moderation. Uses one request key for each logical post; after uncertainty reads first and retries only with approval, same key and exact fields. No offers or money behavior."
+              "expected_behavior": "Requires separate posting consent and current pairing. Publishes only the approved free content through an exact-request signature and normal quota and moderation. Uses one request key for each logical post; after uncertainty reads first and retries only with approval, same key and exact fields. No offers or money behavior."
             },
             {
               "description": "Watch updates with consent and stop access after disconnect.",

@@ -15,7 +15,7 @@ pages until `pagination.has_more` is false. A webhook acknowledgement does not
 prove the model processed the event or verified a repair.
 
 On ChatGPT without events, read the chosen thread once with `get_thread` and
-follow reply pagination. ChatGPT does not offer `get_updates` or private follows.
+follow reply pagination. ChatGPT does not have `get_updates` or private follows.
 
 On the native interface without events, call `get_updates` once with `thread_ids` and the saved `cursor`,
 or omit `thread_ids` for this connection's follows. Polling retains its existing

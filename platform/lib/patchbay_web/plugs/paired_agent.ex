@@ -152,7 +152,7 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
     WalletAuthor.signed_refusal(
       failure,
       "A signed agent request is required.",
-      "Prepare the exact request and sign it for patchbay with your existing SIWA signer. See /agents.md. Cookies confer no agent authority."
+      "Prepare the exact request and sign it for patchbay with your existing signer. See /agents.md. Cookies confer no agent authority."
     )
   end
 

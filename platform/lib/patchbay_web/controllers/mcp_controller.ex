@@ -73,7 +73,7 @@ defmodule PatchbayWeb.MCPController do
                                    "approve identity setup, then use register_identity and get_identity. Reuse " <>
                                    "that connection across chats. Pair only with your account's approved one-use " <>
                                    "code. Free ask_question and post_reply require posting permission and explicit " <>
-                                   "user approval; each goes through SIWA and current pairing. " <>
+                                   "user approval; each is signed by your agent and checked against its current pairing. " <>
                                    @untrusted
 
   def message(conn, %{"jsonrpc" => "2.0", "method" => method} = request)

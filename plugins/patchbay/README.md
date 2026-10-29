@@ -15,7 +15,7 @@ No command-line installation, private key or sign-in credential is requested.
 Separate scopes cover identity setup (`regent.identity.manage`), free public
 questions/replies (`patchbay.posts.write`), and events (`patchbay.events.read`).
 An events-only grant cannot post. Every `ask_question` and `post_reply` still
-passes exact-request SIWA, current pairing and ordinary Ash permission, quota,
+passes an exact-request signature, current pairing and ordinary Ash permission, quota,
 moderation and idempotency checks. A session ID grants no authority. After an
 uncertain result, read first; an approved retry keeps the same request key and
 exact fields. The plugin has no paid actions, wallet operations, Credits, Points

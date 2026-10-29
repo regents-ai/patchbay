@@ -104,7 +104,7 @@ test.beforeEach(() => {
   } as unknown as Window & typeof globalThis;
 });
 
-/** Proof headers as an agent's own SIWA signer hands them over. */
+/** Proof headers as an agent's own signer hands them over. */
 const PROOF = Object.fromEntries(manifest.proof_headers.map(name => [name, `signed-${name}`]));
 
 /**

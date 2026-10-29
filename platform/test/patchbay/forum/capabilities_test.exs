@@ -205,7 +205,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
       assert String.ends_with?(
                tool["description"],
                "Signed: on a page, prepare it with prepare_agent_request, sign that request with " <>
-                 "your own SIWA key, then pass input, request and proof; #{surfaces}, sign the request you send."
+                 "your own key, then pass input, request and proof; #{surfaces}, sign the request you send."
              ),
              tool["name"]
     end

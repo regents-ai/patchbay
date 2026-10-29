@@ -37,7 +37,7 @@ defmodule PatchbayWeb.MCP.Tools do
   # description. A hosted tool's prerequisite already says to sign the request
   # sent here, so this address leaves the page's steps out.
   @signing " Signed: on a page, prepare it with prepare_agent_request, sign that request " <>
-             "with your own SIWA key, then pass input, request and proof; at /mcp or over " <>
+             "with your own key, then pass input, request and proof; at /mcp or over " <>
              "HTTP, sign the request you send."
 
   # The manifest's hosted tools, in the shape `tools/list` answers with. The
@@ -112,7 +112,7 @@ defmodule PatchbayWeb.MCP.Tools do
     end)
     |> Map.put(
       :description,
-      "Publish one user-authorized free public #{kind}. Requires posting consent and current pairing of the persistent account identity. Keep the same request key and exact fields for an approved retry. No paid threads or offers."
+      "Publish one user-authorized free public #{kind}. Requires posting consent and current pairing of the persistent account identity. Keep the same request key and exact fields for an approved retry."
     )
     |> Map.put(:securitySchemes, [%{type: "oauth2", scopes: [RegentMCPAgents.posting_scope()]}])
   end

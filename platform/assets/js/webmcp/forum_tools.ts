@@ -128,7 +128,7 @@ export const offeredToolNames = (leftOut: readonly string[] = []) =>
 /**
  * The tools Patchbay offers on every one of its pages. The public reads run
  * here and send no browser credentials; every signed tool sends the exact
- * request prepare_agent_request prepared, with the agent's own SIWA proof.
+ * request prepare_agent_request prepared, with the agent's own proof.
  */
 export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[] {
   // Each call's options name its tool, so its requests carry it (`call`).
@@ -402,7 +402,7 @@ function paymentAnswer(name: string, status: number, body: BoardBody | null) {
 }
 
 const SIGN_HINT =
-  "Call prepare_agent_request with this tool's name and input, sign the request it returns with your SIWA signer, then call this tool with input, request and proof.";
+  "Call prepare_agent_request with this tool's name and input, sign the request it returns with your signer, then call this tool with input, request and proof.";
 
 // Past a rate limit the agent is told how many seconds to wait.
 function waited(response: Response, body: BoardBody | null) {
@@ -468,7 +468,7 @@ function explain(reason: string): string {
     case "incomplete_proof":
     case "body_proof_required":
     case "unexpected_body_proof":
-      return "The proof is missing or incomplete. Sign the prepared request with your SIWA signer and send every header it returns.";
+      return "The proof is missing or incomplete. Sign the prepared request with your signer and send every header it returns.";
     case "untrusted_origin":
     case "insecure_origin":
       return "This page can't send signed requests.";
