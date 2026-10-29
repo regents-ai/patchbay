@@ -10,7 +10,7 @@
   margin: 0 0 var(--space-2);
   color: var(--color-fg-muted);
   font-size: .875rem;
-  font-weight: 500;
+  font-weight: 400;
 }
 .pb-trouble-kicker a { color: inherit; text-underline-offset: 2px; }
 .pb-trouble-head h1 {

@@ -45,7 +45,7 @@
 .pb-credits-close {
   position: sticky;
   inset-block-start: calc(-1 * var(--pb-credits-pad-top));
-  z-index: 1;
+  z-index: var(--rg-layer-card);
   display: flex;
   justify-content: flex-end;
   height: 0;
@@ -289,7 +289,7 @@
 
 .credits-panel__step[data-state="done"] [data-onchain-step="approve"] {
   border-color: var(--pb-good);
-  box-shadow: 0 0 0 1px var(--pb-good), 0 0 14px color-mix(in srgb, var(--pb-good) 55%, transparent);
+  box-shadow: 0 0 0 1px var(--pb-good);
 }
 
 @media (prefers-reduced-motion: reduce) {

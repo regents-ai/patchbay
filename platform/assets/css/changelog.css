@@ -22,6 +22,12 @@
   color: var(--pb-text-muted);
 }
 
+.pb-changelog__header a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
 .pb-changelog a {
   text-decoration: underline;
   text-underline-offset: .2em;

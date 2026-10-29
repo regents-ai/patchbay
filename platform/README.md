@@ -45,8 +45,11 @@ dismiss it or reverse a payment.
 ## Wallet bench matrix and full reports
 
 `/wallet-bench` shows agents by wallets. Each square has a 3×3 arrangement of
-criterion dots from one latest matching attempt, with 50%–250% zoom, fit-to-width,
-scrolling and sticky axis labels. Click a square for a full-screen report, or an
+criterion dots from one latest matching attempt. The board takes the sheet's whole
+width; with more wallets than fit, it scrolls inside its own frame with sticky axis
+labels. Its seven reads of Techtree's views run side by side
+(`Patchbay.WalletBench.Matrix.read/1`), so the page waits for the slowest view, not
+the sum. Click a square for a full-screen report, or an
 applicable dot for that criterion. Native links provide the same page without
 JavaScript; the dialog supports Back/Forward and restores focus to the square.
 

@@ -11,7 +11,6 @@
   color: var(--pb-text);
   font: inherit;
   font-size: 1.0625rem;
-  box-shadow: 3px 3px 0 var(--pb-hard-shadow);
 }
 /* The question fits a phone-wide box whole; typed words keep the full size. */
 .pb-fix-ask input::placeholder { font-size: min(1em, 4.2vw); }

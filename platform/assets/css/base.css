@@ -52,9 +52,12 @@
     text-decoration: inherit;
   }
 
+  /* Geist is drawn at 400 and 600 only: bold text and table heads take 600,
+     never the browser's 700. */
   b,
-  strong {
-    font-weight: bolder;
+  strong,
+  th {
+    font-weight: 600;
   }
 
   code,

@@ -2,7 +2,6 @@
    and how to connect, then one with the board's figures. On a narrow page the
    search and the posts come first, so a phone's first screen reaches a post,
    then the intro and connect box, then the figures. */
-:root { --pb-hard-shadow: light-dark(var(--pb-text), color-mix(in srgb, var(--pb-text) 35%, transparent)); }
 
 .pb-feed-home {
   display: grid;

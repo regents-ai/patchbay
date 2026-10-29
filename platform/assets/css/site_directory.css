@@ -73,7 +73,7 @@
 .pb-directory-table { width: 100%; min-width: 660px; table-layout: fixed; border-collapse: collapse; font-size: .8125rem; }
 .pb-directory-table th, .pb-directory-table td { padding: .2rem .75rem; vertical-align: middle; }
 .pb-directory-table thead { background: var(--pb-surface); }
-.pb-directory-table thead th { position: sticky; top: 0; z-index: var(--rg-layer-card); background: var(--pb-surface); font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 500; color: var(--pb-text-muted); height: 3.5rem; text-align: left; }
+.pb-directory-table thead th { position: sticky; top: 0; z-index: var(--rg-layer-card); background: var(--pb-surface); font-size: .7rem; text-transform: uppercase; letter-spacing: .04em; font-weight: 400; color: var(--pb-text-muted); height: 3.5rem; text-align: left; }
 .pb-directory-table thead th:first-child { width: 66%; }
 .pb-directory-table thead th span { display: block; font-size: .65rem; text-transform: none; letter-spacing: normal; margin-top: .2rem; }
 .pb-directory-table .pb-directory-numeric { text-align: right; font-variant-numeric: tabular-nums; }
@@ -92,7 +92,7 @@
 .pb-directory-refresh--busy { cursor: default; }
 .pb-directory-refresh--busy svg { animation: pb-directory-spin .8s linear infinite; }
 .pb-directory-count { display: inline-flex; flex-direction: column; align-items: end; justify-content: center; min-width: 44px; min-height: 34px; padding: 0; }
-.pb-directory-count strong { font-weight: 500; font-size: 1rem; }
+.pb-directory-count strong { font-weight: 400; font-size: 1rem; }
 .pb-directory-count > span { color: var(--pb-text-muted); font-size: .6rem; margin-top: 0; }
 .pb-directory-posts { display: inline-flex; min-width: 44px; min-height: 34px; align-items: center; justify-content: end; }
 .pb-directory-failure { font-size: .65rem; border-left: 2px solid var(--pb-accent); padding-left: .4rem; }
@@ -131,9 +131,11 @@
   .pb-directory-tool-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .pb-directory-detail-inner { max-width: calc(100cqw - 1.5rem); padding: 1rem .75rem; }
 }
+/* On a touch screen every control in a row is at least 44 px tall. */
 @media (pointer: coarse), (hover: none) {
   .pb-directory-refresh { width: 44px; height: 44px; flex-basis: 44px; }
-  .pb-directory-expand { min-height: 44px; }
+  .pb-directory-expand, .pb-directory-count, .pb-directory-posts, .pb-directory-url { min-height: 44px; }
+  .pb-directory-url > a { display: block; line-height: 44px; }
 }
 @keyframes pb-directory-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .pb-directory-refresh--busy svg { animation: none; } }

@@ -1,14 +1,14 @@
 type WalletBenchOptions = {document?: Document; fetch?: typeof globalThis.fetch}
 type PairState = {wbPair: string; title: string}
 
-/** A zoomable matrix with a progressively enhanced, full-screen result page. */
+/** The board, with a progressively enhanced, full-screen result page. */
 export function mountWalletBench(options: WalletBenchOptions = {}) {
   const doc = options.document ?? globalThis.document
   const bench = doc?.getElementById?.("patchbay-wallet-bench")
   if (!bench || bench.dataset.wbMounted) return
   bench.dataset.wbMounted = "true"
   keepFilterAddressShort(doc)
-  mountZoom(bench)
+  mountStatus(bench)
   const dialog = doc.getElementById("pb-wb-dialog") as HTMLDialogElement | null
   if (!dialog || typeof dialog.showModal !== "function") return
   const view = doc.defaultView!
@@ -148,56 +148,11 @@ export function claimWalletBenchHistory(view: Window) {
   })
 }
 
-/** Resize real table cells; labels and controls keep their normal text size. */
-function mountZoom(bench: HTMLElement) {
+/** The line under the board names the square or dot under the pointer or focus. */
+function mountStatus(bench: HTMLElement) {
   const viewport = bench.querySelector<HTMLElement>("[data-wb-viewport]")
-  const table = viewport?.querySelector<HTMLTableElement>("table")
-  const slider = bench.querySelector<HTMLInputElement>("[data-wb-zoom]")
-  const output = bench.querySelector<HTMLOutputElement>("[data-wb-zoom-value]")
   const status = bench.querySelector<HTMLElement>("[data-wb-hover]")
-  if (!viewport || !table || !slider || !output) return
-  const base = 104
-  let zoom = 100
-  const resize = (value: number, centerX = viewport.clientWidth / 2, centerY = viewport.clientHeight / 2) => {
-    const next = Math.max(50, Math.min(250, Math.round(value)))
-    if (!Number.isFinite(next)) return
-    const labelWidth = table.tHead?.rows[0]?.cells[0]?.getBoundingClientRect().width || 0
-    const headerHeight = table.tHead?.getBoundingClientRect().height || 0
-    const x = Math.max(labelWidth, centerX), y = Math.max(headerHeight, centerY)
-    const ratio = next / zoom
-    const left = (viewport.scrollLeft + x - labelWidth) * ratio - x + labelWidth
-    const top = (viewport.scrollTop + y - headerHeight) * ratio - y + headerHeight
-    zoom = next
-    viewport.style.setProperty("--pb-wb-cell", `${base * zoom / 100}px`)
-    viewport.style.setProperty("--pb-wb-dot", `${Math.max(7, 12 * zoom / 100)}px`)
-    viewport.style.setProperty("--pb-wb-dot-gap", `${Math.max(5, 8 * zoom / 100)}px`)
-    viewport.dataset.zoomDetail = String(zoom >= 150)
-    slider.value = String(zoom)
-    output.value = `${zoom}%`
-    output.textContent = `${zoom}%`
-    viewport.scrollLeft = Math.max(0, left)
-    viewport.scrollTop = Math.max(0, top)
-    bench.querySelector<HTMLButtonElement>("[data-wb-zoom-out]")!.disabled = zoom === 50
-    bench.querySelector<HTMLButtonElement>("[data-wb-zoom-in]")!.disabled = zoom === 250
-  }
-  slider.addEventListener("input", () => resize(Number(slider.value)))
-  bench.querySelector("[data-wb-zoom-out]")?.addEventListener("click", () => resize(zoom - 25))
-  bench.querySelector("[data-wb-zoom-in]")?.addEventListener("click", () => resize(zoom + 25))
-  bench.querySelector("[data-wb-fit]")?.addEventListener("click", () => {
-    const columns = (table.tHead?.rows[0]?.cells.length || 1) - 1
-    // The label column and the borders keep their size at every zoom.
-    const fixed = table.getBoundingClientRect().width - columns * base * zoom / 100
-    if (columns > 0) resize(Math.floor((viewport.clientWidth - fixed) / (columns * base) * 100))
-    viewport.scrollLeft = 0
-    viewport.scrollTop = 0
-  })
-  // Ordinary wheel/trackpad scrolling pans; Ctrl/Command-wheel zooms the board.
-  viewport.addEventListener("wheel", event => {
-    if (!event.ctrlKey && !event.metaKey) return
-    event.preventDefault()
-    const box = viewport.getBoundingClientRect()
-    resize(zoom * Math.exp(-event.deltaY * 0.005), event.clientX - box.left, event.clientY - box.top)
-  }, {passive: false})
+  if (!viewport) return
   const describe = (target: EventTarget | null) => {
     const element = target as Element | null
     const dot = element?.closest?.<HTMLElement>("[data-wb-dot-label]")
@@ -206,7 +161,6 @@ function mountZoom(bench: HTMLElement) {
   }
   viewport.addEventListener("pointerover", event => describe(event.target))
   viewport.addEventListener("focusin", event => describe(event.target))
-  resize(100)
 }
 
 // A Filter choice left at "Any recorded version" stays out of the address it

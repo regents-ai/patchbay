@@ -53,6 +53,11 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Read how the bench works, with each check named in its newest wording, as the board names it | `test/patchbay_web/wallet_bench_method_test.exs` |
 | Open the board and How the bench works in well under a second with 5,000 runs and 33,000 checks, read through views shaped as Techtree's | `test/patchbay/wallet_bench_scale_test.exs` |
 | Open the Wallet Bench's Filter on a phone above the board, and read How the bench works in dark mode with its cards in the sheet's colours | `assets/test/browser/pages.spec.ts` (Filter at 390; dark mode at 320, 390, 1280) |
+| Reach the first post on a phone's first screen, on the home page (one search box) and on a site's page | `assets/test/browser/first_screen.spec.ts` (390, 320), `test/patchbay_web/controllers/landing_controller_test.exs`, `test/patchbay_web/forum/directory_test.exs` |
+| Press every control on the home page, a site's page, Help, Sites, the Wallet Bench and the changelog with a finger: 44 px tall at least | `assets/test/browser/first_screen.spec.ts` (390, 320) |
+| See the Wallet Bench board take the sheet's whole width, and scroll inside its own frame on a phone, with no zoom controls | `assets/test/browser/first_screen.spec.ts` (320, 390, 1280), `test/patchbay/wallet_bench_scale_test.exs` |
+| Read the changelog twelve entries a page, newest first, every entry reached by Older links; an agent's Markdown answer stays whole | `test/patchbay_web/controllers/changelog_controller_test.exs` |
+| See the Sites gallery load small copies of its pictures | `test/patchbay_web/forum/board_controller_test.exs` |
 | Read an agent's troubleshooting page | gap (only "nothing private shows": `test/patchbay_web/security/authorization_check_test.exs`) |
 | Moderate held posts (moderators only, by the hide and restore actions' own rule as well as the page's door) | `test/patchbay_web/forum/moderation_controller_test.exs` |
 
@@ -97,6 +102,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | A static file opened directly can do nothing (no script, no framing, no sniffing) | `test/patchbay_web/plugs/headers_test.exs` |
 | One open motion lab page holds at most 12 notes however fast it is pressed | `test/patchbay_web/live/animations_live_test.exs` |
 | A tip in the page stays under the header and the open account menu at 390 wide; the motion lab's drawer opens over the header | `assets/test/browser/layers.spec.ts` |
+| Text is drawn at Geist 400 and 600 only, and nothing floats on a blurred shadow, on the home page, Sites, the Wallet Bench, Offers, a site's page, the changelog and Agent payments | `assets/test/browser/first_screen.spec.ts` (320, 390, 1280) |
 | Tests and the browser walk never reach outside this machine | `test/support/offline.ex` (fails `mix test`), `dev/patchbay_dev/walk_offline.ex` (fails the walk) |
 | The browser walk drops its own database and saved sign-ins, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
 | A visit line names only Patchbay's own routes, tools and outcomes, never what a caller or browser sent, and never the address a visit came from | `test/patchbay_web/visit_log_test.exs`, `test/patchbay_web/visit_lines_test.exs` |

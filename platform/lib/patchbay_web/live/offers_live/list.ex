@@ -203,7 +203,6 @@ defmodule PatchbayWeb.OffersLive.List do
               data-slot
               data-open
             >
-              <span class="pb-slot-scan" aria-hidden="true" data-scan></span>
               <span class="pb-slot-top"><span class="pb-slot-number" aria-hidden="true">0{tile.number}</span><span class="visually-hidden">Slot {tile.number}</span><span
                 class="pb-slot-go"
                 aria-hidden="true"

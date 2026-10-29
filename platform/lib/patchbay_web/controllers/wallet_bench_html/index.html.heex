@@ -58,28 +58,6 @@
           do: "Nine checks in each square",
           else: "Five checks in each square"}
       </p>
-      <div class="pb-wb-zoom-controls" role="group" aria-label="Zoom">
-        <Regent.Primitives.button
-          variant="secondary"
-          arrow={false}
-          data-wb-zoom-out
-          aria-label="Zoom out"
-        >
-          −
-        </Regent.Primitives.button>
-        <label class="visually-hidden" for="pb-wb-zoom">Zoom</label>
-        <input id="pb-wb-zoom" type="range" min="50" max="250" step="1" value="100" data-wb-zoom />
-        <output for="pb-wb-zoom" data-wb-zoom-value>100%</output>
-        <Regent.Primitives.button
-          variant="secondary"
-          arrow={false}
-          data-wb-zoom-in
-          aria-label="Zoom in"
-        >
-          +
-        </Regent.Primitives.button>
-        <Regent.Primitives.button variant="secondary" arrow={false} data-wb-fit>Fit</Regent.Primitives.button>
-      </div>
     </div>
     <div
       :if={@test.total > 0}
@@ -89,7 +67,7 @@
       tabindex="0"
       aria-label={grid_title(@test.grid) <> " board, scrolls sideways"}
     >
-      <table class="pb-wb-board">
+      <table class="pb-wb-board" style={"--pb-wb-columns: #{length(@matrix.wallets)}"}>
         <thead>
           <tr>
             <th scope="col" class="pb-wb-corner">

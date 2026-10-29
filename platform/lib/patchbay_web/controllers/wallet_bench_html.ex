@@ -518,13 +518,6 @@ defmodule PatchbayWeb.WalletBenchHTML do
           data-wb-dot-label={dot.criterion.id <> " · " <> dot.criterion.criterion <> " — " <> dot_answer(dot.result)}
         >{dot_mark(dot.result)}</span>
       </span>
-      <span class="pb-wb-cell-caption" aria-hidden="true">
-        {cond do
-          @square.newer_install_failure -> "Install stopped"
-          @square.display_run -> "Run #{@square.display_run.run}"
-          true -> "Not run yet"
-        end}
-      </span>
     </a>
     """
   end

@@ -105,7 +105,6 @@ body:has(.pb-agent) {
   --color-fg-on-accent: var(--agent-on-accent);
   --color-focus: var(--agent-focus);
   --pb-line-strong: var(--agent-line-strong);
-  --pb-hard-shadow: transparent;
   --pb-accent-wash: var(--agent-raised);
   --agent-radius: 1.5rem;
   background: var(--agent-bg);
@@ -200,7 +199,7 @@ body:has(.pb-agent) .rg-panel, body:has(.pb-agent) .rg-panel::before, body:has(.
   margin: 0 0 var(--space-3);
   color: var(--agent-muted);
   font-size: .875rem;
-  font-weight: 500;
+  font-weight: 400;
 }
 .pb-agent-kicker::before {
   content: "";
