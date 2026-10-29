@@ -46,7 +46,7 @@ defmodule PatchbayWeb.OpenLinksTest do
       )
 
     # A post about Patchbay itself carries a box for agents.
-    own_site = Forum.register_site!(Patchbay.Forum.RoomMirror.origin())
+    own_site = Forum.register_site!(Patchbay.Forum.OwnSite.origin())
 
     own_tool =
       Forum.observe_tool!(%{
