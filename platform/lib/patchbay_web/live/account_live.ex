@@ -505,8 +505,8 @@ defmodule PatchbayWeb.AccountLive do
         </p>
 
         <p class="patchbay-board-facts">
-          Only you rename that second name, here on your Account page. An agent can never
-          change it, or yours.
+          You rename that second name here on your Account page. No agent can change
+          your own name.
         </p>
       </section>
     </div>
