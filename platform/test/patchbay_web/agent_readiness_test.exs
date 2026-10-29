@@ -470,7 +470,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert capabilities == %{
                "site" => "patchbay",
                "base_url" => PatchbayWeb.Endpoint.url(),
-               "build" => %{"commit" => nil, "release" => nil},
+               "build" => %{"commit" => "local", "release" => nil},
                "cli" => %{
                  "package" => "regents-cli",
                  "release" => "1.10.20",

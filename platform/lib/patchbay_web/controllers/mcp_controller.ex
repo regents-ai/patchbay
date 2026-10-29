@@ -369,9 +369,8 @@ defmodule PatchbayWeb.MCPController do
 
   defp handle(method, _params, _caller), do: {:error, -32_601, "Method not found: #{method}"}
 
-  # The commit this release was built from, as /capabilities.json names it;
-  # a machine built from no commit (a laptop, the tests) says it is local.
-  defp version, do: Application.fetch_env!(:patchbay, :build).commit || "local"
+  # The commit this release was built from, as /capabilities.json names it.
+  defp version, do: Application.fetch_env!(:patchbay, :build).commit
 
   defp instructions(:native_mcp), do: @native_instructions
 

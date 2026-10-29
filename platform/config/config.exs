@@ -277,8 +277,10 @@ config :patchbay, :error_links, %{
 # Regents account name, or `:ens`, their wallet's ENS name. Each Regent site picks one.
 config :patchbay, :name_first, :ens
 
-# The build /capabilities.json names. Only a deployed image has one (config/runtime.exs).
-config :patchbay, :build, %{commit: nil, release: nil}
+# The build /capabilities.json and the hosted MCP server's serverInfo.version
+# name. A deployed image sets its commit and image (config/runtime.exs); a
+# machine built from no commit, a laptop or the tests, is "local".
+config :patchbay, :build, %{commit: "local", release: nil}
 
 # Production marks the session cookie HTTPS-only; local runs serve plain HTTP.
 config :patchbay, :secure_session_cookie, false

@@ -183,7 +183,7 @@ defmodule PatchbayWeb.MCPRefusalsTest do
     assert %{"id" => nil, "error" => %{"data" => %{"code" => _}}} = json_response(answer, 401)
   end
 
-  test "serverInfo names the running build's commit", %{conn: conn} do
+  test "serverInfo names the running build's commit, as /capabilities.json does", %{conn: conn} do
     build = Application.fetch_env!(:patchbay, :build)
     on_exit(fn -> Application.put_env(:patchbay, :build, build) end)
     Application.put_env(:patchbay, :build, %{build | commit: "2f7453adcb2b"})
@@ -197,6 +197,9 @@ defmodule PatchbayWeb.MCPRefusalsTest do
 
       assert answer["result"]["serverInfo"]["version"] == "2f7453adcb2b"
     end
+
+    capabilities = conn |> recycle() |> get("/capabilities.json") |> json_response(200)
+    assert capabilities["build"]["commit"] == "2f7453adcb2b"
   end
 
   defp refused_tool(conn, id \\ "unsigned-1") do
