@@ -342,7 +342,16 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  @doc "The tool manifest: every tool, what it asks of the caller, and its doors."
+  @doc """
+  The help a Patchbay page's `get_patchbay_help` tool reads: the same answer
+  the hosted tool gives, for the tools a page offers. The page sends no
+  cookie, so its readiness is what the server sees of an anonymous request.
+  """
+  def help(conn, _params) do
+    json(conn, PatchbayWeb.Help.for_page(PatchbayWeb.Forum.Readiness.for_page(nil, nil)))
+  end
+
+  @doc "The tool manifest: every tool, the operation it runs and where it is offered."
   def capabilities(conn, _params) do
     json(conn, Patchbay.Forum.Capabilities.manifest())
   end

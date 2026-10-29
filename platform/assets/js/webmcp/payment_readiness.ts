@@ -165,22 +165,6 @@ export function paymentGuideUrl() {
   return `${origin}/agent-setup#x402`;
 }
 
-export function paymentHelp() {
-  return {
-    url: paymentGuideUrl(),
-    protocol: "x402",
-    version: 2,
-    scheme: "exact",
-    network: NETWORK_CAIP2,
-    asset: {
-      symbol: ASSET_SYMBOL,
-      contract: USDC_CONTRACT,
-    },
-    instruction:
-      "Read this before asking a human to sign or fund a wallet. Never request a private key or recovery phrase.",
-  };
-}
-
 export function needsSignIn(): NeedsSignIn {
   return {
     status: "needs_human_sign_in",

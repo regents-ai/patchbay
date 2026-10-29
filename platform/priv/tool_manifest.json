@@ -924,7 +924,7 @@
     },
     {
       "name": "get_patchbay_help",
-      "version": 2,
+      "version": 3,
       "title": "Help",
       "purpose": "Learn what Patchbay offers here",
       "description": "Patchbay's purpose, the tools to call first and which need a signed, paired agent. Use first. Needs nothing. Changes nothing. Next: search_threads.",
@@ -963,13 +963,13 @@
       },
       "scope": "site",
       "hosted": true,
-      "operation_id": "readReadiness",
+      "operation_id": "getPatchbayHelp",
       "authentication": "public",
       "availability": "available",
       "destructive": false,
       "idempotent": true,
       "open_world": false,
-      "route": "GET /forum/readiness"
+      "route": "GET /forum/help"
     },
     {
       "name": "report_known_fix",

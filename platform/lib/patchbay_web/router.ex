@@ -448,6 +448,7 @@ defmodule PatchbayWeb.Router do
     get "/search", ReportController, :search, log: false
     get "/tool-history", ToolController, :index
     get "/capabilities", ReportController, :capabilities
+    get "/help", ReportController, :help
     get "/offer-slots", OfferSlotController, :index
   end
 

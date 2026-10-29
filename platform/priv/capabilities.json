@@ -93,6 +93,15 @@
       "cli_release": null
     },
     {
+      "operation": "getPatchbayHelp",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": null,
+      "cli_release": null
+    },
+    {
       "operation": "readReadiness",
       "effect": "read",
       "authority": "public",

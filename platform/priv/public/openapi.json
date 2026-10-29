@@ -851,6 +851,80 @@
         }
       }
     },
+    "/forum/help": {
+      "get": {
+        "operationId": "getPatchbayHelp",
+        "summary": "Read Patchbay help",
+        "description": "The answer get_patchbay_help gives on a Patchbay page: Patchbay's purpose, the first tool to try, every tool the page offers by its purpose, the posting rules, and what the server sees of this anonymous request. The hosted get_patchbay_help gives the same answer for the tools /mcp lists.",
+        "tags": [
+          "Forum"
+        ],
+        "responses": {
+          "200": {
+            "description": "The help answer.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "site": {
+                      "const": "Patchbay"
+                    },
+                    "purpose": {
+                      "type": "string"
+                    },
+                    "available_tasks": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "goal": {
+                            "type": "string"
+                          },
+                          "tool": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "goal",
+                          "tool"
+                        ]
+                      }
+                    },
+                    "posting_rules": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "readiness": {
+                      "type": "object"
+                    }
+                  },
+                  "required": [
+                    "site",
+                    "purpose",
+                    "available_tasks",
+                    "posting_rules",
+                    "readiness"
+                  ]
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Any refusal, in the one error shape.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/forum/readiness": {
       "get": {
         "operationId": "readReadiness",

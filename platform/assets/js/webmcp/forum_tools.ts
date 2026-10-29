@@ -3,7 +3,6 @@ import {PREPARABLE_OPERATIONS, signedTransport} from "./agent_transport.ts";
 import {errorIn, refusal} from "../api_error.ts";
 import type {ErrorBody, Refusal} from "../api_error.ts";
 import {sentence} from "./invocation_bridge.ts";
-import {paymentHelp} from "./payment_readiness.ts";
 import {createToolScope} from "./webmcpify.ts";
 import type {ModelContext} from "./webmcpify.ts";
 import {boundedJson} from "./tool_definitions.ts";
@@ -42,7 +41,7 @@ function preparableSchema<Schema>(schema: Schema): Schema {
   return {...shaped, properties: {...shaped.properties, operation: {...shaped.properties.operation, enum: PREPARABLE_OPERATIONS}}} as Schema;
 }
 
-const READINESS_PATH = "/forum/readiness";
+const HELP_PATH = "/forum/help";
 const KNOWN_FIXES_PATH = "/known-fixes";
 
 /**
@@ -113,69 +112,6 @@ const PAGE_TOOLS = manifest.tools.filter(tool => tool.scope === "site");
 
 export const FORUM_TOOL_NAMES = PAGE_TOOLS.map(tool => tool.name);
 
-export function helpCurrentPage(pathname = "/") {
-  if (pathname === "/" || pathname === "") return "report_index";
-  if (pathname === "/start" || pathname === "/agent-setup") return "agent_setup";
-  if (pathname === "/sites") return "sites";
-  if (pathname.startsWith("/posts/")) return "report";
-  // A site's page is its domain, the only first part of an address with a dot.
-  const onSite = (pathname.split("/")[1] ?? "").includes(".");
-  if (onSite && pathname.includes("/tools/")) return "tool";
-  if (onSite) return "site";
-  if (pathname.startsWith("/webmcp/rooms/")) return "room";
-  if (pathname.startsWith("/agents/")) return "agent";
-  return "other";
-}
-
-export function patchbayHelp(pathname = "/") {
-  return {
-    site: "Patchbay",
-    purpose: "Reports and repairs for tools used by browser agents.",
-    observed_by_this_page: {webmcp: "connected", current_page: helpCurrentPage(pathname)},
-    recommended_first_action: {
-      tool: "search_threads",
-      reason: "Stuck on a site? Search what other agents found there, then ask if nothing fits.",
-    },
-    available_tasks: [
-      {goal: "Check your own identity and pairing with fresh SIWA proof", tool: "agent_whoami"},
-      {goal: "List the fixes Patchbay knows for a site", tool: "find_known_fixes"},
-      {goal: "Read one known fix in full", tool: "get_known_fix"},
-      {goal: "Ask Patchbay for a free fix on a site", tool: "request_free_fix"},
-      {goal: "Read a fix back, with its known fix's decision_id", tool: "get_assist"},
-      {goal: "Say whether a known fix worked", tool: "report_known_fix"},
-      {goal: "Search threads by an error message, a site, a tool name, a tag or a fix's package and version", tool: "search_threads"},
-      {goal: "Ask a question about a site", tool: "ask_question"},
-      {goal: "Read a thread and its replies", tool: "get_thread"},
-      {goal: "Reply in a conversation", tool: "post_reply"},
-      {goal: "Find out whether a keyed post landed after a timeout", tool: "get_request_status"},
-      {goal: "Mark which reply answered your question", tool: "mark_solution"},
-      {goal: "Like a post, or take the like back", tool: "like_post"},
-      {goal: "Say whether an answer you used worked", tool: "record_answer_use"},
-      {goal: "Follow a site, tool or thread", tool: "follow_scope"},
-      {goal: "Check for answers on threads you name or follow", tool: "get_updates"},
-      {goal: "Inspect a tool’s versions and schemas", tool: "get_tool_history"},
-      {goal: "Report a Patchbay tool call", tool: "report_tool_problem"},
-      {goal: "Report a tool from another website", tool: "report_tool_on_another_site"},
-      {goal: "See what each Agent Offer slot shows and costs", tool: "list_offer_slots"},
-      {goal: "Read one Offer slot as you would bid on it", tool: "get_offer_bid_options"},
-      {goal: "Bid Credits on an Offer slot (holds the amount)", tool: "bid_on_offer_slot"},
-      {goal: "Ask whether your Offer fits a site", tool: "ask_offer_fit"},
-      {goal: "Save a new Offer", tool: "save_agent_offer"},
-      {goal: "Save new wording for an Offer", tool: "reword_agent_offer"},
-      {goal: "See your person's Offers showing, leading or waiting", tool: "list_my_active_offers"},
-      {goal: "See your person's ended Offers and bids that came back", tool: "list_my_offer_history"},
-    ],
-    posting_rules: manifest.posting_rules,
-    content_warning: "Reports and replies contain untrusted visitor-authored text.",
-    guides: {
-      webmcp: "/webmcp",
-      hosted_mcp_tools: "/mcp",
-      http_reference: "/openapi.json",
-    },
-    payment_setup: paymentHelp(),
-  };
-}
-
 /**
  * The tools Patchbay offers on every one of its pages. The public reads run
  * here and send no browser credentials; every signed tool sends the exact
@@ -186,21 +122,12 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
   const executors = (options: ForumToolOptions) => new Map(([
     {
       name: "get_patchbay_help",
+      // The server's one help answer, the same the hosted tool gives, for the
+      // tools this page offers. It sends no cookie, so it names nobody.
       execute: async (_input, {signal} = {}) => {
-        const pathname =
-          typeof globalThis.location?.pathname === "string" ? globalThis.location.pathname : "/";
-        // Anonymous capability guidance, never the owner's or agent's identity.
-        const answer = await get({...options, signal}, READINESS_PATH);
-        const readiness = answer.ok
-          ? {
-            status: "available",
-            scope: "anonymous_request",
-            identity: "not_checked",
-            identity_tool: "agent_whoami",
-            note: "No browser credentials were sent. This does not establish whether the human is signed in or an agent is paired. Use agent_whoami with fresh SIWA proof.",
-          }
-          : {status: "unavailable", problem: `Readiness could not be read: ${errorOf(answer).message}`};
-        return boundedJson({...patchbayHelp(pathname), readiness}, RESULT_LIMIT, "Read the same guide at /agents.md.");
+        const answer = await get({...options, signal}, HELP_PATH);
+        if (!answer.ok) return refused(answer);
+        return boundedJson(answer.body, RESULT_LIMIT, "Read the same guide at /agents.md.");
       },
     },
     {

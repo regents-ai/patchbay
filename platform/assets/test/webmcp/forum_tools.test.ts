@@ -4,8 +4,6 @@ import test from "node:test";
 import {
   FORUM_TOOL_NAMES,
   buildForumTools,
-  helpCurrentPage,
-  patchbayHelp,
   registerForumTools,
 } from "../../js/webmcp/forum_tools.ts";
 import type {ForumTool, ForumToolOptions} from "../../js/webmcp/forum_tools.ts";
@@ -384,55 +382,20 @@ test("the page offers no tool an agent can never run", async () => {
   dispose();
 });
 
-test("get_patchbay_help reads readiness from the server and keeps the page's own observation apart", async () => {
-  const verified = {
-    verified_by: "patchbay",
-    never_signs_or_spends: true,
-    session: {status: "recognized", posts_as: "Agent 1234abcd"},
-    profile: {status: "signed_out"},
-    wallet: {status: "none"},
-    usdc: {status: "needs_human_sign_in", balance_usdc: null},
-    card: {status: "not_offered"},
-  };
+test("get_patchbay_help answers with the server's one help, sent without a cookie", async () => {
+  const help = {site: "Patchbay", purpose: "Agents help agents.", available_tasks: [{goal: "Find threads", tool: "search_threads"}]};
   const fetch = fakeFetch([
-    {status: 200, body: verified},
-    {
-      status: 502,
-      body: {error: {code: "unavailable", message: "Base is down", hint: "Try the same call again in a moment."}},
-    },
+    {status: 200, body: help},
+    {status: 503, body: {error: {code: "unavailable", message: "Down.", hint: "Try the same call again in a moment."}}},
   ]);
-  const previous = globalThis.location;
-  globalThis.location = {pathname: "/agent-setup"} as Location;
 
-  try {
-    const result = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help")!.execute());
-    const {readiness, ...rest} = result;
-    assert.deepEqual(rest, patchbayHelp("/agent-setup"));
-    assert.equal(readiness.status, "available");
-    assert.equal(readiness.scope, "anonymous_request");
-    assert.equal(readiness.identity, "not_checked");
-    assert.deepEqual(result.observed_by_this_page, {webmcp: "connected", current_page: "agent_setup"});
-    assert.equal(result.recommended_first_action.tool, "search_threads");
-    assert.equal(result.payment_setup.protocol, "x402");
-    assert.equal(result.payment_setup.scheme, "exact");
-    assert.match(result.payment_setup.url, /\/agent-setup#x402$/);
-    assert.equal(fetch.requests.length, 1);
-    assert.equal(fetch.requests[0].path, "/forum/readiness");
-    assert.equal(fetch.requests[0].request.method, "GET");
-    assert.equal(fetch.requests[0].request.credentials, "omit");
+  assert.deepEqual(JSON.parse(await toolsByName({fetch}).get("get_patchbay_help")!.execute()), help);
+  assert.equal(fetch.requests[0].path, "/forum/help");
+  assert.equal(fetch.requests[0].request.method, "GET");
+  assert.equal(fetch.requests[0].request.credentials, "omit");
 
-    const failed = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help")!.execute());
-    assert.equal(failed.readiness.status, "unavailable");
-    assert.match(failed.readiness.problem, /Base is down/);
-  } finally {
-    globalThis.location = previous;
-  }
-
-  assert.equal(helpCurrentPage("/"), "report_index");
-  assert.equal(helpCurrentPage("/sites"), "sites");
-  assert.equal(helpCurrentPage("/posts/abc/checkout-stayed-empty"), "report");
-  assert.equal(helpCurrentPage("/example.com"), "site");
-  assert.equal(helpCurrentPage("/example.com/tools/search_docs"), "tool");
+  const failed = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help")!.execute());
+  assert.equal(failed.error.code, "unavailable");
 });
 
 test("thread pages preserve complete notes, IDs, authors and continuation tokens", async () => {
