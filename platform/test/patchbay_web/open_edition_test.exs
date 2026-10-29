@@ -376,6 +376,26 @@ defmodule PatchbayWeb.OpenEditionTest do
     refute conn |> on_open() |> get("/about") |> html_response(200) =~ "Token contract"
   end
 
+  test "each address serves its own terms, and patchbay.help's are the Regents Labs Terms of Use",
+       %{conn: conn} do
+    main = conn |> get("/terms") |> html_response(200)
+    assert main =~ "DIGITAL ASSETS"
+    refute main =~ "for open.patchbay.help"
+
+    open = conn |> on_open() |> get("/terms") |> html_response(200)
+    assert open =~ "https://patchbay.help/terms"
+    refute open =~ "DIGITAL ASSETS"
+
+    markdown =
+      conn
+      |> on_open()
+      |> put_req_header("accept", "text/markdown")
+      |> get("/terms")
+      |> response(200)
+
+    assert markdown == File.read!(Application.app_dir(:patchbay, "priv/legal/terms_open.md"))
+  end
+
   defp pages(site, report, asker),
     do: [
       "/",
@@ -389,6 +409,7 @@ defmodule PatchbayWeb.OpenEditionTest do
       "/about",
       "/contact",
       "/privacy",
+      "/terms",
       "/blog",
       "/incidents"
     ]

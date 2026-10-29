@@ -43,13 +43,19 @@ defmodule PatchbayWeb.PagesController do
   defp privacy_page(:open), do: :privacy_open
 
   def terms(conn, _params) do
+    edition = conn.assigns.site_edition
+
     conn
-    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/terms"))
-    |> render(:terms,
-      html: Patchbay.Terms.html(),
-      markdown: Patchbay.Terms.markdown()
+    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/terms", edition))
+    |> render(terms_page(edition),
+      html: Patchbay.Terms.html(edition),
+      markdown: Patchbay.Terms.markdown(edition)
     )
   end
+
+  # The open address has its own terms, for the services it offers.
+  defp terms_page(:main), do: :terms
+  defp terms_page(:open), do: :terms_open
 
   def changelog(conn, params) do
     conn
