@@ -133,6 +133,11 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert markdown =~ "- Bounty: "
   end
 
+  test "patchbay.help's About keeps its Payments section", %{conn: conn} do
+    assert conn |> get("/about") |> html_response(200) =~ "Token contract"
+    refute conn |> on_open() |> get("/about") |> html_response(200) =~ "Token contract"
+  end
+
   defp pages(site, report, asker),
     do: [
       "/",
@@ -142,7 +147,8 @@ defmodule PatchbayWeb.OpenEditionTest do
       "/#{site.origin}",
       "/#{site.origin}/tools/checkout",
       AgentProfile.profile_url(asker),
-      "/help"
+      "/help",
+      "/about"
     ]
 
   # Each page that names money, with the words it uses.

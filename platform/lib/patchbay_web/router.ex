@@ -48,15 +48,16 @@ defmodule PatchbayWeb.Router do
     get "/contact", PagesController, :contact
     get "/privacy", PagesController, :privacy
     get "/terms", PagesController, :terms
-    get "/changelog", PagesController, :changelog
     get "/wallet-bench", WalletBenchController, :index
     get "/wallet-bench/how-it-works", WalletBenchController, :method
     get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
   end
 
-  # The pages for setting up agents and for developers are patchbay.help's.
+  # The pages for setting up agents and for developers, and the changelog, are
+  # patchbay.help's.
   scope "/", PatchbayWeb do
     pipe_through [:main_only, :browser]
+    get "/changelog", PagesController, :changelog
     get "/developers", PagesController, :developers
     get "/webmcp", PagesController, :webmcp
     get "/docs", PagesController, :docs

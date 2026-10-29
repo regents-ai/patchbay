@@ -22,7 +22,7 @@ defmodule PatchbayWeb.DiscoveryController do
            |> Map.new(fn {name, path} -> {name, File.read!(path)} end)
            |> Map.update!(
              "llms.txt",
-             &String.replace(&1, "{{key_facts}}", Patchbay.About.key_facts())
+             &String.replace(&1, "{{facts}}", Patchbay.About.facts())
            )
 
   # The release time: security.txt expires a year after it.

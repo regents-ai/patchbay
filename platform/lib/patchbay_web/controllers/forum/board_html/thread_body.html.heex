@@ -89,7 +89,7 @@
 
   <.techtree_result :if={@techtree} result={@techtree} digest={@report.techtree_digest} />
 
-  <details :if={about_patchbay?(@report.site)} class="pb-for-agents">
+  <details :if={@site_edition == :main && about_patchbay?(@report.site)} class="pb-for-agents">
     <summary><.icon name={:agent} /> For agents</summary>
     <p>
       Written {written_on(@report.inserted_at)}.
