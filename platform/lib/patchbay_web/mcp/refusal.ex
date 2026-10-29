@@ -7,10 +7,13 @@ defmodule PatchbayWeb.MCP.Refusal do
   The answer is JSON-RPC, with the request's own id, so an MCP client can
   match it to the call and show the model what to do rather than a broken
   connection. A refused `tools/call` is a tool result with `isError: true`;
-  any other method gets a JSON-RPC error whose `data` is the same refusal.
+  any other method, and a notification, gets a JSON-RPC error whose `data` is
+  the same refusal.
   Either way the refusal is the `{code, message, hint}` every Patchbay door
   answers with (`PatchbayWeb.ApiError`). Both are sent with status 200: the
-  request reached the server and was answered; the refusal is in the body.
+  request reached the server and was answered; the refusal is in the body. A
+  notification, which has no id and asks for no answer, is refused with the
+  refusal's own HTTP status instead.
 
   A rate limit carries `retry_after_seconds` beside its code, as well as the
   `Retry-After` and RateLimit headers, and its words say to wait. Nothing
@@ -21,14 +24,21 @@ defmodule PatchbayWeb.MCP.Refusal do
 
   alias PatchbayWeb.ApiError
 
-  @doc "Answers the request on `conn` with `error`, the refusal's `error` object, and halts."
-  @spec refuse(Plug.Conn.t(), map()) :: Plug.Conn.t()
-  def refuse(conn, error) do
+  @doc """
+  Answers the request on `conn` with `error`, the refusal's `error` object,
+  and halts. `status` is the refusal's HTTP status, sent only when the
+  request is a notification.
+  """
+  @spec refuse(Plug.Conn.t(), map(), pos_integer()) :: Plug.Conn.t()
+  def refuse(conn, error, status) do
     request = request(conn)
 
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(200, Jason.encode!(answer(conn, request, error)))
+    |> send_resp(
+      if(Map.has_key?(request, "id"), do: 200, else: status),
+      Jason.encode!(answer(conn, request, error))
+    )
     |> halt()
   end
 
@@ -43,7 +53,8 @@ defmodule PatchbayWeb.MCP.Refusal do
         "Too many requests from this address. Wait #{seconds} #{unit(seconds)}, then send it again.",
         "Wait the #{seconds} #{unit(seconds)} in retry_after_seconds, then send the same request again. Nothing else needs to change.",
         %{retry_after_seconds: seconds}
-      ).error
+      ).error,
+      429
     )
   end
 
@@ -78,7 +89,7 @@ defmodule PatchbayWeb.MCP.Refusal do
   def id(%{"id" => id}) when is_binary(id) or is_integer(id), do: id
   def id(_request), do: nil
 
-  defp answer(conn, %{"method" => "tools/call"} = request, error) do
+  defp answer(conn, %{"method" => "tools/call", "id" => _} = request, error) do
     result = tool_result(%{error: error})
 
     result =

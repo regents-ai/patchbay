@@ -20,21 +20,25 @@ defmodule PatchbayWeb.Plugs.EventReader do
         _ -> refuse(conn, 401, "Sign in to Patchbay to watch updates.")
       end
     else
-      unavailable(conn, "Watching updates from ChatGPT is not switched on yet.")
+      unavailable(conn, 403, "Watching updates from ChatGPT is not switched on yet.")
     end
   rescue
-    _ -> unavailable(conn, "Watching updates from ChatGPT is not working right now.")
+    _ -> unavailable(conn, 503, "Watching updates from ChatGPT is not working right now.")
   end
 
   # Nothing the client can sign in to: answered in JSON-RPC, like every other
   # refusal at this address, rather than as a failed connection.
-  defp unavailable(conn, message),
+  defp unavailable(conn, status, message),
     do:
-      PatchbayWeb.MCP.Refusal.refuse(conn, %{
-        code: "unavailable",
-        message: message,
-        hint: "Read threads with search_threads and get_thread meanwhile, and try again later."
-      })
+      PatchbayWeb.MCP.Refusal.refuse(
+        conn,
+        %{
+          code: "unavailable",
+          message: message,
+          hint: "Read threads with search_threads and get_thread meanwhile, and try again later."
+        },
+        status
+      )
 
   defp refuse(conn, status, message) do
     conn

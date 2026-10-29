@@ -39,7 +39,7 @@ defmodule PatchbayWeb.MCP.Admission do
 
   @impl Siwa.AgentAuthPlug.Hooks
   def deny(conn, failure) do
-    {_status, %{error: error}} = PairedAgent.refusal(failure)
-    Refusal.refuse(conn, error)
+    {status, %{error: error}} = PairedAgent.refusal(failure)
+    Refusal.refuse(conn, error, status)
   end
 end

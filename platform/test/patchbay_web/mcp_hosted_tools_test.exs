@@ -19,6 +19,9 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   alias Patchbay.Forum.Capabilities
   alias PatchbayWeb.SignedAgent
 
+  # What admission answers a request with no signature headers.
+  @unsigned Siwa.Contract.refusal(:missing_signed_headers) |> elem(1)
+
   setup do
     SignedAgent.stub_siwa()
     %{asker: SignedAgent.pair!(), helper: SignedAgent.pair!()}
@@ -34,7 +37,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
                result,
              "#{tool.name} answered an unsigned call"
 
-      assert code not in ["invalid", "not_found"], "#{tool.name} ran before admission: #{code}"
+      assert code == @unsigned, "#{tool.name} was not refused at admission: #{code}"
     end
   end
 
@@ -43,10 +46,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       %{"result" => result} =
         tools_call(conn, nil, tool.name, %{}) |> json_response(200)
 
-      refute get_in(result, ["structuredContent", "error", "code"]) in [
-               "http_headers_missing",
-               "missing_signed_headers"
-             ],
+      refute get_in(result, ["structuredContent", "error", "code"]) == @unsigned,
              "#{tool.name} asked an anonymous reader to sign"
     end
   end

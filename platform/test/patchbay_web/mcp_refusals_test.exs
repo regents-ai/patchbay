@@ -153,6 +153,36 @@ defmodule PatchbayWeb.MCPRefusalsTest do
     end
   end
 
+  test "a refused version stops the call, even for a ChatGPT identity tool", %{conn: conn} do
+    config = Application.get_env(:regent_mcp_agents, :config, [])
+    on_exit(fn -> Application.put_env(:regent_mcp_agents, :config, config) end)
+    Application.put_env(:regent_mcp_agents, :config, Keyword.put(config, :enabled?, true))
+
+    answer =
+      conn
+      |> put_req_header("mcp-protocol-version", "1999-01-01")
+      |> post_rpc("/chatgpt/mcp", 13, "tools/call", %{
+        "name" => "register_identity",
+        "arguments" => %{}
+      })
+      |> json_response(400)
+
+    assert %{"id" => 13, "error" => %{"code" => -32_600}} = answer
+  end
+
+  test "a refused notification gets the refusal's HTTP status, since it asks for no answer",
+       %{conn: conn} do
+    body = Jason.encode!(%{jsonrpc: "2.0", method: "tools/call", params: @question})
+
+    answer =
+      conn
+      |> put_req_header("content-type", "application/json")
+      |> post("/mcp", body)
+
+    assert answer.status == 401
+    assert %{"id" => nil, "error" => %{"data" => %{"code" => _}}} = json_response(answer, 401)
+  end
+
   test "serverInfo names the running build's commit", %{conn: conn} do
     build = Application.fetch_env!(:patchbay, :build)
     on_exit(fn -> Application.put_env(:patchbay, :build, build) end)

@@ -73,17 +73,19 @@ defmodule PatchbayWeb.MCPController do
 
   def message(conn, %{"jsonrpc" => "2.0", "method" => method} = request)
       when is_binary(method) do
-    conn = conn |> protocol_version(request) |> authorize_tool(request)
-
-    conn =
-      if not conn.halted and protected?(request, conn.assigns.mcp_surface),
-        do: authenticate(conn),
-        else: conn
-
-    if conn.halted, do: conn, else: dispatch_message(conn, method, request)
+    # Each step answers and halts when it refuses; nothing after it runs.
+    with %{halted: false} = conn <- protocol_version(conn, request),
+         %{halted: false} = conn <- authorize_tool(conn, request),
+         %{halted: false} = conn <- admit(conn, request) do
+      dispatch_message(conn, method, request)
+    end
   end
 
   def message(conn, _not_a_request), do: invalid_request(conn)
+
+  defp admit(conn, request) do
+    if protected?(request, conn.assigns.mcp_surface), do: authenticate(conn), else: conn
+  end
 
   # A client that names a protocol version in the header must name one this
   # server speaks; the header is optional, and initialize names its own.
