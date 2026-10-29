@@ -107,7 +107,7 @@ defmodule PatchbayWeb.PointsLive do
         reason={@signed_out_reason}
       >
         <:sign_in>
-          <Regent.Primitives.button variant="primary" type="button" data-pb-account="sign-in">
+          <Regent.Primitives.button variant="primary" type="button" data-account-target="sign-in">
             Sign in
           </Regent.Primitives.button>
         </:sign_in>

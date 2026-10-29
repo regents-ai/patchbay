@@ -310,7 +310,7 @@ defmodule PatchbayWeb.Forum.Troubleshooting do
       items: [
         {:say,
          [
-           "Ask your person to sign in on the site that answered and pair you with Pair New Agent in the side panel, then send the request again."
+           "Ask your person to sign in on the site that answered and pair you with Pair New Agent on their Account page, then send the request again."
          ]},
         {:say,
          [

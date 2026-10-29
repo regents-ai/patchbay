@@ -4,8 +4,9 @@ defmodule PatchbayWeb.AccountLive do
   tabs:
 
   - Account (`/account`): who Patchbay knows them as, their wallet with its
-    ENS name when it has one, their Profile on every Regent site, the agents
-    they paired, their Credits and this browser's session.
+    ENS name when it has one, the agents they paired and pairing a new one
+    (`#account-pairing`), their Credits and their Profile on every Regent site,
+    in the layout every Regent site shares (`Regent.Account.layout`).
   - Inbox (`/account/inbox`): what happened on the sites, tools and threads
     they follow, and what they follow. It reads this browser's own follows
     too, so it works before signing in.
@@ -186,8 +187,10 @@ defmodule PatchbayWeb.AccountLive do
   def handle_info(:credits_changed, socket), do: {:noreply, read_credits(socket)}
 
   def handle_info(:agents_changed, socket) do
-    if socket.assigns.live_action == :show,
-      do: send_update(PatchbayWeb.AgentsPanel, id: "account-agents", agents_changed: true)
+    if socket.assigns.live_action == :show do
+      send_update(PatchbayWeb.AgentsPanel, id: "account-agents", agents_changed: true)
+      send_update(PatchbayWeb.PairingBox, id: "account-pairing-box", agents_changed: true)
+    end
 
     {:noreply, socket}
   end
@@ -217,7 +220,7 @@ defmodule PatchbayWeb.AccountLive do
         reason={@signed_out_reason}
       >
         <:sign_in>
-          <Regent.Primitives.button variant="primary" type="button" data-pb-account="sign-in">
+          <Regent.Primitives.button variant="primary" type="button" data-account-target="sign-in">
             Sign in
           </Regent.Primitives.button>
         </:sign_in>
@@ -254,73 +257,71 @@ defmodule PatchbayWeb.AccountLive do
     """
   end
 
+  # The layout every Regent site's Account page shares (`Regent.Account.layout`):
+  # the account card and the agents across the top, then pairing beside Credits
+  # over the person's public name. Pair New Agent is `#account-pairing`.
   defp overview(assigns) do
     ~H"""
-    <div
-      id="account-sections"
-      class="pb-account-grid"
-      phx-hook="MotionCascade"
-      data-variant={PatchbayWeb.Motion.standard("grid")}
-    >
-      <Regent.HolographicCard.card
-        id="account-identity"
-        class="pb-account-identity"
-        phx-hook="HolographicCard"
-        data-holo-crown="false"
-      >
-        <p class="pb-account-kicker">Your account</p>
-        <h2>{AgentProfile.own_name(@current_profile)}</h2>
-        <p :if={@current_profile.wallet_address}>
-          <span :if={@current_profile.ens_name} id="account-ens-name">{@current_profile.ens_name}</span>
-          <code>{RegentFormat.short_address(@current_profile.wallet_address)}</code>
-        </p>
-      </Regent.HolographicCard.card>
-
-      <%!-- The name is saved from the browser with the sign-in's own proof. --%>
-      <div id="account-profile" class="pb-account-panel" phx-hook="PublicName" phx-update="ignore">
-        <Regent.Profile.panel display_name={@current_profile.display_name} />
-      </div>
-
-      <.live_component
-        module={PatchbayWeb.AgentsPanel}
-        id="account-agents"
-        profile={@current_profile}
-        lease={@session_lease}
-      />
-
-      <Regent.Account.credits_summary
-        id="account-credits"
-        available={@credits.value && RegentCredits.Amount.format(@credits.value.available)}
-        held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
-        state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
-      >
-        <%!-- Buy Credits at every width; the header's balance opens it too from 900px
-             wide, and a phone's header leaves the balance out. --%>
-        <Regent.Primitives.button
-          type="button"
-          variant="secondary"
-          phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
+    <Regent.Account.layout id="account">
+      <:identity>
+        <Regent.Account.identity
+          id="account-identity"
+          name={AgentProfile.own_name(@current_profile)}
+          wallet={@current_profile.wallet_address}
+          ens_name={@current_profile.ens_name}
         >
-          Buy Credits
-        </Regent.Primitives.button>
-        <p class="pb-account-credits">
-          <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
-          <a href={~p"/credits-help"}>Credits help</a>
-        </p>
-      </Regent.Account.credits_summary>
-
-      <section class="pb-account-panel" aria-labelledby="account-session-title">
-        <h2 id="account-session-title">
-          Session
-          <Regent.Primitives.tip id="account-session-tip" label="About signing out">
-            Signing out ends the session on this browser only.
-          </Regent.Primitives.tip>
-        </h2>
-        <Regent.Primitives.button type="button" variant="secondary" data-pb-account="sign-out">
-          Sign out
-        </Regent.Primitives.button>
-      </section>
-    </div>
+          <:picture>
+            <PatchbayWeb.Forum.Nameplate.author_avatar author={@current_profile} kind={:human} />
+          </:picture>
+        </Regent.Account.identity>
+      </:identity>
+      <:agents>
+        <.live_component
+          module={PatchbayWeb.AgentsPanel}
+          id="account-agents"
+          profile={@current_profile}
+          lease={@session_lease}
+        />
+      </:agents>
+      <:pairing>
+        <.live_component
+          module={PatchbayWeb.PairingBox}
+          id="account-pairing-box"
+          profile={@current_profile}
+          lease={@session_lease}
+        />
+      </:pairing>
+      <:credits>
+        <Regent.Account.credits_summary
+          id="account-credits"
+          available={@credits.value && RegentCredits.Amount.format(@credits.value.available)}
+          held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
+          state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
+        >
+          <Regent.Primitives.button
+            type="button"
+            variant="secondary"
+            phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
+          >
+            Buy Credits
+          </Regent.Primitives.button>
+          <p class="pb-account-credits">
+            <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
+            <a href={~p"/credits-help"}>Credits help</a>
+          </p>
+        </Regent.Account.credits_summary>
+      </:credits>
+      <:profile>
+        <%!-- The name is saved from the browser with the sign-in's own proof. --%>
+        <div id="account-profile" phx-hook="PublicName" phx-update="ignore">
+          <Regent.Profile.panel
+            id="account-public-name"
+            class="pb-account-panel"
+            display_name={@current_profile.display_name}
+          />
+        </div>
+      </:profile>
+    </Regent.Account.layout>
     """
   end
 

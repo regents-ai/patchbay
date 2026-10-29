@@ -58,7 +58,7 @@ defmodule PatchbayWeb.EnsIdentityTest do
     assert {"referrerpolicy", "no-referrer"} in attrs
 
     {:ok, view, _html} = live(conn, ~p"/account")
-    assert view |> element("#account-ens-name") |> render() =~ "pat.eth"
+    assert view |> element("#account-identity") |> render() =~ "pat.eth"
 
     Ash.Seed.update!(identity, %{wallet_address: "0x" <> String.duplicate("b", 40)})
 
@@ -66,7 +66,7 @@ defmodule PatchbayWeb.EnsIdentityTest do
              conn |> get(~p"/") |> html_response(200) |> header_picture()
 
     {:ok, view, _html} = live(conn, ~p"/account")
-    refute has_element?(view, "#account-ens-name")
+    refute view |> element("#account-identity") |> render() =~ "pat.eth"
   end
 
   test "a person's posts show their ENS picture and name, and their agent's posts never do" do

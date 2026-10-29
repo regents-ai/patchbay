@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.AccountLiveTest do
   @moduledoc """
   Account's tabs: the inbox lives inside Account, beside the overview and
-  the profile. The side panel's Manage links lead here, on this site.
+  the profile. The account menu's links lead here, on this site.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -58,9 +58,8 @@ defmodule PatchbayWeb.AccountLiveTest do
     assert render(view) =~ "Nothing waiting."
   end
 
-  test "the side panel's Manage links open this site's Account page and its agents", %{
-    conn: conn
-  } do
+  test "every link in the account menu lands on this site's Account page, on a part it has",
+       %{conn: conn} do
     person =
       Identity.upsert_from_privy!(%{
         privy_user_id: "did:privy:manage",
@@ -70,17 +69,17 @@ defmodule PatchbayWeb.AccountLiveTest do
     conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
     page = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
 
-    assert ["/account"] ==
-             page |> LazyHTML.query("#shell-aside a.rg-button") |> LazyHTML.attribute("href")
-
-    assert page |> LazyHTML.query("#shell-aside a[target]") |> Enum.empty?()
-
-    assert ["/account#account-agents"] ==
-             page
-             |> LazyHTML.query(~s(#shell-aside a[href^="/account#"]))
-             |> LazyHTML.attribute("href")
+    # The wallet's own link opens it on the chain's explorer; every other link
+    # stays on this site, in this tab.
+    links = page |> LazyHTML.query(~s(#account-menu a[href^="/"])) |> LazyHTML.attribute("href")
+    assert length(links) == 3
+    assert page |> LazyHTML.query(~s(#account-menu a[href^="/"][target])) |> Enum.empty?()
 
     {:ok, view, _html} = live(conn, ~p"/account")
-    assert has_element?(view, "#account-agents")
+
+    for link <- links do
+      %URI{host: nil, path: "/account", fragment: fragment} = URI.parse(link)
+      if fragment, do: assert(has_element?(view, "#" <> fragment), link)
+    end
   end
 end

@@ -29,7 +29,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "latest.patchbay.help"
     refute html =~ "Patchbay V0.2"
     assert html =~ ~s(href="/docs">Developer docs</a>)
-    assert html =~ ~s(data-pb-account="sign-in")
+    assert html =~ ~s(data-account-target="sign-in")
     assert html =~ "Set up your agent"
     refute html =~ "A website catches its own broken agent tool"
     refute html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."

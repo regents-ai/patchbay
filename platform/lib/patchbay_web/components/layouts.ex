@@ -12,8 +12,9 @@ defmodule PatchbayWeb.Layouts do
   The footer of every page, the same on every Regent site: the social links,
   Buy $REGENT, the site's documents and its two plain-text guides for agents, which
   open in the browser's popover from "Agent guide". It sits at the foot of the
-  screen however short the page is. The theme switch stays in the header, which
-  every page has.
+  screen however short the page is. On a phone, where the header has no room for
+  it, the theme switch is here, as in the Regent template's footer; wider, it is
+  in the header.
   """
   def product_links(assigns) do
     assigns = assign(assigns, :buy_regent, @buy_regent)
@@ -61,6 +62,11 @@ defmodule PatchbayWeb.Layouts do
         </span>
       </nav>
       <p>© 2026 Regents Labs</p>
+      <Regent.ThemeToggle.button
+        id="pb-footer-theme-toggle"
+        class="pb-theme-toggle"
+        data-pb-theme-toggle
+      />
     </footer>
     """
   end

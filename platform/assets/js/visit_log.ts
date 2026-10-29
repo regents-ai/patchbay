@@ -48,7 +48,7 @@ export function installVisitLog(): void {
     report({name: "page.error", where: window.location.pathname, outcome: "unhandledrejection"}))
   // Any Sign in button, wherever a page draws one (privy/account.ts opens the sign-in).
   document.addEventListener("click", event => {
-    if (event.target instanceof Element && event.target.closest("[data-pb-account='sign-in']"))
+    if (event.target instanceof Element && event.target.closest("[data-account-target='sign-in']"))
       report({name: "step", where: "sign_in_opened"})
   })
   window.addEventListener("pagehide", send)

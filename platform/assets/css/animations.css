@@ -188,7 +188,7 @@
 }
 
 /* Sparks, rings and stitches float at the tip layer of the page content, under
-   the header and the side panel, and never catch a press. */
+   the header and the account menu, and never catch a press. */
 .motion-lab__fx {
   position: fixed;
   inset: 0;
@@ -264,7 +264,7 @@
   outline: none;
 }
 
-/* The lab shows each panel on its own, over a site's header and side panel:
+/* The lab shows each panel on its own, over a site's header and account menu:
    the shade, the drawer, the sheet and the note are popovers the browser lifts
    above the whole page, and the one opened last sits on top. This takes away
    the browser's own popover box, so each keeps the place and look below. */

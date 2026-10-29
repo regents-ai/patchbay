@@ -252,7 +252,7 @@ const LabSlides: Hook = {
       el.removeAttribute("style")
     }
     // The shade, the drawer, the sheet and the note are popovers, lifted above
-    // the whole page, header and side panel included; the one shown last sits
+    // the whole page, header and account menu included; the one shown last sits
     // on top. The menu stays in the page, under the button it drops from.
     const show = (el: HTMLElement) => {
       el.hidden = false

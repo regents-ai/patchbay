@@ -674,20 +674,23 @@ secret belongs in Patchbay. HTTPS is required outside loopback fixtures.
 SIWA is pinned in `mix.exs` with the other elixir-utils libraries, at the same
 commit.
 
-## The side panel
+## The account menu
 
-Signed in, the name at the right of the header opens a side panel on every
-page (`PatchbayWeb.SidePanelLive`, as in ash-template): Sign out and Manage Account on
-regents.sh, then "Your agents" (a link to the Account page) with where
-each was last active, then Pair New Agent. Whether it was left open is kept in the
-browser's `patchbay_aside` cookie.
+Signed in, the picture and name at the right of the header open the account menu
+on every page (`PatchbayWeb.HeaderAccountLive`, `Regent.Account.menu`, as in
+ash-template): the person's picture, name and wallet, their three most recently
+active agents with where each was last active, Pair New Agent, Manage Account and
+Sign out. It is a popover, so it closes on Escape or a press anywhere else.
+Pairing itself is on the Account page (`/account#account-pairing`), in the layout
+every Regent site's Account page shares (`Regent.Account.layout`). Narrower than
+22.5rem the header leaves the Credits balance out and the menu shows it instead.
 
 Where each agent was last active is read from the sign-in service with this
 site's own reader key:
 
 | Setting | Required | What it does |
 | --- | --- | --- |
-| `SIWA_ACTIVITY_READ_TOKEN` | No | The reader key for the sign-in service's agent activity, which gives the side panel each agent's last active site and time. `Patchbay.Agents.ActivityReading` keeps each agent's reading for five minutes. Unset, or without an https `PATCHBAY_SIWA_URL`, the panel lists the agents with no activity line. |
+| `SIWA_ACTIVITY_READ_TOKEN` | No | The reader key for the sign-in service's agent activity, which gives the account menu each agent's last active site and time. `Patchbay.Agents.ActivityReading` keeps each agent's reading for five minutes. Unset, or without an https `PATCHBAY_SIWA_URL`, the menu lists the agents with no activity line. |
 
 A reading that worked is kept for five minutes and a failed one for one minute, so a
 sign-in service outage doesn't send a request per agent on every page.

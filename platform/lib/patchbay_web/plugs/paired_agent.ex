@@ -123,7 +123,7 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
   def words(:agent_not_paired),
     do:
       {"This agent is not currently paired with an account.",
-       "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."}
+       "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."}
 
   def words(:person_not_here),
     do:

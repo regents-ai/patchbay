@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.AgentsPanel do
   @moduledoc """
   The agents a person has paired with their account (`RegentAgents`), on the
-  Account page, with Unpair for each and Pair New Agent opening the side panel's
-  pairing box (`PatchbayWeb.PairingBox`), as in the Regent template.
+  Account page, with Unpair for each and Pair New Agent leading to the page's
+  pairing box (`PatchbayWeb.PairingBox`, `#account-pairing`), as in the Regent
+  template.
 
   Pairing lets an agent act for the person on Patchbay, each thing it does
   marked as its own. It never touches their wallet. Pairing is shared by every
@@ -82,7 +83,9 @@ defmodule PatchbayWeb.AgentsPanel do
           </P.button>
         </:actions>
         <:footer>
-          <P.button type="button" variant="secondary" data-aside-open>Pair New Agent</P.button>
+          <a href="#account-pairing" class="rg-button rg-button--secondary rg-button--no-arrow">
+            <span class="rg-button__label">Pair New Agent</span>
+          </a>
         </:footer>
       </Regent.Account.agents>
     </div>
@@ -101,9 +104,13 @@ defmodule PatchbayWeb.AgentsPanel do
         name: &1.name,
         kind: to_string(&1.harness),
         harness: Harness.label(&1.harness),
+        wallet: &1.wallet,
         backed: not is_nil(&1.human_id),
         last_contact_iso: DateTime.to_iso8601(&1.last_contact_at),
-        last_contact: RegentFormat.relative_time(&1.last_contact_at, now)
+        last_contact: RegentFormat.relative_time(&1.last_contact_at, now),
+        # Patchbay's agents do not check in, so no row draws a light.
+        light: nil,
+        light_label: nil
       }
     )
   end

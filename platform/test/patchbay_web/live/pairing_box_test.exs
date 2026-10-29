@@ -1,6 +1,6 @@
-defmodule PatchbayWeb.SidePanelLiveTest do
+defmodule PatchbayWeb.PairingBoxTest do
   @moduledoc """
-  The side panel's Pair New Agent box: each agent keeps its own code until it
+  Pair New Agent on the Account page: each agent keeps its own code until it
   expires or a new one is asked for, and the form arriving with no agent chosen,
   as a reconnecting page sends it, changes nothing.
   """
@@ -13,22 +13,22 @@ defmodule PatchbayWeb.SidePanelLiveTest do
   alias PatchbayWeb.Plugs.CurrentProfile
 
   test "Pair New Agent sent with no agent chosen changes nothing", %{conn: conn} do
-    view = conn |> signed_in("did:privy:pair-empty", "e") |> side_panel()
-    box = element(view, "#shell-pairing-box")
+    view = conn |> signed_in("did:privy:pair-empty", "e") |> account()
+    box = element(view, "#account-pairing-box")
 
     render_change(box, %{"_target" => ["harness"]})
     render_submit(box, %{})
 
-    assert has_element?(view, "#shell-pairing-box input[name=harness]")
-    refute has_element?(view, "#shell-pairing-box input[name=harness][checked]")
+    assert has_element?(view, "#account-pairing-box input[name=harness]")
+    refute has_element?(view, "#account-pairing-box input[name=harness][checked]")
   end
 
   test "each agent keeps its code, and only a new code replaces the chosen one", %{conn: conn} do
     box =
       conn
       |> signed_in("did:privy:pair-keep", "f")
-      |> side_panel()
-      |> element("#shell-pairing-box")
+      |> account()
+      |> element("#account-pairing-box")
 
     code_for = fn harness -> box |> render_change(%{"harness" => harness}) |> code() end
 
@@ -55,8 +55,8 @@ defmodule PatchbayWeb.SidePanelLiveTest do
     conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
   end
 
-  defp side_panel(conn) do
-    {:ok, view, _html} = live_isolated(conn, PatchbayWeb.SidePanelLive)
+  defp account(conn) do
+    {:ok, view, _html} = live(conn, ~p"/account")
     view
   end
 
@@ -65,6 +65,6 @@ defmodule PatchbayWeb.SidePanelLiveTest do
     do:
       html
       |> LazyHTML.from_fragment()
-      |> LazyHTML.query("#shell-pairing-box pre")
+      |> LazyHTML.query("#account-pairing-box pre")
       |> LazyHTML.text()
 end

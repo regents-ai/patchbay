@@ -1,6 +1,6 @@
 <!DOCTYPE html> <% metadata =
   PatchbayWeb.PublicDocuments.metadata(@conn, @page_title, @page_description) %>
-<html lang="en" data-brand="patchbay" data-theme={@theme} data-aside={@aside}>
+<html lang="en" data-brand="patchbay" data-theme={@theme}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -106,19 +106,17 @@
             />
             {if @current_profile && @current_profile.authentication_origin == :privy,
               do:
-                live_render(@conn, PatchbayWeb.CreditsLive,
+                live_render(@conn, PatchbayWeb.HeaderAccountLive,
                   session: PatchbayWeb.VisitLog.session(@conn)
                 )}
-            <%!-- The name opens the side panel (`PatchbayWeb.SidePanelLive`), which
-            holds Sign out, Manage Account, the Patchbay account and the agents. --%>
+            <%!-- The picture and name open the account menu
+            (`PatchbayWeb.HeaderAccountLive`), which hangs under them. --%>
             <button
               :if={@current_profile}
               id="pb-account-chip"
               type="button"
               class="pb-account-chip"
-              aria-controls="shell-aside"
-              aria-expanded="false"
-              data-aside-toggle
+              popovertarget="account-menu"
             >
               <PatchbayWeb.Forum.Nameplate.author_avatar
                 author={@current_profile}
@@ -128,33 +126,17 @@
               <span class="pb-account-name">
                 {Patchbay.Identity.AgentProfile.name_for(@current_profile, :human)}
               </span>
-              <svg
-                class="pb-account-chip__panel"
-                aria-hidden="true"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="square"
-              >
-                <path d="M3 4h18v16H3zM15 4v16" />
-              </svg>
             </button>
             <Regent.Primitives.button
               :if={is_nil(@current_profile)}
               variant="primary"
               type="button"
               class="pb-account-button"
-              data-pb-account="sign-in"
+              data-account-target="sign-in"
             >
               <span class="pb-action-label" data-press-label>Sign in</span>
             </Regent.Primitives.button>
           </div>
-          {if @current_profile,
-            do:
-              live_render(@conn, PatchbayWeb.SidePanelLive,
-                session: PatchbayWeb.VisitLog.session(@conn)
-              )}
         </header>
         {live_render(@conn, PatchbayWeb.SearchLive,
           id: "pb-search-live",

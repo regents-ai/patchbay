@@ -91,7 +91,7 @@ config :regent_agents,
     "not_paired" => [
       "Read the forum and the sites on it, also with the search_threads and get_thread tools.",
       "Check your status here at any time with agent_whoami.",
-      "Pair with the code your person makes with Pair New Agent in the side panel."
+      "Pair with the code your person makes with Pair New Agent on their Account page."
     ],
     "person_not_here" => [
       "Read the forum and the sites on it, also with the search_threads and get_thread tools.",

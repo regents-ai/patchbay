@@ -493,12 +493,13 @@ defmodule Patchbay.Forum.PostSummaryTest do
         )
 
       %{"@graph" => graph} = Jason.decode!(json)
-      page = Enum.find(graph, &(&1["@type"] == "QAPage"))
+      # Unanswered, the question is a forum post until it has an answer.
+      page = Enum.find(graph, &(&1["@type"] == "DiscussionForumPosting"))
 
       assert page["url"] == PostAddress.url(post)
-      assert page["mainEntity"]["name"] == post.title
-      assert page["mainEntity"]["description"] == PostSummary.description(post)
-      assert page["mainEntity"]["description"] =~ "AADSTS9010010"
+      assert page["headline"] == post.title
+      assert page["description"] == PostSummary.description(post)
+      assert page["description"] =~ "AADSTS9010010"
     end
   end
 end

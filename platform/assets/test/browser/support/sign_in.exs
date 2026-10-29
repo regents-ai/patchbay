@@ -1,7 +1,7 @@
 # The browser walk's people, on the walk's own local database: the person the walk
-# signs in as, a second person whose agent already goes by "taken-name", and one
-# person per screen width who saves Offers, since each account saves five wordings
-# a day and the widths run at once. Writes the signed cookie the walk sends for
+# signs in as, with four paired agents, a second person whose agent already goes by
+# "taken-name", and one person per screen width who saves Offers, since each account
+# saves five wordings a day and the widths run at once. Writes the signed cookie the walk sends for
 # each person it signs in as. Run by playwright.config.ts before the server
 # starts; PatchbayDev.WalkDatabase refuses any database but the walk's local one.
 alias Patchbay.Identity
@@ -22,6 +22,22 @@ other =
 
 if other.agent_name != "taken-name",
   do: Identity.rename_agent!(other, %{agent_name: "taken-name"}, actor: other)
+
+# Four agents paired the way an agent pairs, none of them active yet: the account
+# menu shows the three paired last and leaves out Spare Agent, paired first
+# (account_menu.spec.ts).
+for {name, digit} <- [
+      {"Spare Agent", "1"},
+      {"Walk Agent", "2"},
+      {"Desktop Agent", "3"},
+      {"Phone Agent", "4"}
+    ] do
+  code = RegentAgents.issue_pairing_code!(actor: %RegentAgents.Person{privy_user_id: person.privy_user_id})
+
+  RegentAgents.pair_agent!(code.code, name, :hermes,
+    actor: %RegentAgents.Agent{wallet: "0x" <> String.duplicate(digit, 40)}
+  )
+end
 
 options = Plug.Session.init(store: :cookie, key: "_patchbay_key", signing_salt: "8IPnb8sh")
 

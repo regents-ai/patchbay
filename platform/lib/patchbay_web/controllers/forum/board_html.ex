@@ -369,14 +369,43 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         >Ctrl K</kbd>
       </button>
       <nav class="pb-site-nav" aria-label="Patchbay">
-        <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
-        <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
-        <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
+        <.nav_links conn={@conn} />
       </nav>
       <a :if={not home?(@conn)} class="rg-button rg-button--secondary pb-ask-button" href={ask_path()}>
         <span class="pb-action-label" data-press-label><span>Ask<span class="pb-ask-button__more"> a question</span></span></span>
       </a>
+      <%!-- On a phone the places to go and Ask are in a menu, as in the Regent
+      template's phone header. It opens as a modal window, so the page behind it
+      is out of reach until it closes (`assets/js/nav_menu.ts`). --%>
+      <button
+        type="button"
+        id="pb-menu-button"
+        class="pb-menu-button"
+        aria-haspopup="dialog"
+        aria-controls="pb-nav-menu"
+      >
+        Menu
+      </button>
     </div>
+    <dialog id="pb-nav-menu" class="pb-nav-menu" aria-label="Menu">
+      <nav aria-label="Patchbay">
+        <.nav_links conn={@conn} />
+        <a href={ask_path()}>Ask</a>
+      </nav>
+      <form method="dialog">
+        <button type="submit" class="pb-nav-menu__close">Close</button>
+      </form>
+    </dialog>
+    """
+  end
+
+  attr(:conn, Plug.Conn, required: true)
+
+  defp nav_links(assigns) do
+    ~H"""
+    <a href={~p"/questions"} aria-current={nav_current(@conn, "/questions")}>Questions</a>
+    <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
+    <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
     """
   end
 

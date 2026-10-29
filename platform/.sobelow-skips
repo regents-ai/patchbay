@@ -1,5 +1,5 @@
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:158,792689D
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:165,44874EC
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:157,4788475
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:164,6A7A560
 XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:212,3511391
 XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:221,319785C
 XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:340,36160C1

@@ -30,7 +30,7 @@ defmodule Patchbay.Application do
         Patchbay.Agents.ActivityReading,
         # The home page's board figures, kept a minute.
         Patchbay.Forum.BoardActivity,
-        # Each agent's reading for an open side panel, unlinked from the page.
+        # Each agent's reading for an open account menu, unlinked from the page.
         {Task.Supervisor, name: Patchbay.Agents.Reads},
         # After the repository and PubSub: a Credits balance changed or a
         # pairing made or ended on any Regent site reaches the pages showing it.

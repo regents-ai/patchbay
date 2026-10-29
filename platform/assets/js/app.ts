@@ -35,12 +35,10 @@ import {PatchbayOfferResultDialog} from "./hooks/offer_result.ts"
 import {PatchbayConfirmDialog} from "./hooks/confirm_dialog.ts"
 import {MotionCount, MotionList, MotionRefusal} from "./hooks/motion/moments.ts"
 import {MotionCascade} from "./hooks/motion/reveals.ts"
-import {HolographicCard} from "./hooks/holographic_card.ts"
 import {OfferSlots} from "./hooks/offer_slots.ts"
 import {PatchbayCreditsDialog, PatchbayCreditsPanel} from "./hooks/credits.ts"
 import {SearchDialog} from "./hooks/search_dialog.ts"
-import {SidePanel} from "./hooks/side_panel.ts"
-import {PanelAgents} from "./hooks/panel_agents.ts"
+import {MenuAgents} from "./hooks/menu_agents.ts"
 import {PublicName} from "./hooks/public_name.ts"
 import {mountMotion} from "./motion.ts"
 import {hooks as labHooks} from "./motion_lab.ts"
@@ -55,6 +53,8 @@ import {claimWalletBenchHistory, mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountWebMCPStatus} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
+import {installAccountMenu} from "./account_menu.ts"
+import {installNavMenu} from "./nav_menu.ts"
 import topbar from "../vendor/topbar.js"
 
 // First, so an error anywhere below is reported too.
@@ -74,13 +74,11 @@ const liveSocket = new LiveSocket("/live", Socket, {
     MotionList,
     MotionRefusal,
     MotionCascade,
-    HolographicCard,
     OfferSlots,
     PatchbayCreditsDialog,
     PatchbayCreditsPanel,
     SearchDialog,
-    SidePanel,
-    PanelAgents,
+    MenuAgents,
     PublicName,
     // The motion lab's own presses and moments, used only on /animations.
     ...labHooks,
@@ -103,6 +101,8 @@ liveSocket.connect()
 
 // One listener serves every copy button on every page, live or not.
 installCopyButtons()
+installAccountMenu()
+installNavMenu()
 
 // The account strip, the report board tools and the standard motion all
 // belong to every Patchbay page rather than to the room, so they are set up

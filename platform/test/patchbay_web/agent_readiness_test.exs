@@ -614,20 +614,21 @@ defmodule PatchbayWeb.AgentReadinessTest do
   end
 
   describe "what a page holds, for search engines and AI answers" do
-    test "a thread is a question, named and dated as the page shows it", %{conn: conn} do
+    test "an unanswered report is a forum post, named and dated as the page shows it", %{
+      conn: conn
+    } do
       report = "shop.example" |> site!() |> tool!() |> report!()
       html = conn |> get(PostAddress.path(report)) |> html_response(200)
 
+      # Search engines read a question page only once it has an answer.
       [_website, _application, _organization, page] = structured_data(html)
-      question = page["mainEntity"]
 
-      assert page["@type"] == "QAPage"
+      assert page["@type"] == "DiscussionForumPosting"
       assert page["url"] == PostAddress.url(report)
-      assert question["name"] == Patchbay.Forum.PostSummary.post_title(report)
-      assert question["text"] =~ "once the cart had an item"
-      assert question["datePublished"] == DateTime.to_iso8601(report.inserted_at)
-      assert question["answerCount"] == 0
-      refute Map.has_key?(question, "acceptedAnswer")
+      assert page["headline"] == Patchbay.Forum.PostSummary.post_title(report)
+      assert page["text"] =~ "once the cart had an item"
+      assert page["datePublished"] == DateTime.to_iso8601(report.inserted_at)
+      assert page["commentCount"] == 0
     end
 
     test "an article names its headline, date, cover and publisher", %{conn: conn} do

@@ -3,7 +3,6 @@
 @import "../vendor/regent_ui/primitives.css";
 @import "./components/motion.css";
 @import "./components/search_dialog.css";
-@import "./components/side_panel.css";
 @import "./faces.css";
 @import "./workbench.css";
 @import "./feed.css";
@@ -172,16 +171,17 @@ body {
   color: var(--pb-text);
   font: var(--font-weight-semibold) var(--pb-fs-sm)/1.2 var(--font-family-ui);
 }
-/* The signed-in picture and name are one button, which opens the side panel
-   (Sign out, Manage Account, the Patchbay account and the agents). */
+/* The signed-in picture and name are one button, which opens the account menu
+   (Regent.Account.menu) hanging under it. */
 .pb-account-chip {
+  anchor-name: --rg-account-menu;
   display: inline-flex;
   align-items: center;
   min-width: 0;
   max-width: 17rem;
   min-height: 2.75rem;
   margin: 0;
-  padding: 0 0 0 var(--space-2);
+  padding: 0 var(--space-2);
   border: 1px solid var(--pb-line-strong);
   border-radius: var(--radius);
   background: var(--pb-surface);
@@ -207,18 +207,8 @@ body {
   height: 1.75rem;
   margin-right: var(--space-1);
 }
-.pb-account-chip__panel {
-  flex: none;
-  box-sizing: content-box;
-  width: 1.125rem;
-  height: 1.125rem;
-  margin-inline-start: var(--space-2);
-  padding-inline: calc((2.75rem - 1.125rem) / 2);
-  padding-block: calc((2.75rem - 2px - 1.125rem) / 2);
-  border-left: 1px solid var(--pb-line-strong);
-}
 .pb-account-chip:focus-visible,
-.pb-account-chip[aria-expanded="true"] { color: var(--pb-accent); }
+:root:has(#account-menu:popover-open) .pb-account-chip { color: var(--pb-accent); }
 @media (hover: hover) and (pointer: fine) {
   .pb-account-chip:hover { color: var(--pb-accent); }
 }
@@ -1326,17 +1316,77 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 }
 .pb-site-nav a:hover { color: var(--pb-text); }
 .pb-site-nav a[aria-current="page"] { color: var(--pb-text); border-block-end-color: currentColor; }
+
+/* The phone header's Menu and the window it opens: a panel that slides down from
+   the top edge over a shade, firm on its open side, flat. Opened modally, so the
+   page behind is out of reach until it closes; the browser lifts it above the
+   page, so it states no stacking number. */
+.pb-menu-button {
+  display: none;
+  flex: none;
+  align-items: center;
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0 var(--space-1);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--pb-text);
+  font: inherit;
+  font-size: .875rem;
+  cursor: pointer;
+}
+.pb-menu-button:hover { border-color: var(--pb-line-strong); }
+.pb-menu-button:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-nav-menu {
+  inset: 0 0 auto;
+  inline-size: 100%;
+  max-inline-size: none;
+  max-block-size: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-block-end: 1px solid var(--pb-line-strong);
+  background: var(--pb-canvas);
+  box-shadow: var(--rg-layer-panel-shadow);
+  color: var(--pb-text);
+  transition: transform var(--duration-base) var(--ease-out), overlay var(--duration-base) allow-discrete, display var(--duration-base) allow-discrete;
+}
+.pb-nav-menu:not([open]) { transform: translateY(-100%); }
+@starting-style { .pb-nav-menu[open] { transform: translateY(-100%); } }
+.pb-nav-menu::backdrop { background: color-mix(in srgb, var(--pb-text) 40%, transparent); }
+.pb-nav-menu nav { display: grid; padding: var(--space-1) var(--space-2) 0; }
+.pb-nav-menu nav a {
+  display: flex;
+  align-items: center;
+  min-height: 2.75rem;
+  border-block-end: 1px solid var(--pb-line);
+  color: var(--pb-text);
+  font-size: 1rem;
+  text-decoration: none;
+}
+.pb-nav-menu nav a[aria-current="page"] { font-weight: 600; }
+.pb-nav-menu form { display: flex; justify-content: flex-end; padding: var(--space-1) var(--space-2); }
+.pb-nav-menu__close {
+  min-height: 2.75rem;
+  margin: 0;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--pb-line-strong);
+  background: var(--pb-surface);
+  color: var(--pb-text);
+  font: inherit;
+  cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) { .pb-nav-menu { transition: none; } }
 /* The Ask button is as tall as the other header controls, so the header is
    the same height on every page, home included, where it is left out. The
    space left over sits before it, so the places to go never run under it. */
 .pb-masthead .pb-ask-button { flex: none; min-height: 2.75rem; margin-inline-start: auto; padding-block: 0; white-space: nowrap; }
 .pb-header-tools { display: flex; flex: 1 1 auto; align-items: center; gap: var(--space-2); }
 /* As the window narrows, the header gives up words before it gives up a line:
-   first "a question"; then the wordmark's name and the signed-in name; then the
-   search's word, the balance (on the Account page) and the side panel's mark,
-   leaving the picture that opens it; on a phone Ask and the theme switch (Ask
-   lives on the questions page). The steps follow the room beside the side panel,
-   so an open panel moves them on as a narrower window would. */
+   first "a question"; then the wordmark's name and the signed-in name, leaving
+   the picture that opens the account menu; then the search's word and the word
+   "Credits" beside the balance; on a phone Ask (it lives on the questions page);
+   on the narrowest phones the balance itself, which the account menu then shows. */
 body { container: pb-page / inline-size; }
 @container pb-page (max-width: 1439px) {
   .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -1344,7 +1394,7 @@ body { container: pb-page / inline-size; }
 }
 @container pb-page (max-width: 1099px) {
   .pb-wordmark > span:not(.patchbay-mark) { display: none; }
-  /* The picture opens the panel and keeps the name for screen readers. */
+  /* The picture opens the menu and keeps the name for screen readers. */
   .pb-account-chip { padding-inline-start: .5rem; }
   .pb-account-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .pb-account-picture { margin-right: 0; border-radius: 50%; box-shadow: 0 0 0 1px var(--pb-line-strong); }
@@ -1356,23 +1406,30 @@ body { container: pb-page / inline-size; }
   .pb-header-search:hover { border-color: var(--pb-line-strong); }
   .pb-header-search__icon { width: 1.25rem; height: 1.25rem; }
   .pb-header-search__prompt { display: none; }
-  .pb-credits-balance, .pb-account-chip__panel { display: none; }
   .pb-account-chip { padding-inline-end: .5rem; }
+  .pb-credits-balance .pb-credits-unit { display: none; }
   .pb-masthead .pb-ask-button.rg-button, .pb-account-button.rg-button { gap: 0; padding-inline: 12px; white-space: nowrap; }
   .pb-masthead .pb-ask-button.rg-button::after, .pb-account-button.rg-button::after { display: none; }
 }
+/* On a phone the header is the Regent template's: 56px tall, the template's side
+   padding, and the places to go and Ask in the Menu; the theme switch moves to the
+   footer. */
 @container pb-page (max-width: 599px) {
   .pb-masthead, .pb-header-tools { gap: 4px; }
-  .pb-masthead { padding-inline: 12px; }
-  .pb-site-nav { gap: 0; }
-  .pb-site-nav a { padding-inline: 6px; font-size: .8125rem; }
+  .pb-masthead { min-height: 3.5rem; padding: 6px var(--space-2); }
+  .pb-masthead .pb-site-nav, .pb-masthead .pb-ask-button, .pb-masthead .pb-theme-toggle { display: none; }
+  .pb-menu-button { display: inline-flex; }
 }
-@container pb-page (max-width: 519px) {
-  .pb-masthead .pb-ask-button, .pb-theme-toggle { display: none; }
+@container pb-page (min-width: 600px) {
+  .regent-footer .pb-theme-toggle { display: none; }
+}
+/* Narrower than 22.5rem the header has no room for the balance: the account menu
+   shows it instead, as its balance row, which opens the same dialog. The menu's
+   own rule (Regent.Account.menu) is this same media query. */
+@media (max-width: 22.49rem) {
+  .pb-credits-balance { display: none; }
 }
 @container pb-page (max-width: 374px) {
-  .pb-masthead { padding-inline: 8px; }
-  .pb-site-nav a { padding-inline: 2px; font-size: .75rem; }
   .pb-account-button.rg-button { padding-inline: 8px; }
 }
 
@@ -1543,7 +1600,7 @@ a.patchbay-button { text-decoration: none; }
 
 .pb-account { position: relative; }
 /* The page content is one place in the page's layers: a tip inside it never
-   draws over the header or the side panel. A window opened from the page is
+   draws over the header or the account menu. A window opened from the page is
    lifted above everything by the browser itself (the motion lab's panels). */
 #pb-content { position: relative; isolation: isolate; }
 

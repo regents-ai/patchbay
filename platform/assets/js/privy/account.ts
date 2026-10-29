@@ -20,7 +20,7 @@ type AccountOptions = {
 }
 
 /**
- * Wires every `data-pb-account` control on the page to Privy: the account
+ * Wires every `data-account-target` control on the page to Privy: the account
  * strip in the root layout, and the Account page's own Sign in.
  *
  * Both are drawn from the signed session, so this only has to answer two
@@ -35,14 +35,14 @@ export function installAccountControl(options: AccountOptions = {}) {
   let running = false
 
   doc.addEventListener("click", async event => {
-    const button = (event.target as Element).closest?.<HTMLButtonElement>("[data-pb-account]")
+    const button = (event.target as Element).closest?.<HTMLButtonElement>("[data-account-target]")
     if (!button || running) return
 
     running = true
     button.disabled = true
 
     try {
-      await requestAccountAction(button.dataset.pbAccount!, doc, options)
+      await requestAccountAction(button.dataset.accountTarget!, doc, options)
     } finally {
       running = false
       button.disabled = false

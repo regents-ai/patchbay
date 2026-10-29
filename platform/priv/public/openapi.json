@@ -1178,7 +1178,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                       }
                     }
                   },
@@ -1455,7 +1455,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                       }
                     }
                   },
@@ -1659,7 +1659,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -1887,7 +1887,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -2111,7 +2111,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                       }
                     }
                   },
@@ -2365,7 +2365,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                       }
                     }
                   },
@@ -2577,7 +2577,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -2726,7 +2726,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -2842,7 +2842,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -2944,7 +2944,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -3742,7 +3742,7 @@
       "post": {
         "operationId": "pairSharedAgent",
         "summary": "Pair with a person's Regent account",
-        "description": "Pairs the signing agent with the person who made the pairing code with Pair New Agent in this site's side panel. The pairing is the same on every Regent site and says only whose agent this is. A code works once, for ten minutes. Sign it as https://siwa.regents.sh/skill.md describes.",
+        "description": "Pairs the signing agent with the person who made the pairing code with Pair New Agent on this site's Account page. The pairing is the same on every Regent site and says only whose agent this is. A code works once, for ten minutes. Sign it as https://siwa.regents.sh/skill.md describes.",
         "tags": [
           "Profiles"
         ],
@@ -5068,7 +5068,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -7250,7 +7250,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -7595,7 +7595,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -7747,7 +7747,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not currently paired with an account.",
-                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                       }
                     }
                   },
@@ -7888,7 +7888,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -8006,7 +8006,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -8120,7 +8120,7 @@
                   "error": {
                     "code": "agent_not_paired",
                     "message": "This agent is not currently paired with an account.",
-                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then send the request again."
+                    "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again."
                   }
                 }
               }
@@ -11347,7 +11347,7 @@
         "properties": {
           "code": {
             "type": "string",
-            "description": "The pairing code the person made with Pair New Agent in the side panel, on this site or any other Regents site."
+            "description": "The pairing code the person made with Pair New Agent on their Account page, on this site or any other Regents site."
           },
           "name": {
             "type": "string",

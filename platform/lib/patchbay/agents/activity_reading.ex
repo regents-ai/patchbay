@@ -3,10 +3,10 @@ defmodule Patchbay.Agents.ActivityReading do
   Each paired agent's reading from the sign-in service (`RegentAgents.Activity`):
   where it has been active across the Regent sites and its registry listing.
   A reading is kept on this machine for five minutes and shared by every page
-  that shows the agent's side panel list, so the service is read at most once
-  per agent in that time. The service answers up to 600 reads a minute from a
-  site machine. A failed read is kept for one minute, so while the service is
-  down each agent is asked again at most once a minute, however often the panel
+  whose account menu lists the agent, so the service is read at most once per
+  agent in that time. The service answers up to 600 reads a minute from a site
+  machine. A failed read is kept for one minute, so while the service is down
+  each agent is asked again at most once a minute, however often the menu
   opens.
 
   A reading is kept under the agent's wallet and pairing time, so an agent paired

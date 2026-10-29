@@ -1,7 +1,6 @@
-/* The Account page, laid out as the Regent template's: a heading, the shared
-   holographic identity card across the top, then one hairline panel each for
-   Profile, Agents and Session, and the shared Credits summary with its links,
-   in Patchbay's own tokens. */
+/* The Account page, laid out as the Regent template's: a heading, then the
+   layout every Regent site shares (Regent.Account.layout), in Patchbay's own
+   tokens. */
 
 .pb-account-page {
   display: grid;
@@ -36,33 +35,6 @@
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
   gap: var(--space-4);
   align-items: start;
-}
-
-.pb-account-identity {
-  grid-column: 1 / -1;
-}
-
-.pb-account-identity .rg-holo__content {
-  display: grid;
-  gap: var(--space-2);
-  min-height: 10rem;
-  align-content: end;
-  padding: var(--rg-panel-padding);
-}
-
-.pb-account-identity h2 {
-  overflow-wrap: anywhere;
-}
-
-.pb-account-kicker {
-  color: color-mix(in srgb, var(--rg-holo-ink) 70%, transparent);
-  font-size: var(--pb-fs-micro);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.pb-account-identity code {
-  color: color-mix(in srgb, var(--rg-holo-ink) 70%, transparent);
 }
 
 .pb-account-panel {
@@ -172,3 +144,9 @@
 /* One column the width of the page: a button that keeps its words on one line
    never widens it past the screen. */
 .pb-account-tab { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-3); min-width: 0; }
+
+/* On a phone the account card's picture sits over the name, so a short address
+   with its copy and explorer icons keeps the card's whole width. */
+@container pb-page (max-width: 479px) {
+  .pb-account-page .rg-account-identity__who { flex-wrap: wrap; }
+}
