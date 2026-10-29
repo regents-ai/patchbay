@@ -114,6 +114,7 @@ defmodule PatchbayWeb.MCPEventsTest do
 
       AshOban.Test.schedule_and_run_triggers({EventSubscription, :forget_lapsed})
 
+      # What is left of every account's subscriptions, which no one actor may read.
       assert [%{id: id}] = EventSubscription |> Ash.read!(authorize?: false)
       assert id == live.id
     end

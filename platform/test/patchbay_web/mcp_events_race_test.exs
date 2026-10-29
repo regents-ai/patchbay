@@ -170,6 +170,7 @@ defmodule PatchbayWeb.MCPEventsRaceTest do
   defp live_count(actor) do
     owner_id = Principal.for_profile(actor.beneficiary_profile_id)
 
+    # Every connection's subscriptions for the account, which no one actor may read.
     EventSubscription
     |> Ash.read!(authorize?: false)
     |> Enum.count(&(&1.owner_id == owner_id))
