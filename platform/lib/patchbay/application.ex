@@ -26,6 +26,11 @@ defmodule Patchbay.Application do
         if(RegentOAuth.enabled?(), do: RegentOAuth.Repo),
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Patchbay.PubSub},
+        # The figures every visitor sees alike, then the readers that keep them.
+        # Each reader stores its first reading as it starts, so every key is
+        # there before the endpoint below serves a page.
+        Patchbay.SharedReading,
+        wallet_bench_board(),
         # Each paired agent's sign-in service reading, kept five minutes.
         Patchbay.Agents.ActivityReading,
         # The home page's board figures, kept a minute.
@@ -72,10 +77,16 @@ defmodule Patchbay.Application do
 
   # Metrics are served beside the site, never by a process that only runs a task.
   defp metrics do
-    if Phoenix.Endpoint.server?(:patchbay, PatchbayWeb.Endpoint),
-      do: [PatchbayWeb.Metrics],
-      else: []
+    if serving?(), do: [PatchbayWeb.Metrics], else: []
   end
+
+  # The bench is read only where pages are served, so a task or a test never
+  # reads Techtree's views before it asks to.
+  defp wallet_bench_board do
+    if serving?(), do: Patchbay.WalletBench.Board
+  end
+
+  defp serving?, do: Phoenix.Endpoint.server?(:patchbay, PatchbayWeb.Endpoint)
 
   # The WebMCP catalog is synced and each program's site made once, at boot.
   defp site_loader do

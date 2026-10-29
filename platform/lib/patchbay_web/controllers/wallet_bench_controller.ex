@@ -3,13 +3,18 @@ defmodule PatchbayWeb.WalletBenchController do
   The Agent Wallet Bench board, `/wallet-bench`, one test at a time
   (`?test=wallet`; the first test when none is named), how the bench works,
   `/wallet-bench/how-it-works`, and one pair's runs,
-  `/wallet-bench/<agent>/<wallet>`. Each reads Techtree's published results
-  when it is opened, so a finished run shows on the next visit.
+  `/wallet-bench/<agent>/<wallet>`. The board and How the bench works show
+  the bench as it was read within the last minute, shared with every visitor
+  (`Patchbay.WalletBench.Board`), so a finished run shows within a minute and
+  a visit reads nothing from Techtree. Until the bench has been read once
+  since the site started, both answer 503 and say to try again in a minute.
+  A pair's page reads that pair's runs when it is opened.
   """
 
   use PatchbayWeb, :controller
 
   alias Patchbay.WalletBench
+  alias Patchbay.WalletBench.Board
   alias Patchbay.WalletBench.ExtraNotes
   alias Patchbay.WalletBench.Matrix
   alias Patchbay.WalletBench.PublicRun
@@ -19,23 +24,40 @@ defmodule PatchbayWeb.WalletBenchController do
   alias PatchbayWeb.WalletBenchJSON
 
   def index(conn, params) do
-    assigns = board(params)
+    case board(params) do
+      {:ok, assigns} ->
+        conn
+        |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
+        |> render(:index, assigns ++ [page_data: [WalletBenchHTML.dataset(assigns[:matrix])]])
 
-    conn
-    |> merge_assigns(PatchbayWeb.PublicDocuments.page("/wallet-bench"))
-    |> render(:index, assigns ++ [page_data: [WalletBenchHTML.dataset(assigns[:matrix])]])
+      :unread ->
+        unread(conn)
+    end
   end
 
-  # One test's board, as the page and `GET /api/wallet-bench` show it.
+  # One test's board, as the page and `GET /api/wallet-bench` show it, from
+  # the bench as last read.
   defp board(params) do
     context = bench_context(params)
     test = context["test"]
     filters = Map.take(context, Sets.filters())
-    {:ok, matrix} = Matrix.read(filters)
 
-    unless Sets.valid_filters?(filters, matrix.options), do: raise(NotFoundError)
+    with {:ok, matrix, read} <- Board.board(filters) do
+      unless Sets.valid_filters?(filters, matrix.options), do: raise(NotFoundError)
+      {:ok, [matrix: matrix, test: Enum.find(matrix.grids, &(&1.grid == test)), read: read]}
+    end
+  end
 
-    [matrix: matrix, test: Enum.find(matrix.grids, &(&1.grid == test))]
+  # The bench has not been read since the site started: the site's 503 page,
+  # in the format asked for, with no crash to log on every visit.
+  defp unread(conn) do
+    conn
+    |> put_status(:service_unavailable)
+    |> put_resp_header("retry-after", "60")
+    |> put_root_layout(false)
+    |> put_layout(false)
+    |> put_view(html: PatchbayWeb.ErrorHTML, json: PatchbayWeb.ErrorJSON, md: PatchbayWeb.ErrorMD)
+    |> render(:"503")
   end
 
   @doc """
@@ -43,7 +65,14 @@ defmodule PatchbayWeb.WalletBenchController do
   answers with for the same query: the `read_wallet_bench` tool.
   """
   @spec read_wallet_bench(map()) :: {atom(), map()}
-  def read_wallet_bench(params), do: read(fn -> WalletBenchJSON.index(Map.new(board(params))) end)
+  def read_wallet_bench(params) do
+    read(fn ->
+      case board(params) do
+        {:ok, assigns} -> {:ok, WalletBenchJSON.index(Map.new(assigns))}
+        :unread -> {:service_unavailable, PatchbayWeb.ErrorJSON.render("503.json", %{})}
+      end
+    end)
+  end
 
   @doc """
   One pair's runs, as a status and the body
@@ -52,24 +81,28 @@ defmodule PatchbayWeb.WalletBenchController do
   """
   @spec read_wallet_bench_pair(map()) :: {atom(), map()}
   def read_wallet_bench_pair(params),
-    do: read(fn -> WalletBenchJSON.show(Map.new(pair(params))) end)
+    do: read(fn -> {:ok, WalletBenchJSON.show(Map.new(pair(params)))} end)
 
   # A bench address that names nothing raises NotFoundError, which the HTTP
   # door answers with the site's 404 body; a tool answers with the same.
   defp read(answer) do
-    {:ok, answer.()}
+    answer.()
   rescue
     NotFoundError -> {:not_found, PatchbayWeb.ErrorJSON.render("404.json", %{})}
   end
 
   def method(conn, _params) do
-    {:ok, key} = Matrix.key()
+    case Board.method() do
+      {:ok, key, _read} ->
+        render(
+          conn,
+          :method,
+          [key: key] ++ PatchbayWeb.PublicDocuments.page("/wallet-bench/how-it-works")
+        )
 
-    render(
-      conn,
-      :method,
-      [key: key] ++ PatchbayWeb.PublicDocuments.page("/wallet-bench/how-it-works")
-    )
+      :unread ->
+        unread(conn)
+    end
   end
 
   def show(conn, params), do: render(conn, :show, pair(params))

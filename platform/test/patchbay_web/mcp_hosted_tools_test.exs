@@ -326,6 +326,8 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
         "VALUES ('harness', 'H901', 'Agent 901'), ('wallet', 'W901', 'Wallet 901')"
     )
 
+    PatchbayTest.SharedBench.share!()
+
     question = question()
 
     %{"structuredContent" => %{"thread_id" => thread}} =

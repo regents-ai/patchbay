@@ -44,6 +44,14 @@ defmodule PatchbayWeb.ErrorMD do
     """
   end
 
+  def render("503.md", _assigns) do
+    """
+    # This page is not ready yet.
+
+    Its results are still being read. Try again in a minute.
+    """
+  end
+
   def render(template, _assigns) do
     "# " <> Phoenix.Controller.status_message_from_template(template) <> "\n\n" <> @map
   end

@@ -57,6 +57,20 @@ padding. A newer unsuccessful install remains visible over an older passing wall
 attempt. Model, harness, wallet and protocol filters narrow results before selection.
 Versions from different attempts never contribute dots to one displayed result.
 
+The board, `GET /api/wallet-bench` (the `read_wallet_bench` tool) and How the bench
+works never read Techtree's views on a visit. `Patchbay.WalletBench.Board` reads the
+whole bench once a minute, when the Oban schedule's `Patchbay.SharedReading.Heal`
+asks, and keeps it in `Patchbay.SharedReading` (copied from ash-template): the board
+as most visits see it, the rows a visit with filters builds its own board from in
+memory, and How the bench works. A visit holds no database connection for the bench.
+The board says when it was read ("Results read from Techtree 2 minutes ago"). A read
+that fails or takes over five seconds on one view keeps the last board on show, marked
+so the page says the latest read got no answer, and logs one warning. The first read
+happens as the site starts, before it serves a page; if that one fails, the board and
+How the bench works answer 503 `not_ready` ("Try again in a minute") until the next
+minute's read. `health.shared_reading.*` measures how old the reading is. A pair's
+page still reads that pair's runs when it is opened.
+
 Pair pages use `?test=wallet&set=<64-hex-id>&run=<uuid>&check=C1`. The selected set
 must belong to that test; the run must belong to the filtered set. An optional
 check must be defined for the test. Set comparisons and historical runs remain

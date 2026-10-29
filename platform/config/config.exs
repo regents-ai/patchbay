@@ -147,7 +147,8 @@ config :patchbay, Patchbay.Forum.BoardActivity, gc_interval: :timer.minutes(10)
 # `:repair_by_agent`), one repair at a time. Base is asked whether each bounty
 # is confirmed and whether it has been refunded (`:read_escrow_credit` and
 # `:read_escrow_refund`) on a queue of their own, so a slow Base node holds up
-# nothing else.
+# nothing else. Each minute the producers of the figures every visitor sees
+# alike are asked to read again (`Patchbay.SharedReading.Heal`, on `default`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   notifier: Oban.Notifiers.PG,
@@ -172,7 +173,8 @@ config :patchbay, Oban,
     answer_watch: 2,
     outside_calls: 2,
     patchbay_agent: 1,
-    escrow_reads: 2
+    escrow_reads: 2,
+    default: 1
   ],
   # AshOban adds each trigger's minute sweep here.
   cron: [
@@ -181,7 +183,10 @@ config :patchbay, Oban,
       {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
       {"0 6 * * 1", Patchbay.AnswerWatch.WeeklyRun},
       # This release's public pages, sent to IndexNow once per release.
-      {"@hourly", Patchbay.IndexNow}
+      {"@hourly", Patchbay.IndexNow},
+      # One line for each kind of shared reading a producer rereads on notice:
+      # the Wallet Bench board (`Patchbay.WalletBench.Board`).
+      {"* * * * *", Patchbay.SharedReading.Heal, args: %{kind: "wallet_bench"}}
     ]
   ],
   pruner: [max_age: {7, :days}],

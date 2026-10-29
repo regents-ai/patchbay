@@ -1,25 +1,32 @@
 defmodule Patchbay.WalletBench.ScaleTest do
   @moduledoc """
-  The board and How the bench works read the whole bench on every visit, so
-  both must stay quick at production's size and beyond, read through views
-  shaped as Techtree's (`Patchbay.TechtreeBenchViews`). Release v284 named each
-  check by its newest run with a lookup into the runs view for every check:
-  on production's bench the page timed out after 15 seconds and held database
-  connections, and on this bench each page took four to five seconds.
+  The minute's read of the whole bench (`Patchbay.WalletBench.Board`) must
+  stay quick at production's size and beyond, read through views shaped as
+  Techtree's (`Patchbay.TechtreeBenchViews`), and a visit to the board must
+  then read nothing from those views. Release v284 named each check by its
+  newest run with a lookup into the runs view for every check: on
+  production's bench the page timed out after 15 seconds and held database
+  connections, and on this bench each page took four to five seconds. Before
+  the bench was shared, every visit read the views: about 400 ms of database time.
   """
 
-  # Techtree's views replace two shared tables until the test ends.
-  use Patchbay.DataCase, async: false
+  # Techtree's views replace two shared tables until the test ends, and the
+  # bench read is shared by the whole run.
+  use PatchbayWeb.ConnCase, async: false
 
+  alias Patchbay.Repo
+  alias Patchbay.WalletBench.Board
   alias Patchbay.WalletBench.Matrix
+  alias Patchbay.WalletBench.Sets
 
   # 2,000 finished attempts: 5,000 runs and 33,000 checks, from 12 agents by
   # 10 wallets.
   @attempts 2_000
 
-  # Generous, so a busy machine never fails it: the board takes about half a
-  # second here and How the bench works about a fifth.
+  # Generous, so a busy machine never fails it: the read takes about 400 ms
+  # here, and a visit to the board about 20 ms with a filter.
   @bound_microseconds 1_000_000
+  @visit_microseconds 250_000
 
   setup do
     Patchbay.TechtreeBenchViews.install!(Repo, @attempts)
@@ -48,21 +55,41 @@ defmodule Patchbay.WalletBench.ScaleTest do
     :ok
   end
 
-  test "the board and How the bench works read a production-sized bench well inside a second" do
+  test "the minute's read takes well inside a second on a production-sized bench, and a visit reads no view",
+       %{conn: conn} do
     assert %{rows: [[5_000, 33_000]]} =
              Repo.query!("""
              SELECT (SELECT count(*) FROM techtree_app.wallet_bench_results)::integer,
                     (SELECT count(*) FROM techtree_app.wallet_bench_checks)::integer
              """)
 
-    {board_us, {:ok, matrix}} = :timer.tc(fn -> Matrix.read() end)
-    {key_us, {:ok, key}} = :timer.tc(fn -> Matrix.key() end)
+    on_exit(&PatchbayTest.SharedBench.forget/0)
+    {read_us, :ok} = :timer.tc(&Board.refresh/0)
+    assert read_us < @bound_microseconds, "the read took #{div(read_us, 1000)} ms"
 
-    assert board_us < @bound_microseconds, "the board took #{div(board_us, 1000)} ms"
-    assert key_us < @bound_microseconds, "How the bench works took #{div(key_us, 1000)} ms"
+    {:ok, matrix, _read} = Board.board(%{})
+    {:ok, key, _read} = Board.method()
 
     # Both pages name the same checks, every grid's in full.
     assert Enum.map(key.grids, &length(&1.criteria)) == [9, 9, 5, 5, 5]
     assert Enum.map(key.grids, & &1.criteria) == Enum.map(matrix.grids, & &1.criteria)
+
+    [%{id: model} | _] = matrix.options["model"]
+
+    for path <- ["/wallet-bench", "/wallet-bench?test=wallet&model=#{model}", "/api/wallet-bench"] do
+      {visit_us, {conn, views}} =
+        :timer.tc(fn -> PatchbayTest.SharedBench.views_read(fn -> get(conn, path) end) end)
+
+      assert conn.status == 200
+      assert views == [], "#{path} read #{inspect(views)}"
+      assert visit_us < @visit_microseconds, "#{path} took #{div(visit_us, 1000)} ms"
+    end
+
+    # A filter applied in memory gives the board a read of the views would.
+    {:ok, rows} = Matrix.read_rows()
+    filters = %{"model" => model}
+    assert {:ok, filtered, _read} = Board.board(filters)
+    assert filtered == Matrix.board(rows, filters)
+    assert Sets.valid_filters?(filters, filtered.options)
   end
 end

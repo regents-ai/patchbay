@@ -28,8 +28,18 @@ defmodule Patchbay.WalletBench.Matrix do
   """
 
   alias Patchbay.WalletBench
-  alias Patchbay.WalletBench.ExtraNotes
-  alias Patchbay.WalletBench.Sets
+
+  alias Patchbay.WalletBench.{
+    Check,
+    ExtraNote,
+    ExtraNotes,
+    Fixed,
+    Note,
+    Result,
+    RosterEntry,
+    Sets,
+    SetSummary
+  }
 
   @grids ["install", "wallet", "refund", "paid_call", "patchbay"]
   @display_criteria ~w(C1 C2 C3 C4 C5 C6 C7 C8 C9)
@@ -68,45 +78,87 @@ defmodule Patchbay.WalletBench.Matrix do
   @spec grids() :: [String.t()]
   def grids, do: @grids
 
+  @type rows :: %{
+          roster: [map()],
+          notes: [map()],
+          fixed: [map()],
+          results: [map()],
+          summaries: [map()],
+          checks: [map()],
+          extra_notes: [map()]
+        }
+
   @doc """
-  Everything the page shows, read now: the agents and wallets, Techtree's
-  notes by key, its extra notes by release, and for each grid its checks and
-  its squares by `{harness_id, wallet_id}`.
+  Every row the board and How the bench works are built from, read now from
+  Techtree's views as plain maps: each resource's attributes, and of the runs
+  everything but their steps, which the board never shows. One read a minute
+  shares them with every visitor (`Patchbay.WalletBench.Board`); `opts` go to
+  each read, so its producer can bound how long one may take.
   """
-  @spec read() :: {:ok, map()} | {:error, term()}
-  @spec read(map()) :: {:ok, map()} | {:error, term()}
-  def read(filters \\ %{}) do
-    with {:ok, roster} <- WalletBench.list_roster(),
-         {:ok, notes} <- WalletBench.list_notes(),
-         {:ok, fixed} <- WalletBench.list_fixed(),
-         {:ok, results} <- WalletBench.list_results_without_steps(),
-         {:ok, summaries} <- WalletBench.list_sets(),
-         {:ok, checks} <- WalletBench.list_checks(),
-         {:ok, extra_notes} <- WalletBench.list_extra_notes() do
+  @spec read_rows(keyword()) :: {:ok, rows()} | {:error, term()}
+  def read_rows(opts \\ []) do
+    with {:ok, roster} <- WalletBench.list_roster(opts),
+         {:ok, notes} <- WalletBench.list_notes(opts),
+         {:ok, fixed} <- WalletBench.list_fixed(opts),
+         {:ok, results} <- WalletBench.list_results_without_steps(opts),
+         {:ok, summaries} <- WalletBench.list_sets(opts),
+         {:ok, checks} <- WalletBench.list_checks(opts),
+         {:ok, extra_notes} <- WalletBench.list_extra_notes(opts) do
       {:ok,
-       roster
-       |> build(notes, fixed, results, summaries, checks, criteria(checks, results), filters)
-       |> Map.put(:extra_notes, ExtraNotes.by_release(extra_notes, roster))}
+       %{
+         roster: plain(roster, RosterEntry),
+         notes: plain(notes, Note),
+         fixed: plain(fixed, Fixed),
+         results: plain(results, Result, [:turns]),
+         summaries: plain(summaries, SetSummary),
+         checks: plain(checks, Check),
+         extra_notes: plain(extra_notes, ExtraNote)
+       }}
     end
   end
 
-  @doc """
-  What the page explaining the bench shows, read now: Techtree's notes by key,
-  and each grid with its checks. Of the runs it reads only when each finished.
-  """
-  @spec key() :: {:ok, map()} | {:error, term()}
-  def key do
-    with {:ok, notes} <- WalletBench.list_notes(),
-         {:ok, checks} <- WalletBench.list_wordings(),
-         {:ok, runs} <- WalletBench.list_finish_times() do
-      criteria = criteria(checks, runs)
+  # A row as the map of its attributes, which a shared reading holds where it
+  # refuses a record.
+  defp plain(records, resource, left_out \\ []) do
+    fields =
+      Ash.Resource.Info.attribute_names(resource) |> MapSet.to_list() |> Kernel.--(left_out)
 
-      {:ok,
-       %{
-         notes: notes(notes),
-         grids: Enum.map(@grids, &%{grid: &1, criteria: for_grid(criteria, &1)})
-       }}
-    end
+    Enum.map(records, &Map.take(&1, fields))
+  end
+
+  @doc """
+  Everything the board shows, built from `rows` (`read_rows/1`) under
+  `filters`: the agents and wallets, Techtree's notes by key, its extra notes
+  by release, and for each grid its checks and its squares by
+  `{harness_id, wallet_id}`.
+  """
+  @spec board(rows(), map()) :: map()
+  def board(rows, filters \\ %{}) do
+    rows.roster
+    |> build(
+      rows.notes,
+      rows.fixed,
+      rows.results,
+      rows.summaries,
+      rows.checks,
+      criteria(rows.checks, rows.results),
+      filters
+    )
+    |> Map.put(:extra_notes, ExtraNotes.by_release(rows.extra_notes, rows.roster))
+  end
+
+  @doc """
+  What the page explaining the bench shows, built from `rows`
+  (`read_rows/1`): Techtree's notes by key, and each grid with its checks.
+  """
+  @spec method(rows()) :: map()
+  def method(rows) do
+    criteria = criteria(rows.checks, rows.results)
+
+    %{
+      notes: notes(rows.notes),
+      grids: Enum.map(@grids, &%{grid: &1, criteria: for_grid(criteria, &1)})
+    }
   end
 
   @doc """

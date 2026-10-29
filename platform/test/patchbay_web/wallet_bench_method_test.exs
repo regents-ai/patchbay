@@ -1,9 +1,11 @@
 defmodule PatchbayWeb.WalletBenchMethodTest do
   @moduledoc "How the bench works: each test's checks and each result's meaning, read without any run."
 
-  use PatchbayWeb.ConnCase, async: true
+  # The pages read the bench as shared once for every visitor.
+  use PatchbayWeb.ConnCase, async: false
 
-  alias Patchbay.WalletBench.Matrix
+  alias Patchbay.WalletBench.Board
+  alias PatchbayTest.SharedBench
 
   # One judged check of one run, as Techtree publishes it.
   defp check!(grid, criterion_id, criterion, attempt_id) do
@@ -63,9 +65,8 @@ defmodule PatchbayWeb.WalletBenchMethodTest do
       check!("install", "C1", "The agent installs the wallet tool.", run)
     end
 
-    Patchbay.Repo.query!(
-      "INSERT INTO techtree_app.wallet_bench_notes (key, text) VALUES ('PASS', 'Pass: every check held.')"
-    )
+    board!()
+    SharedBench.share!()
 
     page = conn |> get("/wallet-bench/how-it-works") |> html_response(200)
     assert page =~ "The agent installs the wallet tool."
@@ -92,8 +93,9 @@ defmodule PatchbayWeb.WalletBenchMethodTest do
     check!("install", "C1", "The wallet tool prints a version.", older)
     check!("install", "C1", "The wallet tool answers with its version number.", newer)
     board!()
+    SharedBench.share!()
 
-    {:ok, %{grids: [install | _]}} = Matrix.key()
+    {:ok, %{grids: [install | _]}, _read} = Board.method()
 
     assert install.criteria == [
              %{id: "C1", criterion: "The wallet tool answers with its version number."}
@@ -107,7 +109,7 @@ defmodule PatchbayWeb.WalletBenchMethodTest do
     assert board =~ "The wallet tool answers with its version number."
     refute board =~ "The wallet tool prints a version."
 
-    {:ok, %{grids: grids}} = Matrix.read()
+    {:ok, %{grids: grids}, _read} = Board.board(%{})
     install = Enum.find(grids, &(&1.grid == "install"))
 
     assert install.criteria == [

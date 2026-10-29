@@ -8,6 +8,7 @@
         <p :if={@test.total > 0}>
           {@test.tested} of {@test.total} squares have results · {@test.never_run} never run
         </p>
+        <p id="pb-wb-read">{read_line(@read, DateTime.utc_now())}</p>
       </div>
       <details class="rg-pill-select pb-wb-filter" id="pb-wb-filter">
         <summary>{filter_label(@matrix.filters)}</summary>

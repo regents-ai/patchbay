@@ -25,7 +25,8 @@ defmodule PatchbayWeb.WalletBenchMD do
       set_facts: 1,
       steps?: 1,
       deciding_step: 1,
-      plain_file: 1
+      plain_file: 1,
+      read_line: 2
     ]
 
   embed_templates("wallet_bench_md/*")

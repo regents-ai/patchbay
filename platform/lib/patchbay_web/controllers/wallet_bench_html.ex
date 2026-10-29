@@ -104,6 +104,18 @@ defmodule PatchbayWeb.WalletBenchHTML do
   @doc "Every outcome, in legend order."
   def outcomes, do: Matrix.outcomes()
 
+  @doc """
+  When the board's results were read from Techtree, as of `now`, and, when the
+  latest read did not answer, that these are the last results it gave.
+  """
+  def read_line(%{at: at, degraded?: degraded?}, now) do
+    "Results read from Techtree #{RegentFormat.relative_time(at, now)}." <>
+      if(degraded?,
+        do: " The latest read got no answer, so these are the last results it gave.",
+        else: ""
+      )
+  end
+
   @doc "The heading for a grid."
   def grid_title("install"), do: "Install"
   def grid_title("wallet"), do: "New wallet"

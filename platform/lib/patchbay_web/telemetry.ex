@@ -17,6 +17,10 @@ defmodule PatchbayWeb.Telemetry do
   OpenRouter charged, and the engine's memory, run queues and process counts
   from telemetry_poller's default poller.
 
+  The figures every visitor sees alike (`Patchbay.SharedReading`) report, for
+  each kind, how many keys are held, how many have never been read, how long ago
+  the oldest was read, each reading that could not be taken and each one refused.
+
   Beside them are Patchbay's own three: the day's readings of posts reaching
   half their limit, each post refused because the limit is reached
   (`Patchbay.Assist.ModelCalls`), and each post turned away whose words
@@ -50,7 +54,10 @@ defmodule PatchbayWeb.Telemetry do
   def site_poller,
     do:
       {:telemetry_poller,
-       measurements: [{__MODULE__, :oldest_unfinished_jobs, []}],
+       measurements: [
+         {Patchbay.SharedReading, :measure, []},
+         {__MODULE__, :oldest_unfinished_jobs, []}
+       ],
        period: 10_000,
        name: :patchbay_site_poller}
 
@@ -159,6 +166,46 @@ defmodule PatchbayWeb.Telemetry do
         event_name: [:patchbay, :agents, :activity_unread],
         tags: [:reason],
         description: "Agents' activity reads from the sign-in service that gave no reading"
+      ),
+      last_value("health.shared_reading.oldest.seconds",
+        event_name: [:patchbay, :shared_reading, :kind],
+        measurement: :oldest_seconds,
+        tags: [:kind],
+        description: "Seconds since the oldest shared reading of each kind was read"
+      ),
+      last_value("health.shared_reading.late.keys",
+        event_name: [:patchbay, :shared_reading, :kind],
+        measurement: :late,
+        tags: [:kind],
+        description: "Keys of the kind last read longer ago than the kind's producer should allow"
+      ),
+      last_value("health.shared_reading.never_read.keys",
+        event_name: [:patchbay, :shared_reading, :kind],
+        measurement: :never_read,
+        tags: [:kind],
+        description: "Keys of the kind that have had no reading since the site started"
+      ),
+      counter("health.shared_reading.degraded.total",
+        event_name: [:patchbay, :shared_reading, :degraded],
+        tags: [:kind],
+        description: "Shared readings that could not be taken"
+      ),
+      last_value("patchbay.shared_reading.keys",
+        event_name: [:patchbay, :shared_reading, :kind],
+        measurement: :keys,
+        tags: [:kind]
+      ),
+      last_value("patchbay.shared_reading.table.bytes",
+        event_name: [:patchbay, :shared_reading, :table],
+        measurement: :bytes
+      ),
+      counter("patchbay.shared_reading.refused.total",
+        event_name: [:patchbay, :shared_reading, :refused],
+        tags: [:kind, :reason]
+      ),
+      counter("patchbay.shared_reading.woken.total",
+        event_name: [:patchbay, :shared_reading, :woken],
+        tags: [:kind]
       ),
       counter("patchbay.jobs.finished.total",
         event_name: [:oban, :job, :stop],
