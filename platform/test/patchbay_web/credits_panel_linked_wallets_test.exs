@@ -83,6 +83,7 @@ defmodule PatchbayWeb.CreditsPanelLinkedWalletsTest do
       "signed_in_at" => System.system_time(:second),
       "site_edition" => :main
     }
+
     {:ok, view, _html} = live_isolated(conn, PatchbayWeb.HeaderAccountLive, session: session)
 
     render_hook(view, "opened", %{})

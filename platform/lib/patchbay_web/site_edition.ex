@@ -54,7 +54,17 @@ defmodule PatchbayWeb.SiteEdition do
   @spec offers?(t(), map()) :: boolean()
   def offers?(:main, _tool), do: true
 
-  def offers?(:open, %{route: route}) do
+  def offers?(:open, %{route: route}), do: answers?(:open, route)
+
+  @doc """
+  Whether `edition`'s address answers `route`, a verb and a path with named
+  parts, such as `POST /forum/threads/{id}/replies`: at the open address, not
+  when it answers only at patchbay.help.
+  """
+  @spec answers?(t(), String.t()) :: boolean()
+  def answers?(:main, _route), do: true
+
+  def answers?(:open, route) do
     [verb, path] = String.split(route, " ")
     not main_only?(verb, String.replace(path, ~r/\{[a-z_]+\}/, "x"))
   end

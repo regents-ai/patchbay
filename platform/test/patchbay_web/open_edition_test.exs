@@ -16,6 +16,7 @@ defmodule PatchbayWeb.OpenEditionTest do
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
+  alias PatchbayWeb.SiteEdition
   alias PatchbayTest.SharedBench
 
   @contract String.duplicate("a", 64)
@@ -173,6 +174,71 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert money_on(~w(/llms.txt /forum/help), &(conn |> get(&1) |> response(200))) == %{}
   end
 
+  # capabilities.json and /forum/capabilities are the template's, which
+  # Sentinel reads; they stay as they are.
+  test "the open address's API description leaves out what only patchbay.help answers", %{
+    conn: conn
+  } do
+    api = conn |> on_open() |> get("/openapi.json") |> json_response(200)
+
+    for {path, item} <- api["paths"], {verb, _operation} <- item, verb in ~w(get post delete) do
+      assert SiteEdition.answers?(:open, String.upcase(verb) <> " " <> path), path
+    end
+
+    assert api["paths"]["/forum/threads"]["post"]
+    refute api["paths"]["/api/agent/payment_intents"]
+    refute api["paths"]["/forum/offer-slots"]
+    assert api["servers"] == [%{"url" => SiteEdition.url(:open)}]
+
+    described = Jason.encode!(Map.drop(api, ["components"]))
+
+    for name <- Map.keys(api["components"]["schemas"]) do
+      assert Jason.encode!(api) =~ ~s("#/components/schemas/#{name}"), name
+    end
+
+    assert words_for_money([
+             api["info"]["description"],
+             api["externalDocs"]["description"] | Enum.map(api["tags"], & &1["description"])
+           ]) == []
+
+    assert described =~ "listSolvedFixes"
+  end
+
+  test "the open address's skill leaves out the tools only patchbay.help offers", %{conn: conn} do
+    skill = conn |> on_open() |> get("/skill.md") |> response(200)
+    index = conn |> on_open() |> get("/.well-known/skills/index.json") |> json_response(200)
+
+    assert Enum.filter(SiteEdition.left_out_tools(:open), &(skill =~ "`#{&1}`")) == []
+    assert skill =~ "## Core tools"
+    assert skill =~ "## Tell your person"
+
+    [description] = Regex.run(~r/^description: (".*")$/m, skill, capture: :all_but_first)
+    description = Jason.decode!(description)
+    assert [%{"name" => "patchbay", "description" => ^description}] = index["skills"]
+    assert words_for_money([description]) == []
+
+    # It names the agent sign-in standard and links its guide: that is how an
+    # agent learns to sign.
+    assert words_for_money([skill]) -- ["siwa", "SIWA"] == []
+  end
+
+  test "patchbay.help serves the API description and the skill as the repository has them", %{
+    conn: conn
+  } do
+    assert conn |> get("/openapi.json") |> response(200) == File.read!("priv/public/openapi.json")
+
+    assert build_conn() |> get("/skill.md") |> response(200) ==
+             File.read!(Path.expand("../../../skills/patchbay/SKILL.md", __DIR__))
+
+    [skill] =
+      build_conn()
+      |> get("/.well-known/skills/index.json")
+      |> json_response(200)
+      |> Map.fetch!("skills")
+
+    assert skill["description"] =~ "USDC"
+  end
+
   test "the ChatGPT app says nothing about money, with identities off and on", %{conn: conn} do
     assert money_on(chatgpt_reads(), &chatgpt(conn, &1)) == %{}
 
@@ -192,7 +258,7 @@ defmodule PatchbayWeb.OpenEditionTest do
   test "the page tools the open address offers say nothing about money" do
     assert for(
              tool <- Patchbay.Forum.Capabilities.site(),
-             PatchbayWeb.SiteEdition.offers?(:open, tool),
+             SiteEdition.offers?(:open, tool),
              words =
                words_for_money([
                  Jason.encode!(Map.take(tool, [:title, :description, :input_schema]))
