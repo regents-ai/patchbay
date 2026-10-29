@@ -1,11 +1,12 @@
 import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools.ts";
 import {PREPARABLE_OPERATIONS, signedTransport} from "./agent_transport.ts";
-import {errorIn, refusal} from "../api_error.ts";
-import type {ErrorBody, Refusal} from "../api_error.ts";
+import {errorIn} from "../api_error.ts";
+import type {ErrorBody} from "../api_error.ts";
 import {sentence} from "./invocation_bridge.ts";
 import {createToolScope} from "./webmcpify.ts";
 import type {ModelContext} from "./webmcpify.ts";
-import {boundedJson} from "./tool_definitions.ts";
+import {answered, bounded, outcomeUnknown, pageRefusal, refusedWith} from "./tool_result.ts";
+import type {ToolResult} from "./tool_result.ts";
 import {report, visitId} from "../visit_log.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 
@@ -56,7 +57,7 @@ type ForumInput = {
 
 type ToolExecution = {signal?: AbortSignal};
 
-type ForumExecute = (input?: ForumInput, execution?: ToolExecution) => Promise<string>;
+type ForumExecute = (input?: ForumInput, execution?: ToolExecution) => Promise<ToolResult>;
 
 type BoardBody = {
   error?: ErrorBody;
@@ -126,8 +127,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
       // tools this page offers. It sends no cookie, so it names nobody.
       execute: async (_input, {signal} = {}) => {
         const answer = await get({...options, signal}, HELP_PATH);
-        if (!answer.ok) return refused(answer);
-        return boundedJson(answer.body, RESULT_LIMIT, "Read the same guide at /agents.md.");
+        return read(answer, body => body, RESULT_LIMIT, "Read the same guide at /agents.md.");
       },
     },
     {
@@ -135,11 +135,9 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
       execute: async (input = {}, {signal} = {}) => {
         const query = new URLSearchParams({site: String(input.site ?? "")});
         const answer = await get({...options, signal}, `${KNOWN_FIXES_PATH}?${query}`);
-        if (!answer.ok) return refused(answer);
-        const count = Array.isArray(answer.body?.known_fixes) ? answer.body.known_fixes.length : 0;
-        return boundedJson({
-          summary: sentence(`Patchbay knows ${count} fix${count === 1 ? "" : "es"} for ${answer.body?.site}.`),
-          ...answer.body,
+        return read(answer, body => {
+          const count = Array.isArray(body?.known_fixes) ? body.known_fixes.length : 0;
+          return {summary: sentence(`Patchbay knows ${count} fix${count === 1 ? "" : "es"} for ${body?.site}.`), ...body};
         }, RESULT_LIMIT, "Read the same list at /known-fixes?site=HOST.");
       },
     },
@@ -148,8 +146,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
       execute: async (input = {}, {signal} = {}) => {
         const path = `${KNOWN_FIXES_PATH}/${encodeURIComponent(String(input.fix_id ?? ""))}`;
         const answer = await get({...options, signal}, path);
-        if (!answer.ok) return refused(answer);
-        return boundedJson({summary: sentence(`Known fix: ${answer.body?.title}`), ...answer.body}, RESULT_LIMIT, "Read the same fix at /known-fixes/FIX_ID.");
+        return read(answer, body => ({summary: sentence(`Known fix: ${body?.title}`), ...body}), RESULT_LIMIT, "Read the same fix at /known-fixes/FIX_ID.");
       },
     },
     {
@@ -160,10 +157,10 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
           if (input[key] !== undefined) query.set(key, String(input[key]));
         }
         const answer = await get({...options, signal}, `/forum/tool-history?${query}`);
-        if (!answer.ok) return refused(answer);
         // Never truncate schema values or cursors: a history too large is refused whole.
-        return boundedJson(
-          {summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: answer.body},
+        return read(
+          answer,
+          body => ({summary: "Tool versions, newest first by first appearance.", data_only: DATA_ONLY, history: body}),
           HISTORY_LIMIT,
           "Call get_tool_history again with a smaller limit, then follow its after cursor.",
         );
@@ -201,9 +198,9 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
 
         const answer = await get({...options, signal}, `${SEARCH_PATH}?${query.toString()}`);
 
-        if (!answer.ok) return refused(answer);
-        return boundedJson(
-          {summary: searchSummary(answer.body), data_only: DATA_ONLY, results: answer.body},
+        return read(
+          answer,
+          body => ({summary: searchSummary(body), data_only: DATA_ONLY, results: body}),
           RESULT_LIMIT,
           "Narrow the search with q, origin, tool_name, tag or since_minutes, or read the same search at GET /forum/search, which returns it whole.",
         );
@@ -218,15 +215,13 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         const answer = await get({...options, signal}, input.after === undefined ? path : `${path}?${query}`);
 
         if (!answer.ok) return refused(answer);
-        const result = JSON.stringify({
-          summary: threadSummary(answer.body), data_only: DATA_ONLY, thread: answer.body,
-        });
-        if (new TextEncoder().encode(result).byteLength > RESULT_LIMIT) {
-          return JSON.stringify(refusal(
+        const result = answered({summary: threadSummary(answer.body), data_only: DATA_ONLY, thread: answer.body}, answer.status);
+        if (new TextEncoder().encode(JSON.stringify(result)).byteLength > RESULT_LIMIT) {
+          return pageRefusal(
             "response_too_large",
             "This thread page could not be returned without omitting data. No replies were skipped.",
             "Read the thread on the website instead.",
-          ));
+          );
         }
         return result;
       },
@@ -239,9 +234,9 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         const path = query.size ? `/forum/offer-slots?${query}` : "/forum/offer-slots";
         const answer = await get({...options, signal}, path);
 
-        if (!answer.ok) return refused(answer);
-        return boundedJson(
-          {summary: sentence("Agent Offer slots as of now."), slots: answer.body},
+        return read(
+          answer,
+          body => ({summary: sentence("Agent Offer slots as of now."), slots: body}),
           OFFER_SLOTS_LIMIT,
           "Read the same slots at GET /forum/offer-slots, which returns them whole.",
         );
@@ -253,28 +248,27 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         const profileId = input.profile_id ?? options.profileId;
 
         if (!profileId) {
-          return boundedJson(refusal(
+          return pageRefusal(
             "anonymous",
             "Nobody is signed in on this page, so there is no profile to read.",
             "Name a profile_id, or sign in on this page.",
-          ));
+          );
         }
 
         const answer = await get({...options, signal}, `${AGENTS_PATH}/${encodeURIComponent(profileId)}`);
 
-        if (!answer.ok) return refused(answer);
         // The display name came from whatever the agent signed in with, so it
         // is a stranger's words like everything else on the board.
-        return boundedJson({
+        return read(answer, body => ({
           summary: sentence(
-            answer.body?.can_receive_usdc
-              ? `${answer.body?.profile_id} goes by a name of its own choosing and can be paid in USDC.`
-              : `${answer.body?.profile_id} goes by a name of its own choosing and cannot be paid right now.`,
+            body?.can_receive_usdc
+              ? `${body?.profile_id} goes by a name of its own choosing and can be paid in USDC.`
+              : `${body?.profile_id} goes by a name of its own choosing and cannot be paid right now.`,
           ),
           found: true,
           data_only: NAME_ONLY,
-          author: answer.body,
-        }, RESULT_LIMIT, "Read the same profile at /agents/PROFILE_ID.");
+          author: body,
+        }), RESULT_LIMIT, "Read the same profile at /agents/PROFILE_ID.");
       },
     },
   ] satisfies {name: string; execute: ForumExecute}[]).map(({name, execute}): [string, ForumExecute] => [name, execute]));
@@ -288,7 +282,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
     execute: async (input: ForumInput = {}, execution: ToolExecution = {}) => {
       if (tool.name === "prepare_agent_request") {
         try {
-          return boundedJson(
+          return bounded(
             {ok: true, request: signedTransport().prepare(String(input.operation), input.input as Record<string, unknown>)},
             PREPARED_LIMIT,
             "Nothing was prepared or sent. Shorten the input: a signed request holds at most 100,000 bytes.",
@@ -327,7 +321,7 @@ function cancellableTool(tool: ForumTool): ForumTool {
     if (signal?.aborted) return cancel(false);
     let dispatched = false;
     let onAbort!: () => void;
-    const aborted = new Promise<string>(resolve => {
+    const aborted = new Promise<ToolResult>(resolve => {
       onAbort = () => resolve(cancel(dispatched));
       signal?.addEventListener("abort", onAbort, {once: true});
     });
@@ -361,11 +355,14 @@ async function signed(tool: (typeof PAGE_TOOLS)[number], input: SignedInput, sig
   } catch {
     return unanswered(tool, signal);
   }
-  if (Object.hasOwn(MY_OFFERS_LIMITS, tool.name)) return boundedJson(waited(response, body), MY_OFFERS_LIMITS[tool.name], MY_OFFERS_HINT);
+  const result = response.ok
+    ? answered(body, response.status)
+    : refusedWith(errorOf({ok: false, status: response.status, body: waited(response, body)}), response.status);
+  if (Object.hasOwn(MY_OFFERS_LIMITS, tool.name)) return bounded(result, MY_OFFERS_LIMITS[tool.name], MY_OFFERS_HINT);
   // One slot read carries every wording and bid the person has there.
   const limit = tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT;
   // Only a write's oversized answer leaves its outcome unknown.
-  return boundedJson(waited(response, body), limit, tool.annotations.readOnlyHint === true ? signedReadHint(tool) : undefined);
+  return bounded(result, limit, tool.annotations.readOnlyHint === true ? signedReadHint(tool) : undefined);
 }
 
 const SIGN_HINT =
@@ -389,31 +386,30 @@ function lost(error: unknown) {
 // reached the board, so its outcome is unknown, never cancelled.
 function unanswered(tool: (typeof PAGE_TOOLS)[number], signal?: AbortSignal) {
   if (tool.annotations.readOnlyHint !== true) return unknownOutcome();
-  return signal?.aborted ? cancelled() : JSON.stringify(unreachable("The report board could not be reached."));
+  return signal?.aborted ? cancelled() : refusedWith(unreachable("The report board could not be reached."));
 }
 
 function unknownOutcome() {
-  return JSON.stringify(refusal(
+  return outcomeUnknown(
     "outcome_unknown",
     "The answer was lost, so it is not known whether this happened.",
     "Check whether it landed before you send it again: get_request_status reads a post back by its client_request_id, and a post sent again with the same one answers with the original.",
-    {outcome: "unknown"},
-  ));
+  );
 }
 
 function cancelled() {
-  return JSON.stringify(refusal(
+  return pageRefusal(
     "cancelled",
     "The call was cancelled; nothing changed.",
     "Call the tool again when you want its answer.",
-  ));
+  );
 }
 
 // The signing transport refuses with a reason such as "missing_field:title".
 // The agent reads it in words; the reason itself stays in details.
 function invalid(error: unknown, hint: string) {
   const reason = error instanceof Error ? error.message : String(error);
-  return JSON.stringify(refusal("invalid_request", explain(reason), hint, {details: {reason}}));
+  return pageRefusal("invalid_request", explain(reason), hint, {details: {reason}});
 }
 
 function explain(reason: string): string {
@@ -459,7 +455,7 @@ async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair:
     (key === "test" && !["install", "wallet", "refund", "paid_call", "patchbay"].includes(value)),
   );
   if (invalid || (pair && (!/^H[0-9]{1,15}$/.test(String(input.harness_id ?? "")) || !/^W[0-9]{1,15}$/.test(String(input.wallet_id ?? ""))))) {
-    return boundedJson(refusal("invalid_input", "Use a listed test, roster IDs, 64-hex filter or set tokens, a run UUID and an optional C1–C9 check.", "Read read_wallet_bench first; copy the selected square’s read_input into read_wallet_bench_pair."));
+    return pageRefusal("invalid_input", "Use a listed test, roster IDs, 64-hex filter or set tokens, a run UUID and an optional C1–C9 check.", "Read read_wallet_bench first; copy the selected square’s read_input into read_wallet_bench_pair.");
   }
   const query = new URLSearchParams();
   for (const key of ["test", ...filters, ...selections, ...detail]) {
@@ -471,12 +467,12 @@ async function benchmarkRead(options: ForumToolOptions, input: ForumInput, pair:
   const answer = await get({...options, signal}, `${path}?${query}`);
   if (!answer.ok) return refused(answer);
   if (!answer.body) {
-    return boundedJson(refusal("invalid_result", "The benchmark returned no JSON result.", "Read /wallet-bench on the website."));
+    return pageRefusal("invalid_result", "The benchmark returned no JSON result.", "Read /wallet-bench on the website.");
   }
   if (new TextEncoder().encode(JSON.stringify(answer.body)).byteLength > 128 * 1024) {
-    return boundedJson(refusal("response_too_large", "The benchmark answer exceeds the 128 KiB tool limit and could not be returned intact. Nothing was omitted.", "Choose one pair and exact set and run, or read the full results at /wallet-bench on the website."));
+    return pageRefusal("response_too_large", "The benchmark answer exceeds the 128 KiB tool limit and could not be returned intact. Nothing was omitted.", "Choose one pair and exact set and run, or read the full results at /wallet-bench on the website.");
   }
-  return JSON.stringify(answer.body);
+  return answered(answer.body, answer.status);
 }
 
 // Every page-run tool is a public read: it sends no cookie, takes no cached
@@ -496,7 +492,7 @@ async function catalogRead(options: ForumToolOptions, input: ForumInput, tool: b
     (input.category === undefined || String(input.category).length <= 80) &&
     (!tool || (host.length <= 253 && /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+$/.test(host) &&
       /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/.test(name) && (input.after === undefined || String(input.after).length <= 4096)));
-  if (!valid) return boundedJson(refusal("invalid_input", "Use the listed fields and a positive whole page number; tool history needs its exact host, name and after cursor.", "Search read_site_directory with q or category, then follow its page numbers."));
+  if (!valid) return pageRefusal("invalid_input", "Use the listed fields and a positive whole page number; tool history needs its exact host, name and after cursor.", "Search read_site_directory with q or category, then follow its page numbers.");
   const query = new URLSearchParams();
   if (input.after !== undefined) query.set("after", String(input.after));
   if (!tool) for (const key of ["q", "category", "page"]) {
@@ -507,19 +503,18 @@ async function catalogRead(options: ForumToolOptions, input: ForumInput, tool: b
   if (!answer.ok) return refused(answer);
   if (!answer.body || typeof answer.body !== "object" || Array.isArray(answer.body) ||
       (tool ? !answer.body.tool || !Array.isArray(answer.body.versions) : !Array.isArray(answer.body.sites))) {
-    return boundedJson(refusal("invalid_result", "The catalog returned no valid JSON object.", "Read the catalog on the website."));
+    return pageRefusal("invalid_result", "The catalog returned no valid JSON object.", "Read the catalog on the website.");
   }
-  const encoded = JSON.stringify(answer.body);
-  if (new TextEncoder().encode(encoded).byteLength > 256 * 1024) {
-    return boundedJson(refusal("response_too_large", "The catalog could not be returned intact.", "Read the website or use get_tool_history with limit=1."));
+  if (new TextEncoder().encode(JSON.stringify(answer.body)).byteLength > 256 * 1024) {
+    return pageRefusal("response_too_large", "The catalog could not be returned intact.", "Read the website or use get_tool_history with limit=1.");
   }
-  return encoded;
+  return answered(answer.body, answer.status);
 }
 
 async function call(options: ForumToolOptions, path: string, request: RequestInit): Promise<BoardAnswer> {
   const fetchImpl = options.fetch ?? globalThis.fetch;
   if (typeof fetchImpl !== "function") {
-    return {ok: false, status: 0, ...unreachable("This page cannot reach the report board.")};
+    return {ok: false, status: 0, error: unreachable("This page cannot reach the report board.")};
   }
 
   try {
@@ -534,7 +529,7 @@ async function call(options: ForumToolOptions, path: string, request: RequestIni
     return {
       ok: false,
       status: 0,
-      ...unreachable(
+      error: unreachable(
         `The report board could not be reached: ${String((error as {message?: unknown} | null | undefined)?.message ?? error).slice(0, 200)}`,
       ),
     };
@@ -550,8 +545,8 @@ function named(options: ForumToolOptions): Record<string, string> {
 
 // A board that could not be reached at all never answered, so this page
 // names that refusal itself.
-function unreachable(message: string): Refusal {
-  return refusal("unreachable", message, "Check the page is open and online, then call again.");
+function unreachable(message: string): ErrorBody {
+  return {code: "unreachable", message, hint: "Check the page is open and online, then call again."};
 }
 
 async function readBody(response: Response) {
@@ -578,7 +573,14 @@ function errorOf(answer: BoardAnswer): ErrorBody {
 // the page runs itself is a read, so a refusal too large to return changed
 // nothing either.
 function refused(answer: BoardAnswer) {
-  return boundedJson({error: errorOf(answer)}, RESULT_LIMIT, "Nothing was changed. Correct the call and send it again.");
+  return bounded(refusedWith(errorOf(answer), answer.status || undefined), RESULT_LIMIT, "Nothing was changed. Correct the call and send it again.");
+}
+
+// A public read's answer: the refusal, or `shape` of the board's body with the
+// board's status, refused whole when it is larger than `limit`.
+function read(answer: BoardAnswer, shape: (body: BoardBody | null | undefined) => unknown, limit: number, readHint: string) {
+  if (!answer.ok) return refused(answer);
+  return bounded(answered(shape(answer.body), answer.status), limit, readHint);
 }
 
 // What to do when a signed read's answer is too large for a page tool: it

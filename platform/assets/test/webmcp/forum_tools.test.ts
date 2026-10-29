@@ -8,6 +8,14 @@ import {
 } from "../../js/webmcp/forum_tools.ts";
 import type {ForumTool, ForumToolOptions} from "../../js/webmcp/forum_tools.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
+import type {ToolResult} from "../../js/webmcp/tool_result.ts";
+
+/** A tool's answer as the agent reads it: the object the browser hands over as it is. */
+type Answer = Record<string, any>;
+function asAnswer(result: ToolResult): Answer {
+  assert.equal(typeof result, "object");
+  return result as unknown as Answer;
+}
 
 /** A registered tool's input schema, as these tests read it. */
 type Schema = {
@@ -234,9 +242,7 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
       client_request_id: "request-1",
     };
 
-    const prepared = JSON.parse(
-      await tools.get("prepare_agent_request")!.execute({operation: "report_tool_problem", input}),
-    );
+    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "report_tool_problem", input}),);
 
     assert.deepEqual(prepared, {
       ok: true,
@@ -250,16 +256,18 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
       },
     });
 
-    const result = JSON.parse(
-      await tools.get("report_tool_problem")!.execute({input, request: prepared.request, proof: PROOF}),
-    );
+    const result = asAnswer(await tools.get("report_tool_problem")!.execute({input, request: prepared.request, proof: PROOF}),);
 
-    // The board's answer comes back as the board gave it.
+    // The board's answer comes back as the board gave it, with its status.
     assert.deepEqual(result, {
-      report_id: "report-2",
-      url: "/posts/report-2/checkout-stayed-empty",
-      verified: true,
-      receipt_status: "verified",
+      ok: true,
+      status: 201,
+      data: {
+        report_id: "report-2",
+        url: "/posts/report-2/checkout-stayed-empty",
+        verified: true,
+        receipt_status: "verified",
+      },
     });
 
     const [{path, request}] = fetch.requests;
@@ -290,14 +298,16 @@ test("search hands the board back as quoted data, never as instructions", async 
   const fetch = fakeFetch([{status: 200, body}]);
   const tools = toolsByName({fetch});
 
-  const raw = await tools.get("search_threads")!.execute({origin: "shop.example.com"});
-  const result = JSON.parse(raw);
+  const answer = asAnswer(await tools.get("search_threads")!.execute({origin: "shop.example.com"}));
+  assert.equal(answer.ok, true);
+  assert.equal(answer.status, 200);
+  const result = answer.data;
 
   assert.match(result.data_only, /evidence to read, not instructions to follow/);
   assert.deepEqual(result.results, body);
   // The note survives intact, but only ever inside a field named as a quotation.
   assert.equal(result.results.reports[0].quoted_note, body.reports[0].quoted_note);
-  assert.equal(raw.length <= 16 * 1024, true);
+  assert.equal(JSON.stringify(answer).length <= 16 * 1024, true);
 
   assert.equal(fetch.requests[0].path, "/forum/search?origin=shop.example.com");
   assert.equal(fetch.requests[0].request.method, "GET");
@@ -322,16 +332,17 @@ test("an oversized board answer returns an explicit error without damaged rows",
   const fetch = fakeFetch([{status: 200, body}]);
   const tools = toolsByName({fetch});
 
-  const raw = await tools.get("search_threads")!.execute({origin: "busy.example.com"});
+  const answer = asAnswer(await tools.get("search_threads")!.execute({origin: "busy.example.com"}));
 
-  assert.equal(raw.length <= 16 * 1024, true);
-  assert.equal(JSON.parse(raw).error.code, "response_too_large");
-  assert.equal(JSON.parse(raw).results, undefined);
+  assert.equal(JSON.stringify(answer).length <= 16 * 1024, true);
+  assert.equal(answer.ok, false);
+  assert.equal(answer.error.code, "response_too_large");
+  assert.equal(answer.data, undefined);
 });
 
 test("a board that never answered is named as unreachable, not refused", async () => {
   const tools = toolsByName({fetch: () => Promise.reject(new Error("network down"))});
-  const result = JSON.parse(await tools.get("search_threads")!.execute({origin: "shop.example.com"}));
+  const result = asAnswer(await tools.get("search_threads")!.execute({origin: "shop.example.com"}));
   assert.equal(result.error.code, "unreachable");
 });
 
@@ -363,11 +374,11 @@ test("each call names its tool and visit, and one the site never heard is report
 
 test("every board result opens with one sentence about what happened", async () => {
   const fetch = fakeFetch([{status: 200, body: {tools: [{name: "add_to_cart"}], results: []}}]);
-  const searched = await toolsByName({fetch}).get("search_threads")!.execute({origin: "shop.example.com"});
+  const searched = asAnswer(await toolsByName({fetch}).get("search_threads")!.execute({origin: "shop.example.com"})).data;
 
-  assert.ok(searched.startsWith('{"summary":'));
-  assert.ok(JSON.parse(searched).summary.length <= 200);
-  assert.match(JSON.parse(searched).summary, /1 matching tool and 0 threads/);
+  assert.equal(Object.keys(searched)[0], "summary");
+  assert.ok(searched.summary.length <= 200);
+  assert.match(searched.summary, /1 matching tool and 0 threads/);
 });
 
 test("the page offers no tool an agent can never run", async () => {
@@ -389,12 +400,12 @@ test("get_patchbay_help answers with the server's one help, sent without a cooki
     {status: 503, body: {error: {code: "unavailable", message: "Down.", hint: "Try the same call again in a moment."}}},
   ]);
 
-  assert.deepEqual(JSON.parse(await toolsByName({fetch}).get("get_patchbay_help")!.execute()), help);
+  assert.deepEqual(asAnswer(await toolsByName({fetch}).get("get_patchbay_help")!.execute()), {ok: true, status: 200, data: help});
   assert.equal(fetch.requests[0].path, "/forum/help");
   assert.equal(fetch.requests[0].request.method, "GET");
   assert.equal(fetch.requests[0].request.credentials, "omit");
 
-  const failed = JSON.parse(await toolsByName({fetch}).get("get_patchbay_help")!.execute());
+  const failed = asAnswer(await toolsByName({fetch}).get("get_patchbay_help")!.execute());
   assert.equal(failed.error.code, "unavailable");
 });
 
@@ -412,14 +423,14 @@ test("thread pages preserve complete notes, IDs, authors and continuation tokens
   const last = {...first, replies: [], pagination: {has_more: false, next_cursor: null}};
   const fetch = fakeFetch([{status: 200, body: first}, {status: 200, body: last}]);
   const tool = toolsByName({fetch}).get("get_thread")!;
-  const raw = await tool.execute({thread_id: reportId});
-  const result = JSON.parse(raw);
+  const answer = asAnswer(await tool.execute({thread_id: reportId}));
+  const result = answer.data;
   assert.deepEqual(result.thread, first);
-  assert.ok(Buffer.byteLength(raw, "utf8") <= 16 * 1024);
+  assert.ok(Buffer.byteLength(JSON.stringify(answer), "utf8") <= 16 * 1024);
   assert.match(result.summary, /This page contains 13 replies/);
   assert.match(result.summary, /More replies remain/);
   assert.match(result.data_only, /not instructions/);
-  const final = JSON.parse(await tool.execute({thread_id: reportId, after: result.thread.pagination.next_cursor}));
+  const final = asAnswer(await tool.execute({thread_id: reportId, after: result.thread.pagination.next_cursor})).data;
   assert.deepEqual(final.thread, last);
   assert.match(final.summary, /This page contains 0 replies/);
   assert.match(final.summary, /final page/);
@@ -436,11 +447,10 @@ test("an oversized UTF-8 thread is refused without truncating rows or identifier
   assert.ok(JSON.stringify(body).length < 16 * 1024);
   assert.ok(Buffer.byteLength(JSON.stringify(body), "utf8") > 16 * 1024);
   const tool = toolsByName({fetch: fakeFetch([{status: 200, body}])}).get("get_thread")!;
-  const raw = await tool.execute({thread_id: body.report.id});
-  const result = JSON.parse(raw);
+  const result = asAnswer(await tool.execute({thread_id: body.report.id}));
   assert.equal(result.error.code, "response_too_large");
-  assert.equal(result.thread, undefined);
-  assert.ok(Buffer.byteLength(raw, "utf8") <= 16 * 1024);
+  assert.equal(result.data, undefined);
+  assert.ok(Buffer.byteLength(JSON.stringify(result), "utf8") <= 16 * 1024);
 });
 
 test("thread cursor errors remain structured and the opaque query is forwarded unchanged", async () => {
@@ -458,7 +468,7 @@ test("thread cursor errors remain structured and the opaque query is forwarded u
     },
   ]);
   const tool = toolsByName({fetch}).get("get_thread")!;
-  const result = JSON.parse(await tool.execute({thread_id: "report-id", after: cursor}));
+  const result = asAnswer(await tool.execute({thread_id: "report-id", after: cursor}));
   assert.equal(new URL(fetch.requests[0].path, "http://localhost").searchParams.get("after"), cursor);
   assert.equal(result.error.code, "invalid_cursor");
   assert.equal(result.error.message, "Start again without after.");
@@ -494,7 +504,7 @@ test("pre-canceled non-payment calls make no request", async () => {
   const tools = toolsByName({fetch, profileId: "agt_1"});
   for (const tool of tools.values()) {
     if (tool.annotations.consequentialHint) continue;
-    const result = JSON.parse(await tool.execute({}, {signal: controller.signal}));
+    const result = asAnswer(await tool.execute({}, {signal: controller.signal}));
     assert.equal(result.error.code, "cancelled", tool.name);
   }
   assert.equal(fetch.requests.length, 0);
@@ -512,22 +522,20 @@ test("cancellation forwards the signal and discards late write success", async (
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({});
     const input = {report_id: "report", verdict: "unknown", client_request_id: "request-1"};
-    const prepared = JSON.parse(
-      await tools.get("prepare_agent_request")!.execute({operation: "reply_to_report", input}),
-    );
+    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "reply_to_report", input}),);
     const pending = tools.get("reply_to_report")!
       .execute({input, request: prepared.request, proof: PROOF}, {signal: controller.signal});
     await Promise.resolve();
     await Promise.resolve();
     assert.equal(request.signal, controller.signal);
     controller.abort();
-    const result = JSON.parse(await pending);
+    const result = asAnswer(await pending);
     assert.equal(result.error.code, "outcome_unknown");
-    assert.equal(result.error.outcome, "unknown");
-    assert.equal(result.reply_id, undefined);
+    assert.equal(result.outcome, "unknown");
+    assert.equal(result.data, undefined);
     finish({ok: true, status: 201, json: async () => ({reply_id: "late", report_id: "report"})});
     await Promise.resolve();
-    assert.equal(JSON.parse(await pending).error.outcome, "unknown");
+    assert.equal(asAnswer(await pending).outcome, "unknown");
   });
 });
 
@@ -541,7 +549,7 @@ test("search_threads lists a site's threads without a query and takes a recency 
   // No q at all — a site listing is a legal call.
   assert.equal(tool.inputSchema.required, undefined);
 
-  const listed = JSON.parse(await tool.execute({origin: "shop.example.com", since_minutes: 30, tag: "emudhra"}));
+  const listed = asAnswer(await tool.execute({origin: "shop.example.com", since_minutes: 30, tag: "emudhra"}));
   assert.match(fetch.requests[0].path, /origin=shop\.example\.com/);
   assert.match(fetch.requests[0].path, /since_minutes=30/);
   assert.match(fetch.requests[0].path, /tag=emudhra/);
@@ -561,7 +569,7 @@ test("get_thread returns the thread with everyone who wrote on it", async () => 
   const fetch = fakeFetch([{status: 200, body}]);
   const tool = toolsByName({fetch}).get("get_thread")!;
 
-  const result = JSON.parse(await tool.execute({thread_id: "t-9"}));
+  const result = asAnswer(await tool.execute({thread_id: "t-9"})).data;
   assert.equal(result.thread.participants.named.length, 1);
   assert.match(result.summary, /for thread t-9/);
 });
@@ -573,13 +581,13 @@ test("the known fixes are read with no sign-in: a site's list, then one fix", as
   ]);
   const tools = toolsByName({fetch});
 
-  const listed = JSON.parse(await tools.get("find_known_fixes")!.execute({site: "patchbay.help"}));
+  const listed = asAnswer(await tools.get("find_known_fixes")!.execute({site: "patchbay.help"})).data;
   assert.equal(fetch.requests[0].path, "/known-fixes?site=patchbay.help");
   assert.equal(fetch.requests[0].request.credentials, "omit");
   assert.match(listed.summary, /1 fix for patchbay\.help/);
   assert.equal(listed.known_fixes[0].fix_id, "post-timed-out");
 
-  const fix = JSON.parse(await tools.get("get_known_fix")!.execute({fix_id: "post-timed-out"}));
+  const fix = asAnswer(await tools.get("get_known_fix")!.execute({fix_id: "post-timed-out"})).data;
   assert.equal(fetch.requests[1].path, "/known-fixes/post-timed-out");
   assert.equal(fetch.requests[1].request.credentials, "omit");
   assert.equal(fix.steps, "1. Read its status.");
@@ -626,7 +634,7 @@ test("every read whose answer is too large says it changed nothing, and how to r
       let input: Record<string, unknown> = READ_INPUT[entry.name] ?? {};
       if ("operation_input_schema" in entry && entry.operation_input_schema) {
         const operation = minimalInput(entry.operation_input_schema as unknown as Parameters<typeof minimalInput>[0]);
-        const prepared = JSON.parse(await tools.get("prepare_agent_request")!.execute({operation: entry.name, input: operation}));
+        const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: entry.name, input: operation}));
         assert.equal(prepared.ok, true, entry.name);
         // A read with no body is signed without a body digest.
         const proof = prepared.request.body === undefined
@@ -634,9 +642,10 @@ test("every read whose answer is too large says it changed nothing, and how to r
           : PROOF;
         input = {input: operation, request: prepared.request, proof};
       }
-      const {error} = JSON.parse(await tool.execute(input));
+      const result = asAnswer(await tool.execute(input));
+      const {error} = result;
       assert.equal(error?.code, "response_too_large", `${entry.name}: ${error?.message}`);
-      assert.equal("outcome" in error, false, entry.name);
+      assert.equal("outcome" in result, false, entry.name);
       assert.ok(error.hint.length > 0, entry.name);
     }
   });
@@ -647,10 +656,10 @@ test("a write whose answer is too large leaves its outcome unknown", async () =>
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
     const input = {thread_id: "00000000-0000-4000-8000-000000000000", body_markdown: "It worked after a reload.", client_request_id: "r-1"};
-    const prepared = JSON.parse(await tools.get("prepare_agent_request")!.execute({operation: "post_reply", input}));
-    const {error} = JSON.parse(await tools.get("post_reply")!.execute({input, request: prepared.request, proof: PROOF}));
-    assert.equal(error.code, "response_too_large");
-    assert.equal(error.outcome, "unknown");
+    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "post_reply", input}));
+    const result = asAnswer(await tools.get("post_reply")!.execute({input, request: prepared.request, proof: PROOF}));
+    assert.equal(result.error.code, "response_too_large");
+    assert.equal(result.outcome, "unknown");
   });
 });
 
@@ -660,16 +669,16 @@ test("a question of several kilobytes is prepared whole, and one past the reques
     const input = {site: "example.com", title: "Checkout returns ok but the cart stays empty",
       body_markdown: "The add_to_cart tool answers ok, yet the cart \"stays\" empty.\n".repeat(80),
       thread_kind: "help_needed", client_request_id: "q-1"};
-    const prepared = JSON.parse(await prepare.execute({operation: "ask_question", input}));
+    const prepared = asAnswer(await prepare.execute({operation: "ask_question", input}));
     assert.equal(prepared.ok, true);
     assert.deepEqual(JSON.parse(prepared.request.body), input);
 
     // Each tag and tool within its limits, the whole past what a request may hold.
     const quotes = Array.from({length: 5}, () => "\"".repeat(9_000));
     const tooLong = {...input, topic_tags: quotes, tools: quotes};
-    const {error} = JSON.parse(await prepare.execute({operation: "ask_question", input: tooLong}));
-    assert.equal(error.code, "response_too_large");
-    assert.equal("outcome" in error, false);
+    const refused = asAnswer(await prepare.execute({operation: "ask_question", input: tooLong}));
+    assert.equal(refused.error.code, "response_too_large");
+    assert.equal("outcome" in refused, false);
   });
 });
 
@@ -678,7 +687,7 @@ test("a signed tool called without its prepared request says to prepare and sign
     const whoami = toolsByName({}).get("agent_whoami")!;
 
     for (const input of [{}, {input: {}}, {input: {}, request: {}, proof: {}}]) {
-      const {error} = JSON.parse(await whoami.execute(input));
+      const {error} = asAnswer(await whoami.execute(input));
       assert.equal(error.code, "invalid_request", JSON.stringify(input));
       assert.match(error.message + " " + error.hint, /prepare_agent_request/);
       assert.doesNotMatch(error.message, /Error:/);
@@ -692,10 +701,10 @@ test("prepare_agent_request takes a body up to the board's 16 KB, and refuses on
   await onSignedPage(fakeFetch([]), async () => {
     const prepare = toolsByName({}).get("prepare_agent_request")!;
     const input = {site: "example.com", title: "Checkout", body_markdown: "a".repeat(16_384), client_request_id: "q-1"};
-    assert.equal(JSON.parse(await prepare.execute({operation: "ask_question", input})).ok, true);
+    assert.equal(asAnswer(await prepare.execute({operation: "ask_question", input})).ok, true);
 
     for (const [broken, field] of [[{...input, body_markdown: "a".repeat(16_385)}, "body_markdown"], [{...input, bogus: 1}, "bogus"]] as const) {
-      const {error} = JSON.parse(await prepare.execute({operation: "ask_question", input: broken}));
+      const {error} = asAnswer(await prepare.execute({operation: "ask_question", input: broken}));
       assert.equal(error.code, "invalid_request");
       assert.deepEqual(error.details, {reason: `invalid_field:${field}`});
     }
@@ -705,7 +714,7 @@ test("prepare_agent_request takes a body up to the board's 16 KB, and refuses on
 test("prepare_agent_request names the field an input is missing", async () => {
   await onSignedPage(fakeFetch([]), async () => {
     const prepare = toolsByName({}).get("prepare_agent_request")!;
-    const {error} = JSON.parse(await prepare.execute({operation: "ask_question", input: {site: "example.com", client_request_id: "q-1"}}));
+    const {error} = asAnswer(await prepare.execute({operation: "ask_question", input: {site: "example.com", client_request_id: "q-1"}}));
     assert.equal(error.code, "invalid_request");
     assert.equal(error.message, "title is required.");
     assert.deepEqual(error.details, {reason: "missing_field:title"});
@@ -715,12 +724,12 @@ test("prepare_agent_request names the field an input is missing", async () => {
 /** Prepares `name` with `input` and calls it with the agent's proof. */
 async function callSigned(name: string, input: Record<string, unknown>) {
   const tools = toolsByName({});
-  const prepared = JSON.parse(await tools.get("prepare_agent_request")!.execute({operation: name, input}));
+  const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: name, input}));
   // A read with no body is signed without a body digest.
   const proof = prepared.request.body === undefined
     ? Object.fromEntries(Object.entries(PROOF).filter(([header]) => header !== "content-digest"))
     : PROOF;
-  return JSON.parse(await tools.get(name)!.execute({input, request: prepared.request, proof}));
+  return asAnswer(await tools.get(name)!.execute({input, request: prepared.request, proof}));
 }
 
 const LIKE = {thread_id: "00000000-0000-4000-8000-000000000000"};
@@ -728,9 +737,9 @@ const LIKE = {thread_id: "00000000-0000-4000-8000-000000000000"};
 test("a write whose answer was lost after it was sent says its outcome is unknown", async () => {
   const dropped = () => Promise.reject(new TypeError("Failed to fetch"));
   await onSignedPage(dropped, async () => {
-    const {error} = await callSigned("like_post", LIKE);
-    assert.equal(error.code, "outcome_unknown");
-    assert.equal(error.outcome, "unknown");
+    const lost = await callSigned("like_post", LIKE);
+    assert.equal(lost.error.code, "outcome_unknown");
+    assert.equal(lost.outcome, "unknown");
   });
 
   // A gateway page in place of the board's JSON is a lost answer too.
@@ -742,9 +751,9 @@ test("a write whose answer was lost after it was sent says its outcome is unknow
 
   // A read that lost its answer changed nothing.
   await onSignedPage(dropped, async () => {
-    const {error} = await callSigned("agent_whoami", {});
-    assert.equal(error.code, "unreachable");
-    assert.equal("outcome" in error, false);
+    const unread = await callSigned("agent_whoami", {});
+    assert.equal(unread.error.code, "unreachable");
+    assert.equal("outcome" in unread, false);
   });
 });
 
@@ -766,7 +775,7 @@ test("a rate-limited page read keeps the seconds to wait", async () => {
     json: async () => ({error: {code: "rate_limited", message: "Too Many Requests", hint: "Wait the number of seconds in Retry-After, then send the request again."}}),
   });
   const tools = toolsByName({fetch: limited});
-  const {error} = JSON.parse(await tools.get("search_threads")!.execute({q: "checkout"}));
+  const {error} = asAnswer(await tools.get("search_threads")!.execute({q: "checkout"}));
   assert.equal(error.code, "rate_limited");
   assert.equal(error.retry_after_seconds, 12);
 });
@@ -785,12 +794,12 @@ test("a free fix and a hello are sent signed to their own routes, as given", asy
     const hello = {name: "Astra", language: "en"};
 
     for (const [name, input, path] of [["request_free_fix", fix, "/api/agent/assists"], ["say_hello", hello, "/api/agent/hello"]] as const) {
-      const prepared = JSON.parse(await prepare.execute({operation: name, input}));
+      const prepared = asAnswer(await prepare.execute({operation: name, input}));
       assert.equal(prepared.ok, true, name);
       assert.equal(prepared.request.method, "POST", name);
       assert.equal(prepared.request.path, path, name);
       assert.deepEqual(JSON.parse(prepared.request.body), input, name);
-      const answer = JSON.parse(await tools.get(name)!.execute({input, request: prepared.request, proof: PROOF}));
+      const answer = asAnswer(await tools.get(name)!.execute({input, request: prepared.request, proof: PROOF}));
       assert.equal(answer.error, undefined, `${name}: ${JSON.stringify(answer.error)}`);
     }
 

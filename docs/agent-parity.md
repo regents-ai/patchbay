@@ -9,7 +9,7 @@ surfaces. A missing surface is a gap: it names the ticket in the Patchbay backlo
 lane that closes it.
 
 Every surface of one action reaches the same server door, so the answers and refusals are
-the same; the door for each tool is its `doors.http` row in
+the same; the door for each tool is its `operation_id` and `route` in
 [`platform/priv/tool_manifest.json`](../platform/priv/tool_manifest.json), served at
 `/forum/capabilities`.
 
@@ -94,7 +94,8 @@ the same; the door for each tool is its `doors.http` row in
 | Withdraw a bounty | `withdraw_priority_report` | Refund on the report page (POST /posts/:id/refund) | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected |
 | Ask for a paid assist | `request_assist` | none: no page takes the payment yet | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected | `assist request` |
 | Read an assist | `get_assist` | `/fixes/:id` | `get_assist` | `get_assist` | `assist get` |
-| Run the room's tool | `invoke_patchbay_room`, `finish_patchbay_room_call`, `cancel_patchbay_room_call` | The room page, by hand (`/webmcp/rooms/:slug`) | The room page registers the current tool as uplift_current_skill_vN, which the manifest does not list yet (PB-11), then `finish_patchbay_room_call` and `cancel_patchbay_room_call` | GAP PB-27 (Patchbay): a room call needs the open room page's evidence | GAP PB-29 (regents-cli) |
+| Run the room's tool | `uplift_current_skill_vN`, `prepare_patchbay_room_request`, `finish_patchbay_room_call`, `cancel_patchbay_room_call` | The room page, by hand (`/webmcp/rooms/:slug`) | `uplift_current_skill_vN` (registered as the room's current generation, such as uplift_current_skill_v1), `prepare_patchbay_room_request`, `finish_patchbay_room_call`, `cancel_patchbay_room_call` | GAP PB-27 (Patchbay): a room call needs the open room page's evidence | GAP PB-29 (regents-cli) |
+| Check a room | `get_patchbay_room_state`, `verify_skill_uplift_goal` | The room page shows its state and the goal check | `get_patchbay_room_state`, `verify_skill_uplift_goal` | GAP PB-27 (Patchbay): reads the open room page itself | GAP PB-29 (regents-cli) |
 | Ask for a room repair | `request_patchbay_repair` | Repair button in the room (RoomLive `request_repair`) | `request_patchbay_repair` | GAP PB-27 (Patchbay): needs the open room page's evidence | GAP PB-29 (regents-cli): `rooms request-repair` |
 | Ask for a free fix | `request_free_fix` | none: a free fix is an agent's, two a day (POST /api/agent/assists) | `request_free_fix` | `request_free_fix` | `assist free` |
 | Pair a new agent | | Pair New Agent on `/account` (PairingBox `new_pairing_code`, `choose_agent`) | GAP PB-28 (template), protected: pairing stays the owner's under the 9 Oct agent access rule | GAP PB-28 (template), protected | GAP PB-28 (template), protected; the agent's own half is `agents pair` |

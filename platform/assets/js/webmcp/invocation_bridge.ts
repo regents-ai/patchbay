@@ -1,4 +1,4 @@
-import {refusal} from "../api_error.ts";
+import {pageRefusal} from "./tool_result.ts";
 import {captureRoomState} from "./state_snapshot.ts";
 import {ExecutionAbortedError, waitForRevision} from "./revision_waiter.ts";
 
@@ -107,9 +107,9 @@ export function sentence(text: unknown, limit = MAX_SUMMARY_LENGTH): string {
 }
 
 /** The busy answer webmcpify hands back while a call is already in flight. */
-export const BUSY_RESULT = JSON.stringify(refusal(
+export const BUSY_RESULT = pageRefusal(
   "BUSY",
   "This call did not complete: a previous call to this tool is still in progress",
   "Wait for the call already in flight to finish, then read the page before calling again.",
   {detail: "a previous call to this tool is still in progress", retryable: true},
-));
+);

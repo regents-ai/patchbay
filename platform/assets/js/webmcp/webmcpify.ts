@@ -212,16 +212,13 @@ export function dispatchAndWait(eventName: string, detail: Record<string, unknow
 
 /**
  * Serialize a tool's execute(): while one call is in flight, further calls
- * resolve immediately to a busy ERROR string instead of racing shared UI state.
- *
- * ```js
- * execute: singleFlight(async (input) => dispatchAndWait('webmcp:save', input)),
- * ```
+ * resolve immediately to `busyMessage`, the tool's own busy answer, instead of
+ * racing shared UI state.
  */
-export function singleFlight<A extends unknown[]>(
-  fn: (...args: A) => string | Promise<string>,
-  busyMessage = 'ERROR: A previous invocation of this tool is still in progress. Wait for it to finish, then check the current page state before retrying.',
-): (...args: A) => Promise<string> {
+export function singleFlight<A extends unknown[], R>(
+  fn: (...args: A) => R | Promise<R>,
+  busyMessage: R,
+): (...args: A) => Promise<R> {
   let inFlight = false;
   return async (...args: A) => {
     if (inFlight) return busyMessage;

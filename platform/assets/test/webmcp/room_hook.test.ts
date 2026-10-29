@@ -3,8 +3,8 @@ import test from "node:test";
 
 import {captureRoomState, sha256Hex} from "../../js/webmcp/state_snapshot.ts";
 import {waitForRevision} from "../../js/webmcp/revision_waiter.ts";
+import {bounded} from "../../js/webmcp/tool_result.ts";
 import {
-  boundedJson,
   buildPermanentTools,
   buildRevisionTool,
   PERMANENT_TOOL_NAMES,
@@ -13,6 +13,14 @@ import type {ExecuteOptions, RoomReply, ToolInput, ToolRevision} from "../../js/
 import {PatchbayWebMCP} from "../../js/webmcp/room_hook.ts";
 import type {PatchbayHook} from "../../js/webmcp/room_hook.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
+import type {ToolResult} from "../../js/webmcp/tool_result.ts";
+
+/** A tool's answer as the agent reads it: the object the browser hands over as it is. */
+type Answer = Record<string, any>;
+function asAnswer(result: ToolResult): Answer {
+  assert.equal(typeof result, "object");
+  return result as unknown as Answer;
+}
 
 type ToolAnnotations = {readOnlyHint?: boolean; untrustedContentHint?: boolean};
 
@@ -23,7 +31,7 @@ type PageTool = {
   description?: string;
   inputSchema?: unknown;
   annotations?: ToolAnnotations;
-  execute: (input: ToolInput, options?: ExecuteOptions) => Promise<string>;
+  execute: (input: ToolInput, options?: ExecuteOptions) => Promise<ToolResult>;
 };
 
 /** A tool as the fake browser holds it and lists it back. */
@@ -264,7 +272,7 @@ function serveRoom(answer: (request: SentRequest) => RoomReply | Promise<RoomRep
 /** Prepare `operation` on the room's page and sign it as the agent's own signer would. */
 async function signedCall(value: Setup, operation: string, fields: ToolInput = {}) {
   const prepare = value.context.tools.get("prepare_patchbay_room_request")!;
-  const prepared = JSON.parse(await prepare.execute!({operation, ...fields}));
+  const prepared = asAnswer(await prepare.execute!({operation, ...fields}));
   return {input: prepared.input, request: prepared.request, proof: PROOF};
 }
 
@@ -298,7 +306,7 @@ async function verifyVisibleGoal(
 
   const verify: PageTool = buildPermanentTools(setupValue.hook)
     .find(tool => tool.name === "verify_skill_uplift_goal")!;
-  return JSON.parse(await verify.execute({}));
+  return asAnswer(await verify.execute({})).data;
 }
 
 async function reconcileTo(setupValue: Setup, payload: Record<string, unknown>) {
@@ -385,7 +393,10 @@ test("a signed call goes to the room as prepared and hands back an observation o
   });
 
   const call = await signedCall(value, "invoke", {arguments_json: JSON.stringify({instructions: "make it visible"})});
-  const result = JSON.parse(await value.context.tools.get(v2.name)!.execute!(call));
+  const answer = asAnswer(await value.context.tools.get(v2.name)!.execute!(call));
+  assert.equal(answer.ok, true);
+  assert.equal(answer.status, 200);
+  const result = answer.data;
 
   assert.equal(sent.length, 1);
   assert.equal(sent[0].url, `${PAGE_ORIGIN}/api/agent/rooms/skill-uplift/invocations`);
@@ -425,9 +436,7 @@ test("a UI revision timeout still records visible failed proof", async () => {
   const sent = serveRoom(() => ({invocation_id: INVOCATION_ID, ui_commit_required: true, expected_ui_revision: 1}));
 
   const call = await signedCall(value, "invoke", {arguments_json: JSON.stringify({instructions: "time out visibly"})});
-  const result = JSON.parse(
-    await value.context.tools.get(v2.name)!.execute!(call, {revisionTimeoutMs: 10}),
-  );
+  const result = asAnswer(await value.context.tools.get(v2.name)!.execute!(call, {revisionTimeoutMs: 10})).data;
 
   // The editor never moved, so the agent is handed the call and an observation
   // of the room as it stands, for the room's verifier to record as a failure.
@@ -449,9 +458,7 @@ test("the room state names the site and the tool a report would land on", async 
   const v1 = revision("uplift_current_skill_v1", 1, "1".repeat(64));
   await reconcileTo(value, {room_id: "room-state-room", generation: 1, revisions: [v1]});
 
-  const state = JSON.parse(
-    await value.context.tools.get("get_patchbay_room_state")!.execute!({}),
-  );
+  const state = asAnswer(await value.context.tools.get("get_patchbay_room_state")!.execute!({})).data;
 
   assert.equal(state.origin, "patchbay.help");
   assert.deepEqual(state.active_tool, {
@@ -638,7 +645,7 @@ test("verification ignores untrusted evidence text when the candidate editor is 
 
   const verify: PageTool = buildPermanentTools(value.hook)
     .find(tool => tool.name === "verify_skill_uplift_goal")!;
-  const result = JSON.parse(await verify.execute({}));
+  const result = asAnswer(await verify.execute({})).data;
 
   assert.equal(result.passed, false);
   assert.equal(result.failure_code, "CANDIDATE_EMPTY");
@@ -737,7 +744,7 @@ test("a verification that cannot run answers in the same structured shape", asyn
   try {
     const verify: PageTool = buildPermanentTools(value.hook)
       .find(tool => tool.name === "verify_skill_uplift_goal")!;
-    const result = JSON.parse(await verify.execute({}));
+    const result = asAnswer(await verify.execute({})).data;
 
     assert.equal(result.passed, false);
     assert.equal(result.failure_code, "VERIFICATION_UNAVAILABLE");
@@ -776,15 +783,34 @@ test("verification passes on a structurally valid candidate the server also comm
   assert.equal(result.observed_generation, 2);
 });
 
-test("carries the specified titles on permanent and dynamic tools", async () => {
-  const value = setup("title-room");
+test("the room page registers exactly the manifest's room tools, in the manifest's words", async () => {
+  const value = setup("manifest-room");
   await PatchbayWebMCP.mounted.call(value.hook);
   const v2 = {...revision("uplift_current_skill_v2", 2, "2".repeat(64)), title: "Improve the current Skill"};
-  await reconcileTo(value, {room_id: "title-room", generation: 2, revisions: [v2]});
+  await reconcileTo(value, {room_id: "manifest-room", generation: 2, revisions: [v2]});
 
-  assert.equal(value.context.tools.get("get_patchbay_room_state")!.title, "Read Patchbay room state");
-  assert.equal(value.context.tools.get("verify_skill_uplift_goal")!.title, "Verify the visible Skill uplift");
-  assert.equal(value.context.tools.get(v2.name)!.title, "Improve the current Skill");
+  const rows = manifest.tools.filter(tool => tool.scope === "page:/webmcp/rooms/*");
+  // The room's current tool is one row, registered under its generation's name.
+  const registeredName = (name: string) => name === "uplift_current_skill_vN" ? v2.name : name;
+  assert.deepEqual(
+    [...value.context.tools.keys()].sort(),
+    rows.map(row => registeredName(row.name)).sort(),
+  );
+
+  for (const row of rows) {
+    const registered = value.context.tools.get(registeredName(row.name))!;
+    assert.deepEqual(registered.annotations, row.annotations, row.name);
+    assert.deepEqual(JSON.parse(registered.inputSchema!), row.input_schema, row.name);
+    if (row.name === "uplift_current_skill_vN") {
+      // Its own generation's title and description lead; the row says how to call it.
+      assert.equal(registered.title, v2.title);
+      assert.ok(registered.description!.startsWith(v2.description!));
+      assert.ok(registered.description!.endsWith(row.description));
+    } else {
+      assert.equal(registered.title, row.title, row.name);
+      assert.equal(registered.description, row.description, row.name);
+    }
+  }
   assert.equal(buildRevisionTool(value.hook, v2).title, "Improve the current Skill");
 });
 
@@ -794,21 +820,22 @@ test("bounded results preserve complete scalar fields and count UTF-8 bytes", ()
     digest: "a".repeat(64), cursor: "cursor+opaque/==", amount: "1.000001",
     address: `0x${"a".repeat(40)}`, note: "🔥".repeat(50), truncated: "source metadata",
   };
-  const exact = JSON.stringify(value);
-  assert.deepEqual(JSON.parse(boundedJson(value, Buffer.byteLength(exact))), value);
-  const error = JSON.parse(boundedJson(value, Buffer.byteLength(exact) - 1));
+  const result: ToolResult = {ok: true, data: value};
+  const exact = JSON.stringify(result);
+  assert.deepEqual(bounded(result, Buffer.byteLength(exact)), result);
+  const error = asAnswer(bounded(result, Buffer.byteLength(exact) - 1));
   assert.equal(error.error.code, "response_too_large");
-  assert.equal(error.error.outcome, "unknown");
-  assert.equal(error.id, undefined);
-  const unicode = boundedJson({note: "🔥".repeat(6000)}, 16 * 1024);
-  assert.ok(Buffer.byteLength(unicode) <= 16 * 1024);
-  assert.equal(JSON.parse(unicode).error.code, "response_too_large");
-  assert.throws(() => boundedJson(value, 1), RangeError);
+  assert.equal(error.outcome, "unknown");
+  assert.equal(error.data, undefined);
+  const unicode = bounded({ok: true, data: {note: "🔥".repeat(6000)}}, 16 * 1024);
+  assert.ok(Buffer.byteLength(JSON.stringify(unicode)) <= 16 * 1024);
+  assert.equal(asAnswer(unicode).error.code, "response_too_large");
+  assert.throws(() => bounded(result, 1), RangeError);
   const circular: {self?: unknown} = {};
   circular.self = circular;
-  assert.equal(JSON.parse(boundedJson(circular)).error.code, "invalid_result");
+  assert.equal(asAnswer(bounded({ok: true, data: circular})).error.code, "invalid_result");
   const rows = Array.from({length: 10}, () => ({id: value.id, digest: value.digest}));
-  assert.equal(JSON.parse(boundedJson({rows})).error.code, "response_too_large");
+  assert.equal(asAnswer(bounded({ok: true, data: {rows}})).error.code, "response_too_large");
 });
 
 test("reconciliation reports a Patchbay tool the browser no longer holds", async () => {
@@ -1147,7 +1174,7 @@ test("the repair request tool asks the room and can only ask", async () => {
   await reconcileTo(value, {room_id: "repair-request-room", generation: 1, revisions: [v1]});
 
   const registered = value.context.tools.get("request_patchbay_repair")!;
-  assert.equal(registered.title, "Ask Patchbay to repair its broken tool");
+  assert.equal(registered.title, manifest.tools.find(tool => tool.name === "request_patchbay_repair")!.title);
   assert.deepEqual(
     JSON.parse(registered.inputSchema!),
     manifest.tools.find(tool => tool.name === "request_patchbay_repair")!.input_schema,
@@ -1155,10 +1182,10 @@ test("the repair request tool asks the room and can only ask", async () => {
 
   const answer = {status: "ready_for_approval", requires_owner_approval: true};
   const sent = serveRoom(() => answer);
-  const result = JSON.parse(await registered.execute!(await signedCall(value, "repair")));
+  const result = asAnswer(await registered.execute!(await signedCall(value, "repair")));
 
-  // The room's own answer comes back unchanged.
-  assert.deepEqual(result, answer);
+  // The room's own answer comes back unchanged, with its status.
+  assert.deepEqual(result, {ok: true, status: 200, data: answer});
   assert.equal(sent.length, 1);
   assert.equal(sent[0].url, `${PAGE_ORIGIN}/api/agent/rooms/skill-uplift/repair_requests`);
   assert.deepEqual(JSON.parse(sent[0].init.body), {page_evidence: "evidence-repair-request-room"});
@@ -1219,13 +1246,12 @@ test("every permanent tool opens its result with one sentence about the outcome"
   await PatchbayWebMCP.mounted.call(value.hook);
 
   for (const name of ["get_patchbay_room_state", "verify_skill_uplift_goal"]) {
-    const raw = await value.context.tools.get(name)!.execute!({});
-    const result = JSON.parse(raw);
+    const result = asAnswer(await value.context.tools.get(name)!.execute!({})).data;
 
     assert.equal(typeof result.summary, "string");
     assert.ok(result.summary.length > 0 && result.summary.length <= 200);
     // The sentence comes first, before any of the structure it describes.
-    assert.ok(raw.startsWith('{"summary":'));
+    assert.equal(Object.keys(result)[0], "summary");
   }
 });
 
@@ -1256,7 +1282,7 @@ test("a second call while one is in flight is refused in the error shape", async
   const tool = value.context.tools.get(v1.name)!;
   const call = await signedCall(value, "invoke", {arguments_json: JSON.stringify({instructions: "hold the line"})});
   const first = tool.execute!(call);
-  const second = JSON.parse(await tool.execute!(call));
+  const second = asAnswer(await tool.execute!(call));
 
   assert.equal(second.error.code, "BUSY");
   assert.equal(second.error.retryable, true);
@@ -1264,6 +1290,6 @@ test("a second call while one is in flight is refused in the error shape", async
 
   await waitFor(() => sent.length === 1);
   answer({error: {code: "request_already_used", message: "This request id already carried a call."}});
-  assert.equal(JSON.parse(await first).error.code, "request_already_used");
+  assert.equal(asAnswer(await first).error.code, "request_already_used");
   assert.equal(sent.length, 1);
 });

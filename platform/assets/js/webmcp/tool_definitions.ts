@@ -1,10 +1,12 @@
-import {prepareRoomRequest, executeRoomRequest, roomEnvelopeFor} from "./room_signed.ts";
-import {refusal} from "../api_error.ts";
+import {REVISION_ROW_NAME, prepareRoomRequest, executeRoomRequest} from "./room_signed.ts";
 import {BUSY_RESULT, sentence} from "./invocation_bridge.ts";
 import {verifyUpliftGoal} from "./goal_verifier.ts";
 import {captureRoomState, readRoomMetadata, sha256Hex} from "./state_snapshot.ts";
 import {singleFlight} from "./webmcpify.ts";
+import {answered, bounded} from "./tool_result.ts";
+import type {ToolResult} from "./tool_result.ts";
 import type {BridgeHook, ExecuteOptions, ToolInput, ToolRevision} from "./invocation_bridge.ts";
+import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 
 export type PermanentToolsHook = BridgeHook & {
   siteOrigin?: string | null;
@@ -20,114 +22,89 @@ type ObservedHints = {readOnlyHint?: unknown; untrustedContentHint?: unknown} | 
 
 export type ToolContract = {name: unknown; description: unknown; inputSchema: unknown; annotations: Hints};
 
-export const PERMANENT_TOOL_NAMES = [
-  "get_patchbay_room_state",
-  "verify_skill_uplift_goal",
-  "request_patchbay_repair",
-  "prepare_patchbay_room_request",
-  "finish_patchbay_room_call",
-  "cancel_patchbay_room_call",
-];
+type RoomRow = {name: string; title: string; description: string; input_schema: unknown; annotations: Hints};
 
-/**
- * The one sentence every Patchbay tool description ends with. A description is
- * the only place an agent learns the loop this page is for, so each tool says
- * that results here are checked against the screen and names the way to report
- * a mismatch.
- */
-export const VERIFIED_REPORTING_NOTE =
-  "This page verifies tool results against what is visible on screen; a mismatch can be reported with report_tool_problem using the receipt from the result.";
+// The room page's tools are the manifest's rows scoped to room pages: their
+// names, titles, descriptions, schemas and hints are read from there, and only
+// the executors live here. One row is the room's current tool, which the page
+// registers under the name of the generation the room offers now:
+// uplift_current_skill_vN is uplift_current_skill_v1, then v2 after a repair.
+const ROOM_ROWS = (manifest.tools as unknown as (RoomRow & {scope: string})[])
+  .filter(tool => tool.scope === "page:/webmcp/rooms/*");
+const REVISION_ROW = ROOM_ROWS.find(tool => tool.name === REVISION_ROW_NAME)!;
+const REVISION_NAME = new RegExp(`^${REVISION_ROW_NAME.slice(0, -1)}\\d+$`);
+
+/** The room tools the page registers whatever the room's current tool is called. */
+export const PERMANENT_TOOL_NAMES = ROOM_ROWS.filter(tool => tool !== REVISION_ROW).map(tool => tool.name);
 
 // A room read that is too large changed nothing; the room's page shows it all.
 const ROOM_READ_HINT = "Nothing was changed. Read the room's state on its page.";
 
-export function withReportingNote(description: string) {
-  return `${description} ${VERIFIED_REPORTING_NOTE}`;
-}
+type RoomExecute = (input: ToolInput, options?: ExecuteOptions) => Promise<ToolResult>;
 
 export function buildPermanentTools(hook: PermanentToolsHook) {
-  return [
-    {
-      name: "get_patchbay_room_state",
-      title: "Read Patchbay room state",
-      description: withReportingNote("Read the active Patchbay goal, visible editor state, current tool generation, last verification, and whether an owner-approved repair is available."),
-      inputSchema: emptySchema(),
-      annotations: {readOnlyHint: true, untrustedContentHint: false},
-      execute: singleFlight(async () => {
-        const state = await captureRoomState(hook.el?.ownerDocument ?? document);
-        const metadata = readRoomMetadata(hook.el?.ownerDocument ?? document);
-        return boundedJson({
-          summary: roomStateSummary(metadata),
-          room: metadata.roomSlug,
-          goal: "Place an improved candidate in the visible Candidate editor.",
-          status: metadata.status,
-          // The site this page files reports under, and the tool a report about
-          // a call on this page will land on.
-          origin: hook.siteOrigin ?? null,
-          active_tool: activeTool(hook),
-          desired_tool_generation: metadata.generation ?? hook.desiredGeneration,
-          observed_tool_generation: metadata.observedGeneration,
-          source_sha256: state.source.sha256,
-          candidate_sha256: state.candidate.sha256,
-          last_verification: {
-            passed: metadata.verificationPassed,
-            failure_code: metadata.failureCode,
-          },
-          repair: {
-            status: metadata.repairStatus,
-            owner_approved: metadata.repairApproved,
-          },
-        }, 1100, ROOM_READ_HINT);
-      }, BUSY_RESULT),
-    },
-    {
-      name: "verify_skill_uplift_goal",
-      title: "Verify the visible Skill uplift",
-      description: withReportingNote("Verify whether the visible Candidate editor contains a structurally valid revision of the current Source Skill and whether the page-side goal was completed."),
-      inputSchema: emptySchema(),
-      annotations: {readOnlyHint: true, untrustedContentHint: true},
-      execute: singleFlight(async () => {
-        try {
-          const verification = await verifyUpliftGoal(hook.el?.ownerDocument ?? document);
-          return boundedJson({summary: verificationSummary(verification), ...verification}, 1100, ROOM_READ_HINT);
-        } catch (error) {
-          // A verification that cannot run is reported in the same shape as one
-          // that ran and failed, so the agent never has to parse a bare error.
-          return boundedJson({
-            summary: "The visible room could not be verified, so nothing is claimed either way.",
-            passed: false,
-            checks: null,
-            failure_code: "VERIFICATION_UNAVAILABLE",
-            detail: sentence((error as {message?: unknown} | null | undefined)?.message ?? "the visible room could not be verified"),
-            observed_generation: null,
-            ui_revision: null,
-          }, 1100, ROOM_READ_HINT);
-        }
-      }, BUSY_RESULT),
-    },
-    {
-      name: "request_patchbay_repair",
-      title: "Ask Patchbay to repair its broken tool",
-      description: withReportingNote("Ask Patchbay to work out why its own tool failed on this page and propose a replacement. Approval and publication belong to the person at the page; this tool can only ask."),
-      inputSchema: roomEnvelopeFor("request_patchbay_repair"),
-      annotations: {readOnlyHint: false, untrustedContentHint: true},
-      execute: (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, "request_patchbay_repair", input, options),
-    },
-    {
-      name: "prepare_patchbay_room_request",
-      description: withReportingNote("Capture this room's actual page state and prepare an exact request. Sign it with your existing SIWA signer before submitting. For invoke, arguments_json holds the current tool's original arguments. For observe, supply invocation_id after the visible editor updates."),
-      inputSchema: {type: "object", properties: {operation: {type: "string", enum: ["invoke", "observe", "cancel", "repair"]}, arguments_json: {type: "string", maxLength: 65536}, request_uuid: {type: "string"}, invocation_id: {type: "string"}}, required: ["operation"], additionalProperties: false},
-      annotations: {readOnlyHint: true, untrustedContentHint: true},
-      // The raw body appears twice in the exact signing envelope. Preserve
-      // it intact up to the site's 100 KB request bound, including escaping.
-      execute: async (input: ToolInput) => boundedJson(await prepareRoomRequest(hook, input), 512_000, "Nothing was prepared or sent. Shorten arguments_json."),
-    },
-    ...["finish_patchbay_room_call", "cancel_patchbay_room_call"].map(name => ({
-      name, description: withReportingNote(name === "finish_patchbay_room_call" ? "Submit fresh proof over the observation captured after the editor changed. The server's existing verifier decides success." : "Cancel your own room invocation with a fresh signed request."),
-      inputSchema: roomEnvelopeFor(name), annotations: {readOnlyHint: false, untrustedContentHint: true},
-      execute: (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, name, input, options),
-    })),
-  ];
+  const executors: Record<string, RoomExecute> = {
+    get_patchbay_room_state: singleFlight(async () => {
+      const state = await captureRoomState(hook.el?.ownerDocument ?? document);
+      const metadata = readRoomMetadata(hook.el?.ownerDocument ?? document);
+      return bounded(answered({
+        summary: roomStateSummary(metadata),
+        room: metadata.roomSlug,
+        goal: "Place an improved candidate in the visible Candidate editor.",
+        status: metadata.status,
+        // The site this page files reports under, and the tool a report about
+        // a call on this page will land on.
+        origin: hook.siteOrigin ?? null,
+        active_tool: activeTool(hook),
+        desired_tool_generation: metadata.generation ?? hook.desiredGeneration,
+        observed_tool_generation: metadata.observedGeneration,
+        source_sha256: state.source.sha256,
+        candidate_sha256: state.candidate.sha256,
+        last_verification: {
+          passed: metadata.verificationPassed,
+          failure_code: metadata.failureCode,
+        },
+        repair: {
+          status: metadata.repairStatus,
+          owner_approved: metadata.repairApproved,
+        },
+      }), 1200, ROOM_READ_HINT);
+    }, BUSY_RESULT),
+    verify_skill_uplift_goal: singleFlight(async () => {
+      try {
+        const verification = await verifyUpliftGoal(hook.el?.ownerDocument ?? document);
+        return bounded(answered({summary: verificationSummary(verification), ...verification}), 1200, ROOM_READ_HINT);
+      } catch (error) {
+        // A verification that cannot run is reported in the same shape as one
+        // that ran and failed, so the agent never has to parse a bare error.
+        return bounded(answered({
+          summary: "The visible room could not be verified, so nothing is claimed either way.",
+          passed: false,
+          checks: null,
+          failure_code: "VERIFICATION_UNAVAILABLE",
+          detail: sentence((error as {message?: unknown} | null | undefined)?.message ?? "the visible room could not be verified"),
+          observed_generation: null,
+          ui_revision: null,
+        }), 1200, ROOM_READ_HINT);
+      }
+    }, BUSY_RESULT),
+    // The raw body appears twice in the exact signing envelope. Preserve
+    // it intact up to the site's 100 KB request bound, including escaping.
+    prepare_patchbay_room_request: async (input: ToolInput) =>
+      bounded(await prepareRoomRequest(hook, input), 512_000, "Nothing was prepared or sent. Shorten arguments_json."),
+    request_patchbay_repair: (input, options = {}) => executeRoomRequest(hook, "request_patchbay_repair", input, options),
+    finish_patchbay_room_call: (input, options = {}) => executeRoomRequest(hook, "finish_patchbay_room_call", input, options),
+    cancel_patchbay_room_call: (input, options = {}) => executeRoomRequest(hook, "cancel_patchbay_room_call", input, options),
+  };
+
+  return ROOM_ROWS.filter(row => row !== REVISION_ROW).map(row => ({
+    name: row.name,
+    title: row.title,
+    description: row.description,
+    inputSchema: row.input_schema,
+    annotations: row.annotations,
+    execute: executors[row.name],
+  }));
 }
 
 function roomStateSummary(metadata: ReturnType<typeof readRoomMetadata>) {
@@ -162,19 +139,23 @@ function activeTool(hook: PermanentToolsHook) {
   };
 }
 
+/**
+ * The room's current tool, under the name and title of the generation the room
+ * offers now. Its own description and original arguments lead; the manifest's
+ * row for it says how to call it. Its schema and hints are the row's.
+ */
 export function buildRevisionTool(hook: BridgeHook, revision: ToolRevision) {
-  const tool = {
+  return {
     name: revision.name,
-    title: revision.title,
-    description: `${revision.description} Use prepare_patchbay_room_request with operation invoke and the original arguments_json, sign the prepared request, then call this tool. Original arguments: ${JSON.stringify(revision.input_schema ?? revision.inputSchema ?? {})}. The result prepares a separate visible observation for fresh signing.`,
-    inputSchema: roomEnvelopeFor("invoke_patchbay_room"),
-    annotations: revision.annotations ?? {readOnlyHint: false, untrustedContentHint: true},
+    title: revision.title ?? REVISION_ROW.title,
+    description: `${revision.description} Original arguments: ${JSON.stringify(revision.input_schema ?? revision.inputSchema ?? {})}. ${REVISION_ROW.description}`,
+    inputSchema: REVISION_ROW.input_schema,
+    annotations: REVISION_ROW.annotations,
     execute: singleFlight(
-      (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, "invoke_patchbay_room", input, options),
+      (input: ToolInput, options: ExecuteOptions = {}) => executeRoomRequest(hook, REVISION_ROW_NAME, input, options),
       BUSY_RESULT,
     ),
   };
-  return tool;
 }
 
 const ANNOTATION_KEYS = ["readOnlyHint", "untrustedContentHint"] as const;
@@ -290,35 +271,8 @@ function normalizeAnnotations(annotations: unknown): Hints {
   };
 }
 
-export function emptySchema() {
-  return {type: "object", properties: {}, additionalProperties: false};
-}
-
 export function isPatchbayToolName(name: string) {
-  return PERMANENT_TOOL_NAMES.includes(name) || /^uplift_current_skill_v\d+$/.test(name);
-}
-
-/**
- * `value` as JSON within `limit` bytes, or a refusal saying it could not be
- * returned intact. A read passes `readHint`, what to do instead: it changed
- * nothing, so its refusal says so and claims no unknown outcome.
- */
-export function boundedJson(value: unknown, limit = 1100, readHint?: string): string {
-  let code = "response_too_large";
-  try {
-    const exact = JSON.stringify(value);
-    if (typeof exact !== "string") code = "invalid_result";
-    else if (new TextEncoder().encode(exact).byteLength <= limit) return exact;
-  } catch {
-    code = "invalid_result";
-  }
-  const error = JSON.stringify(readHint === undefined
-    ? refusal(code, "The result could not be returned intact.", "Check a write's status before retrying.", {outcome: "unknown"})
-    : refusal(code, "The result could not be returned intact. This read changed nothing.", readHint));
-  if (new TextEncoder().encode(error).byteLength > limit) {
-    throw new RangeError("The result limit must accommodate an error response.");
-  }
-  return error;
+  return PERMANENT_TOOL_NAMES.includes(name) || REVISION_NAME.test(name);
 }
 
 export function stableStringify(value: unknown): string {

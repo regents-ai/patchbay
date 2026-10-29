@@ -3,12 +3,16 @@ import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools.ts
 import type {BridgeHook, ToolInput, ExecuteOptions} from "./invocation_bridge.ts";
 import {captureRoomState, readRoomMetadata} from "./state_snapshot.ts";
 import {waitForRevision} from "./revision_waiter.ts";
-import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
+import {answered, refusedWith} from "./tool_result.ts";
+import type {ToolResult} from "./tool_result.ts";
 
-export function roomEnvelopeFor(name: string) {
-  return manifest.tools.find(tool => tool.name === name)!.input_schema;
-}
-const operations: Record<string, string> = {invoke: "invoke_patchbay_room", observe: "finish_patchbay_room_call", cancel: "cancel_patchbay_room_call", repair: "request_patchbay_repair"};
+/**
+ * The manifest row of the room's current tool. The page registers it as
+ * uplift_current_skill_v<generation>; signed, it is this one operation.
+ */
+export const REVISION_ROW_NAME = "uplift_current_skill_vN";
+
+const operations: Record<string, string> = {invoke: REVISION_ROW_NAME, observe: "finish_patchbay_room_call", cancel: "cancel_patchbay_room_call", repair: "request_patchbay_repair"};
 
 export async function prepareRoomRequest(hook: BridgeHook, input: ToolInput) {
   const operation = operations[String(input.operation)];
@@ -32,15 +36,15 @@ export async function prepareRoomRequest(hook: BridgeHook, input: ToolInput) {
   }
   if (input.operation === "observe" || input.operation === "cancel") requestInput.invocation_id = input.invocation_id;
   requestInput.raw_body = JSON.stringify(body);
-  return {ok: true, input: requestInput, request: signedTransport().prepare(operation, requestInput),
+  return {ok: true as const, input: requestInput, request: signedTransport().prepare(operation, requestInput),
     next: "Sign this exact request with your existing SIWA signer, then call the corresponding room tool with input, request and proof."};
 }
 
-export async function executeRoomRequest(hook: BridgeHook, operation: string, input: ToolInput, options: ExecuteOptions = {}) {
+export async function executeRoomRequest(hook: BridgeHook, operation: string, input: ToolInput, options: ExecuteOptions = {}): Promise<ToolResult> {
   const response = await signedTransport().execute(operation, input as unknown as SignedInput, options.signal);
   const body = await response.json();
-  if (!response.ok) return JSON.stringify(body);
-  if (operation === "invoke_patchbay_room" && body.invocation_id) {
+  if (!response.ok) return refusedWith(body.error, response.status);
+  if (operation === REVISION_ROW_NAME && body.invocation_id) {
     // The second proof is prepared only after the actual editor has changed.
     // Nothing here signs automatically or substitutes a browser cookie.
     // An editor that misses the timeout is observed as it stands, so the
@@ -50,9 +54,9 @@ export async function executeRoomRequest(hook: BridgeHook, operation: string, in
         .catch(error => { if (error?.code !== "UI_REVISION_TIMEOUT") throw error; });
     }
     const observation = await prepareRoomRequest(hook, {operation: "observe", invocation_id: body.invocation_id});
-    return JSON.stringify({...body, verification: "not_recorded", observation});
+    return answered({...body, verification: "not_recorded", observation}, response.status);
   }
-  return JSON.stringify(body);
+  return answered(body, response.status);
 }
 
 function visibleState(state: Awaited<ReturnType<typeof captureRoomState>>) {
