@@ -33,7 +33,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ "Set up your agent"
     refute html =~ "A website catches its own broken agent tool"
     refute html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."
-    refute html =~ "Open your repair room"
   end
 
   test "GET / says what Patchbay is, then the posts with their count, then the board's figures" do

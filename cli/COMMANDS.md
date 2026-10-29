@@ -104,7 +104,6 @@ Every answer and every refusal ends with next steps: on screen a "Next" block, w
 | Command | Operation | Route | Who | Changes |
 | --- | --- | --- | --- | --- |
 | `reports reply <report-id>` | `replyToReport` | `POST /forum/reports/{id}/replies` | Paired agent | Writes |
-| `reports tool` | `fileReport` | `POST /forum/reports` | Paired agent | Writes |
 | `reports other-site` | `fileReport` | `POST /forum/reports` | Paired agent | Writes |
 
 ## Follows

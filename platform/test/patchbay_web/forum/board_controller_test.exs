@@ -5,8 +5,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.Site
-  alias Patchbay.Patchbay, as: Rooms
-  alias Patchbay.Patchbay.Fixtures
   alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("a", 64)
@@ -182,40 +180,19 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       end
     end
 
-    test "carries the contract a repair room is currently offering", %{conn: conn} do
-      room = Rooms.create_seeded_room!("room-one")
-      [v1] = Rooms.list_tool_revisions!(query: [filter: [room_id: room.id]])
-      Rooms.retire_tool_revision!(v1)
-
-      room.id
-      |> Fixtures.revision_attributes()
-      |> Map.delete(:contract_sha256)
-      |> Map.merge(%{
-        generation: 2,
-        name: "uplift_current_skill_v2",
-        parent_revision_id: v1.id,
-        description: "Improve the Skill and say what changed."
-      })
-      |> Rooms.create_tool_revision!()
-
+    test "lists Patchbay's own tools page by page", %{conn: conn} do
       first_page = conn |> get(~p"/patchbay.help") |> html_response(200)
 
       assert first_page =~
-               "Agents see #{length(Patchbay.Forum.Capabilities.names()) + 2} WebMCP Tools"
+               "Agents see #{length(Patchbay.Forum.Capabilities.names())} WebMCP Tools"
 
       # Every later page leads on, and the last leads back to the first.
       pages = tool_pages(conn, first_page)
+      assert length(pages) > 1
       assert List.last(pages) =~ ~s(href="/patchbay.help#pb-site-tools")
 
       site_page = Enum.join(pages)
-      assert site_page =~ "uplift_current_skill_v1"
-      assert site_page =~ "uplift_current_skill_v2"
-
-      tool_page =
-        conn |> get(~p"/patchbay.help/tools/uplift_current_skill_v2") |> html_response(200)
-
-      assert tool_page =~ "1 version shown, newest first"
-      assert tool_page =~ "Improve the Skill and say what changed."
+      for name <- Patchbay.Forum.Capabilities.names(), do: assert(site_page =~ name, name)
     end
   end
 
@@ -1288,120 +1265,14 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
   end
 
   describe "whether a report was checked" do
-    test "a report matched to a real call says so, and shows the call's receipt", %{conn: conn} do
-      %{report: report, receipt: receipt} = matched_report!()
-
-      body = conn |> get(PostAddress.path(report)) |> html_response(200)
-
-      assert body =~ "Page record matched"
-      assert body =~ receipt
-      refute body =~ "not matched to a logged call"
-    end
-
-    test "a report nobody could match says that instead", %{conn: conn} do
+    test "a report nobody could match says so", %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
 
       body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
       assert body =~ "Patchbay has not matched it to a logged call"
       refute body =~ "Page record matched"
-      refute body =~ "Call receipt"
     end
-
-    test "a matched receipt is retained once in the collapsed evidence",
-         %{conn: conn} do
-      %{report: report, receipt: receipt} = matched_report!()
-
-      body = conn |> get(PostAddress.path(report)) |> html_response(200)
-
-      evidence = body |> LazyHTML.from_document() |> LazyHTML.query("#report-evidence")
-      assert evidence |> LazyHTML.text() |> String.split(receipt) |> length() == 2
-      assert Enum.empty?(LazyHTML.query(evidence, "[open]"))
-    end
-
-    test "a report with no receipt has no stub to show", %{conn: conn} do
-      report = "shopify.com" |> site!() |> tool!() |> report!()
-
-      body = conn |> get(PostAddress.path(report)) |> html_response(200)
-
-      refute body =~ "pb-receipt-stub"
-    end
-
-    test "the tool's own page marks each report either way", %{conn: conn} do
-      %{report: matched, tool: tool} = matched_report!()
-
-      Forum.file_report!(
-        %{
-          tool_id: tool.id,
-          browser_session_id: Ash.UUID.generate(),
-          arguments_sha256: @arguments,
-          verdict: :unknown,
-          note: "I heard it was broken."
-        },
-        authorize?: false
-      )
-
-      body =
-        conn
-        |> get(~p"/#{tool.site.origin}/tools/#{tool.name}")
-        |> html_response(200)
-
-      assert body =~ "Verified against Patchbay"
-      assert body =~ "Unverified: not matched to a logged call"
-      assert body =~ "I heard it was broken."
-      assert body =~ matched.note
-    end
-  end
-
-  # A report the forum could match: a real call on a real studio, reported by
-  # the browser that call was issued to, quoting the receipt it was handed.
-  defp matched_report!(reporter \\ Ash.UUID.generate()) do
-    room = Rooms.create_seeded_room!("room-#{System.unique_integer([:positive])}")
-
-    revision =
-      Rooms.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired], limit: 1])
-      |> List.first()
-
-    browser_session =
-      Rooms.register_browser_session!(%{
-        room_id: room.id,
-        client_instance_id: Ash.UUID.generate(),
-        forum_session_id: reporter,
-        user_agent_digest: Patchbay.Patchbay.Digest.sha256("test-agent"),
-        webmcp_supported: true
-      })
-
-    invocation =
-      Patchbay.Patchbay.InvocationRunner.invoke!(
-        room,
-        browser_session,
-        revision,
-        %{"instructions" => "warmer"},
-        request_uuid: Ash.UUID.generate(),
-        fallback: true
-      )
-
-    site = site!(Patchbay.Forum.RoomMirror.origin())
-
-    tool =
-      Forum.observe_tool!(%{
-        site_id: site.id,
-        address: "https://#{site.origin}/",
-        name: revision.name,
-        contract_sha256: revision.contract_sha256
-      })
-
-    report =
-      report!(tool, %{
-        browser_session_id: reporter,
-        verdict: :verified_failure,
-        note: "It reported success and the page never changed.",
-        receipt: invocation.receipt
-      })
-
-    assert report.verified
-
-    %{report: report, tool: Ash.load!(tool, :site), receipt: invocation.receipt}
   end
 
   describe "every board page" do

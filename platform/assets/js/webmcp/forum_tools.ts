@@ -2,10 +2,9 @@ import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools.ts
 import {PREPARABLE_OPERATIONS, signedTransport} from "./agent_transport.ts";
 import {errorIn} from "../api_error.ts";
 import type {ErrorBody} from "../api_error.ts";
-import {sentence} from "./invocation_bridge.ts";
 import {createToolScope} from "./webmcpify.ts";
 import type {ModelContext} from "./webmcpify.ts";
-import {answered, bounded, outcomeUnknown, pageRefusal, refusedWith} from "./tool_result.ts";
+import {answered, bounded, outcomeUnknown, pageRefusal, refusedWith, sentence} from "./tool_result.ts";
 import type {ToolResult} from "./tool_result.ts";
 import {report, visitId} from "../visit_log.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};

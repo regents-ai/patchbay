@@ -511,42 +511,6 @@
       "cli_release": "1.10.20"
     },
     {
-      "operation": "invokePatchbayRoom",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": null
-    },
-    {
-      "operation": "finishPatchbayRoomInvocation",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": null
-    },
-    {
-      "operation": "cancelPatchbayRoomInvocation",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": null
-    },
-    {
-      "operation": "requestPatchbayRepair",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": null
-    },
-    {
       "operation": "reportAgentOffer",
       "effect": "write",
       "authority": "paired_agent",

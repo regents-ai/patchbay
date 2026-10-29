@@ -210,8 +210,6 @@ body {
   .pb-account-chip:hover { color: var(--pb-accent); }
 }
 
-/* Patchbay's room is intentionally compact: the evidence should stay in view
-   while a judge walks the failure-to-repair loop. */
 .patchbay-shell {
   color: var(--pb-text);
   background: transparent;
@@ -220,11 +218,7 @@ body {
 }
 
 .patchbay-topbar,
-.patchbay-guide,
-.patchbay-hero,
-.patchbay-editors,
-.patchbay-workbench,
-.patchbay-footer {
+.patchbay-guide {
   width: 100%;
   margin-inline: auto;
 }
@@ -244,11 +238,7 @@ body {
 
 .patchbay-brand,
 .patchbay-topbar-meta,
-.patchbay-registry-summary,
-.patchbay-card-heading,
-.patchbay-editor-footer,
-.patchbay-approval-actions > div,
-.patchbay-footer {
+.patchbay-card-heading {
   display: flex;
   align-items: center;
 }
@@ -273,8 +263,7 @@ body {
   object-fit: cover;
 }
 
-/* Kickers are the board's small all-caps labels. The room keeps them only
-   where the exact words are part of the record. */
+/* Kickers are the board's small all-caps labels. */
 .patchbay-kicker {
   margin: 0 0 var(--space-1);
   color: var(--pb-accent-deep);
@@ -286,32 +275,16 @@ body {
   text-transform: uppercase;
 }
 
-.patchbay-eyebrow {
-  margin: 0 0 var(--space-1);
-  color: var(--pb-text-muted);
-  font-family: var(--font-family-ui);
-  font-size: var(--pb-fs-xs);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: .01em;
-  line-height: 1.2;
-}
-.patchbay-eyebrow-strong,
-.patchbay-eyebrow-agent { color: var(--pb-accent-deep); }
-
 .patchbay-topbar-meta { gap: var(--space-1); flex-wrap: wrap; }
 .patchbay-generation { font-family: var(--font-family-ui); }
 
-.patchbay-mono,
-.patchbay-digest,
 .patchbay-facts code,
-.patchbay-result-box pre,
-.patchbay-footer code {
+.patchbay-result-box pre {
   font-family: var(--font-family-mono);
 }
 .patchbay-generation { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
 /* Dense status labels use Sans and square ruled boundaries. */
-.patchbay-pill,
-.patchbay-state-label {
+.patchbay-pill {
   display: inline-flex;
   align-items: center;
   border: 1px solid var(--pb-line-strong);
@@ -325,135 +298,29 @@ body {
   text-transform: uppercase;
   white-space: nowrap;
 }
-.patchbay-pill.is-good, .patchbay-state-label.is-ready { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
+.patchbay-pill.is-good { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
 .patchbay-pill.is-bad { color: var(--pb-bad); background: var(--pb-bad-wash); border-color: var(--pb-bad); }
 .patchbay-pill.is-warn { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
 .patchbay-pill.is-neutral { color: var(--pb-text-muted); background: var(--pb-surface-sunk); }
-.patchbay-state-label.is-empty { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
 
 .patchbay-muted { color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-sm); line-height: 1.55; }
-.patchbay-registry-summary { min-width: 13rem; max-width: 22rem; flex-direction: column; align-items: stretch; gap: var(--space-1); padding: var(--rg-panel-padding); border: 1px solid var(--pb-line); border-radius: var(--radius); background: var(--pb-surface); }
-.patchbay-registry-head { display: flex; align-items: center; gap: var(--space-1); }
-.patchbay-registry-summary strong, .patchbay-registry-summary span { display: block; }
-.patchbay-registry-summary strong { font-size: var(--pb-fs-sm); }
-.patchbay-registry-summary span { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
-
-/* The island writes its own diagnosis here. It is the only place a browser
-   without WebMCP is told why the card above it is still waiting, so it is read
-   at normal size rather than hidden away for screen readers. */
-.patchbay-capability-line {
-  border-top: 1px dashed var(--pb-line);
-  padding-top: var(--space-1);
-  color: var(--pb-text-muted);
-  font-size: var(--pb-fs-xs);
-  line-height: 1.5;
-  overflow-wrap: anywhere;
-}
-.patchbay-capability-line[data-webmcp-status="connected"] { color: var(--pb-good); }
-.patchbay-capability-line[data-webmcp-status="drift"],
-.patchbay-capability-line[data-webmcp-status="unverified"],
-.patchbay-capability-line[data-webmcp-status="unsupported"] { color: var(--pb-accent-deep); }
-.patchbay-capability-line[data-webmcp-status="error"] { color: var(--pb-bad); }
-/* Dots are indicators, so they stay true circles. */
-.patchbay-status-dot { width: .55rem; height: .55rem; flex: none; border-radius: 50%; background: var(--pb-accent-deep); }
-.patchbay-status-dot.is-live { background: var(--pb-good); }
-
-.patchbay-editors,
-.patchbay-workbench { display: grid; gap: var(--space-3); }
-.patchbay-editors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.patchbay-workbench { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 .patchbay-card { border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-surface);  }
-.patchbay-editor-card { min-width: 0; }
 .patchbay-card-heading { align-items: flex-start; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-2); }
 .patchbay-card-heading h3 { margin: 0; font-family: var(--font-family-title); font-size: var(--pb-fs-md); letter-spacing: -.02em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-.patchbay-mono { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); white-space: nowrap; }
-.patchbay-editor { display: block; width: 100%; min-height: 17rem; resize: vertical; border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--space-2); color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.6 var(--font-family-mono); tab-size: 2; }
-.patchbay-editor:focus { border-color: var(--pb-accent); }
-.patchbay-editor-footer { justify-content: space-between; gap: var(--space-2); margin-top: var(--space-1); }
-.patchbay-digest { min-width: 0;  color: var(--pb-text-muted); font-size: var(--pb-fs-micro); text-overflow: ellipsis; white-space: nowrap; }
-
-.patchbay-disclosure { margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; }
-.patchbay-upload { margin-top: var(--space-2); border-top: 1px dashed var(--pb-line); padding-top: var(--space-1); }
-.patchbay-upload-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
-.patchbay-upload-row label { flex: 1 1 100%; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
-.patchbay-upload-row input[type="file"] { min-width: 0; flex: 1 1 12rem; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
-.patchbay-upload-problem { margin: var(--space-1) 0 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); line-height: 1.45; }
-.patchbay-upload-privacy { flex: 1 1 100%; margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
 
 .patchbay-facts { display: grid; gap: var(--space-1); }
 .patchbay-facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); border-bottom: 1px dashed var(--pb-line); padding-bottom: var(--space-1); }
 .patchbay-facts span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
 .patchbay-facts strong { font-size: var(--pb-fs-xs); }
 .patchbay-facts code { color: var(--pb-text); font-size: var(--pb-fs-micro); text-align: right; overflow-wrap: anywhere; }
-.patchbay-positive { color: var(--pb-good); }
-.patchbay-negative { color: var(--pb-bad); }
 .patchbay-result-box { margin-top: var(--space-2); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-ink); color: var(--pb-text-on-ink); }
-.patchbay-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); }
-.patchbay-evidence-grid > .patchbay-result-box { min-width: 0; }
 .patchbay-result-box pre { max-height: 10rem; overflow: auto; margin: 0; font-size: var(--pb-fs-micro); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
-.patchbay-state-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); margin-top: var(--space-1); }
-.patchbay-state-grid > div { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-surface-sunk); }
-.patchbay-state-grid .patchbay-kicker { margin-bottom: var(--space-1); font-size: .58rem; }
-.patchbay-state-grid pre { max-height: 7rem; overflow: auto; margin: 0; color: var(--pb-text-muted); font: .62rem/1.45 var(--font-family-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .patchbay-shortened-note { margin: var(--space-1) 0 0; font-size: var(--pb-fs-xs); line-height: 1.45; }
 .patchbay-result-box .patchbay-shortened-note { color: var(--pb-text-on-ink-muted); }
-.patchbay-state-grid .patchbay-shortened-note { color: var(--pb-text-muted); }
 .patchbay-empty-state { margin: var(--space-1) 0; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
-.patchbay-alert { display: flex; gap: var(--space-1); align-items: baseline; margin-top: var(--space-2); border-radius: var(--radius); padding: var(--rg-panel-padding); font-size: var(--pb-fs-xs); line-height: 1.45; }
-.patchbay-alert strong { white-space: nowrap; }
-.patchbay-alert-error { color: var(--pb-bad); background: var(--pb-bad-wash); border: 1px solid var(--pb-bad); }
-.patchbay-alert-warn { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border: 1px solid var(--pb-accent-deep); }
-#patchbay-platform-error { width: 100%; margin-inline: auto; }
 
-.patchbay-repair-cta p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.55; }
-.patchbay-repair-details { display: grid; gap: var(--space-2); }
-.patchbay-root-cause p { margin: var(--space-1) 0 0; font-size: var(--pb-fs-sm); line-height: 1.5; }
-.patchbay-provenance { display: flex; flex-wrap: wrap; gap: var(--space-1); color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
-.patchbay-provenance b { color: var(--pb-text-muted); font-weight: var(--font-weight-semibold); }
-.patchbay-diff { border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); }
-.patchbay-diff > .patchbay-kicker { padding: 0 0 var(--space-1); }
-.patchbay-diff-row { display: grid; grid-template-columns: 7.5rem minmax(0,1fr); gap: var(--space-1) var(--space-2); padding: var(--space-1) 0; border-top: 1px solid var(--pb-line); font-size: var(--pb-fs-micro); }
-.patchbay-diff-row code { grid-row: span 2; color: var(--pb-text-muted); font-weight: var(--font-weight-semibold); overflow-wrap: anywhere; }
-.patchbay-diff-old, .patchbay-diff-new { overflow-wrap: anywhere; white-space: pre-wrap; }
-.patchbay-diff-old { color: var(--pb-bad); }
-.patchbay-diff-new { color: var(--pb-good); }
-.patchbay-canary { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-2); align-items: center; }
-.patchbay-canary .patchbay-kicker { margin: 0; }
-.patchbay-checks { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: var(--space-1); }
-.patchbay-checks span { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
-.patchbay-checks .is-pass { color: var(--pb-good); }
-.patchbay-checks .is-fail { color: var(--pb-bad); }
-.patchbay-risk-notes ul { margin: var(--space-1) 0 0; padding-left: var(--space-2); color: var(--pb-accent-deep); font-size: var(--pb-fs-xs); line-height: 1.55; }
-.patchbay-approval-actions { border-top: 1px solid var(--pb-line); padding-top: var(--space-2); }
-.patchbay-approval-actions p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
-.patchbay-approval-actions > div { flex-wrap: wrap; gap: var(--space-1); margin-top: var(--space-1); }
-
-.patchbay-footer { justify-content: space-between; gap: var(--space-2); margin-top: var(--space-4); color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
-.patchbay-footer p { margin: 0; }
-.patchbay-footer strong { color: var(--pb-text); }
-.patchbay-footer code { font-size: var(--pb-fs-micro); }
-#patchbay-room-id code { overflow-wrap: anywhere; }
-
-/* ---------------------------------------------------------------------------
-   The room. Everything below is scoped to the room page, which tells one story
-   top to bottom: the header band, the three prompts, the goal, the Candidate
-   editor that carries the proof, the scoreboard that compares the tool's claim
-   with what the page showed, the repair, and the ledger.
-
-   Pixel Square titles and Mono controls follow the shared typography;
-   flat evidence cells keep the product’s compact information architecture.
-   ------------------------------------------------------------------------- */
-
-/* Same charcoal chrome as / and /sites, so the root masthead already on this
-   page reads as one header language. Tokens live on the body so the masthead
-   inherits them; paint and cards stay under #patchbay-room. */
-body:has(#patchbay-room) {
-  background: transparent;
-
-}
-
-/* The room is one bare main with no flash group, so the socket's own state has
-   to be said here or it is never said at all. */
+/* A live page with no flash group says the socket's own state here, or it is
+   never said at all. */
 .patchbay-connection-lost {
   width: 100%;
   margin: 0 auto var(--space-1);
@@ -466,333 +333,19 @@ body:has(#patchbay-room) {
   font-weight: var(--font-weight-semibold);
 }
 .patchbay-connection-lost[hidden] { display: none; }
-
-#patchbay-room.patchbay-shell {
-  background: transparent;
-  padding-bottom: var(--space-7);
-}
-
-/* Page title + meta, in the same quiet language as the root masthead — not a
-   second dark hero. The crown already lives in the site nav. */
-#patchbay-room .patchbay-topbar {
-  border: 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--pb-text) 22%, transparent);
-  padding: 0 0 var(--space-2);
-  color: var(--pb-text);
-  background: transparent;
-
-}
-#patchbay-room .patchbay-brand h1 {
-  color: var(--pb-text);
-  font-family: var(--font-family-title);
-  font-size: var(--pb-fs-xl);
-  font-weight: 400;
- font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-#patchbay-room .patchbay-brandline {
-  margin: 0;
-  color: var(--pb-text-muted);
-  font-family: var(--font-family-ui);
-  font-size: var(--pb-fs-xs);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: .01em;
-  text-transform: none;
-}
-#patchbay-room .patchbay-topbar .patchbay-generation { color: var(--pb-text-muted); }
-#patchbay-room .patchbay-generation-badge {
-  border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
-  border-radius: var(--radius);
-  padding: var(--space-0) var(--space-1);
-  color: var(--pb-text);
-  background: var(--pb-surface);
-  font-weight: var(--font-weight-semibold);
-}
-#patchbay-room .patchbay-topbar .patchbay-pill { border-color: color-mix(in srgb, var(--pb-text) 28%, transparent); }
-#patchbay-room .patchbay-topbar .patchbay-pill.is-neutral {
-  color: var(--pb-text-muted);
-  background: var(--pb-surface-sunk);
-}
-
-/* The guide is a strip, not a column: three numbered prompts you can copy, and
-   one muted line about what to watch. */
-#patchbay-room .patchbay-guide {
-  display: grid;
-  grid-template-columns: minmax(0, .8fr) minmax(0, 1.6fr);
-  gap: var(--space-3) var(--space-4);
-  align-items: start;
-  margin-top: var(--space-4);
-  border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
-  border-radius: var(--radius);
-  padding: var(--rg-panel-padding);
-  background: var(--pb-surface);
-
-}
-#patchbay-room .patchbay-guide-head h2 {
-  margin: 0;
-  font-family: var(--font-family-title);
-  font-size: var(--pb-fs-lg);
-  font-weight: 400;
-  line-height: 1.35;
-  letter-spacing: -.02em;
-  text-wrap: balance;
- font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-.patchbay-guide-head .patchbay-muted { margin: var(--space-1) 0 0; font-size: var(--pb-fs-sm); }
 .patchbay-guide-links { margin: var(--space-1) 0 0; font-size: var(--pb-fs-xs); }
 .patchbay-guide-links a { color: var(--pb-accent-deep); font-weight: var(--font-weight-semibold); text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--pb-accent-deep) 40%, transparent); }
 .patchbay-guide-links a:hover { border-bottom-color: var(--pb-accent-deep); }
-
-.patchbay-guide-prompts { display: grid; gap: var(--space-1); margin: 0; padding: 0; list-style: none; }
-.patchbay-prompt-chip {
-  display: grid;
-  grid-template-columns: 1.6rem minmax(0, 1fr) auto;
-  gap: var(--space-1);
-  align-items: start;
-  border: 1px solid color-mix(in srgb, var(--pb-text) 22%, transparent);
-  border-radius: var(--radius);
-  padding: var(--rg-panel-padding);
-  background: var(--pb-surface);
-}
-/* A step marker is a 22px box, so the shared corner clamps it to a circle. */
-.patchbay-step-number {
-  display: grid;
-  place-items: center;
-  width: 1.4rem;
-  height: 1.4rem;
-  border-radius: var(--radius);
-  color: var(--pb-accent-ink);
-  background: var(--pb-accent);
-  font-size: var(--pb-fs-micro);
-  font-weight: var(--font-weight-semibold);
-}
-/* Which prompt to send now is read off the room's own status, so the strip
-   tracks the loop instead of asking a judge to keep their place in it. */
-.patchbay-prompt-chip.is-current { border-color: var(--pb-accent);  }
-.patchbay-prompt-chip.is-waiting { opacity: 1; }
-.patchbay-prompt-chip.is-done .patchbay-step-number { color: var(--pb-text-muted); background: var(--pb-surface-sunk); border: 1px solid var(--pb-line); }
-.patchbay-prompt-chip.is-waiting .patchbay-step-number { color: var(--pb-text-muted); background: var(--pb-canvas-deep); }
-.patchbay-step-now {
-  margin-left: var(--space-1);
-  border-radius: var(--radius);
-  padding: var(--space-0) var(--space-1);
-  color: var(--pb-accent-deep);
-  background: var(--pb-accent-wash);
-  font-size: var(--pb-fs-micro);
-  font-weight: var(--font-weight-semibold);
-  text-transform: none;
-}
-
-.patchbay-prompt-body { min-width: 0; }
-.patchbay-prompt-body label { display: block; margin-bottom: var(--space-1); color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); }
-.patchbay-prompt { display: block; width: 100%; border: 0; border-radius: var(--radius); padding: var(--space-1) var(--space-2); color: var(--pb-text); background: var(--pb-surface-sunk); font: var(--pb-fs-xs)/1.5 var(--font-family-ui); resize: none; }
 .patchbay-copy { align-self: center; font-size: var(--pb-fs-xs); }
 .patchbay-copy:hover { align-self: center; font-size: var(--pb-fs-xs); }
 
-.patchbay-guide-watch { grid-column: 1 / -1; margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-xs); line-height: 1.6; }
-.patchbay-guide-watch b { color: var(--pb-text); }
-.patchbay-guide-watch strong { color: var(--pb-accent-deep); font-weight: var(--font-weight-semibold); }
-
-/* The goal is a section header now, not a billboard. */
-#patchbay-room .patchbay-hero {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-  padding-block: var(--space-4) var(--space-3);
-}
-.patchbay-goal { max-width: 46rem; }
-#patchbay-room .patchbay-hero h2 {
-  margin: 0;
-  font-family: var(--font-family-title);
-  font-size: var(--pb-fs-xl);
-  font-weight: 400;
-  line-height: 1.25;
-  letter-spacing: -.03em;
-  text-wrap: balance;
- font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-#patchbay-room .patchbay-hero .patchbay-muted { margin: var(--space-1) 0 0; }
-#patchbay-room .patchbay-registry-summary {
-  border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
-  background: var(--pb-surface);
-}
-
-/* The Candidate editor is the proof, so it is the largest panel; Source Skill
-   sits beside it as reference. Both are hairline cards, not lifted glass. */
-#patchbay-room .patchbay-editors { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); align-items: start; }
-#patchbay-room .patchbay-card {
-  border: 1px solid color-mix(in srgb, var(--pb-text) 28%, transparent);
-  background: var(--pb-surface);
-}
-#patchbay-room .patchbay-card-heading h3,
-#patchbay-room .patchbay-retry-card h3 {
-  font-family: var(--font-family-title);
-  font-weight: 400;
- font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-.patchbay-candidate-card h3 { font-size: var(--pb-fs-lg);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-.patchbay-candidate-card .patchbay-editor { min-height: 22rem; }
-.patchbay-source-card { background: var(--pb-surface); }
-.patchbay-source-card .patchbay-editor { min-height: 13rem; background: var(--pb-surface-sunk); }
-.patchbay-source-card h3 { color: var(--pb-text-muted);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-
-.patchbay-verdict { display: flex; align-items: center; gap: var(--space-1); }
-.patchbay-verdict-chip {
-  display: inline-flex;
-  align-items: center;
-  border-radius: var(--radius);
-  padding: var(--space-0) var(--space-1);
-  color: var(--pb-surface);
-  background: var(--pb-good);
-  font-size: var(--pb-fs-xs);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: .01em;
-}
-
-.patchbay-well { position: relative; }
-.patchbay-well-note {
-  position: absolute;
-  inset-inline: var(--space-2);
-  top: 42%;
-  margin: 0;
-  color: var(--pb-text-muted);
-  font-size: var(--pb-fs-sm);
-  text-align: center;
-  pointer-events: none;
-}
-.patchbay-candidate-card.is-waiting .patchbay-editor {
-  border: 1.5px dashed var(--pb-line-strong);
-  background: var(--pb-surface-sunk);
-}
-.patchbay-candidate-card.is-verified {
-  border-color: var(--pb-good);
-  background: var(--pb-surface);
-
-}
-.patchbay-candidate-card.is-verified .patchbay-editor { border-color: var(--pb-good); background: var(--pb-good-wash); }
-
-/* The scoreboard is the thesis: what the tool claimed, against what the page
-   could actually see. */
-.patchbay-scoreboard { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-1); margin-bottom: var(--space-3); }
-.patchbay-score { min-width: 0; border: 1px solid var(--pb-line); border-radius: var(--radius); padding: var(--rg-panel-padding); background: var(--pb-surface-sunk); }
-.patchbay-score-label { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .08em; text-transform: uppercase; }
-.patchbay-badge {
-  display: inline-block;
-  margin: var(--space-1) 0;
-  border-radius: var(--radius);
-  padding: var(--space-0) var(--space-2);
-  font-size: var(--pb-fs-lg);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: -.02em;
-  line-height: 1.5;
-}
-.patchbay-badge.is-neutral { color: var(--pb-text); background: var(--pb-canvas-deep); }
-.patchbay-badge.is-good { color: var(--pb-surface); background: var(--pb-good); }
-.patchbay-badge.is-bad { color: var(--pb-surface); background: var(--pb-bad); }
-.patchbay-badge.is-warn { color: var(--pb-text); background: var(--pb-accent-wash); }
-.patchbay-score-note { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
-
-.patchbay-repair-card { border-color: color-mix(in srgb, var(--pb-accent) 38%, var(--pb-line)); }
-
-.patchbay-retry-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  margin-top: var(--space-4);
-  border-color: var(--pb-good);
-  background: color-mix(in srgb, var(--pb-good) 16%, var(--pb-surface-sunk));
-}
-.patchbay-retry-card h3 { margin: 0; font-size: var(--pb-fs-md);  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-.patchbay-retry-card p { margin-bottom: 0; }
-.patchbay-retry-actions { display: grid; justify-items: end; gap: var(--space-1); max-width: 17rem; }
-.patchbay-retry-note { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; text-align: right; }
-
-/* Reset throws the room's whole record away, so the button asks first. */
-.patchbay-reset-confirm { display: grid; gap: var(--space-1); justify-items: end; max-width: 21rem; }
-.patchbay-reset-confirm p { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.5; text-align: right; }
-.patchbay-reset-confirm > div { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-
-/* A real ledger: one rail, one dot per event, coloured by what kind of moment
-   it was. The rail and its dots are drawn geometry, so they keep their own
-   measures; the rows between them sit on the grid. */
-.patchbay-timeline-card { margin-top: var(--space-4); }
-.patchbay-timeline { isolation: isolate; margin: 0; padding: 0; list-style: none; }
-.patchbay-timeline-entry {
-  position: relative;
-  display: grid;
-  grid-template-columns: .95rem minmax(0, 1fr) auto;
-  gap: 0 var(--space-1);
-  padding: var(--space-1) 0;
-}
-.patchbay-timeline-entry::before {
-  content: "";
-  position: absolute;
-  left: .44rem;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--pb-line);
-}
-.patchbay-timeline-entry:first-child::before { top: .95rem; }
-.patchbay-timeline-entry:last-child::before { bottom: calc(100% - .95rem); }
-.patchbay-timeline-dot {
-  position: relative;
-  z-index: var(--rg-layer-card);
-  margin-top: .55rem;
-  width: .58rem;
-  height: .58rem;
-  border-radius: 50%;
-  background: var(--pb-text-muted);
-
-}
-.patchbay-timeline-entry.is-invocation .patchbay-timeline-dot { background: var(--pb-accent); }
-.patchbay-timeline-entry.is-verification .patchbay-timeline-dot { background: var(--pb-accent-deep); }
-.patchbay-timeline-entry.is-verification.is-passed .patchbay-timeline-dot { background: var(--pb-good); }
-.patchbay-timeline-entry.is-repair .patchbay-timeline-dot { background: var(--pb-accent); }
-.patchbay-timeline-entry.is-publication .patchbay-timeline-dot { background: var(--pb-text); }
-.patchbay-timeline-entry.is-goal .patchbay-timeline-dot { background: var(--pb-good);  }
-.patchbay-timeline-entry.is-error .patchbay-timeline-dot { background: var(--pb-bad); }
-.patchbay-timeline-body { min-width: 0; }
-.patchbay-timeline-body strong { display: block; font-size: var(--pb-fs-xs); }
-.patchbay-timeline-body span { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-xs); overflow-wrap: anywhere; }
-.patchbay-timeline-when { text-align: right; white-space: nowrap; }
-.patchbay-timeline-when time { display: block; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); }
-.patchbay-timeline-sequence { color: var(--pb-text-muted); font: .6rem var(--font-family-mono); }
-
-#patchbay-room .patchbay-room-reports { margin-top: var(--space-4); }
-
-/* A laptop is the first place the room runs out of room. The workbench holds
-   grids inside grids — the scoreboard, the evidence pair, the state pair — so
-   it is the first thing to take the full column, well before the phone
-   breakpoint. The guide's two columns go with it. */
-@container pb-page (max-width: 1024px) {
-  #patchbay-room .patchbay-guide { grid-template-columns: 1fr; }
-  .patchbay-workbench { grid-template-columns: 1fr; }
-}
-
-@container pb-page (max-width: 900px) {
-  #patchbay-room .patchbay-editors { grid-template-columns: 1fr; }
-}
-
 @container pb-page (max-width: 760px) {
-  .patchbay-topbar, #patchbay-room .patchbay-hero, .patchbay-footer { align-items: flex-start; flex-direction: column; }
+  .patchbay-topbar { align-items: flex-start; flex-direction: column; }
   .patchbay-topbar-meta { width: 100%; }
-  #patchbay-room .patchbay-hero { gap: var(--space-2); }
-  .patchbay-registry-summary { width: 100%; }
-  .patchbay-scoreboard, .patchbay-state-grid, .patchbay-evidence-grid { grid-template-columns: 1fr; }
-  .patchbay-editor { min-height: 14rem; }
-  .patchbay-candidate-card .patchbay-editor { min-height: 16rem; }
-  .patchbay-footer { align-items: stretch; }
-  .patchbay-footer .patchbay-button { align-self: flex-start; }
-  .patchbay-retry-card { flex-direction: column; align-items: flex-start; }
-  #patchbay-room .patchbay-prompt-chip {
-    grid-template-columns: 1.6rem minmax(0, 1fr);
-  }
-  #patchbay-room .patchbay-copy {
-    grid-column: 2;
-    justify-self: start;
-  }
 }
 
-/* The forum board reuses the room's paper and card language, but its pages are
-   read-only lists, so they stay a single narrow column. */
+/* The forum board's pages are read-only lists, so they stay a single narrow
+   column. */
 .patchbay-board .patchbay-topbar,
 .patchbay-board .patchbay-card { width: 100%; margin-inline: auto; }
 .patchbay-board .patchbay-card { margin-top: var(--space-2); }
@@ -822,8 +375,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .patchbay-reported-copy p { margin: 0; }
 .patchbay-board-text { margin: var(--space-1) 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--pb-text); font: var(--pb-fs-xs)/1.5 var(--font-family-mono); }
 .patchbay-report-row .patchbay-card-heading { gap: var(--space-1); justify-content: flex-start; }
-.patchbay-reply-list { display: grid; gap: var(--space-1); margin: var(--space-1) 0 0; padding: 0; list-style: none; }
-.patchbay-reply-list > li { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
 
 /* Markdown a visitor wrote, wherever it is shown: a thread body, a reply or a
    feed preview. The reset strips list markers and block spacing, and the
@@ -893,7 +444,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-name-form label { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .04em; text-transform: uppercase; }
 .pb-name-form-row { display: flex; gap: var(--space-1); }
 .pb-name-form input { flex: 1 1 auto; min-width: 0; min-height: 2.75rem;       }
-.patchbay-reply-list .patchbay-board-text { width: 100%; }
 .patchbay-board .patchbay-shortened-note { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-result-box .patchbay-board-text,
 .patchbay-board .patchbay-result-box .patchbay-shortened-note { color: var(--pb-text-on-ink-muted); }
@@ -916,17 +466,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-badge-human { display: inline-flex; }
 .pb-badge-tips { padding: .1rem .45rem; border: 1px solid var(--pb-good); color: var(--pb-text); font: 600 .6875rem/1.4 var(--font-family-mono); white-space: nowrap; }
 
-/* The board thread the room page carries at the bottom, so the whole exchange
-   about one tool is readable without leaving the room. */
-.patchbay-room-reports .patchbay-board-list > li { border-top: 1px solid var(--pb-line); padding: var(--space-1) 0; }
-.patchbay-room-reports .patchbay-board-list > .patchbay-empty-state {
-  margin: 0;
-  padding: var(--space-3) 0;
-}
-.patchbay-room-reports .patchbay-board-text { margin-top: var(--space-1); }
-.patchbay-room-reports .patchbay-reply-list > li { align-items: baseline; }
-
-
 /* A finger is about 9mm across and has no hover to aim with, so every control
    the loop runs through is at least 44px tall where the pointer is coarse. The
    labels are centred rather than pinned to the top of the taller box. */
@@ -941,7 +480,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
     justify-content: center;
     min-height: 44px;
   }
-  .patchbay-upload-row input[type="file"] { min-height: 44px; }
 }
 
 /* ==========================================================================
@@ -1116,74 +654,14 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-error h1 { margin: 0; font-family: var(--font-family-title); font-size: clamp(1.75rem, 5vw, 2.6rem); font-weight: var(--font-weight-regular); line-height: 1.1; letter-spacing: -.028em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-error-lede { margin: var(--space-2) 0 var(--space-4); color: var(--pb-text-muted); font-size: .95rem; line-height: 1.6; }
 
-
-/* ---------------------------------------------------------------------------
-   The receipt, the agent's progress, and motion.
-
-   A receipt is the one part of a report Patchbay can check, so the room prints
-   it as a stub you can tear off and quote. The Patchbay Agent's progress is
-   read straight from the room's own status, so a step is only ever waiting,
-   working, done, or failed. Motion is reserved for the moments that change the
-   story: an entry landing in the ledger, and a candidate this room proved.
-   ------------------------------------------------------------------------- */
-
-.patchbay-receipt {
-  display: grid;
-  gap: 0;
-  margin: 0 0 var(--space-3);
-  border: 1px dashed var(--pb-line-strong);
-  border-left: 3px solid var(--pb-accent);
-  border-radius: var(--radius);
-  padding: var(--rg-panel-padding);
-  background: var(--pb-surface-sunk);
-}
-.patchbay-receipt-label { color: var(--pb-accent-deep); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .1em; text-transform: uppercase; }
-.patchbay-receipt code { color: var(--pb-text); font: var(--pb-fs-xs)/1.4 var(--font-family-mono); overflow-wrap: anywhere; }
-.patchbay-receipt-note { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); line-height: 1.45; }
-
-.patchbay-agent-steps { display: grid; gap: var(--space-1); margin: 0 0 var(--space-3); padding: 0; list-style: none; }
-.patchbay-agent-step {
-  display: grid;
-  grid-template-columns: .55rem minmax(0, 1fr) auto;
-  align-items: center;
-  gap: var(--space-1);
-  border-radius: var(--radius);
-  padding: var(--space-1) var(--space-2);
-  background: var(--pb-surface-sunk);
-  font-size: var(--pb-fs-xs);
-  transition: background-color .2s ease;
-}
-.patchbay-agent-dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--pb-text-muted); }
-.patchbay-agent-label { color: var(--pb-text-muted); }
-.patchbay-agent-state { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: var(--font-weight-semibold); letter-spacing: .02em; }
-.patchbay-agent-step.is-working { background: color-mix(in srgb, var(--pb-accent) 14%, var(--pb-surface-sunk)); }
-.patchbay-agent-step.is-working .patchbay-agent-label { color: var(--pb-text); font-weight: var(--font-weight-semibold); }
-.patchbay-agent-step.is-working .patchbay-agent-state { color: var(--pb-accent-deep); }
-.patchbay-agent-step.is-working .patchbay-agent-dot { background: var(--pb-accent); animation: pb-agent-pulse 1.5s ease-in-out infinite; }
-.patchbay-agent-step.is-done .patchbay-agent-dot { background: var(--pb-good); }
-.patchbay-agent-step.is-done .patchbay-agent-state { color: var(--pb-good); }
-.patchbay-agent-step.is-failed .patchbay-agent-dot { background: var(--pb-bad); }
-.patchbay-agent-step.is-failed .patchbay-agent-state { color: var(--pb-bad); }
-
 @keyframes pb-agent-pulse {
   0%, 100% { opacity: .45; transform: scale(.8); }
   50% { opacity: 1; transform: scale(1.15); }
 }
 
 /* A state pill never jumps colour: it moves from waiting to verified. */
-.patchbay-pill,
-.patchbay-state-label,
-#patchbay-room .patchbay-generation-badge {
+.patchbay-pill {
   transition: background-color .22s ease, border-color .22s ease, color .22s ease;
-}
-
-/* Verified is a border and a chip. No sweep, glow, or spark. */
-.patchbay-candidate-card.is-verified .patchbay-well::after { content: none; }
-
-/* Reduced motion, answered in one place. Colour is not motion, so state
-   changes still fade between tones. */
-@media (prefers-reduced-motion: reduce) {
-  .patchbay-agent-step.is-working .patchbay-agent-dot { animation: none; }
 }
 
 /* ==========================================================================
@@ -1226,7 +704,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
    size and the swatches grow to match it. */
 .pb-version-head h3 .pb-fingerprint-hex { font-size: .86rem; }
 .pb-version-head h3 .pb-fingerprint-chip { width: .5rem; height: 1rem; }
-
 
 .pb-receipt-stub {
   --pb-tear: .3rem;
@@ -1468,7 +945,6 @@ body { container: pb-page / inline-size; }
 }
 .pb-section-head a:hover { color: var(--pb-accent-deep); text-decoration: underline; }
 
-
 .pb-setup-line {
   display: flex;
   align-items: flex-start;
@@ -1571,7 +1047,6 @@ a.patchbay-button { text-decoration: none; }
 .pb-fund-card button {
   transition: background-color .15s ease, border-color .15s ease, color .15s ease;
 }
-
 
 .pb-feed { margin-top: var(--space-1); }
 .pb-feed-row {
@@ -1926,29 +1401,15 @@ h1, h2, h3, h4, h5, h6 {
 .pb-error-inner { padding: var(--rg-panel-padding); display: grid; gap: var(--space-3); }
 .pb-error-inner .pb-kicker { margin: 0; }
 .patchbay-notice.rg-panel { background: transparent; border: 0; }
-#patchbay-room .patchbay-registry-summary.rg-panel { background: transparent; border: 0; }
-.patchbay-registry-summary.rg-support-panel :is(strong, span, .patchbay-capability-line) { color: var(--support-panel-ink); }
-.patchbay-registry-summary.rg-support-panel .patchbay-capability-line { border-color: var(--rg-local-rule); }
-.patchbay-registry-summary.rg-support-panel .patchbay-status-dot { background: var(--support-figure-surface); }
-.patchbay-registry-summary.rg-support-panel .patchbay-status-dot.is-live { background: var(--support-band-surface); }
-.patchbay-editors, .patchbay-workbench { gap: 1px; }
 .patchbay-card { min-width: 0; }
-.patchbay-prompt-body .rg-field, .patchbay-editor-card .rg-field { font-size: var(--pb-fs-xs); }
-.patchbay-editor-footer, .patchbay-facts > div { flex-wrap: wrap; }
-.patchbay-pill, .patchbay-state-label, .pb-chip { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
-.patchbay-alert { flex-wrap: wrap; }
-.patchbay-button-danger.rg-button { color: var(--pb-bad); border-color: var(--pb-bad); }
+ .patchbay-facts > div { flex-wrap: wrap; }
+.patchbay-pill, .pb-chip { white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
 .pb-post-row { border-bottom: 1px solid var(--pb-line); padding-block: var(--space-2); }
 .pb-name-forms { grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
 .pb-name-form-row { flex-wrap: wrap; }
 .pb-name-form-row input { flex-basis: 10rem; }
 .pb-reclaim > .patchbay-board-facts { flex: 1 1 16rem; }
 .pb-reclaim .rg-button__label { flex: initial; }
-@media (forced-colors: active) {
-  .patchbay-button-danger.rg-button { color: ButtonText; border-color: ButtonText; }
-  .patchbay-registry-summary.rg-support-panel :is(strong, span, .patchbay-capability-line) { color: CanvasText; }
-  .patchbay-agent-dot, .patchbay-timeline-entry { animation: none; }
-}
 
 /* Agent Offers moderation */
 .pb-offmod-problem { margin: var(--space-2) 0; padding: var(--space-1) var(--space-2); border: 1px solid var(--pb-line); }

@@ -29,7 +29,6 @@ import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
-import {PatchbayWebMCP} from "./webmcp/room_hook.ts"
 import {PatchbayRelativeTime} from "./hooks/relative_time.ts"
 import {PatchbayOfferResultDialog} from "./hooks/offer_result.ts"
 import {PatchbayConfirmDialog} from "./hooks/confirm_dialog.ts"
@@ -66,7 +65,6 @@ const liveSocket = new LiveSocket("/live", Socket, {
   params: {_csrf_token: csrfToken},
   hooks: {
     ...colocatedHooks,
-    PatchbayWebMCP,
     PatchbayRelativeTime,
     PatchbayOfferResultDialog,
     PatchbayConfirmDialog,
@@ -105,8 +103,7 @@ installAccountMenu()
 installNavMenu()
 
 // The account strip, the report board tools and the standard motion all
-// belong to every Patchbay page rather than to the room, so they are set up
-// here. The tools are handed the profile the page is signed in as, which
+// belong to every Patchbay page, so they are set up here. The tools are handed the profile the page is signed in as, which
 // get_agent_profile reads when no profile is named.
 const offerPageWideSurfaces = () => {
   mountMotion(document)

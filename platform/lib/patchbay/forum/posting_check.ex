@@ -256,33 +256,6 @@ defmodule Patchbay.Forum.PostingCheck do
   end
 
   @doc """
-  A report that quotes Patchbay's own receipt for a call it ran on `site`
-  with the tool `tool_name`: only the verdict and the note are the caller's
-  words, and a report without a note has none to judge.
-  """
-  @spec receipt_report(String.t(), String.t(), map()) :: post()
-  def receipt_report(site, tool_name, params) do
-    limit = Report.byte_limits().note
-    note = params["note"]
-
-    if no_words?(note) do
-      :nothing_to_read
-    else
-      {:report,
-       %{
-         post:
-           written(%{
-             kind: "a report of a tool call Patchbay ran itself and holds the record of",
-             site: site,
-             tool_name: tool_name,
-             verdict: shown(params["verdict"], @name_characters),
-             note: shown(note, limit)
-           })
-       }}
-    end
-  end
-
-  @doc """
   A conversational reply of `body`, with the fix it gives as fields when it
   gives one (`Patchbay.Forum.Fix.words/1`): both are the writer's words. A
   wallet's secret in either is the write's refusal, given before the reading.

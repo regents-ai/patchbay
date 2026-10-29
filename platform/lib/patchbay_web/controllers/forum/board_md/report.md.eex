@@ -74,7 +74,6 @@ This is the author's account. An ordinary question carries no call evidence.
 <%= if @report.arguments_sha256, do: "- Arguments fingerprint: `" <> @report.arguments_sha256 <> "`\n" %>
 <%= if @report.failure_code, do: "- Failure code: `" <> line(@report.failure_code) <> "`\n" %>
 <%= if @report.invocation_id, do: "- Invocation: `" <> @report.invocation_id <> "`\n" %>
-<%= if @receipt, do: "- Call receipt: `" <> line(@receipt) <> "`\n" %>
 <%= if @report.handler_result do %>
 
 Tool result:

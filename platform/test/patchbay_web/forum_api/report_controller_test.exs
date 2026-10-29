@@ -2,16 +2,11 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
   # The rate-limit test moves an application setting, so this file runs alone.
   use PatchbayWeb.ConnCase, async: false
 
-  require Ash.Query
-
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Report
-  alias Patchbay.Forum.RoomMirror
-  alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Patchbay.CanonicalJSON
   alias Patchbay.Patchbay.Digest
-  alias Patchbay.Patchbay.InvocationRunner
   alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("a", 64)
@@ -278,181 +273,6 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
              } = json_response(conn, 429)
 
       assert error =~ "This account has already posted 2 reports in the past hour."
-    end
-  end
-
-  describe "a report that quotes a receipt" do
-    setup %{agent: agent} do
-      # A receipt is only honoured for the identity holding it: the agent's
-      # pairing, which a paired agent's forum identity is.
-      %{reporter: agent.pairing.id}
-    end
-
-    test "needs only the receipt, and takes every fact from the record", context do
-      call = call_patchbay(context.reporter)
-
-      conn =
-        post_json(context.conn, context.agent, "/forum/reports", %{
-          "receipt" => call.invocation.receipt,
-          "note" => "It said it worked, but the page did nothing."
-        })
-
-      assert %{"report_id" => id, "verified" => true, "receipt_status" => "verified"} =
-               json_response(conn, 201)
-
-      report = Ash.get!(Report, id, load: [tool: :site])
-
-      assert report.verified
-      assert report.invocation_id == call.invocation.id
-
-      # None of this was sent. All of it is what Patchbay logged for the call.
-      assert report.tool.site.origin == RoomMirror.origin()
-      assert report.tool.name == call.revision.name
-      assert report.tool.contract_sha256 == call.invocation.tool_contract_sha256
-      assert report.tool.title == call.revision.title
-      assert report.arguments_sha256 == call.invocation.arguments_sha256
-      assert report.verdict == :verified_failure
-      assert report.failure_code == "CANDIDATE_EMPTY"
-      assert report.handler_result == call.invocation.handler_result
-
-      # The account keeps its author's words but not their version of the facts.
-      assert report.note =~ "did nothing"
-
-      assert report.observed == %{
-               "effective_status" => "verified_failure",
-               "failure_code" => "CANDIDATE_EMPTY",
-               "handler_reported_success" => true,
-               "generation" => 1
-             }
-    end
-
-    test "keeps the reading the agent offers when it offers one", context do
-      call = call_patchbay(context.reporter)
-
-      conn =
-        post_json(context.conn, context.agent, "/forum/reports", %{
-          "receipt" => call.invocation.receipt,
-          "verdict" => "unknown"
-        })
-
-      assert %{"report_id" => id, "verified" => true} = json_response(conn, 201)
-      assert Ash.get!(Report, id).verdict == :unknown
-    end
-
-    test "refuses a report that brings its own site, tool or digests", context do
-      call = call_patchbay(context.reporter)
-
-      conn =
-        post_json(context.conn, context.agent, "/forum/reports", %{
-          "receipt" => call.invocation.receipt,
-          "origin" => "shop.example.com",
-          "tool_name" => "add_to_cart",
-          "contract_sha256" => @contract,
-          "arguments_sha256" => @arguments
-        })
-
-      assert %{"error" => %{"details" => errors}} = json_response(conn, 422)
-
-      assert Enum.map(errors, &(String.split(&1, ":") |> hd())) ==
-               ["arguments_sha256", "contract_sha256", "origin", "tool_name"]
-
-      assert Enum.all?(errors, &String.contains?(&1, "does not take"))
-      assert Enum.all?(errors, &String.contains?(&1, "its own record of that call"))
-
-      # A refused report opens no board and no thread.
-      assert json_response(get(conn, "/forum/search", %{"origin" => "shop.example.com"}), 200)[
-               "tools"
-             ] == []
-    end
-
-    test "says what to do about a receipt it was not sent", context do
-      conn = post_json(context.conn, context.agent, "/forum/reports", %{"receipt" => "   "})
-
-      assert %{"error" => %{"receipt_status" => "missing", "hint" => hint, "message" => error}} =
-               json_response(conn, 422)
-
-      assert error =~ "did not carry a receipt"
-
-      assert hint ==
-               "Send the patchbay_receipt value exactly as it appeared in the tool result."
-    end
-
-    test "says what to do about a receipt that names no call", context do
-      conn =
-        post_json(context.conn, context.agent, "/forum/reports", %{
-          "receipt" => "Ab3xQ7pL-t2ZmR4nS_1wCg"
-        })
-
-      assert %{"error" => %{"receipt_status" => "unknown", "hint" => hint, "message" => error}} =
-               json_response(conn, 422)
-
-      assert error =~ "does not name a call Patchbay ran"
-      assert hint =~ "exactly as it appeared in the tool result"
-    end
-
-    test "says what to do about a receipt handed to another browser", context do
-      call = call_patchbay(Ash.UUID.generate())
-
-      conn =
-        post_json(context.conn, context.agent, "/forum/reports", %{
-          "receipt" => call.invocation.receipt
-        })
-
-      assert %{
-               "error" => %{
-                 "receipt_status" => "wrong_identity",
-                 "hint" => hint,
-                 "message" => error
-               }
-             } = json_response(conn, 422)
-
-      assert error =~ "different browser"
-      assert hint =~ "same page and browser that made it"
-    end
-
-    test "says what to do about a call more than a day old", context do
-      call = call_patchbay(context.reporter)
-      age!(call.invocation, 25)
-
-      conn =
-        post_json(context.conn, context.agent, "/forum/reports", %{
-          "receipt" => call.invocation.receipt
-        })
-
-      assert %{"error" => %{"receipt_status" => "stale", "hint" => hint, "message" => error}} =
-               json_response(conn, 422)
-
-      assert error =~ "more than a day old"
-      assert hint =~ "Call the tool again"
-    end
-
-    test "stands behind the first report only, and says so", context do
-      call = call_patchbay(context.reporter)
-      params = %{"receipt" => call.invocation.receipt}
-
-      assert %{"verified" => true} =
-               json_response(
-                 post_json(context.conn, context.agent, "/forum/reports", params),
-                 201
-               )
-
-      conn = post_json(context.conn, context.agent, "/forum/reports", params)
-
-      assert %{
-               "error" => %{
-                 "receipt_status" => "spent",
-                 "code" => "receipt_spent",
-                 "hint" => hint,
-                 "message" => error
-               }
-             } = json_response(conn, 422)
-
-      assert error == "This receipt already backs a report."
-      assert hint =~ "reply to it"
-
-      # Only the first report exists.
-      assert [_one] =
-               Report |> Ash.Query.filter(invocation_id == ^call.invocation.id) |> Ash.read!()
     end
   end
 
@@ -1330,55 +1150,6 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       },
       overrides
     )
-  end
-
-  # One real call on a Patchbay studio, made by the browser the given forum
-  # identity belongs to, taken all the way to its visible verdict.
-  defp call_patchbay(forum_session_id) do
-    room = Rooms.create_seeded_room!("room-#{System.unique_integer([:positive])}")
-
-    revision =
-      Rooms.list_tool_revisions!(query: [filter: [room_id: room.id, status: :desired], limit: 1])
-      |> List.first()
-
-    browser_session =
-      Rooms.register_browser_session!(%{
-        room_id: room.id,
-        client_instance_id: Ash.UUID.generate(),
-        forum_session_id: forum_session_id,
-        user_agent_digest: Digest.sha256("test-agent"),
-        webmcp_supported: true
-      })
-
-    invocation =
-      room
-      |> InvocationRunner.invoke!(browser_session, revision, %{"instructions" => "warmer"},
-        request_uuid: Ash.UUID.generate(),
-        fallback: true
-      )
-      |> verify_visible!(room.id)
-
-    %{room: room, revision: revision, invocation: invocation}
-  end
-
-  defp verify_visible!(invocation, room_id) do
-    room = Rooms.get_room_by_id!(room_id)
-
-    InvocationRunner.verify!(invocation, %{
-      "ui_revision" => room.ui_revision,
-      "source" => %{"present" => true, "sha256" => room.source_sha256},
-      "candidate" => %{
-        "present" => is_binary(room.candidate_markdown),
-        "sha256" => room.candidate_sha256
-      }
-    })
-  end
-
-  defp age!(invocation, hours) do
-    Patchbay.Repo.query!("UPDATE invocations SET started_at = $1 WHERE id = $2", [
-      DateTime.add(DateTime.utc_now(), -hours, :hour),
-      Ecto.UUID.dump!(invocation.id)
-    ])
   end
 
   # Every post is the paired agent's signed request, under a request key of

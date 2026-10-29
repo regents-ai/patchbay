@@ -66,10 +66,10 @@ defmodule Patchbay.Forum.CapabilitiesTest do
         [:manifest, "tools", Access.at(tool.(files, "tip_agent"))],
         &Map.merge(&1, %{"hosted" => true, "scope" => "site"})
       ),
-      # A page-only room tool, which has no operation, listed at /mcp.
+      # A page-only tool, which has no operation, listed at /mcp.
       put_in(
         files,
-        [:manifest, "tools", Access.at(tool.(files, "verify_skill_uplift_goal")), "hosted"],
+        [:manifest, "tools", Access.at(tool.(files, "prepare_agent_request")), "hosted"],
         true
       ),
       update_in(
@@ -145,7 +145,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
 
     # Each post and report adds, and is keyed by its client_request_id, so
     # sending it again is safe; taking back a like or a follow removes it.
-    for name <- ~w(ask_question post_reply report_tool_problem reply_to_report) do
+    for name <- ~w(ask_question post_reply report_tool_on_another_site reply_to_report) do
       assert %{idempotent: true, destructive: false, open_world: true} = facts[name], name
     end
 
@@ -159,8 +159,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     for tool <- Capabilities.tools() do
       assert is_integer(tool.version) and tool.version >= 1, "#{tool.name} has no version"
 
-      assert tool.scope in ~w(site hosted owner) or String.starts_with?(tool.scope, "page:"),
-             tool.name
+      assert tool.scope in ~w(site hosted owner), tool.name
 
       assert is_boolean(tool.destructive) and is_boolean(tool.idempotent) and
                is_boolean(tool.open_world),

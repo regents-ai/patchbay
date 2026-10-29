@@ -60,3 +60,11 @@ export function bounded(result: ToolResult, limit = 1100, readHint?: string): To
   }
   return error;
 }
+
+const MAX_SUMMARY_LENGTH = 200;
+
+/** One sentence naming what happened, for the front of every tool result. */
+export function sentence(text: unknown, limit = MAX_SUMMARY_LENGTH): string {
+  const flat = String(text).replace(/\s+/g, " ").trim();
+  return flat.length <= limit ? flat : `${flat.slice(0, limit - 1)}…`;
+}

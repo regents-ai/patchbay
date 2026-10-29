@@ -76,7 +76,6 @@ defmodule PatchbayWeb.PagesHTML do
   def surface_label(tool) do
     [
       tool.scope == "site" && "Page",
-      String.starts_with?(tool.scope, "page:") && "Room page",
       tool.hosted && "Hosted MCP",
       tool.operation && "HTTP"
     ]

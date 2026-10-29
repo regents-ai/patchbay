@@ -145,20 +145,6 @@ defmodule Patchbay.Forum do
       define(:record_jev_reading, action: :record)
     end
 
-    resource Patchbay.Forum.RepairAttempt do
-      define(:start_repair_attempt, action: :start)
-      define(:get_repair_attempt, action: :read, get_by: [:id])
-      define(:list_repair_attempts, action: :read)
-
-      define(:latest_repair_attempt_for_call,
-        action: :latest_for_invocation,
-        args: [:invocation_id]
-      )
-
-      define(:mark_repair_attempt_phase, action: :mark_phase, args: [:phase])
-      define(:record_repair_attempt_outcome, action: :record_outcome)
-    end
-
     resource(Patchbay.Forum.ModerationAction)
 
     resource(Patchbay.Forum.SolutionCard)

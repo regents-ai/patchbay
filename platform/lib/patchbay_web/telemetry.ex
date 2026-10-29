@@ -349,54 +349,8 @@ defmodule PatchbayWeb.Telemetry do
 
       # Patchbay Metrics
       #
-      # Tags and measurements are limited to the identifiers, digests, counters,
-      # and durations the emitters allow, so no Skill content or model output
-      # can reach a reporter.
-      counter("patchbay.webmcp.registered.count", tags: [:tool_generation]),
-      counter("patchbay.webmcp.unregistered.count", tags: [:tool_generation]),
-      counter("patchbay.webmcp.toolchange.count", tags: [:tool_generation]),
-      summary("patchbay.invocation.start.system_time",
-        tags: [:tool_generation],
-        unit: {:native, :millisecond}
-      ),
-      summary("patchbay.invocation.handler_stop.duration",
-        tags: [:tool_generation, :sample_used, :failure_code],
-        unit: {:native, :millisecond}
-      ),
-      summary("patchbay.invocation.handler_stop.input_tokens",
-        description: "Input tokens billed for the candidate generation"
-      ),
-      summary("patchbay.invocation.handler_stop.output_tokens",
-        description: "Output tokens billed for the candidate generation"
-      ),
-      summary("patchbay.verification.stop.duration",
-        tags: [:passed, :failure_code],
-        unit: {:native, :millisecond}
-      ),
-      summary("patchbay.verification.stop.ui_commit_ms",
-        tags: [:passed],
-        description: "Time between the handler returning and the visible state being verified"
-      ),
-      summary("patchbay.repair.model_stop.duration",
-        tags: [:sample_used],
-        unit: {:native, :millisecond},
-        description: "OpenAI latency for the repair plan"
-      ),
-      summary("patchbay.repair.model_stop.input_tokens",
-        description: "Input tokens billed for the repair plan"
-      ),
-      summary("patchbay.repair.model_stop.output_tokens",
-        description: "Output tokens billed for the repair plan"
-      ),
-      summary("patchbay.repair.canary_stop.duration",
-        tags: [:passed, :failure_code],
-        unit: {:native, :millisecond}
-      ),
-      summary("patchbay.publication.stop.duration",
-        tags: [:tool_generation],
-        unit: {:native, :millisecond}
-      ),
-      counter("patchbay.goal.verified.count", tags: [:tool_generation]),
+      # Tags and measurements are limited to the counters and durations the
+      # emitters allow, so no post or model output can reach a reporter.
       summary("patchbay.model_call.stop.prompt_tokens",
         tags: [:purpose, :outcome],
         description: "Prompt tokens OpenRouter billed for one question"

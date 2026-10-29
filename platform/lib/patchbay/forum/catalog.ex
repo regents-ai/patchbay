@@ -13,7 +13,7 @@ defmodule Patchbay.Forum.Catalog do
   """
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.{Capabilities, RoomMirror}
+  alias Patchbay.Forum.{Capabilities, OwnSite}
   alias Patchbay.Forum.Types.{EntityType, SupportRelationship, SupportStatus, ToolInventoryStatus}
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
 
@@ -78,7 +78,7 @@ defmodule Patchbay.Forum.Catalog do
   """
   @spec publish_own_tools!() :: [Patchbay.Forum.Tool.t()]
   def publish_own_tools! do
-    origin = RoomMirror.origin()
+    origin = OwnSite.origin()
     site = Forum.register_site!(origin)
     source_url = "https://" <> origin <> "/forum/capabilities"
     now = DateTime.utc_now()

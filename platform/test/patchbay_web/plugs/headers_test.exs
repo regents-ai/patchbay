@@ -1,13 +1,6 @@
 defmodule PatchbayWeb.Plugs.HeadersTest do
   use PatchbayWeb.ConnCase, async: true
 
-  alias Patchbay.Patchbay, as: Domain
-
-  setup do
-    room = Domain.create_seeded_room!("headers-#{System.unique_integer([:positive])}")
-    %{room: room}
-  end
-
   # An SVG opened directly runs as a page, so a static file says it may do nothing.
   test "a static image is served with the policy that lets it do nothing", %{conn: conn} do
     conn = get(conn, "/favicon.svg")
@@ -23,17 +16,8 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
     assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
   end
 
-  test "the room route sets the WebMCP permissions policy", %{conn: conn, room: room} do
-    conn = get(conn, ~p"/webmcp/rooms/#{room.slug}")
-
-    assert get_resp_header(conn, "permissions-policy") == ["tools=(self)"]
-  end
-
-  test "the room route sets a content security policy with no unsafe-eval", %{
-    conn: conn,
-    room: room
-  } do
-    conn = get(conn, ~p"/webmcp/rooms/#{room.slug}")
+  test "a page sets a content security policy with no unsafe-eval", %{conn: conn} do
+    conn = get(conn, ~p"/")
 
     assert [policy] = get_resp_header(conn, "content-security-policy")
 

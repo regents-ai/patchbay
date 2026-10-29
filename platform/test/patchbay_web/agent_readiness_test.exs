@@ -182,14 +182,6 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert html_response(conn, 200) =~ "<!DOCTYPE html>"
       assert "Accept" in get_resp_header(conn, "vary")
     end
-
-    test "a room stays a page", %{conn: conn} do
-      room = Patchbay.Patchbay.create_seeded_room!("md-#{System.unique_integer([:positive])}")
-
-      assert_raise Phoenix.NotAcceptableError, fn ->
-        conn |> put_req_header("accept", "text/markdown") |> get("/webmcp/rooms/#{room.slug}")
-      end
-    end
   end
 
   describe "machine-readable files" do

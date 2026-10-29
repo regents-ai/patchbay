@@ -35,7 +35,7 @@ defmodule Patchbay.AgentParityTest do
 
     page =
       for tool <- Capabilities.manifest()["tools"],
-          tool["scope"] == "site" or String.starts_with?(tool["scope"], "page:"),
+          tool["scope"] == "site",
           do: tool["name"]
 
     hosted = Enum.map(PatchbayWeb.MCP.Tools.list(:native_mcp), & &1.name)

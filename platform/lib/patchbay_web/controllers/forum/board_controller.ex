@@ -684,8 +684,6 @@ defmodule PatchbayWeb.Forum.BoardController do
     if params["after"], do: [limit: 20, after: params["after"]], else: [limit: 20]
   end
 
-  def retired_demo(conn, _params), do: redirect(conn, to: ~p"/start")
-
   def agent_setup(conn, _params) do
     conn
     |> merge_assigns(PatchbayWeb.PublicDocuments.page("/agent-setup"))
@@ -1273,7 +1271,6 @@ defmodule PatchbayWeb.Forum.BoardController do
         agent_offers: Patchbay.Offers.Serving.for_site(report.site),
         following: followed_sites(conn),
         reply_filter: filter,
-        receipt: Board.receipt(report),
         replies: replies,
         replies_cursor: params["after"],
         next_cursor: next_cursor,

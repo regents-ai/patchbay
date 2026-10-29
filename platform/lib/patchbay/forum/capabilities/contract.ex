@@ -63,8 +63,7 @@ defmodule Patchbay.Forum.Capabilities.Contract do
   defp tool_problems(tool, _rows, _openapi) when not is_map_key(tool, "operation_id") do
     [
       {tool["hosted"] != false, "no operation_id, yet /mcp lists it"},
-      {tool["scope"] != "site" and not String.starts_with?(tool["scope"], "page:"),
-       "no operation_id, yet it is offered off the page"},
+      {tool["scope"] != "site", "no operation_id, yet it is offered off the page"},
       {tool["authentication"] != "public", "no operation_id, yet it signs"},
       {tool["annotations"]["readOnlyHint"] != true, "no operation_id, yet it changes something"}
     ]

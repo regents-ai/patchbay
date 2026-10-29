@@ -373,7 +373,7 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
     # The readings take nothing from the day's questions for repairs and help.
     on_exit(fn -> Application.delete_env(:patchbay, :daily_model_calls) end)
     Application.put_env(:patchbay, :daily_model_calls, 1)
-    assert :ok = ModelBudget.allow(nil, :assist)
+    assert :ok = ModelBudget.allow()
   end
 
   test "with an odd limit for the day, the reading that reaches half of it says so",

@@ -1,7 +1,7 @@
 defmodule Patchbay.Patchbay.CanonicalJSON do
   @moduledoc """
-  Small, deterministic JSON encoder for the values that make up Patchbay
-  contracts and invocation evidence.
+  Small, deterministic JSON encoder for the values Patchbay digests: tool
+  contracts, reported arguments and request keys.
 
   The encoder deliberately accepts only JSON-shaped values. Atoms are written
   as strings so that the same contract can be hashed before and after it has

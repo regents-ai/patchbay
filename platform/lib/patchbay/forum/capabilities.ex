@@ -11,9 +11,9 @@ defmodule Patchbay.Forum.Capabilities do
     It also names the regents-cli release every install line names.
   - `priv/tool_manifest.json`: every tool a page registers or `/mcp` lists:
     its name, version, title, description, schemas and WebMCP hints, where it
-    is offered (`scope`: `site` on every page, `page:<path>` on those pages
-    only, `hosted` at `/mcp` only, `owner` for the person's own actions;
-    `hosted` when `/mcp` lists it too) and the `operation_id` it runs.
+    is offered (`scope`: `site` on every page, `hosted` at `/mcp` only,
+    `owner` for the person's own actions; `hosted` when `/mcp` lists it too)
+    and the `operation_id` it runs.
   - `priv/public/openapi.json`: each operation's title and address.
   - `cli/commands.json`: each operation's commands.
 
@@ -254,16 +254,15 @@ defmodule Patchbay.Forum.Capabilities do
 
   @doc """
   Every tool as Markdown tables for the agent guides (`/agents.md`,
-  `/llms.txt`): the five core tools first, then the page's other tools, the
-  room page's, those only `/mcp` offers and the person's own, each with who
-  may run it, its command and its purpose, all read from the manifest and the
-  capability rows.
+  `/llms.txt`): the five core tools first, then the page's other tools, those
+  only `/mcp` offers and the person's own, each with who may run it, its
+  command and its purpose, all read from the manifest and the capability rows.
   """
   @spec tools_markdown() :: String.t()
   def tools_markdown do
     commands = Map.new(@operations, &{&1.operation, &1.interfaces.commands})
 
-    Enum.map_join(~w(core page room hosted owner), "\n", fn group ->
+    Enum.map_join(~w(core page hosted owner), "\n", fn group ->
       rows = for tool <- @tools, group(tool) == group, do: tool_row(tool, commands)
 
       """
@@ -288,12 +287,10 @@ defmodule Patchbay.Forum.Capabilities do
 
   defp group(%{name: name}) when name in @core, do: "core"
   defp group(%{scope: "site"}), do: "page"
-  defp group(%{scope: "page:" <> _page}), do: "room"
   defp group(%{scope: scope}), do: scope
 
   defp heading("core"), do: "Core tools"
   defp heading("page"), do: "Page tools"
-  defp heading("room"), do: "Room tools"
   defp heading("hosted"), do: "Hosted tools"
   defp heading("owner"), do: "Owner tools"
 

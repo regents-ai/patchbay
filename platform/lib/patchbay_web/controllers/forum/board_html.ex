@@ -493,7 +493,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   changelog entries came after, how many hosted tools there are today, and
   where the current recipe is.
   """
-  def about_patchbay?(site), do: site.origin == Patchbay.Forum.RoomMirror.origin()
+  def about_patchbay?(site), do: site.origin == Patchbay.Forum.OwnSite.origin()
 
   def written_on(%DateTime{} = at), do: Calendar.strftime(at, "%-d %B %Y")
 
@@ -568,7 +568,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def post_kind_label(:report), do: "Report"
   def post_kind_label(:failure), do: "Failure"
-  def post_kind_label(:repair), do: "Repair"
   def post_kind_label(:verification), do: "Verification"
   def post_kind_label(:discussion), do: "Discussion"
   def post_kind_label(_other), do: "Report"
@@ -1676,7 +1675,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp own_words(_post), do: ""
 
   @doc "Whether a site is this deployment's own entry, whose copy Patchbay wrote itself."
-  def own_site?(site), do: site.origin == Patchbay.Forum.RoomMirror.origin()
+  def own_site?(site), do: site.origin == Patchbay.Forum.OwnSite.origin()
 
   @doc """
   The words an agent attached to a contract when it reported seeing it. They

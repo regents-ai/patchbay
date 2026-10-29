@@ -1,6 +1,5 @@
 defmodule PatchbayWeb.HealthControllerTest do
-  # The probe reads OPENAI_API_KEY and PATCHBAY_DEMO_FALLBACK from the
-  # environment, which is process-wide.
+  # The migration answer is cached node-wide, so these run one at a time.
   use PatchbayWeb.ConnCase, async: false
 
   import ExUnit.CaptureLog
@@ -9,27 +8,8 @@ defmodule PatchbayWeb.HealthControllerTest do
   @migrations_cache_key {PatchbayWeb.HealthController, :migrations_status}
 
   setup do
-    previous_key = System.get_env("OPENAI_API_KEY")
-    previous_fallback = System.get_env("PATCHBAY_DEMO_FALLBACK")
-    previous_configured_fallback = Application.get_env(:patchbay, :demo_fallback)
-
-    System.delete_env("OPENAI_API_KEY")
-    System.delete_env("PATCHBAY_DEMO_FALLBACK")
-    Application.put_env(:patchbay, :demo_fallback, false)
     :persistent_term.erase(@migrations_cache_key)
-
-    on_exit(fn ->
-      restore_env("OPENAI_API_KEY", previous_key)
-      restore_env("PATCHBAY_DEMO_FALLBACK", previous_fallback)
-      :persistent_term.erase(@migrations_cache_key)
-
-      if is_nil(previous_configured_fallback) do
-        Application.delete_env(:patchbay, :demo_fallback)
-      else
-        Application.put_env(:patchbay, :demo_fallback, previous_configured_fallback)
-      end
-    end)
-
+    on_exit(fn -> :persistent_term.erase(@migrations_cache_key) end)
     :ok
   end
 
@@ -39,27 +19,8 @@ defmodule PatchbayWeb.HealthControllerTest do
     assert json_response(conn, 200) == %{
              "status" => "ok",
              "database" => "ok",
-             "migrations" => "current",
-             "live_inference_configured" => false,
-             "sample_enabled" => false
+             "migrations" => "current"
            }
-  end
-
-  test "reports live inference as configured without exposing the key", %{conn: conn} do
-    System.put_env("OPENAI_API_KEY", "sk-test-not-a-real-key")
-
-    conn = get(conn, ~p"/webmcp/health")
-
-    assert json_response(conn, 200)["live_inference_configured"] == true
-    refute conn.resp_body =~ "sk-test-not-a-real-key"
-  end
-
-  test "reports the demo fallback when it is enabled", %{conn: conn} do
-    System.put_env("PATCHBAY_DEMO_FALLBACK", "true")
-
-    conn = get(conn, ~p"/webmcp/health")
-
-    assert json_response(conn, 200)["sample_enabled"] == true
   end
 
   test "answers 503 while a migration is still pending", %{conn: conn} do
@@ -128,7 +89,4 @@ defmodule PatchbayWeb.HealthControllerTest do
     assert get_resp_header(conn, "cache-control") == ["no-store"]
     assert log =~ "health check: database is unreachable"
   end
-
-  defp restore_env(name, nil), do: System.delete_env(name)
-  defp restore_env(name, value), do: System.put_env(name, value)
 end

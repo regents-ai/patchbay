@@ -269,14 +269,7 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.Plugs.CurrentProfile
   end
 
-  scope "/webmcp", PatchbayWeb do
-    pipe_through :browser
-
-    # Retire the public demo entry without deleting existing rooms or evidence.
-    get "/rooms/skill-uplift", Forum.BoardController, :retired_demo
-  end
-
-  # A room is a live page and nothing else; it does not answer as markdown.
+  # A live page and nothing else; it does not answer as markdown.
   # Always piped after `:browser`, which sets the secure headers.
   # sobelow_skip ["Config.Headers"]
   pipeline :html_only do
@@ -285,16 +278,6 @@ defmodule PatchbayWeb.Router do
 
   pipeline :no_store do
     plug :put_no_store
-  end
-
-  scope "/webmcp", PatchbayWeb.WebMCP do
-    pipe_through [:browser, :html_only]
-
-    live_session :webmcp,
-      on_mount: [{PatchbayWeb.CurrentProfile, :default}],
-      session: {PatchbayWeb.VisitLog, :session, []} do
-      live "/rooms/:slug", RoomLive.Show, :show
-    end
   end
 
   # The Offers pages are live: the market list searches as a visitor types,
@@ -389,7 +372,7 @@ defmodule PatchbayWeb.Router do
     end
   end
 
-  # A fix is watched as it happens, so its page is live like a room's.
+  # A fix is watched as it happens, so its page is live.
   scope "/", PatchbayWeb do
     pipe_through [:browser, :html_only]
 
@@ -508,14 +491,6 @@ defmodule PatchbayWeb.Router do
   scope "/", PatchbayWeb do
     pipe_through [:api, :paired_agent]
     post "/known-fixes/:id", KnownFixController, :report
-  end
-
-  scope "/api/agent/rooms/:slug", PatchbayWeb do
-    pipe_through [:api, :paired_agent]
-    post "/invocations", AgentRoomController, :invoke
-    post "/invocations/:id/observations", AgentRoomController, :observe
-    post "/invocations/:id/cancel", AgentRoomController, :cancel
-    post "/repair_requests", AgentRoomController, :repair
   end
 
   scope "/tools/account", PatchbayWeb do

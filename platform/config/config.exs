@@ -142,12 +142,10 @@ config :patchbay, Patchbay.Forum.BoardActivity, gc_interval: :timer.minutes(10)
 # Ethereum node holds up nothing else. Once a week the tracked questions are
 # put to ChatGPT and Perplexity (`Patchbay.AnswerWatch.WeeklyRun`), one
 # question at a time per engine (`Patchbay.AnswerWatch.Ask`), on a queue of
-# their own so a slow answer holds up nothing else. The Patchbay Agent repairs
-# its own tools on reports tied to calls it ran (`Patchbay.Forum.Report`'s
-# `:repair_by_agent`), one repair at a time. Base is asked whether each bounty
-# is confirmed and whether it has been refunded (`:read_escrow_credit` and
-# `:read_escrow_refund`) on a queue of their own, so a slow Base node holds up
-# nothing else. Each minute the producers of the figures every visitor sees
+# their own so a slow answer holds up nothing else. Base is asked whether each
+# bounty is confirmed and whether it has been refunded (`:read_escrow_credit`
+# and `:read_escrow_refund`) on a queue of their own, so a slow Base node holds
+# up nothing else. Each minute the producers of the figures every visitor sees
 # alike are asked to read again (`Patchbay.SharedReading.Heal`, on `default`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
@@ -172,7 +170,6 @@ config :patchbay, Oban,
     notifications: 5,
     answer_watch: 2,
     outside_calls: 2,
-    patchbay_agent: 1,
     escrow_reads: 2,
     # The template runs 5 here; Patchbay's only job on it is the minute's
     # SharedReading.Heal, which sends one message, so one is enough.
@@ -220,7 +217,6 @@ config :patchbay,
     Patchbay.Offers,
     Patchbay.CreditsHelp,
     Patchbay.Points,
-    Patchbay.Patchbay,
     Patchbay.WalletBench,
     Patchbay.Accounts,
     Patchbay.AnswerWatch

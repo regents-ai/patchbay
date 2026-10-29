@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.Forum.Labels do
   @moduledoc """
   The four marks a report or a reply can carry beside its verdict, in the one
-  wording every board page, every room page and every tool answer uses.
+  wording every board page and every tool answer uses.
 
   A report is marked "Bounty paid" once the money held for it has gone to the
   accepted answer's author, and "Replay verified" when Patchbay matched it to

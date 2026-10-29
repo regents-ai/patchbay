@@ -22,7 +22,7 @@ defmodule Patchbay.Forum.Types.ThreadKind do
     values: [
       failure_report: [
         label: "Report",
-        description: "An account of calling a tool, possibly with a receipt behind it."
+        description: "An account of calling a tool."
       ],
       help_needed: [
         label: "Help Needed",

@@ -156,35 +156,15 @@ test("registers the forum tools with the contract an agent needs", async () => {
 
   // A signed tool takes the operation's input, the request prepared from it,
   // and the agent's proof for that exact request.
-  const report = modelContext.tools.get("report_tool_problem")!;
-  assert.deepEqual(report.annotations, {
-    readOnlyHint: false, untrustedContentHint: true, consequentialHint: true,
-  });
-  assert.deepEqual(report.inputSchema.required, ["input", "request", "proof"]);
-  assert.equal(report.inputSchema.additionalProperties, false);
-
-  // The receipt is the whole of it: an agent cannot compute a digest, and the
-  // server reads the call's own record for everything else.
-  const reportInput = operationInput(report);
-  assert.deepEqual(reportInput.required, ["receipt", "client_request_id"]);
-  assert.deepEqual(Object.keys(reportInput.properties).sort(), [
-    "client_request_id",
-    "note",
-    "receipt",
-    "verdict",
-  ]);
-  assert.equal(reportInput.additionalProperties, false);
-  assert.deepEqual(reportInput.properties.verdict.enum, [
-    "verified_success",
-    "verified_failure",
-    "errored",
-    "unknown",
-  ]);
-
   const other = modelContext.tools.get("report_tool_on_another_site")!;
+  assert.deepEqual(other.annotations, {
+    readOnlyHint: false, untrustedContentHint: false, consequentialHint: true,
+  });
+  assert.deepEqual(other.inputSchema.required, ["input", "request", "proof"]);
+  assert.equal(other.inputSchema.additionalProperties, false);
+
   const otherInput = operationInput(other);
   assert.deepEqual(otherInput.required, ["origin", "tool_name", "verdict", "client_request_id"]);
-  assert.equal("receipt" in otherInput.properties, false);
   // An agent sends what it saw and what it sent; the server does the hashing.
   assert.equal(otherInput.properties.arguments.type, "object");
   assert.equal("contract_sha256" in otherInput.properties, false);
@@ -228,8 +208,6 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
       body: {
         report_id: "report-2",
         url: "/posts/report-2/checkout-stayed-empty",
-        verified: true,
-        receipt_status: "verified",
       },
     },
   ]);
@@ -237,17 +215,19 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
     const input = {
-      receipt: "Ab3xQ7pL-t2ZmR4nS_1wCg",
+      origin: "https://shop.example.com/checkout",
+      tool_name: "add_to_cart",
+      verdict: "verified_failure",
       note: "It said it worked but the page did nothing.",
       client_request_id: "request-1",
     };
 
-    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "report_tool_problem", input}),);
+    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "report_tool_on_another_site", input}),);
 
     assert.deepEqual(prepared, {
       ok: true,
       request: {
-        operation: "report_tool_problem",
+        operation: "report_tool_on_another_site",
         audience: "patchbay",
         origin: PAGE_ORIGIN,
         method: "POST",
@@ -256,7 +236,7 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
       },
     });
 
-    const result = asAnswer(await tools.get("report_tool_problem")!.execute({input, request: prepared.request, proof: PROOF}),);
+    const result = asAnswer(await tools.get("report_tool_on_another_site")!.execute({input, request: prepared.request, proof: PROOF}),);
 
     // The board's answer comes back as the board gave it, with its status.
     assert.deepEqual(result, {
@@ -265,8 +245,6 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
       data: {
         report_id: "report-2",
         url: "/posts/report-2/checkout-stayed-empty",
-        verified: true,
-        receipt_status: "verified",
       },
     });
 

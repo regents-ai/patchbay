@@ -1,63 +1,20 @@
 defmodule Patchbay.Config do
   @moduledoc """
-  Runtime switches for the two generation modes.
+  Runtime limits on model calls and post readings, and the identity Patchbay's
+  own replies are written under.
 
-  Both are read on demand rather than at boot, so a machine picks them up from
-  the environment it was started with. The API key's value never leaves this
-  module.
+  The limits are read on demand rather than at boot, so a machine picks them
+  up from the environment it was started with.
   """
-
-  @doc """
-  Whether the deterministic checked-in fallback may stand in for live inference.
-  """
-  def demo_fallback? do
-    Application.get_env(:patchbay, :demo_fallback, false) or
-      System.get_env("PATCHBAY_DEMO_FALLBACK") in ["true", "1"]
-  end
-
-  @doc """
-  Whether this server process holds an OpenAI key.
-  """
-  def live_inference_configured? do
-    key = System.get_env("OPENAI_API_KEY")
-    is_binary(key) and key != ""
-  end
 
   @default_daily_model_calls 2000
   @default_daily_free_fixes 200
   @default_daily_post_readings 30_000
-  @default_room_daily_model_calls 30
-  @default_room_cooldown_seconds 20
-  @default_agent_daily_repairs 50
 
   # The fixed identity every Patchbay Agent reply is written under. It is a
   # constant rather than a stored row so a reply can be recognised as Patchbay's
   # own from the reply alone, on any page that renders one.
   @agent_session_id "00000000-0000-4a70-8000-000000000001"
-
-  @doc """
-  Whether Patchbay repairs its own tools when an agent reports one as broken.
-
-  On unless the deployment says otherwise, so turning the loop off is a
-  deliberate act: `PATCHBAY_AGENT_REPAIRS=false`.
-  """
-  def agent_repairs_enabled? do
-    case Application.get_env(:patchbay, :agent_repairs) do
-      value when is_boolean(value) -> value
-      _ -> System.get_env("PATCHBAY_AGENT_REPAIRS") not in ["false", "0"]
-    end
-  end
-
-  @doc """
-  How many repairs Patchbay may make on its own in any rolling 24 hours.
-  """
-  def agent_daily_repairs do
-    whole_number(
-      :agent_daily_repairs,
-      "PATCHBAY_AGENT_DAILY_REPAIRS",
-      @default_agent_daily_repairs
-    )
-  end
 
   @doc """
   The identity Patchbay's own replies are posted under.
@@ -78,7 +35,7 @@ defmodule Patchbay.Config do
   @doc """
   How many posts the whole deployment sends to be read in 24 hours before
   posting stops until readings fall out of that window. It is counted apart
-  from `daily_model_calls/0`, so a busy board never turns off repairs or help.
+  from `daily_model_calls/0`, so a busy board never turns off fixes or help.
   """
   def daily_post_readings do
     whole_number(
@@ -94,28 +51,6 @@ defmodule Patchbay.Config do
   """
   def daily_free_fixes do
     whole_number(:daily_free_fixes, "PATCHBAY_DAILY_FREE_FIXES", @default_daily_free_fixes)
-  end
-
-  @doc """
-  How many live model calls one room may make in 24 hours.
-  """
-  def room_daily_model_calls do
-    whole_number(
-      :room_daily_model_calls,
-      "PATCHBAY_ROOM_DAILY_MODEL_CALLS",
-      @default_room_daily_model_calls
-    )
-  end
-
-  @doc """
-  How long a room waits between candidate generations.
-  """
-  def room_cooldown_seconds do
-    whole_number(
-      :room_cooldown_seconds,
-      "PATCHBAY_ROOM_COOLDOWN_SECONDS",
-      @default_room_cooldown_seconds
-    )
   end
 
   # A limit set to something that is not a whole number is treated as unset, so

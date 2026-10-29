@@ -80,7 +80,7 @@ defmodule Patchbay.Assist.Work do
     }
 
     _finished =
-      case ModelBudget.allow(nil, :assist) do
+      case ModelBudget.allow() do
         :ok ->
           {run, budget} = known_fix(run, budget)
           discover(run, budget)

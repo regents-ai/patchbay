@@ -1,4 +1,4 @@
-# Fly.io configuration for the public Patchbay demo room.
+# Fly.io configuration for Patchbay.
 #
 # Rename `app` if you create the application under a different name, and set
 # PHX_HOST to the matching hostname. Deployment steps are in docs/DEPLOY.md.
@@ -45,7 +45,7 @@ kill_timeout = "60s"
   force_https = true
   auto_start_machines = true
   auto_stop_machines = "stop"
-  # The demo URL is public, so the single machine stays running instead of
+  # The site is public, so the single machine stays running instead of
   # cold-starting on a visitor's first request.
   min_machines_running = 1
   processes = ["app"]

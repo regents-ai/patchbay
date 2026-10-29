@@ -10,7 +10,6 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   alias Patchbay.Forum.{Capabilities, Catalog}
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
-  alias Patchbay.Patchbay, as: Rooms
 
   @contract String.duplicate("a", 64)
   @other_contract String.duplicate("b", 64)
@@ -184,17 +183,17 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
 
     test "a tool row opens that tool's page", %{conn: conn} do
-      Rooms.create_seeded_room!("dir-tool-row")
+      "tool-row.example" |> site!() |> tool!(%{name: "checkout"})
 
-      site = inventory(conn, ~p"/patchbay.help")
-      assert site =~ ~s(href="/patchbay.help/tools/uplift_current_skill_v1")
+      site = inventory(conn, ~p"/tool-row.example")
+      assert site =~ ~s(href="/tool-row.example/tools/checkout")
 
       tool =
         conn
-        |> get(~p"/patchbay.help/tools/uplift_current_skill_v1")
+        |> get(~p"/tool-row.example/tools/checkout")
         |> html_response(200)
 
-      assert tool =~ "uplift_current_skill_v1"
+      assert tool =~ "checkout"
       assert tool =~ ~s(id="pb-tool-posts")
     end
 

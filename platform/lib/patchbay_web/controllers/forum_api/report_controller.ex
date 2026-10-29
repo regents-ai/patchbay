@@ -11,13 +11,10 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   storage unchecked: every value goes through the forum's own actions, and what
   comes back out is quoted as text a stranger wrote.
 
-  A report comes one of two ways. A report about a tool on this page quotes the
-  receipt Patchbay handed back for that call and carries nothing else: the site,
-  the tool, its contract version and the arguments are all read from Patchbay's
-  own record of the call. A report about a tool on any other site names that
-  site and tool itself and sends the arguments and the description text it saw
-  as they were; the forum digests them. No caller ever computes a digest,
-  because a language model cannot, and an invented one would be worthless.
+  A report names the site and tool it is about and sends the arguments and the
+  description text it saw as they were; the forum digests them. No caller ever
+  computes a digest, because a language model cannot, and an invented one would
+  be worthless.
 
   A paid priority report is filed by its payment, not here, but it is read
   here: a search lists the paid ones first, and every entry says what money
@@ -32,8 +29,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostingCheck
-  alias Patchbay.Forum.ReceiptCheck
-  alias Patchbay.Forum.RoomMirror
   alias Patchbay.Offers.Disclosure
   alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
@@ -53,8 +48,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   @doc """
   Files `actor`'s report about a tool, under `session_id` (its pairing), as
-  `POST /forum/reports` and the `report_tool_problem` and
-  `report_tool_on_another_site` tools do: `{:posted, body, post}` for a new
+  `POST /forum/reports` and the `report_tool_on_another_site` tool do: `{:posted, body, post}` for a new
   report, `{:repeated, body}` for one this request key already filed, or
   `{:refused, failure}`, which `refusal/1` words.
   """
@@ -68,12 +62,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       {outcome, report} ->
         written(
           outcome,
-          %{
-            report_id: report.id,
-            url: PostAddress.path(report),
-            verified: report.verified,
-            receipt_status: report.receipt_status
-          },
+          %{report_id: report.id, url: PostAddress.path(report)},
           %{operation: :report, site_id: report.site_id, report_id: report.id, reply_id: nil}
         )
     end
@@ -379,11 +368,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # have opened a board and a thread for it, and could open unlimited empty ones
   # by always sending a bad report.
   #
-  # A receipt is offered instead of all of that, never alongside it: the two
-  # cannot disagree if only one of them is ever read.
-  #
-  # Both are read before they are published and written under the poster's
-  # hourly share, which `PostingBudget` counts and locks in the same
+  # It is read before it is published and written under the poster's hourly
+  # share, which `PostingBudget` counts and locks in the same
   # transaction as the write.
   defp filed_report(session_id, %Patchbay.Agents.Actor{} = actor, params) do
     with {:ok, request} <- request(params),
@@ -397,14 +383,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   # landed while this one was being read, or the report itself.
   defp file_once(session_id, request, report) do
     with :new <- sent_before(:report, session_id, request), do: Ash.create(report)
-  end
-
-  defp filing(session_id, actor, %{"receipt" => receipt} = params) do
-    with :ok <- receipt_report_fields_only(params),
-         {:ok, call} <- reported_call(receipt, session_id) do
-      {:ok, PostingCheck.receipt_report(RoomMirror.origin(), call.tool_revision.name, params),
-       fn -> file_receipt_report(session_id, actor, call, params) end}
-    end
   end
 
   defp filing(session_id, actor, params) do
@@ -454,79 +432,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
       {:ok, other_site_filing(tool, session_id, actor, draft, params)}
     end
   end
-
-  defp file_receipt_report(session_id, actor, call, params) do
-    with {:ok, site} <- Forum.register_site(RoomMirror.origin()),
-         {:ok, tool} <- observe_called_tool(site, call) do
-      {:ok, call_filing(tool, session_id, actor, call, params)}
-    end
-  end
-
-  # The whole of a receipt-backed report. Anything else a caller sends is a fact
-  # it would be claiming about a call Patchbay already holds the record of, so
-  # it is refused rather than quietly dropped.
-  @receipt_report_fields ~w(receipt verdict note client_request_id)
-
-  defp receipt_report_fields_only(params) do
-    case params
-         |> Map.keys()
-         |> Kernel.--(@receipt_report_fields ++ ["request_digest"])
-         |> Enum.sort() do
-      [] -> :ok
-      unknown -> {:error, {:invalid, Enum.map(unknown, &unknown_with_receipt/1)}}
-    end
-  end
-
-  defp unknown_with_receipt(field) do
-    "#{field}: a report that quotes a receipt does not take #{field}. " <>
-      "Patchbay reads the site, the tool, its version and the arguments from its own record of that call."
-  end
-
-  defp reported_call(receipt, session_id) do
-    case ReceiptCheck.resolve(receipt, session_id) do
-      {:ok, invocation} -> {:ok, invocation}
-      {:error, status} -> {:error, {:receipt, status}}
-    end
-  end
-
-  defp observe_called_tool(site, call) do
-    call.tool_revision
-    |> RoomMirror.board_contract()
-    |> Map.merge(%{
-      site_id: site.id,
-      contract_sha256: call.tool_contract_sha256,
-      address: RoomMirror.address()
-    })
-    |> Forum.observe_tool()
-  end
-
-  # Only the words are the agent's. Every fact comes from the logged call, which
-  # the forum's own write action reads again before it stamps the report. The
-  # author is the actor, never a field: the action reads the signed-in profile
-  # off the request and nothing a caller sends can name one.
-  defp call_filing(tool, session_id, actor, call, params) do
-    Forum.changeset_to_file_report(
-      %{
-        tool_id: tool.id,
-        browser_session_id: session_id,
-        arguments_sha256: call.arguments_sha256,
-        handler_result: call.handler_result,
-        verdict: params["verdict"] || recorded_verdict(call),
-        failure_code: call.failure_code && to_string(call.failure_code),
-        note: params["note"],
-        receipt: call.receipt,
-        client_request_id: params["client_request_id"],
-        request_digest: params["request_digest"]
-      },
-      actor: actor
-    )
-  end
-
-  defp recorded_verdict(%{effective_status: status})
-       when status in [:verified_success, :verified_failure, :errored],
-       do: status
-
-  defp recorded_verdict(_call), do: :unknown
 
   # A reply from the page's tools and one from the form on the report page
   # are read the same way and draw on the same hourly share; `PostingBudget`
@@ -660,15 +565,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
      )}
   end
 
-  # A receipt that does not hold up is answered with the reason and the one
-  # thing to do about it, because an agent can only act on words.
-  def refusal({:receipt, status}) do
-    {:unprocessable_entity,
-     ApiError.body("receipt_#{status}", receipt_problem(status), receipt_hint(status), %{
-       receipt_status: status
-     })}
-  end
-
   def refusal({:solution_refused, reason, words}) do
     {solution_status(reason), ApiError.body(Atom.to_string(reason), words, solution_hint(reason))}
   end
@@ -722,29 +618,4 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp solution_hint(:award_pending),
     do: "Your person accepts the answer on the thread's page instead."
-
-  defp receipt_problem(:missing), do: "This report did not carry a receipt."
-  defp receipt_problem(:unknown), do: "That receipt does not name a call Patchbay ran."
-
-  defp receipt_problem(:wrong_identity),
-    do: "That receipt was handed to a different browser than the one reporting."
-
-  defp receipt_problem(:stale), do: "That call is more than a day old."
-  defp receipt_problem(:spent), do: "This receipt already backs a report."
-
-  defp receipt_hint(:missing),
-    do: "Send the patchbay_receipt value exactly as it appeared in the tool result."
-
-  defp receipt_hint(:unknown),
-    do:
-      "Send the patchbay_receipt value exactly as it appeared in the tool result, with nothing added or shortened."
-
-  defp receipt_hint(:wrong_identity),
-    do: "Report the call from the same page and browser that made it."
-
-  defp receipt_hint(:stale),
-    do: "Call the tool again on this page and report the receipt from that newer result."
-
-  defp receipt_hint(:spent),
-    do: "Read that report on the board, and reply to it if you saw the same thing."
 end

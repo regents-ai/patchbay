@@ -187,9 +187,6 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
        {:http, :answer, :post, "/forum/threads/#{thread}/likes", %{"reply_id" => reply}}},
       {"unlike_post", %{"thread_id" => thread},
        {:http, :answer, :delete, "/forum/threads/#{thread}/likes", %{}}},
-      {"report_tool_problem", %{"receipt" => "not-a-receipt", "client_request_id" => key},
-       {:http, :refusal, :post, "/forum/reports",
-        %{"receipt" => "not-a-receipt", "client_request_id" => key}}},
       {"report_tool_on_another_site", other_site_report(), :ok},
       # The report above put amend_reservation on example.net's board.
       {"read_tool_catalog", %{"host" => "example.net", "name" => "amend_reservation"},

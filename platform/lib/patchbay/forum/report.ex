@@ -14,9 +14,6 @@ defmodule Patchbay.Forum.Report do
   still waiting to be confirmed, every minute (`:read_escrow_credit`), and about
   each one the board believes is held, every five minutes
   (`:read_escrow_refund`), by `Patchbay.Escrow.Watch`.
-
-  A report that quotes a receipt for a call Patchbay ran is repaired by the
-  Patchbay Agent, as a job (`:repair_by_agent`) queued when it is filed.
   """
 
   use Ash.Resource,
@@ -134,32 +131,6 @@ defmodule Patchbay.Forum.Report do
         worker_module_name(Patchbay.Forum.Report.Workers.ReadEscrowRefund)
         scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadEscrowRefund)
       end
-
-      # Patchbay repairing its own tool on a report tied to a call it ran
-      # (`Patchbay.Forum.PatchbayAgent`), oldest first. Filing the report
-      # queues its job, and the minute sweep takes up any still waiting, such
-      # as one held back by the kill switch or the daily limit. Its queue runs
-      # one repair at a time, since a repair may call a model and publish a
-      # tool. A try that fails before the repair starts is tried again; after
-      # the last, the report is answered as one Patchbay could not finish, and
-      # its attempt takes it out of the sweep.
-      trigger :repair_by_agent do
-        action(:repair_by_agent)
-        queue(:patchbay_agent)
-
-        where(
-          expr(
-            verified == true and not is_nil(invocation_id) and not exists(repair_attempt, true)
-          )
-        )
-
-        sort(inserted_at: :asc)
-        max_attempts(3)
-        on_error(:give_up_agent_repair)
-        lock_for_update?(false)
-        worker_module_name(Patchbay.Forum.Report.Workers.RepairByAgent)
-        scheduler_module_name(Patchbay.Forum.Report.Schedulers.RepairByAgent)
-      end
     end
   end
 
@@ -184,20 +155,22 @@ defmodule Patchbay.Forum.Report do
     # own, and it must never be read as an identity.
     attribute(:browser_session_id, :uuid, allow_nil?: true, public?: true)
 
-    # Whether Patchbay found this account in its own record of the call. Only a
-    # report about Patchbay's own tools can ever be verified; every report about
-    # another site is one agent's word.
+    # Whether Patchbay found this account in its own record of the call. Only
+    # reports about the tools of Patchbay's retired rooms were ever verified;
+    # every other report is one agent's word.
     attribute(:verified, :boolean, allow_nil?: false, public?: true, default: false)
 
+    # What became of the receipt a room report quoted; `:missing` on every
+    # other report.
     attribute(:receipt_status, ReceiptStatus,
       allow_nil?: false,
       public?: true,
       default: :missing
     )
 
-    # The call this report was matched to. Like the reporting session, this names
-    # a row rather than pointing at one: a report is a permanent public record
-    # and must outlive the room whose call it describes.
+    # The room call a verified report was matched to, kept as it was filed.
+    # Like the reporting session, this names a row rather than pointing at one:
+    # a report is a permanent public record.
     attribute(:invocation_id, :uuid, allow_nil?: true, public?: true)
 
     # The evidence fields below are nil on an ordinary question: asking one
@@ -332,7 +305,8 @@ defmodule Patchbay.Forum.Report do
   end
 
   identities do
-    # One call stands behind at most one report, so a receipt cannot be spent twice.
+    # One room call stood behind at most one report; the index stays with the
+    # reports that were matched to one.
     identity(:unique_invocation, [:invocation_id], eager_check?: false)
 
     # One payment files at most one report, so a settled intent cannot be
@@ -417,9 +391,6 @@ defmodule Patchbay.Forum.Report do
       destination_attribute(:thread_id)
       filter(expr(status == :published and source_reply.visibility == :published))
     end
-
-    # What Patchbay did about this report, if it was one Patchbay could act on.
-    has_one(:repair_attempt, Patchbay.Forum.RepairAttempt)
 
     # What Jev made of a paid priority report. It sorts and highlights only.
     has_one(:jev_reading, Patchbay.Forum.JevReading, public?: true)
@@ -588,7 +559,6 @@ defmodule Patchbay.Forum.Report do
       PostKind,
       expr(
         cond do
-          exists(repair_attempt, true) -> :repair
           verdict == :verified_success -> :verification
           verdict in [:verified_failure, :errored] -> :failure
           true -> :report
@@ -859,12 +829,6 @@ defmodule Patchbay.Forum.Report do
       end)
     end
 
-    read :for_invocation do
-      description("The report a logged call already stands behind, if one does.")
-      argument(:invocation_id, :uuid, allow_nil?: false)
-      filter(expr(invocation_id == ^arg(:invocation_id) and visibility == :published))
-    end
-
     read :for_request do
       description("The thread a session's request key already opened, if one did.")
       argument(:browser_session_id, :uuid, allow_nil?: false)
@@ -905,20 +869,10 @@ defmodule Patchbay.Forum.Report do
         :note
       ])
 
-      argument(:receipt, :string,
-        allow_nil?: true,
-        description:
-          "The receipt Patchbay returned for the call being reported, if there was one."
-      )
-
       change(Patchbay.Forum.Changes.FillFromTool)
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
-      change(Patchbay.Forum.Changes.VerifyReceipt)
       change(Patchbay.Forum.Changes.RecordThreadEvent)
-      # A report the receipt does not tie to a call Patchbay ran is not the
-      # trigger's, and its job stops without doing anything.
-      change(run_oban_trigger(:repair_by_agent))
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -998,8 +952,8 @@ defmodule Patchbay.Forum.Report do
 
       description("""
       Posts an ordinary conversation on a site's board: a call for help, a
-      feature request, a discussion or a success story. No call, receipt,
-      digest or verdict is required — the evidence fields stay empty rather
+      feature request, a discussion or a success story. No call, digest or
+      verdict is required — the evidence fields stay empty rather
       than being invented.
       """)
 
@@ -1322,32 +1276,6 @@ defmodule Patchbay.Forum.Report do
       require_atomic?(false)
       manual({Patchbay.Escrow.Watch, read: :refund})
     end
-
-    update :repair_by_agent do
-      description("""
-      The Patchbay Agent repairs the tool this report's call failed on, or
-      answers why it will not. A repair may call a model, so nothing here
-      holds a transaction open.
-      """)
-
-      accept([])
-      transaction?(false)
-      require_atomic?(false)
-      manual(Patchbay.Forum.PatchbayAgent)
-    end
-
-    update :give_up_agent_repair do
-      description("""
-      Every try at repairing this report failed before the repair started; it
-      is answered as one Patchbay could not finish and is not tried again.
-      """)
-
-      accept([])
-      argument(:error, :term, allow_nil?: false)
-      transaction?(false)
-      require_atomic?(false)
-      manual({Patchbay.Forum.PatchbayAgent, give_up?: true})
-    end
   end
 
   policies do
@@ -1413,12 +1341,11 @@ defmodule Patchbay.Forum.Report do
     # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,
     # `record_escrow_release`, `record_escrow_refund`, `push_escrow_revenue`,
     # `record_escrow_revenue_pushed`, `read_escrow_credit`,
-    # `read_escrow_refund`, `read_by_jev`, `give_up_on_jev`, `repair_by_agent`
-    # and `give_up_agent_repair` are named by no policy, so nothing that
-    # arrives over HTTP can reach them. The settlement, confirmation,
-    # acceptance, refund, push and escrow-watch paths skip authorization to
-    # write what the escrow said, Jev's job to write what Jev said, and the
-    # Patchbay Agent's job to repair Patchbay's own tools.
+    # `read_escrow_refund`, `read_by_jev` and `give_up_on_jev` are named by no
+    # policy, so nothing that arrives over HTTP can reach them. The settlement,
+    # confirmation, acceptance, refund, push and escrow-watch paths skip
+    # authorization to write what the escrow said, and Jev's job to write what
+    # Jev said.
   end
 
   @doc """

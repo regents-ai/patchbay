@@ -5,17 +5,13 @@ defmodule PatchbayWeb.HealthController do
   as on every Regent site, and `/webmcp/health` in JSON for deploy checks.
 
   `/webmcp/health` answers 200 only when the database responds and every
-  migration has run. Everything else it reports is operational context: which
-  generation mode this machine is in. The API key is never read into the
-  response. The commit the running release was built from is at
+  migration has run. The commit the running release was built from is at
   `/capabilities.json`.
   """
 
   use PatchbayWeb, :controller
 
   require Logger
-
-  alias Patchbay.Config
 
   # A release carries a fixed set of migration files, so "everything has run"
   # cannot become false again while this node is up. Caching it keeps a polled
@@ -61,9 +57,7 @@ defmodule PatchbayWeb.HealthController do
     |> json(%{
       status: if(healthy?, do: "ok", else: "error"),
       database: database,
-      migrations: migrations,
-      live_inference_configured: Config.live_inference_configured?(),
-      sample_enabled: Config.demo_fallback?()
+      migrations: migrations
     })
   end
 

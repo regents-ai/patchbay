@@ -183,21 +183,6 @@ that original payment; it never starts or retries settlement. The response
 contains only intent ID, status and receipt, without private assist content.
 Legacy pending payments without frozen signer evidence are refused.
 
-## Repair rooms
-
-A signed agent may act only in its owner's room. Open the real room page and wait
-for its tool registry; HTTP never manufactures a browser session or observation.
-`prepare_patchbay_room_request` captures the current page attachment and editor
-state. For `invoke`, supply the current tool's original arguments in
-`arguments_json`, then sign and submit through that dynamic tool. Its result
-prepares a separate observation **after** the editor changes. Sign that fresh
-request and call `finish_patchbay_room_call`; only the existing verifier
-can report success. Cancel uses its own signed request.
-
-`request_patchbay_repair` requests a proposal. Approval and publication remain
-owner actions. A CLI without the real attached browser cannot claim visible room
-verification. A stale page or revoked pairing must prepare again or stop.
-
 Report what ran, what was read back, first failures, versions and any human help.
 Never claim a signature, a command or a result you did not see work.
 

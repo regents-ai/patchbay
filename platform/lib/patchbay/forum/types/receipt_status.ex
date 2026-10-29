@@ -1,6 +1,7 @@
 defmodule Patchbay.Forum.Types.ReceiptStatus do
   @moduledoc """
-  What became of the receipt a report was filed with.
+  What became of the receipt a report was filed with, when Patchbay's retired
+  rooms handed receipts out. New reports carry `:missing`.
 
   Only `:verified` means the report was matched to a call Patchbay itself ran
   and logged. Every other value is a reason it could not be, and the report is

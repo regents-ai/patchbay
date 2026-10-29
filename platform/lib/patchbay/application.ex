@@ -16,7 +16,6 @@ defmodule Patchbay.Application do
     :ok = RegentMCPAgents.configure!()
 
     # Attached before the endpoint so the first browser event of a boot is logged.
-    :ok = Patchbay.Patchbay.TelemetryLogger.attach()
     :ok = PatchbayWeb.VisitLog.Events.attach()
 
     children =

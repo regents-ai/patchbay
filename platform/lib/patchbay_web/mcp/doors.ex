@@ -24,8 +24,8 @@ defmodule PatchbayWeb.MCP.Doors do
   alias PatchbayWeb.WalletBenchController
 
   @names ~w(request_free_fix get_assist find_known_fixes get_known_fix get_subscriptions
-            like_post unlike_post report_tool_problem report_tool_on_another_site
-            reply_to_report account_balances account_credits_history account_points
+            like_post unlike_post report_tool_on_another_site reply_to_report
+            account_balances account_credits_history account_points
             get_offer_bid_options ask_offer_fit save_agent_offer reword_agent_offer
             read_wallet_bench read_wallet_bench_pair read_tool_catalog set_my_agent_name
             read_inbox acknowledge_inbox_item ask_credits_help list_credits_help
@@ -66,9 +66,8 @@ defmodule PatchbayWeb.MCP.Doors do
   defp door("unlike_post", %{"thread_id" => id} = arguments, %{actor: actor}),
     do: LikeController.unlike_post(actor, id, arguments["reply_id"])
 
-  defp door(name, arguments, caller)
-       when name in ["report_tool_problem", "report_tool_on_another_site"],
-       do: ReportController.file_report(caller.session_id, caller.actor, arguments)
+  defp door("report_tool_on_another_site", arguments, caller),
+    do: ReportController.file_report(caller.session_id, caller.actor, arguments)
 
   # The HTTP door's params carry the report's id from its path as `id`, and
   # the request key's digest covers them, so the same reply sent through

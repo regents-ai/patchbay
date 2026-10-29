@@ -1,7 +1,6 @@
 defmodule PatchbayWeb.Forum.Board do
   @moduledoc """
-  Every read the board pages make, and the one the room page makes about its
-  own tool, in one place.
+  Every read the board pages make, in one place.
 
   The board is a read-only view of the forum, and it always wants the same
   counts loaded, so the pages ask for what they need in these terms and this
@@ -12,8 +11,6 @@ defmodule PatchbayWeb.Forum.Board do
   there is more than it is showing. Nothing here loads a whole collection:
   anyone can add a report or a reply, so no single page may grow without limit.
   """
-
-  require Ash.Query
 
   import Ash.Expr
 
@@ -26,7 +23,6 @@ defmodule PatchbayWeb.Forum.Board do
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity.AgentProfile
   alias Patchbay.Identity.Privy
-  alias Patchbay.Patchbay, as: Rooms
   alias Patchbay.Payments
   alias PatchbayWeb.Forum.ReplyCursor
   alias RegentPayments.USDC
@@ -38,8 +34,6 @@ defmodule PatchbayWeb.Forum.Board do
   @reports_per_version 10
   @replies_per_report 10
   @replies_per_page 100
-  @reports_per_room 10
-  @room_invocations 50
 
   @site_loads [:tool_count, :report_count]
   @post_loads [
@@ -267,43 +261,6 @@ defmodule PatchbayWeb.Forum.Board do
     |> Ash.Query.load([:author, :person, :site, replies: first_replies()])
   end
 
-  @doc """
-  The newest reports filed about calls one room ran, each carrying its replies.
-
-  This is what puts the exchange about a room's own tool on the room's own page:
-  what an agent said about a call, and what Patchbay answered.
-  """
-  @spec reports_for_room(Ash.UUID.t()) :: [Report.t()]
-  def reports_for_room(room_id) do
-    case invocation_ids(room_id) do
-      [] ->
-        []
-
-      ids ->
-        Report
-        |> Ash.Query.filter(invocation_id in ^ids)
-        |> Ash.Query.sort(inserted_at: :desc, id: :desc)
-        |> Ash.Query.limit(@reports_per_room)
-        |> Ash.Query.load([:author, :person, replies: first_replies()])
-        |> Ash.read!()
-    end
-  end
-
-  # Only the ids are wanted here, and an invocation row carries the whole
-  # before-and-after of a call, so the column list is narrowed to the one asked
-  # for rather than reading fifty full records to throw them away.
-  defp invocation_ids(room_id) do
-    Rooms.list_invocations!(
-      query: [
-        filter: [room_id: room_id],
-        sort: [started_at: :desc],
-        limit: @room_invocations,
-        select: [:id]
-      ]
-    )
-    |> Enum.map(& &1.id)
-  end
-
   @doc "One report, with its author and the tool and site it belongs to."
   @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error
   def fetch_report(id) do
@@ -439,20 +396,6 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   defp post_page_result({:error, failure}), do: raise(failure)
-
-  @doc """
-  The receipt of the call a verified report was matched to, so a reader can hold
-  the report against the server's own line for that call. Nothing else has one.
-  """
-  @spec receipt(Report.t()) :: String.t() | nil
-  def receipt(%Report{verified: true, invocation_id: id}) when is_binary(id) do
-    case Rooms.get_invocation(id, not_found_error?: false) do
-      {:ok, %{receipt: receipt}} -> receipt
-      _ -> nil
-    end
-  end
-
-  def receipt(%Report{}), do: nil
 
   @doc """
   One page of the replies to a report, oldest first: the opening page, or the

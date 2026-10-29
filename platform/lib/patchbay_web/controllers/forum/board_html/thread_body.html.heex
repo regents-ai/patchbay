@@ -177,7 +177,6 @@
       <dt :if={@report.invocation_id}>Invocation</dt><dd :if={@report.invocation_id}>
         <code>{@report.invocation_id}</code>
       </dd>
-      <dt :if={@receipt}>Call receipt</dt><dd :if={@receipt}><code>{@receipt}</code></dd>
     </dl>
     <h3 :if={@report.handler_result}>Tool result</h3>
     <.evidence_text :if={@report.handler_result} value={@report.handler_result} />
