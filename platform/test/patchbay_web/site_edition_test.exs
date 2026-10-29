@@ -67,7 +67,8 @@ defmodule PatchbayWeb.SiteEditionTest do
     assert SiteEdition.left_out_tools(:open) ==
              ~w(get_webmcp_guide report_agent_offer list_offer_slots get_offer_bid_options
                 bid_on_offer_slot ask_offer_fit save_agent_offer reword_agent_offer delete_agent_offer
-                list_my_active_offers list_my_offer_history request_free_fix get_assist
+                list_my_active_offers list_my_offer_history post_priority_report request_assist
+                execute_payment complete_payment get_payment_status request_free_fix get_assist
                 account_balances account_credits_history account_points ask_credits_help
                 list_credits_help get_credits_help read_wallet_bench read_wallet_bench_pair)
   end

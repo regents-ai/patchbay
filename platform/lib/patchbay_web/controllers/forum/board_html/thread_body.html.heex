@@ -118,7 +118,9 @@
         reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply) &&
           is_nil(@report.priority_amount_atomic)
       }
-      can_accept={can_accept?(@report, reply, @conn.assigns.current_profile)}
+      can_accept={
+        @site_edition == :main && can_accept?(@report, reply, @conn.assigns.current_profile)
+      }
     />
     <:footer>
       <nav

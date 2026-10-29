@@ -38,17 +38,16 @@ defmodule PatchbayWeb.OpenEditionTest do
   @own_words "My USDC never reached the wallet."
   @own_slug "my-usdc-never-reached-the-wallet"
 
-  # The directory's entries are other sites' own words, from the registry it
-  # was imported from: their names, categories and tools.
+  # The directory's sites and their tools are other sites' own names, from the
+  # registry it was imported from. Only the directory page shows them, so only
+  # there is a word inside one of them set aside.
   @directory "priv/data/site_directory.json"
              |> File.read!()
              |> Jason.decode!()
              |> Map.fetch!("sites")
-             |> Enum.flat_map(
-               &[&1["name"], &1["category"] | Enum.map(&1["tools"], fn t -> t["name"] end)]
-             )
+             |> Enum.flat_map(&[&1["name"] | Enum.map(&1["tools"], fn t -> t["name"] end)])
              |> Enum.uniq()
-             |> Enum.sort_by(&(-String.length(&1)))
+             |> Enum.join("\n")
 
   setup do
     site = Forum.register_site!("shop.example.com")
@@ -246,6 +245,32 @@ defmodule PatchbayWeb.OpenEditionTest do
            end) == %{}
   end
 
+  test "the directory's finance category is Finance at the open address", %{conn: conn} do
+    assert conn |> get("/sites") |> html_response(200) =~ "Finance &amp; Crypto"
+
+    open = conn |> on_open() |> get("/sites") |> html_response(200)
+    assert open =~ ~r{>\s*Finance\s*</option>}
+    refute open =~ ~r{>\s*Finance &amp; Crypto\s*<}
+  end
+
+  test "the asker of a paid report accepts an answer only at patchbay.help", %{
+    conn: conn,
+    report: report,
+    asker: asker
+  } do
+    accept = ~s(action="/posts/#{report.id}/accept")
+
+    assert conn |> signed_in(asker) |> get(PostAddress.path(report)) |> html_response(200) =~
+             accept
+
+    refute conn
+           |> on_open()
+           |> signed_in(asker)
+           |> get(PostAddress.path(report))
+           |> html_response(200) =~
+             accept
+  end
+
   test "the same pages at patchbay.help keep the paid report", %{conn: conn, report: report} do
     html = conn |> get(PostAddress.path(report)) |> html_response(200)
 
@@ -305,8 +330,17 @@ defmodule PatchbayWeb.OpenEditionTest do
 
   # Each page that names money, with the words it uses.
   defp money_on(paths, read) do
-    for path <- paths, words = money_words(read.(path)), words != [], into: %{}, do: {path, words}
+    for path <- paths,
+        words = path |> read.() |> money_words() |> without_directory(path),
+        words != [],
+        into: %{},
+        do: {path, words}
   end
+
+  defp without_directory(words, "/sites"),
+    do: Enum.reject(words, &Regex.match?(~r/\b#{Regex.escape(&1)}\b/i, @directory))
+
+  defp without_directory(words, _path), do: words
 
   defp signed_in(conn, profile) do
     conn
@@ -352,10 +386,8 @@ defmodule PatchbayWeb.OpenEditionTest do
 
   defp words_for_money(words), do: words_for(words, [@money, @token, @crypto, @chain])
 
-  # One text per page, each piece on its own line, so the directory's words are
-  # set aside in one pass.
   defp words_for(words, patterns) do
-    text = words |> Enum.join("\n") |> String.replace(@directory, "")
+    text = Enum.join(words, "\n")
 
     patterns
     |> Enum.flat_map(&Regex.scan(&1, text))

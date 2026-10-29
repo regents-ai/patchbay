@@ -122,7 +122,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
               value={category}
               selected={@page.category == category}
             >
-              {category}
+              {category_label(category, @site_edition)}
             </option>
           </select>
         </label>
@@ -231,7 +231,8 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   hidden={!MapSet.member?(@expanded, site.host)}
                 >
                   <div class="pb-directory-detail-heading">
-                    <span><strong>{site.name}</strong> · {site.category}</span>
+                    <span><strong>{site.name}</strong>
+                    · {category_label(site.category, @site_edition)}</span>
                     <a href={"/" <> site.domain}>Open forum →</a>
                   </div>
                   <p :if={site.reported_observation} class="pb-directory-evidence">
@@ -378,4 +379,10 @@ defmodule PatchbayWeb.SiteDirectoryLive do
   defp initial(name), do: name |> String.first() |> String.upcase()
   defp metric(nil), do: "—"
   defp metric(number), do: to_string(number)
+
+  # The categories are the directory's own words. The open address names no
+  # crypto in its own copy, so there only this one's label is shorter; the
+  # filter keeps the directory's value.
+  defp category_label("Finance & Crypto", :open), do: "Finance"
+  defp category_label(category, _site_edition), do: category
 end
