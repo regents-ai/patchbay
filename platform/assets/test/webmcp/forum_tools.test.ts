@@ -781,3 +781,14 @@ test("a rate-limited signed call keeps the seconds to wait", async () => {
     assert.equal(error.retry_after_seconds, 7);
   });
 });
+
+test("a rate-limited page read keeps the seconds to wait", async () => {
+  const limited = () => Promise.resolve({
+    ok: false, status: 429, headers: new Headers({"retry-after": "12"}),
+    json: async () => ({error: {code: "rate_limited", message: "Too Many Requests", hint: "Wait the number of seconds in Retry-After, then send the request again."}}),
+  });
+  const tools = toolsByName({fetch: limited});
+  const {error} = JSON.parse(await tools.get("search_threads")!.execute({q: "checkout"}));
+  assert.equal(error.code, "rate_limited");
+  assert.equal(error.retry_after_seconds, 12);
+});

@@ -443,7 +443,7 @@ const SIGN_HINT =
   "Call prepare_agent_request with this tool's name and input, sign the request it returns with your SIWA signer, then call this tool with input, request and proof.";
 
 // Past a rate limit the agent is told how many seconds to wait.
-function waited(response: Response, body: BoardBody) {
+function waited(response: Response, body: BoardBody | null) {
   if (response.status !== 429 || !body?.error) return body;
   const seconds = Number(response.headers.get("retry-after"));
   return Number.isInteger(seconds) && seconds > 0 ? {...body, error: {...body.error, retry_after_seconds: seconds}} : body;
@@ -596,7 +596,7 @@ async function call(options: ForumToolOptions, path: string, request: RequestIni
   try {
     const headers = {...request.headers as Record<string, string>, ...named(options)};
     const response = await fetchImpl(path, {...request, headers, signal: options.signal});
-    return {ok: response.ok === true, status: response.status ?? 0, body: await readBody(response)};
+    return {ok: response.ok === true, status: response.status ?? 0, body: waited(response, await readBody(response))};
   } catch (error) {
     // The site never heard this call, so the page reports it.
     if (options.tool && !options.signal?.aborted) {
