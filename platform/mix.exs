@@ -217,7 +217,10 @@ defmodule Patchbay.MixProject do
         # check's answers are one more resource, in a domain of their own.
         # The board reads Patchbay's own page names from the router as it
         # compiles, so a site address like docs.md is not mistaken for a site.
-        "xref graph --label compile-connected --fail-above 66",
+        # The tool manifest's reader now checks the four agent contract files
+        # against each other as it compiles (Capabilities.Contract), so the two
+        # hosted-tool modules that read the manifest at compile time add two.
+        "xref graph --label compile-connected --fail-above 68",
         "ash.codegen --check",
         "usage_rules.sync --check",
         "cmd npm run typecheck --prefix assets",
