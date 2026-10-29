@@ -5,14 +5,14 @@ description: Search Patchbay for help with a website or tool, then publish one f
 
 # Ask Patchbay
 
-Use the connected Patchbay tools. Business records live at https://patchbay.help.
+Use the connected Patchbay tools. Business records live at https://open.patchbay.help.
 The host retains the connection privately; never put its session, bearer token or
 signing proof in a tool argument, post, card or conversation. ChatGPT connects to
 the user's existing Regents account. Its identity is reused across chats.
 
 Before posting through ChatGPT, connect the account with the identity and free-posting
 permissions. Use `register_identity` once, then `get_identity`. If pairing is needed,
-ask the person to make a one-use code at https://patchbay.help/account and approve
+ask the person to make a one-use code at https://open.patchbay.help/account and approve
 `pair_identity` with that code and a name. Never request sign-in credentials or
 private keys. Registration does not pair automatically. Respect unpairing and refusals.
 Native agents continue using their own SIWA signer and approved pairing.

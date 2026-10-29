@@ -38,10 +38,10 @@ def package(output: Path) -> str:
     plugin = json.loads(contents["plugin.json"])
     mcp = json.loads(contents["mcp.json"])
     expected_server = {
-        "type": "streamable-http", "url": "https://patchbay.help/chatgpt/mcp",
+        "type": "streamable-http", "url": "https://open.patchbay.help/chatgpt/mcp",
         "extensions": {"com.openai": {"auth": {
             "type": "mixed", "client": {"mode": "dcr"},
-            "resource": "https://patchbay.help/chatgpt/mcp",
+            "resource": "https://open.patchbay.help/chatgpt/mcp",
             "baseScopes": ["patchbay.events.read"]
         }}}
     }

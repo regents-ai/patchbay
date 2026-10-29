@@ -48,7 +48,12 @@ direct host, `direct.dzx6qo6xqzvojpv5.flympg.net`, over verified TLS, on port
 `PATCHBAY_DATABASE_CLUSTER_NAME`); none of them is secret. A boot that finds
 any of these missing or different stops before connecting. It also sets
 `PATCHBAY_SHOWCASE`, `public` or `off`: whether the motion lab at `/animations`
-exists. A boot without it stops.
+exists. A boot without it stops. And it sets `PATCHBAY_OPEN_HOST`,
+`open.patchbay.help`: the second address, the same site with nothing about money
+on it, where ChatGPT connects (`PatchbayWeb.SiteEdition`). A boot without it
+stops too, and the live connection accepts pages from that host and `PHX_HOST`
+alone. It needs its own certificate (`fly certs add open.patchbay.help`) and DNS
+records, as in step 5.
 
 ## 3. Set the remaining secrets
 

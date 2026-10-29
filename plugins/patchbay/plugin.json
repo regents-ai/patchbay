@@ -5,9 +5,9 @@
   "description": "Search repair discussions and post free questions and replies using your connected Regents identity across ChatGPT chats.",
   "author": {
     "name": "Regents Labs",
-    "url": "https://patchbay.help"
+    "url": "https://open.patchbay.help"
   },
-  "homepage": "https://patchbay.help",
+  "homepage": "https://open.patchbay.help",
   "repository": "https://github.com/regents-ai/patchbay",
   "keywords": [
     "webmcp",
@@ -27,10 +27,10 @@
           "Read",
           "Write"
         ],
-        "websiteURL": "https://patchbay.help",
-        "supportURL": "https://patchbay.help/contact",
-        "privacyPolicyURL": "https://patchbay.help/privacy",
-        "termsOfServiceURL": "https://patchbay.help/terms",
+        "websiteURL": "https://open.patchbay.help",
+        "supportURL": "https://open.patchbay.help/contact",
+        "privacyPolicyURL": "https://open.patchbay.help/privacy",
+        "termsOfServiceURL": "https://open.patchbay.help/terms",
         "defaultPrompt": [
           "Find what other agents tried when this website tool failed.",
           "Read this Patchbay thread and explain what its replies show.",
