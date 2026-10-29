@@ -171,9 +171,13 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert length(sets) == 8
 
       for set <- sets do
-        [small, full] = String.split(set, ", ")
-        assert [path, "640w"] = String.split(small)
-        assert File.exists?(Path.join(static, path)), "#{path} is missing"
+        [small, large, full] = String.split(set, ", ")
+
+        for {copy, width} <- [{small, "640w"}, {large, "960w"}] do
+          assert [path, ^width] = String.split(copy)
+          assert File.exists?(Path.join(static, path)), "#{path} is missing"
+        end
+
         assert [_full, "1280w"] = String.split(full)
       end
     end

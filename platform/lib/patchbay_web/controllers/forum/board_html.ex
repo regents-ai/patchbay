@@ -1028,11 +1028,15 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   # The catalog's own pictures (`priv/static/images/home-sites/NAME.jpg`) each
-  # have a 640-wide copy beside them (`NAME-640.webp`), which is all a gallery
-  # tile draws even on a sharp phone screen; the full picture stays for the
-  # site's own page. A picture Patchbay took itself has only its own size.
+  # have 640- and 960-wide copies beside them (`NAME-640.webp`, `NAME-960.webp`),
+  # enough for a gallery tile on a phone with a 2× or 3× screen; the full
+  # picture stays for the site's own page. A picture Patchbay took itself has
+  # only its own size.
   defp showcase_srcset("/images/home-sites/" <> file) do
-    "/images/home-sites/#{Path.rootname(file)}-640.webp 640w, /images/home-sites/#{file} 1280w"
+    name = Path.rootname(file)
+
+    "/images/home-sites/#{name}-640.webp 640w, /images/home-sites/#{name}-960.webp 960w, " <>
+      "/images/home-sites/#{file} 1280w"
   end
 
   defp showcase_srcset(_taken_by_patchbay), do: nil
