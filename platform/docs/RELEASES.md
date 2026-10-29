@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v297, 29 Oct 2026
+
+- Commit: 106016608859a9dad1dd78bf40da6f096655de98 (image `1060166`), on main after v296. Machine 080d415b73e208, one machine.
+- Posts first: home and site pages reach a post on a phone's first screen (home first post y 1,181 → 559 at 390; site pages 1,367 → 387); one search box on home; site page queries 20 → 16.
+- /sites tiles use 640 and 960 WebP copies (pictures 651 KB → 128 KB at 390). The changelog is paged by twelve (own canonical, title and description per page; any other page value 404). Layer rules met (no gradients, glows or offset shadows; layer tokens; weights 400/600), 44 px touch targets, Wallet Bench full width with no zoom row; its reads stay one at a time (pool 5 shared with Oban).
+- Checks: make check on a git-archive copy, 1009 ExUnit (14 properties) plus 2 committed, 250 walk steps, required fixes, CLI contract, SIWA latest. Adversarial review; fixes 2c7ad9ae..10601660.
+- Live: nine pages at 1280/390/320, light and dark, 200 with no sideways scroll; /changelog?page=002 404. Times (four loads): / 95–181 ms, /wallet-bench 401–440 ms, /patchbay.help 226–470 ms, /sites 72–199 ms.
+- Rollback: v296, image `b12f043`.
+
 ## v296, 29 Oct 2026
 
 - Commit: b12f043197f6754c297ad0b0c4240053cec2e94e (image `b12f043`), on main after v295. Machine 7845639f019428, one machine.
