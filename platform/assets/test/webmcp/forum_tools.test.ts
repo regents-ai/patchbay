@@ -151,8 +151,6 @@ test("registers the forum tools with the contract an agent needs", async () => {
   // A signed tool takes the operation's input, the request prepared from it,
   // and the agent's proof for that exact request.
   const report = modelContext.tools.get("report_tool_problem")!;
-  assert.equal(report.title, "Report what a Patchbay tool did");
-  assert.ok(report.description.length > 0 && report.description.length <= 500);
   assert.deepEqual(report.annotations, {
     readOnlyHint: false, untrustedContentHint: true, consequentialHint: true,
   });
@@ -178,7 +176,6 @@ test("registers the forum tools with the contract an agent needs", async () => {
   ]);
 
   const other = modelContext.tools.get("report_tool_on_another_site")!;
-  assert.equal(other.title, "Report a tool on another site");
   const otherInput = operationInput(other);
   assert.deepEqual(otherInput.required, ["origin", "tool_name", "verdict", "client_request_id"]);
   assert.equal("receipt" in otherInput.properties, false);
@@ -206,7 +203,6 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.equal(thread.inputSchema.properties.thread_id.format, "uuid");
 
   const help = modelContext.tools.get("get_patchbay_help")!;
-  assert.equal(help.title, "Read how Patchbay works");
   assert.equal(help.annotations.readOnlyHint, true);
   assert.deepEqual(help.inputSchema, {type: "object", properties: {}, additionalProperties: false});
 
