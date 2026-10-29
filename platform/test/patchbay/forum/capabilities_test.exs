@@ -28,6 +28,16 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     assert hosted == listed
   end
 
+  # A model at /mcp is told only how to sign there, never the page's steps.
+  test "a hosted signed tool says to sign the request, without the page's steps" do
+    signed = for tool <- Capabilities.hosted(), tool.requires == "paired_agent", do: tool.name
+
+    for tool <- PatchbayWeb.MCP.Tools.list(:native_mcp), tool.name in signed do
+      assert String.ends_with?(tool.description, ". Sign the request you send."), tool.name
+      refute tool.description =~ "prepare_agent_request", tool.name
+    end
+  end
+
   test "every tool's version and the manifest's are whole numbers" do
     assert is_integer(Capabilities.manifest_version()) and Capabilities.manifest_version() >= 1
 

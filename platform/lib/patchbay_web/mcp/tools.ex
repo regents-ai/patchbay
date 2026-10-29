@@ -28,13 +28,20 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MD
 
+  # How a signed tool is signed on a page and here, the last sentence of its
+  # manifest description. Only the part for this address is listed here.
+  @signing "Signed: on a page, prepare it with prepare_agent_request, sign that request " <>
+             "with your own SIWA key, then pass input, request and proof; at /mcp or over " <>
+             "HTTP, sign the request you send."
+
   # The manifest's hosted tools, in the shape `tools/list` answers with. The
   # repair card names the page a host draws its answer in.
   @tools Enum.map(Capabilities.hosted(), fn tool ->
            descriptor = %{
              name: tool.name,
              title: tool.title,
-             description: tool.description,
+             description:
+               String.replace_suffix(tool.description, @signing, "Sign the request you send."),
              inputSchema: tool.operation_input_schema || tool.input_schema,
              annotations: tool.annotations
            }
