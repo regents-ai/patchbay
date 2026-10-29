@@ -35,6 +35,10 @@ kill_timeout = "60s"
   # Privy-backed OAuth grants only read access to ChatGPT event subscriptions.
   PATCHBAY_OAUTH_ENABLED = "true"
 
+  # The same site with nothing about money on it, where ChatGPT connects
+  # (PatchbayWeb.SiteEdition).
+  PATCHBAY_OPEN_HOST = "open.patchbay.help"
+
 # Read by Fly's own scraper over the private network; never routed publicly.
 [metrics]
   port = 9091

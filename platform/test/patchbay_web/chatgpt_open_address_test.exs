@@ -2,7 +2,9 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
   @moduledoc """
   ChatGPT connects at the open address (`PatchbayWeb.SiteEdition`): its sign-in
   names open.patchbay.help as issuer and resource, and everything the plugin's
-  tools say or link to sends a person there, never to patchbay.help.
+  tools say or link to sends a person there, never to patchbay.help. The
+  plugin names it too, and its website, support, privacy and terms pages
+  answer there.
   """
 
   # It switches OAuth on for the whole site while it runs.
@@ -60,6 +62,26 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
     assert card["text"] =~ ~s({url:"https://open.patchbay.help"+thread.url})
     refute card["text"] =~ ~s("https://patchbay.help")
   end
+
+  test "every page the plugin names is at the open address and answers there", %{conn: conn} do
+    plugin = "../../../plugins/patchbay" |> Path.expand(__DIR__)
+
+    %{"extensions" => %{"com.openai" => %{"interface" => interface}}} =
+      read_json(plugin, "plugin.json")
+
+    %{"mcpServers" => %{"patchbay" => server}} = read_json(plugin, "mcp.json")
+
+    assert server["url"] == "https://open.patchbay.help/chatgpt/mcp"
+    assert server["extensions"]["com.openai"]["auth"]["resource"] == RegentOAuth.resource()
+
+    for key <- ~w(websiteURL supportURL privacyPolicyURL termsOfServiceURL) do
+      %URI{host: "open.patchbay.help", path: path} = URI.parse(interface[key])
+      assert conn |> on_open() |> get(path || "/") |> html_response(200), key
+    end
+  end
+
+  defp read_json(directory, name),
+    do: directory |> Path.join(name) |> File.read!() |> Jason.decode!()
 
   defp rpc(conn, method, params) do
     conn
