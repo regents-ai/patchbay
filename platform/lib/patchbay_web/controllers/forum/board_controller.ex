@@ -875,7 +875,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp board_for(conn, domain, params) do
     format = get_format(conn)
 
-    case Board.fetch_site(domain) do
+    case Board.fetch_site(domain, [:tools_seen_at]) do
       {:ok, site} ->
         with {:ok, posts, next_posts} <- Board.site_threads(site, params["posts_after"]) do
           {:ok,

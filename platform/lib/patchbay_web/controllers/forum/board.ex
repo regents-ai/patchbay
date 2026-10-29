@@ -159,14 +159,13 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  The site filed under a domain, if the board has one, with when its tools
-  were last seen, which its page shows.
+  The site filed under a domain, if the board has one, with anything more a
+  page shows loaded in the same read (the site page's status shows when its
+  tools were last seen).
   """
-  @spec fetch_site(String.t()) :: {:ok, Site.t()} | :error
-  def fetch_site(origin) do
-    case Forum.get_site_by_origin(origin,
-           query: Ash.Query.load(site_summary(), :tools_seen_at)
-         ) do
+  @spec fetch_site(String.t(), list()) :: {:ok, Site.t()} | :error
+  def fetch_site(origin, load \\ []) do
+    case Forum.get_site_by_origin(origin, query: Ash.Query.load(site_summary(), load)) do
       {:ok, site} -> {:ok, site}
       {:error, _no_such_site} -> :error
     end
@@ -352,7 +351,8 @@ defmodule PatchbayWeb.Forum.Board do
   @doc """
   Solved and open on a site: how many tools it offers and when one
   was last seen, then its solved and still-open questions, the newest three of
-  each with how many there are in all.
+  each with how many there are in all. The site comes from
+  `fetch_site(origin, [:tools_seen_at])`.
   """
   @spec site_standing(Site.t()) :: map()
   def site_standing(%Site{} = site) do
