@@ -65,8 +65,18 @@ async function publish(page: Page, form: Locator) {
   await Promise.all([page.waitForEvent("load"), button.click()])
 }
 
-// At 1280 and 390; the 320 phone takes the same paths as the 390 one.
-test.beforeEach(({}, info) => test.skip(info.project.name === "small phone", "checked at 1280 and 390"))
+// At 1280 and 390; the 320 phone takes the same paths as the 390 one. The
+// site's tool check under the address field is answered here: it is not what
+// these walks are about, and each real one counts against the walk's own
+// connection, which the motion walks need for theirs.
+test.beforeEach(async ({page}, info) => {
+  test.skip(info.project.name === "small phone", "checked at 1280 and 390")
+  await page.route(/\/fix-check\?/, route =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({status: "none", said: "", tools: [], directory: false}),
+    }))
+})
 
 for (const path of ["/", "/hermes"]) {
   test(`a draft on ${path} comes back after the header's Sign in`, async ({page, context}) => {
