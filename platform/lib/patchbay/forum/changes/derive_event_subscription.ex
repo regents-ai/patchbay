@@ -22,6 +22,9 @@ defmodule Patchbay.Forum.Changes.DeriveEventSubscription do
   @lifetime_ms 86_400_000
 
   @impl true
+  # A subscription whose event, filter or secret is refused is not derived.
+  def change(%{valid?: false} = changeset, _opts, _context), do: changeset
+
   def change(changeset, _opts, %{actor: %module{} = actor})
       when module in [Patchbay.Agents.Actor, Patchbay.OAuth.Actor] do
     name = Ash.Changeset.get_attribute(changeset, :name)

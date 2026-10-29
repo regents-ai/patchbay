@@ -28,6 +28,19 @@ defmodule PatchbayWeb.MCPEventsDeliveryTest do
 
     assert %{"result" => %{"id" => "sub_" <> _ = id, "truncated" => false}} = subscribed
 
+    # The action's own refusal of a filter is an invalid-params answer.
+    refused =
+      rpc(
+        conn,
+        asker,
+        "events/subscribe",
+        put_in(subscription(thread_id), ["arguments"], %{"site" => "x"})
+      )
+      |> json_response(200)
+
+    assert %{"error" => %{"code" => -32_602, "message" => "arguments takes only thread_ids."}} =
+             refused
+
     # Subscribing queues its delivery job; nothing is owed yet.
     assert_enqueued(worker: EventSubscription.Workers.Deliver)
     Oban.drain_queue(queue: :webhooks)
@@ -119,6 +132,23 @@ defmodule PatchbayWeb.MCPEventsDeliveryTest do
              )
 
     assert truncated.__metadata__.truncated == true
+
+    # The event, its filter and the signing key are the action's rules too.
+    for {field, refused} <- [
+          name: %{params | name: "post_liked"},
+          arguments: %{params | arguments: %{"thread_ids" => ["not-an-id"]}},
+          arguments: %{params | arguments: %{"site" => "example.com"}},
+          secret: %{params | secret: "not-a-key"}
+        ] do
+      assert {:error, %Ash.Error.Invalid{errors: [%{field: ^field}]}} =
+               Patchbay.Forum.subscribe_to_events(refused, actor: actor)
+    end
+
+    assert {:error, %Ash.Error.Invalid{errors: [%{field: :arguments}]}} =
+             Patchbay.Forum.unsubscribe_from_events(
+               %{name: "reply_created", arguments: %{"thread_ids" => []}, url: params.url},
+               actor: actor
+             )
 
     # Another agent cannot end it: the id it derives is its own.
     other = Patchbay.AssistFixtures.paired_agent()

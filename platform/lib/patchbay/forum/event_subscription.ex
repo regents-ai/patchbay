@@ -91,6 +91,10 @@ defmodule Patchbay.Forum.EventSubscription do
   @spec webhooks() :: module()
   def webhooks, do: @webhooks
 
+  @doc "The events a subscription can ask for."
+  @spec names() :: [String.t()]
+  def names, do: ~w(reply_created solution_marked)
+
   @doc "The most live subscriptions one account holds."
   @spec per_account() :: pos_integer()
   def per_account, do: 20
@@ -155,6 +159,8 @@ defmodule Patchbay.Forum.EventSubscription do
       argument(:cursor, :string)
       metadata(:truncated, :boolean, allow_nil?: false)
 
+      validate(Patchbay.Forum.Validations.EventSubscriptionFilter)
+      validate(Patchbay.Forum.Validations.EventSigningSecret)
       change(Patchbay.Forum.Changes.DeriveEventSubscription)
       # Looked at before the callback is sent anything ...
       validate(Patchbay.Forum.Validations.EventSubscriptionRoom)
@@ -173,6 +179,7 @@ defmodule Patchbay.Forum.EventSubscription do
       argument(:name, :string, allow_nil?: false)
       argument(:arguments, :map, allow_nil?: false)
       argument(:url, :string, allow_nil?: false)
+      validate(Patchbay.Forum.Validations.EventSubscriptionFilter)
       run(&Patchbay.Forum.Actions.UnsubscribeFromEvents.run/2)
     end
 
@@ -232,10 +239,8 @@ defmodule Patchbay.Forum.EventSubscription do
     attribute(:oauth_client_id, :uuid)
     attribute(:owner_id, :string, allow_nil?: false)
 
-    attribute :name, :string do
-      allow_nil?(false)
-      constraints(match: ~r/\A(reply_created|solution_marked)\z/)
-    end
+    # One of `names/0` (`Validations.EventSubscriptionFilter`).
+    attribute(:name, :string, allow_nil?: false)
 
     attribute(:arguments, :map, allow_nil?: false)
     attribute(:url, :string, allow_nil?: false)
