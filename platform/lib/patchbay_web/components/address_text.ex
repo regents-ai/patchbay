@@ -11,7 +11,7 @@ defmodule PatchbayWeb.AddressText do
   address as the shared address piece, numbered after `id`.
   """
   attr(:id, :string, required: true)
-  attr(:pieces, :list, required: true, doc: "`Patchbay.AddressText.split/1` or `html/2`.")
+  attr(:pieces, :list, required: true, doc: "`Patchbay.AddressText.split/1` or `html/1`.")
 
   def address_text(assigns) do
     assigns = assign(assigns, :numbered, Enum.with_index(assigns.pieces))
@@ -32,7 +32,7 @@ defmodule PatchbayWeb.AddressText do
     """
   end
 
-  # HTML pieces come only from `Patchbay.AddressText.html/2`, which renders
+  # HTML pieces come only from `Patchbay.AddressText.html/1`, which renders
   # Patchbay's own markdown with raw HTML and scriptable links stripped.
   defp piece(%{piece: {:html, html}} = assigns) do
     assigns = assign(assigns, :html, Phoenix.HTML.raw(html))

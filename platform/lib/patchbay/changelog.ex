@@ -32,7 +32,7 @@ defmodule Patchbay.Changelog do
   @dates Enum.map(@dated, &elem(&1, 0))
 
   @entries Enum.map(@releases, fn nodes ->
-             Patchbay.AddressText.html(%{@document | nodes: nodes}, render: [unsafe: false])
+             Patchbay.AddressText.html(%{@document | nodes: nodes})
            end)
   @intro_html MDEx.to_html!(
                 %{@document | nodes: Enum.reject(@intro, &match?(%MDEx.Heading{level: 1}, &1))},
@@ -40,7 +40,7 @@ defmodule Patchbay.Changelog do
               )
   @markdown MDEx.to_markdown!(%{@document | nodes: @intro ++ List.flatten(@releases)})
 
-  @doc "Each dated entry as HTML, newest first, with its addresses cut out (`Patchbay.AddressText.html/2`)."
+  @doc "Each dated entry as HTML, newest first, with its addresses cut out (`Patchbay.AddressText.html/1`)."
   def entries, do: @entries
   def intro_html, do: @intro_html
   def markdown, do: @markdown

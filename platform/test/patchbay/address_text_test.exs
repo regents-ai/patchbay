@@ -49,7 +49,7 @@ defmodule Patchbay.AddressTextTest do
       ```
       """)
 
-    pieces = AddressText.html(document, render: [unsafe: false])
+    pieces = AddressText.html(document)
 
     assert [
              {:html, "<p>Paid to "},

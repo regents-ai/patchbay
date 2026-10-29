@@ -16,7 +16,7 @@ defmodule PatchbayWeb.PagesController do
     conn
     |> merge_assigns(PatchbayWeb.PublicDocuments.page("/about"))
     |> render(:about,
-      html: Patchbay.About.html(),
+      html: Patchbay.AddressText.html(Patchbay.About.page()),
       markdown: Patchbay.About.markdown()
     )
   end

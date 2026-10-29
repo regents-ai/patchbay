@@ -34,14 +34,15 @@ defmodule Patchbay.AddressText do
 
   @doc """
   A markdown document rendered to HTML, with each full address in its words or
-  in an inline code span cut out. An address in a code block stays where it is,
-  since a code block is copied whole.
+  in an inline code span cut out, rendered with the options it was parsed with.
+  An address in a code block stays where it is, since a code block is copied
+  whole.
   """
-  @spec html(MDEx.Document.t(), keyword()) :: [html_piece()]
-  def html(%MDEx.Document{} = document, options) do
+  @spec html(MDEx.Document.t()) :: [html_piece()]
+  def html(%MDEx.Document{} = document) do
     document
     |> MDEx.traverse_and_update(&mark/1)
-    |> MDEx.to_html!(options)
+    |> MDEx.to_html!()
     |> then(&Regex.split(@marked, &1, include_captures: true, trim: true))
     |> Enum.map(fn piece ->
       case Regex.run(@marked, piece, capture: :all_but_first) do
