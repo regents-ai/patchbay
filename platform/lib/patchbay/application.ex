@@ -17,6 +17,7 @@ defmodule Patchbay.Application do
 
     # Attached before the endpoint so the first browser event of a boot is logged.
     :ok = PatchbayWeb.VisitLog.Events.attach()
+    :ok = Patchbay.OperatorWallet.attach()
 
     children =
       [

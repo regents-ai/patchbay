@@ -3,8 +3,9 @@ defmodule PatchbayWeb.ChainNumbersTest do
   Sentinel reads these from Patchbay's metrics listener (fly-sentinel
   docs/metrics-contract.md): chain requests with no answer, the age of the
   operator wallet's oldest unconfirmed send for each flow, the paid priority
-  reports whose escrow money is not yet recorded, and the assist fees the
-  operator wallet has not yet sent to staking. Labels are fixed names only.
+  reports whose escrow credit the chain has not yet confirmed, and the assist
+  fees the operator wallet has not yet sent to staking. Labels are fixed
+  names only.
   """
 
   use Patchbay.DataCase, async: false
@@ -36,6 +37,47 @@ defmodule PatchbayWeb.ChainNumbersTest do
              before + 1
   end
 
+  test "the operator wallet's chain request with no answer counts under its own scope" do
+    old_escrow = Application.get_env(:patchbay, :escrow, [])
+    on_exit(fn -> Application.put_env(:patchbay, :escrow, old_escrow) end)
+
+    # A throwaway key that signs nothing and reaches no chain.
+    Application.put_env(:patchbay, :escrow,
+      contract_address: "0x" <> String.duplicate("a", 40),
+      operator_private_key: "0x" <> String.duplicate("11", 32),
+      rpc_url: "http://127.0.0.1:9"
+    )
+
+    labels = [~s(method="eth_call"), ~s(class="transport"), ~s(chain_id="8453")]
+    before = value("health_chain_request_failures_total", [~s(scope="operator") | labels]) || 0
+
+    assert {:error, _no_answer} = Patchbay.Escrow.post(Ecto.UUID.generate())
+
+    assert value("health_chain_request_failures_total", [~s(scope="operator") | labels]) ==
+             before + 1
+  end
+
+  test "a revert is the contract's answer; an HTTP or JSON-RPC error is none" do
+    labels = [~s(method="eth_call"), ~s(chain_id="8453"), ~s(scope="operator")]
+    count = fn class -> value("health_chain_request_failures_total", [class | labels]) || 0 end
+    before = Map.new(~w(rpc http_503), &{&1, count.(~s(class="#{&1}"))})
+
+    answer(200, ~s({"jsonrpc":"2.0","id":1,"error":{"code":3,"message":"execution reverted"}}))
+
+    answer(
+      200,
+      ~s({"jsonrpc":"2.0","id":1,"error":{"code":-32000,"message":"execution reverted"}})
+    )
+
+    answer(200, ~s({"jsonrpc":"2.0","id":1,"result":"0x"}))
+    assert count.(~s(class="rpc")) == before["rpc"]
+
+    answer(200, ~s({"jsonrpc":"2.0","id":1,"error":{"code":-32005,"message":"limit exceeded"}}))
+    answer(503, "")
+    assert count.(~s(class="rpc")) == before["rpc"] + 1
+    assert count.(~s(class="http_503")) == before["http_503"] + 1
+  end
+
   test "each operator flow's oldest unconfirmed send has its age, 0 when none waits" do
     asker = profile("asker")
 
@@ -63,6 +105,27 @@ defmodule PatchbayWeb.ChainNumbersTest do
     assert value("health_wallet_unconfirmed_oldest_seconds", [~s(flow="escrow_credit")]) == 0
   end
 
+  test "a credit sent again is aged from its second hand-over, not from the filing" do
+    asker = profile("again")
+    report = submitted(paid_report(asker), DateTime.add(DateTime.utc_now(), -2 * 86_400, :second))
+
+    {:ok, failed} =
+      Forum.record_escrow_credit(report, %{escrow_status: :credit_failed}, authorize?: false)
+
+    # What SpecialPost.credit_again/1 writes once Base takes the second hand-over.
+    {:ok, _again} =
+      Forum.record_escrow_credit(
+        failed,
+        %{escrow_status: :credit_submitted, escrow_credit_tx_hash: hash()},
+        authorize?: false
+      )
+
+    {"escrow_credit", sent_at} =
+      List.keyfind(OperatorWallet.unconfirmed_sends(), "escrow_credit", 0)
+
+    assert DateTime.diff(DateTime.utc_now(), sent_at) < 60
+  end
+
   test "escrow money not yet recorded and assist fees not yet forwarded are counted" do
     old_assist = Application.get_env(:patchbay, :assist)
     on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
@@ -79,6 +142,12 @@ defmodule PatchbayWeb.ChainNumbersTest do
 
     run = answered_run()
     {:ok, taken} = Assist.take_fee(answered_run(), authorize?: false)
+
+    # A fee's forward waits from when it was taken.
+    assert {"fee_forward", %DateTime{} = taken_at} =
+             List.keyfind(OperatorWallet.unconfirmed_sends(), "fee_forward", 0)
+
+    assert DateTime.diff(DateTime.utc_now(), taken_at) < 60
 
     {:ok, _deposited} =
       Assist.record_deposited(taken, %{deposit_tx_hash: hash()}, authorize?: false)
@@ -137,8 +206,9 @@ defmodule PatchbayWeb.ChainNumbersTest do
     )
   end
 
-  # The settlement path's own write, which no actor may reach.
-  defp submitted(report, filed_at) do
+  # The settlement path's own write, which no actor may reach, handed over
+  # at `sent_at`.
+  defp submitted(report, sent_at) do
     {:ok, submitted} =
       Forum.record_escrow_credit(
         report,
@@ -146,8 +216,8 @@ defmodule PatchbayWeb.ChainNumbersTest do
         authorize?: false
       )
 
-    Repo.query!("UPDATE forum_reports SET inserted_at = $1 WHERE id = $2", [
-      filed_at,
+    Repo.query!("UPDATE forum_reports SET escrow_credit_sent_at = $1 WHERE id = $2", [
+      sent_at,
       Ecto.UUID.dump!(submitted.id)
     ])
 
@@ -171,6 +241,20 @@ defmodule PatchbayWeb.ChainNumbersTest do
     # The assist worker's own steps, which no actor may reach.
     {:ok, running} = Assist.start_run(run, authorize?: false)
     Assist.finish_run!(running, %{status: :finished, outcome: :reached}, authorize?: false)
+  end
+
+  # The operator node's answer to one eth_call, as Finch reports it.
+  defp answer(status, body) do
+    OperatorWallet.handle_request(
+      [:finch, :request, :stop],
+      %{duration: 1},
+      %{
+        name: Ethereumex.Finch,
+        request: Finch.build(:post, "http://node.test", [], ~s({"method":"eth_call"})),
+        result: {:ok, %Finch.Response{status: status, body: body}}
+      },
+      nil
+    )
   end
 
   defp hash, do: "0x" <> Base.encode16(:crypto.strong_rand_bytes(32), case: :lower)

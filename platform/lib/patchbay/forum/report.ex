@@ -260,6 +260,11 @@ defmodule Patchbay.Forum.Report do
 
     attribute(:escrow_status, EscrowStatus, allow_nil?: true, public?: true)
     attribute(:escrow_credit_tx_hash, :string, allow_nil?: true, public?: true)
+
+    # When the escrow credit Base has not yet confirmed was last handed to it,
+    # which is what its wait is counted from: a credit sent again later is
+    # only as old as that hand-over.
+    attribute(:escrow_credit_sent_at, :utc_datetime_usec, allow_nil?: true)
     attribute(:escrow_release_tx_hash, :string, allow_nil?: true, public?: true)
     attribute(:escrow_refund_tx_hash, :string, allow_nil?: true, public?: true)
 
@@ -1132,6 +1137,10 @@ defmodule Patchbay.Forum.Report do
 
       accept([:escrow_status, :escrow_credit_tx_hash])
       validate(one_of(:escrow_status, [:credit_submitted, :credit_failed]))
+
+      change(set_attribute(:escrow_credit_sent_at, &DateTime.utc_now/0),
+        where: [attribute_equals(:escrow_status, :credit_submitted)]
+      )
     end
 
     update :confirm_escrow_credit do

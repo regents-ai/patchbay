@@ -19,7 +19,8 @@ defmodule PatchbayWeb.Telemetry do
 
   Each chain request `Patchbay.ChainClient` sends that gets no answer is
   counted by method, class, chain and its caller's fixed scope
-  (`[:patchbay, :chain, :failure]`). The operator wallet sends from Patchbay's
+  (`[:patchbay, :chain, :failure]`), and so is each of the operator wallet's,
+  under the scope `operator` (`Patchbay.OperatorWallet.attach/0`). The operator wallet sends from Patchbay's
   own key, so `unconfirmed_sends` in `config :patchbay, PatchbayWeb.Telemetry`
   names the function that answers each of its fixed sending flows with when
   its oldest signed, unconfirmed transaction was signed, or nil; every ten
@@ -248,7 +249,7 @@ defmodule PatchbayWeb.Telemetry do
       last_value("patchbay.escrow_unrecorded",
         event_name: [:patchbay, :operator_wallet, :waiting],
         measurement: :escrow_unrecorded,
-        description: "Escrow payments on the chain the site has not yet recorded"
+        description: "Paid priority reports whose escrow credit the chain has not yet confirmed"
       ),
       last_value("patchbay.assist_fees_unforwarded.usdc",
         event_name: [:patchbay, :operator_wallet, :waiting],

@@ -154,6 +154,10 @@ defmodule Patchbay.Assist.Run do
     attribute(:deposit_status, DepositStatus, allow_nil?: false, public?: true, default: :pending)
     attribute(:deposit_tx_hash, :string, allow_nil?: true, public?: true)
 
+    # When the fee's forward was last taken, which its wait for the chain is
+    # counted from.
+    attribute(:fee_taken_at, :utc_datetime_usec, allow_nil?: true)
+
     timestamps()
   end
 
@@ -356,6 +360,7 @@ defmodule Patchbay.Assist.Run do
       )
 
       change(set_attribute(:deposit_status, :forwarding))
+      change(set_attribute(:fee_taken_at, &DateTime.utc_now/0))
     end
 
     update :release_fee do
