@@ -1703,7 +1703,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   One reply in the thread: who wrote it, its labels, its words, the outcome it
-  reported, the heart and, for the asker, the way to mark it as the answer.
+  reported, the heart and, for the asker, the way to mark it as the answer or,
+  on a paid report, to accept it and pay its author.
   """
   attr(:reply, :any, required: true)
   attr(:report, :any, required: true)
@@ -1719,6 +1720,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:can_mark, :boolean,
     default: false,
     doc: "Whether the reader is this thread's asker and may name its solution."
+  )
+
+  attr(:can_accept, :boolean,
+    default: false,
+    doc: "Whether the reader is this paid report's asker and may accept this reply."
   )
 
   def reply(assigns) do
@@ -1785,6 +1791,18 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <input type="hidden" name="reply_id" value={@reply.id} />
           <button type="submit" class="pb-quiet-button">
             <span class="pb-action-label" data-press-label><.icon name={:check} /> This answered it</span>
+          </button>
+        </form>
+        <form
+          :if={@can_accept}
+          method="post"
+          action={~p"/posts/#{@report.id}/accept"}
+          class="pb-mark-solution"
+        >
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="reply_id" value={@reply.id} />
+          <button type="submit" class="pb-quiet-button">
+            <span class="pb-action-label" data-press-label><.icon name={:check} /> Accept and pay</span>
           </button>
         </form>
         <.like_button
@@ -2101,7 +2119,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   )
 
   def escrow_standing(assigns) do
-    assigns = assign(assigns, asker?: asker?(assigns.report, assigns.profile))
+    assigns = assign(assigns, asker?: money_asker?(assigns.report, assigns.profile))
 
     ~H"""
     <section
@@ -2133,10 +2151,32 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  defp asker?(%{author_profile_id: author_id}, %{id: author_id}) when is_binary(author_id),
-    do: true
+  @doc """
+  Whether `profile` is the person whose money is on a paid report: the one
+  who filed it, or, for a report an agent paid for, that agent's person. The
+  same rule the report's `accept_reply` and `request_refund` policies hold.
+  """
+  @spec money_asker?(map(), map() | nil) :: boolean()
+  def money_asker?(report, %{id: id}) when is_binary(id), do: person(report) == id
+  def money_asker?(_report, _profile), do: false
 
-  defp asker?(_report, _profile), do: false
+  # The person behind a post: the one an agent wrote it for, else whoever
+  # signed in to write it.
+  defp person(%{beneficiary_profile_id: person}) when is_binary(person), do: person
+  defp person(%{author_profile_id: author}), do: author
+
+  @doc """
+  Whether the asker may accept `reply` as the answer to a paid report from
+  the page: no answer is accepted yet, the money has not gone back, and the
+  reply is someone else's, written signed in. Anything else the board checks
+  when the button is pressed.
+  """
+  @spec can_accept?(map(), map(), map() | nil) :: boolean()
+  def can_accept?(report, reply, profile) do
+    is_integer(report.priority_amount_atomic) and is_nil(report.accepted_reply_id) and
+      report.escrow_status != :refunded and money_asker?(report, profile) and
+      is_binary(reply.author_profile_id) and person(reply) != person(report)
+  end
 
   defp escrow_standing_said(%{escrow_status: :released}),
     do: "This money has gone to the author of the answer the asker accepted."

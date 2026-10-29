@@ -7,7 +7,13 @@ defmodule PatchbayWeb.MCP.Doors do
 
   Who acts is the caller's signed, paired agent, which `/mcp` admitted from
   the request's own SIWA proof (`PatchbayWeb.MCP.Admission`); no argument
-  names it. Every tool here is free and holds nothing: no Credits, no USDC.
+  names it. Every tool here is free and holds nothing, except the agent's
+  own payments: `post_priority_report` and `request_assist` freeze terms,
+  `execute_payment` pays them with the x402 payment the agent signed with
+  its own wallet, and `get_payment_status` reads them back. They answer
+  through `PatchbayWeb.PaymentsAPI.PaymentIntentController`, as
+  `/api/agent/payment_intents` does, and new terms and reads draw on the
+  wallet's payment share there too (`PatchbayWeb.PaymentLimit`).
   """
 
   alias PatchbayWeb.AgentAccountController
@@ -21,6 +27,8 @@ defmodule PatchbayWeb.MCP.Doors do
   alias PatchbayWeb.ForumAPI.SiteRefreshController
   alias PatchbayWeb.IdentityAPI.NameController
   alias PatchbayWeb.KnownFixController
+  alias PatchbayWeb.PaymentLimit
+  alias PatchbayWeb.PaymentsAPI.PaymentIntentController
   alias PatchbayWeb.WalletBenchController
 
   @names ~w(request_free_fix get_assist find_known_fixes get_known_fix get_subscriptions
@@ -29,7 +37,8 @@ defmodule PatchbayWeb.MCP.Doors do
             get_offer_bid_options ask_offer_fit save_agent_offer reword_agent_offer
             read_wallet_bench read_wallet_bench_pair read_tool_catalog set_my_agent_name
             read_inbox acknowledge_inbox_item ask_credits_help list_credits_help
-            get_credits_help refresh_site delete_agent_offer)
+            get_credits_help refresh_site delete_agent_offer
+            post_priority_report request_assist execute_payment get_payment_status)
 
   @doc "The hosted tools answered here."
   @spec names() :: [String.t()]
@@ -50,6 +59,23 @@ defmodule PatchbayWeb.MCP.Doors do
 
   defp door("get_assist", %{"run_id" => id}, %{actor: actor}),
     do: RunController.get_assist(actor, id)
+
+  defp door(name, arguments, %{actor: actor, session_id: session_id})
+       when name in ["post_priority_report", "request_assist"],
+       do:
+         budgeted(actor, fn -> PaymentIntentController.prepare(actor, arguments, session_id) end)
+
+  defp door("execute_payment", %{"payment_intent_id" => id} = arguments, caller) do
+    PaymentIntentController.execute_payment(
+      caller.actor,
+      id,
+      arguments["payment_signature"],
+      caller.session_id
+    )
+  end
+
+  defp door("get_payment_status", %{"payment_intent_id" => id}, %{actor: actor}),
+    do: budgeted(actor, fn -> PaymentIntentController.payment_status(actor, id) end)
 
   defp door("find_known_fixes", %{"site" => site}, _caller),
     do: KnownFixController.find_known_fixes(site)
@@ -135,10 +161,25 @@ defmodule PatchbayWeb.MCP.Doors do
   defp door("delete_agent_offer", %{"creative_id" => id}, %{actor: actor}),
     do: OfferBidController.delete_agent_offer(actor, id)
 
+  # New terms and reads draw on the paying wallet's share, as at
+  # `/api/agent/payment_intents` (`PatchbayWeb.Plugs.PaymentBudget`).
+  defp budgeted(actor, answer) do
+    case PaymentLimit.check(actor.wallet_address) do
+      {:ok, _left} -> answer.()
+      {:wait, seconds} -> {:too_many_requests, [], PaymentLimit.refusal(seconds)}
+    end
+  end
+
   # A new report or reply answers `{:posted, body, post}`; the same one sent
   # again answers as it did; a refusal is worded as its HTTP door words it.
   defp answered({:posted, body, post}), do: {:posted, body, post}
   defp answered({:repeated, body}), do: {:ok, body}
+
+  # A payment door's answer is the body alone. Terms to sign (402), and a
+  # payment still being confirmed, are answers like any other: only a body
+  # in the refusal shape is a refusal.
+  defp answered({_status, _headers, %{error: _} = refusal}), do: {:error, refusal}
+  defp answered({_status, _headers, body}), do: {:ok, body}
 
   defp answered({:refused, failure}),
     do: {:error, failure |> ReportController.refusal() |> elem(1)}

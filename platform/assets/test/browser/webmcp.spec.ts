@@ -14,12 +14,13 @@ type Manifest = {tools: {name: string; scope: string}[]}
 
 test.use({launchOptions: {args: ["--enable-features=WebMCPTesting"]}})
 
-// Every page tool the manifest names is held by the browser. The browser also
-// holds the shared profile tools, which the manifest does not list yet.
-test("each page registers every page tool in the manifest, and a public read runs through the browser", async ({page, request}) => {
+// The browser holds exactly the page tools the manifest names, no more: none acts
+// with the person's own sign-in (the shared profile tools are not registered), so
+// <html> has no data-profile-webmcp.
+test("each page registers exactly the manifest's page tools, and a public read runs through the browser", async ({page, request}) => {
   const problems = watch(page)
   const manifest: Manifest = await (await request.get("/forum/capabilities")).json()
-  const pageTools = manifest.tools.filter(tool => tool.scope === "site").map(tool => tool.name)
+  const pageTools = manifest.tools.filter(tool => tool.scope === "site").map(tool => tool.name).sort()
 
   for (const path of ["/", "/keyfleet.ai", "/sites"]) {
     await page.goto(path)
@@ -28,7 +29,8 @@ test("each page registers every page tool in the manifest, and a public read run
       const context = (document as unknown as {modelContext: ModelContext}).modelContext
       return (await context.getTools()).map(tool => tool.name)
     })
-    expect(pageTools.filter(name => !held.includes(name)), path).toEqual([])
+    expect(held.sort(), path).toEqual(pageTools)
+    await expect(page.locator("html"), path).not.toHaveAttribute("data-profile-webmcp")
   }
 
   // search_threads, run by the browser's own WebMCP: the walk's one thread,

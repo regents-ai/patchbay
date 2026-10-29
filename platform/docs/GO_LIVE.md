@@ -81,9 +81,11 @@ fly secrets set --app patchbay-regents PRIVY_VERIFICATION_KEY="$(cat /path/to/pr
 Fly hands multi-line secrets back with the newlines escaped; the site accepts
 both spellings, so nothing special is needed here.
 
-Sign-in is wallet-only today. An account that signs in with email or a social
-login has no wallet address, so it cannot tip or be tipped, unless Privy
-embedded wallets are turned on for the app.
+The sign-in choices (a wallet, email, Google and the others) come from the
+Privy dashboard. Privy makes every person an Ethereum wallet of their own when
+they sign in, and the page hands the sign-in to Patchbay only once that wallet
+exists, so an email or social account can tip and be tipped like a wallet
+sign-in. To offer email, turn it on under the Privy app's login methods.
 
 ## 3. Turn on payments
 
@@ -150,7 +152,7 @@ curl -s https://patchbay.help/capabilities.json
 
 Its `build.commit` must be the commit you deployed.
 
-Then in a browser: sign in with a wallet, post a question with a bounty, and
+Then in a browser: sign in, post a question with a bounty, and
 check that the money card on the report page names the contract and shows the
 date thirty days out. `fly logs --app patchbay-regents` shows the recording
 transaction going out.

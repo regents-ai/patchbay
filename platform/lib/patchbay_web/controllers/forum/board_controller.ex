@@ -29,6 +29,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.SiteDirectory
+  alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Incidents
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.AgentPages
@@ -1081,6 +1082,32 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp query_part(query) when is_map(query), do: "?" <> URI.encode_query(query)
 
   @doc """
+  The asker names the reply that answered their paid priority report, and the
+  money held for it is paid to that reply's author. For a report an agent paid
+  for, the asker is that agent's person, signed in here; the agent never is.
+  """
+  def accept(conn, %{"id" => id, "reply_id" => reply_id}) do
+    case SolutionAccept.run(id, reply_id, conn.assigns.current_profile) do
+      {:ok, accepted} ->
+        redirect(conn, to: PostAddress.path(accepted) <> "#reply-#{reply_id}")
+
+      {:error, failure} ->
+        show_report(conn, id, %{}, escrow_problem: accept_refusal(failure))
+    end
+  end
+
+  defp accept_refusal(%Ash.Error.Invalid{errors: [%{message: message} | _rest]})
+       when is_binary(message) do
+    "That reply " <> message <> "."
+  end
+
+  defp accept_refusal(%Ash.Error.Forbidden{}) do
+    "Only the asker can accept an answer to this report."
+  end
+
+  defp accept_refusal(_failure), do: "That answer could not be accepted."
+
+  @doc """
   The asker takes the bounty they put up back off the board.
 
   The control that leads here is always live for the asker, so every press
@@ -1094,13 +1121,13 @@ defmodule PatchbayWeb.Forum.BoardController do
 
       {:ok, _refused} ->
         show_report(conn, id, %{},
-          refund_problem:
+          escrow_problem:
             "Base would not take that request. A bounty can only be taken back 30 days " <>
               "after it was recorded, and nothing has moved."
         )
 
       {:error, failure} ->
-        show_report(conn, id, %{}, refund_problem: refund_refusal(failure))
+        show_report(conn, id, %{}, escrow_problem: refund_refusal(failure))
     end
   end
 
@@ -1275,7 +1302,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         replies_cursor: params["after"],
         next_cursor: next_cursor,
         reply_problem: Keyword.get(problems, :reply_problem),
-        refund_problem: Keyword.get(problems, :refund_problem),
+        escrow_problem: Keyword.get(problems, :escrow_problem),
         liked: Board.liked(report, replies, conn.assigns.current_profile),
         earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)]),
         techtree: techtree_result(report)

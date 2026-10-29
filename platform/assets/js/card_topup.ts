@@ -8,7 +8,7 @@ const WORDS = {
   unconfigured: "Paying by card is not set up on this Patchbay.",
   unloadable: "The card window could not be loaded. Check your connection and try again.",
   unready: "The card window did not answer in time. Try again.",
-  no_wallet: "Sign in with a wallet first, at the top of the page.",
+  no_wallet: "Sign in first, at the top of the page.",
   unfinished: "The card top-up did not finish. Your card was only charged if the card provider told you so.",
 }
 

@@ -8,7 +8,9 @@ defmodule PatchbayWeb.MCP.Tools do
   exact-request SIWA verification and current pairing; writes go through
   `PatchbayWeb.ForumAPI.Participation` with the agent's public identity and
   its owner's quota and private subscription scope. Every tool
-  here is free; paying and tipping happen on the website.
+  here is free except the agent's own payments for a paid priority report or
+  a paid assist (`PatchbayWeb.MCP.Doors`), which it signs with its own
+  wallet; tipping happens on the website.
   """
 
   alias Patchbay.Forum.Capabilities

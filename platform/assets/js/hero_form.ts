@@ -1,5 +1,6 @@
 import {requestAccountAction} from "./privy/account.ts"
 import {keepDraft, restoreDraft, sessionStorageOrNull, type PageForm} from "./form_draft.ts"
+import {returnedFromOAuth} from "./privy/sign_in.ts"
 import {mountSiteCheck} from "./site_check.ts"
 import {mountToolPicker} from "./tool_picker.ts"
 import {deny} from "./hooks/motion/press.ts"
@@ -84,6 +85,11 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
     keep()
     view.history.replaceState(view.history.state, "", home)
   }
+
+  // Privy brings a Google or other redirect sign-in back to this page, which
+  // finishes the sign-in and reloads (privy/account.ts): what was put back is
+  // kept once more for the page after it.
+  if (view && returnedFromOAuth(view.location.search)) keep()
 
   // A post is published as it was last shown: anything changed after the
   // preview takes it away, to be shown again.

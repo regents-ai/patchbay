@@ -155,6 +155,15 @@ defmodule Patchbay.Identity.AgentProfile do
     calculate(:ens_name, :string, expr(human_account.ens_name))
     calculate(:ens_avatar_url, :string, expr(human_account.ens_avatar_url))
     calculate(:display_name, :string, Patchbay.Identity.Calculations.DisplayName)
+
+    # Every wallet the person's Privy account linked at their last sign-in: their
+    # main wallet and the Privy wallet made beside it. These, and only these, pay
+    # for the account (the Credits panel, and the page's wallet choice through
+    # `data-account-wallets`). None without an account. Loaded only for the
+    # signed-in profile (`PatchbayWeb.Plugs.CurrentProfile`), never on public reads.
+    calculate(:account_wallets, {:array, :string}, expr(human_account.wallet_addresses || [])) do
+      sensitive?(true)
+    end
   end
 
   preparations do

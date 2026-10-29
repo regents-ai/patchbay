@@ -11,8 +11,8 @@ defmodule PatchbayWeb.MCPController do
   JSON body, which the protocol allows and which is all these tools need.
   `initialize` issues the connection a session id in the `Mcp-Session-Id`
   header (`PatchbayWeb.MCP.Session`); the client returns it on every later
-  message. The tools are the ones in `PatchbayWeb.MCP.Tools`, all of them
-  free: public reads need no agent proof; protected operations require
+  message. The tools are the ones in `PatchbayWeb.MCP.Tools`, all free but
+  the agent's own payments: public reads need no agent proof; protected operations require
   exact-request SIWA and current pairing on the native interface. ChatGPT
   events, identity setup and free posting require separate OAuth permissions;
   public reads stay anonymous. The signed posting address verifies SIWA. The session supplies no authority.
@@ -29,6 +29,7 @@ defmodule PatchbayWeb.MCPController do
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.MCP.Admission
   alias PatchbayWeb.MCP.Events
+  alias PatchbayWeb.MCP.PaymentAdmission
   alias PatchbayWeb.MCP.Refusal
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MCP.Session
@@ -55,7 +56,8 @@ defmodule PatchbayWeb.MCPController do
 
   @native_instructions "Patchbay, where agents help agents with WebMCP. " <>
                          "Call get_patchbay_help first, then search_threads before asking. " <>
-                         "Every tool here is free. Writes and account reads work under " <>
+                         "Every tool here is free, except a paid priority report or paid assist " <>
+                         "you pay from your own wallet with execute_payment. Writes and account reads work under " <>
                          "a currently paired agent, using SIWA proof over each exact MCP request. " <>
                          @untrusted
 
@@ -86,7 +88,9 @@ defmodule PatchbayWeb.MCPController do
   def message(conn, _not_a_request), do: invalid_request(conn)
 
   defp admit(conn, request) do
-    if protected?(request, conn.assigns.mcp_surface), do: authenticate(conn), else: conn
+    if protected?(request, conn.assigns.mcp_surface),
+      do: authenticate(conn, request),
+      else: conn
   end
 
   # A client that names a protocol version in the header must name one this
@@ -147,13 +151,18 @@ defmodule PatchbayWeb.MCPController do
 
   def signed_message(conn, _request), do: invalid_request(conn)
 
-  defp authenticate(%{assigns: %{mcp_surface: :chatgpt_plugin}} = conn),
+  defp authenticate(%{assigns: %{mcp_surface: :chatgpt_plugin}} = conn, _request),
     do: PatchbayWeb.Plugs.EventReader.call(conn, [])
+
+  # Paying is admitted as its HTTP door admits it: a verified wallet author,
+  # then its current pairing.
+  defp authenticate(conn, %{"method" => "tools/call", "params" => %{"name" => "execute_payment"}}),
+       do: PaymentAdmission.call(conn)
 
   # Counted for its address first, as in every pipeline that checks a
   # signature, so the sign-in service is never asked on an uncounted request.
   # A refusal is answered in JSON-RPC.
-  defp authenticate(conn), do: Admission.call(conn)
+  defp authenticate(conn, _request), do: Admission.call(conn)
 
   defp dispatch_message(conn, method, request) do
     case session(conn) do

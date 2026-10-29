@@ -51,8 +51,9 @@ defmodule PatchbayWeb.Forum.Readiness do
   The facts for a hosted MCP connection at `surface`, which carries a session
   and no signed-in profile. Native agents sign their own posts. Enabled ChatGPT
   participation requires account consent and current pairing, with SIWA on the
-  restricted product door. Every hosted tool is free, so nothing about a
-  wallet, USDC or payments is part of it.
+  restricted product door. The server never signs or spends: an agent pays
+  from its own wallet with its own key, so nothing about a wallet, USDC or
+  payments is part of it.
   """
   @spec for_hosted(String.t() | nil, PatchbayWeb.MCP.Session.surface()) :: map()
   def for_hosted(session_id, surface) do

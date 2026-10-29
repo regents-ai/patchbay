@@ -15,9 +15,10 @@ defmodule PatchbayWeb.CreditsPanel do
   too little USDC. Explanations wait in tips; the panel shows figures, choices,
   presses and outcomes.
 
-  It pays from the wallet Patchbay knows the profile by. The press reaches
-  Privy's active wallet; when that is another wallet, nothing is sent and the
-  panel names both.
+  It pays from any wallet the account links: the person's main wallet and the
+  Privy wallet made beside it. The press reaches Privy's active wallet; when
+  that is a wallet the account does not link, nothing is sent and the panel
+  names both.
 
   The parent passes `profile` (signed in with Privy), its `credits` reading
   (`state` and the `RegentCredits.balance/1` value, kept current by the
@@ -361,12 +362,15 @@ defmodule PatchbayWeb.CreditsPanel do
 
   # The profile as the page gave it, or as it reads now before each event and
   # each background result (`CurrentProfile.check_component_lease/2`): the
-  # wallet that may act and the review follow it.
+  # wallets that may act are every wallet the account links, the same list the
+  # page chooses from (`data-account-wallets`), and the review follows them.
   defp take_profile(socket, profile) do
-    wallet = String.downcase(profile.wallet_address)
-
     socket
-    |> assign(profile: profile, linked: [wallet], own: wallet)
+    |> assign(
+      profile: profile,
+      linked: profile.account_wallets,
+      own: String.downcase(profile.wallet_address)
+    )
     |> sync()
   end
 

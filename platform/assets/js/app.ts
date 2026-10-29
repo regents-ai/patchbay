@@ -44,7 +44,6 @@ import {hooks as labHooks} from "./motion_lab.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
 import {signedInProfileId} from "./webmcp/profile.ts"
 import {installAccountControl} from "./privy/account.ts"
-import {installSharedProfile} from "./shared_profile.ts"
 import {installVisitLog} from "./visit_log.ts"
 import {mountHeroForm} from "./hero_form.ts"
 import {mountSitePost} from "./site_post.ts"
@@ -108,7 +107,6 @@ installNavMenu()
 const offerPageWideSurfaces = () => {
   mountMotion(document)
   installAccountControl({fetch: window.fetch.bind(window), csrfToken})
-  installSharedProfile()
   mountWebMCPStatus()
   mountHeroForm({fetch: window.fetch.bind(window), csrfToken})
   mountSitePost()
