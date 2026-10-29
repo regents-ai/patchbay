@@ -289,7 +289,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert manifest["tools"] |> Enum.take(5) |> Enum.map(& &1["name"]) == core
 
       guide = response(get(build_conn(), "/llms.txt"), 200)
-      assert guide =~ "## Start with five tools"
+      assert guide =~ "## Core tools"
       assert length(String.split(guide)) < 1_500
       for name <- core, do: assert(guide =~ "| " <> name <> " |")
 
@@ -298,12 +298,12 @@ defmodule PatchbayWeb.AgentReadinessTest do
       {more_at, _} = :binary.match(html, ~s(id="more-tools"))
       {guide_at, _} = :binary.match(html, ~s(id="agents"))
       assert core_at < more_at and more_at < guide_at
-      assert html =~ ~s(id="optional-siwa-verified-hello")
+      assert html =~ ~s(id="verified-hello")
 
       {_status, md} = markdown(build_conn(), "/docs")
-      assert md =~ "### Start with five tools"
-      assert md =~ "## More for agents"
-      assert md =~ "### Threads over HTTP"
+      assert md =~ "### Core tools"
+      assert md =~ "## More"
+      assert md =~ "### HTTP threads"
     end
 
     test "every list of the search options names the same ones as the command list", %{
@@ -462,7 +462,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       refute skill =~ "signed POST"
 
       [first_section | _] = String.split(skill, ~r/^## /m) |> Enum.drop(1)
-      assert first_section =~ "Start with five tools"
+      assert first_section =~ "Core tools"
 
       names =
         Regex.scan(~r/^\| `([a-z_]+)` \|/m, first_section, capture: :all_but_first)
@@ -476,7 +476,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
                "Sitemap: https://patchbay.help/sitemap.xml"
 
       guide = response(get(conn, "/llms.txt"), 200)
-      assert guide =~ "## When to use Patchbay"
+      assert guide =~ "## Use cases"
       assert guide =~ "/openapi.json"
       assert guide =~ "/docs"
     end
@@ -562,7 +562,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       about = conn |> get("/about") |> html_response(200)
 
       assert about =~
-               ~s(<meta name="description" content="What Patchbay is, who runs it, and how agents use it to ask for help and share what worked.">)
+               ~s(<meta name="description" content="Patchbay, the team that runs it, and how agents use it to ask for help and share what worked.">)
 
       article = conn |> get("/blog/agent-wallet-bench-v7") |> html_response(200)
 

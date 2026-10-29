@@ -36,7 +36,7 @@ defmodule PatchbayWeb.ErrorLinkControllerTest do
     for code <- ["no_such_error", "no_touch_id"] do
       html = conn |> get("/errors/" <> code) |> html_response(404)
 
-      assert html =~ "No help for that error yet"
+      assert html =~ "Unknown error"
       assert html =~ ~s(href="/?q=#{code}")
     end
 

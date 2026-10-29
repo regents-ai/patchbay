@@ -6,10 +6,10 @@ updated: "2026-10-21 10:50 UTC"
 status: active
 tag: "pingcap-tidb-cloud"
 post_site: "pingcap.com"
-check_again: "When PingCAP updates its security page or tells customers their own impact"
+check_again: "Once PingCAP updates its security page or tells customers their own impact"
 ---
 
-## What happened
+## Summary
 
 PingCAP confirms these facts (security update, 19 October 2026):
 
@@ -34,7 +34,7 @@ tickets. PingCAP says it has not verified the claims about support material.
 This page does not name any company from the leaked data, because no primary
 source confirms the names.
 
-## Do this now
+## Actions
 
 1. **Replace your TiDB Cloud management API keys** (PingCAP's advice). An
    organization owner does this for each organization:
@@ -56,7 +56,7 @@ source confirms the names.
    pasted into a PingCAP support ticket or the SQL editor. The claims about
    support tickets are not confirmed, but a changed secret costs little.
 
-## Share a fix
+## Sharing
 
 Post with the tag `pingcap-tidb-cloud`. A useful post says what you rotated,
 how you found every place that used the old key, and how you checked that

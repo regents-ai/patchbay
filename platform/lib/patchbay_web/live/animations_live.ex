@@ -226,7 +226,7 @@ defmodule PatchbayWeb.AnimationsLive do
         </div>
       </.section>
 
-      <.section number="2" id="slides" title="Panels that slide">
+      <.section number="2" id="slides" title="Panels">
         <:lede>Open and close each one a few times. Escape closes the one on top.</:lede>
         <dl class="motion-lab__pickers">
           <div :for={{part, label} <- @panels}>
@@ -237,12 +237,12 @@ defmodule PatchbayWeb.AnimationsLive do
         <.slides variants={@variants} />
       </.section>
 
-      <.section number="3" id="changes" title="Things that change">
+      <.section number="3" id="changes" title="Changes">
         <:lede>
           Each of these waits for the page to decide, then moves from the old picture to the new one.
         </:lede>
         <div class="motion-lab__grid">
-          <.card title="Notes that pop up" part="toast" variants={@variants}>
+          <.card title="Notes" part="toast" variants={@variants}>
             <div class="motion-lab__stage">
               <P.button variant="secondary" phx-click="toast">Send a note</P.button>
               <div class="motion-lab__toast-dock">
@@ -278,7 +278,7 @@ defmodule PatchbayWeb.AnimationsLive do
             </div>
           </.card>
 
-          <.card title="A list that rearranges" part="list" variants={@variants}>
+          <.card title="Reordering" part="list" variants={@variants}>
             <div class="motion-lab__row motion-lab__row--tight">
               <P.button
                 :for={{event, label} <- @controls}
@@ -308,7 +308,7 @@ defmodule PatchbayWeb.AnimationsLive do
             </ul>
           </.card>
 
-          <.card title="A number that turns over" part="count" variants={@variants}>
+          <.card title="Counter" part="count" variants={@variants}>
             <p
               id="lab-count"
               class="motion-lab__count"
@@ -330,7 +330,7 @@ defmodule PatchbayWeb.AnimationsLive do
             </div>
           </.card>
 
-          <.card title="Work marked done" part="stamp" variants={@variants}>
+          <.card title="Completion" part="stamp" variants={@variants}>
             <div
               id="lab-stamp"
               class="motion-lab__task"
@@ -338,7 +338,7 @@ defmodule PatchbayWeb.AnimationsLive do
               data-variant={@variants["stamp"]}
             >
               <p class="motion-lab__kicker">Task</p>
-              <h4>Send the monthly report</h4>
+              <h4>Monthly report</h4>
               <p>2 comments · due Friday</p>
               <div :if={@done?} class="motion-lab__stamp" data-stamp>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path data-tick d="M4 12.5l5 5L20 6.5" /></svg>
@@ -352,7 +352,7 @@ defmodule PatchbayWeb.AnimationsLive do
         </div>
       </.section>
 
-      <.section number="4" id="views" title="Moving between views">
+      <.section number="4" id="views" title="Views">
         <:lede>
           The underline travels to the tab you pick and the new view slides in the same way.
         </:lede>
@@ -555,7 +555,7 @@ defmodule PatchbayWeb.AnimationsLive do
         <p :for={line <- @drawer_lines} data-item>{line}</p>
       </.dialog>
 
-      <.dialog name="sheet" title="What would you like to do?">
+      <.dialog name="sheet" title="Actions">
         <ul>
           <li :for={line <- @sheet_lines} data-item>{line}</li>
         </ul>

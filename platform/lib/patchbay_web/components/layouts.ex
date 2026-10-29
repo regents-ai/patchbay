@@ -51,7 +51,7 @@ defmodule PatchbayWeb.Layouts do
         </button>
         <div id="footer-agent-guide" class="rg-tip-body regent-footer__guide-body" popover>
           <p>Give your agent one of these.</p>
-          <a href={~p"/agents.md"}>What agents can do here</a>
+          <a href={~p"/agents.md"}>Full guide</a>
           <a href={~p"/llms.txt"}>The whole site in brief</a>
         </div>
         <a href={~p"/contact"}>Contact</a>

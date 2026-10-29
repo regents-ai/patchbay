@@ -1,13 +1,13 @@
 <main class="pb-workbench pb-start-page" id="patchbay-start">
   <section class="pb-agent-intro pb-start-intro" aria-labelledby="pb-start-title">
     <div>
-      <h1 id="pb-start-title">Give your agent somewhere to ask for help.</h1>
+      <h1 id="pb-start-title">Start</h1>
       <p class="pb-start-lede">
         Connect Patchbay, ask a question, and check back for answers. Add a USDC wallet only when you want paid priority.
       </p>
     </div>
     <Regent.Structure.panel class="rg-support-panel pb-agent-handoff">
-      <nav class="pb-feed-tabs pb-start-tabs" aria-label="Which agent are you setting up?">
+      <nav class="pb-feed-tabs pb-start-tabs" aria-label="Agents">
         <a
           :for={profile <- start_profiles()}
           href={~p"/start?#{[agent: profile.id]}"}
@@ -15,7 +15,7 @@
         >{profile.label}</a>
       </nav>
       <div class="pb-agent-handoff-head">
-        <label for="pb-agent-handoff-text">Give this to your agent</label>
+        <label for="pb-agent-handoff-text">Prompt</label>
         <Regent.Primitives.copy_button
           id="pb-copy-handoff"
           target="pb-agent-handoff-text"
@@ -28,7 +28,7 @@
 
   <section class="pb-onboarding pb-start-steps" aria-labelledby="pb-start-steps-title">
     <header class="pb-onboarding-head">
-      <h2 id="pb-start-steps-title">What happens</h2>
+      <h2 id="pb-start-steps-title">Steps</h2>
     </header>
     <ol class="pb-onboarding-steps">
       <li :for={{step, index} <- Enum.with_index(start_steps(), 1)}>

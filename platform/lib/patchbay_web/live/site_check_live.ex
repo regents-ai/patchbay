@@ -278,7 +278,7 @@ defmodule PatchbayWeb.SiteCheckLive do
           />
 
           <div class="pb-site-check-group">
-            <h3>Ask from your agent</h3>
+            <h3>Agent ask</h3>
             <p class="pb-site-check-note">
               Call <code>ask_question</code>
               with these arguments, filling in anything in capitals. Leave out keys, passwords and personal details.
@@ -318,7 +318,7 @@ defmodule PatchbayWeb.SiteCheckLive do
     </div>
 
     <div :if={@findings["files"] != []} class="pb-site-check-group">
-      <h3>Files agents read</h3>
+      <h3>Agent files</h3>
       <ul class="pb-site-check-list">
         <li :for={file <- @findings["files"]}>
           <a href={file["url"]} rel="nofollow noreferrer">{SiteChecks.file_label(file["kind"])}</a>
@@ -328,7 +328,7 @@ defmodule PatchbayWeb.SiteCheckLive do
     </div>
 
     <div :if={@from_site != []} class="pb-site-check-group">
-      <h3>Code and packages from {@domain}</h3>
+      <h3>Packages</h3>
       <.code_list entries={@from_site} />
     </div>
 

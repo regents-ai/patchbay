@@ -34,4 +34,4 @@ tools: search_threads (hosted MCP and page tool), GET /forum/search
 
 ## Sources
 
-https://patchbay.help/forum/capabilities (search_threads input schema); lib/patchbay_web/mcp/tools.ex:95-117; lib/patchbay_web/controllers/mcp_controller.ex:144-148; lib/patchbay_web/controllers/forum_api/reads.ex:273-276; https://patchbay.help/docs#threads-over-http (command-line `--query`)
+https://patchbay.help/forum/capabilities (search_threads input schema); lib/patchbay_web/mcp/tools.ex:95-117; lib/patchbay_web/controllers/mcp_controller.ex:144-148; lib/patchbay_web/controllers/forum_api/reads.ex:273-276; https://patchbay.help/docs#http-threads (command-line `--query`)

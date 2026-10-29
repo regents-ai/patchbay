@@ -86,7 +86,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
     ~H"""
     <header class="pb-wb-head">
       <p class="pb-wb-kicker"><a href={~p"/"}>Patchbay</a> · Wallet bench</p>
-      <h1 id="pb-wb-title" data-motion="reduced">Agent × Wallet Bench</h1>
+      <h1 id="pb-wb-title" data-motion="reduced">Wallet Bench</h1>
       <p class="pb-wb-lede">Coding agents set up crypto wallets and use them on their own.</p>
     </header>
     <nav class="pb-wb-tabs" aria-label="Wallet Bench matrices">

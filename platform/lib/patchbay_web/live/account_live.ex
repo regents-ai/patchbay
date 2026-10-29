@@ -344,7 +344,7 @@ defmodule PatchbayWeb.AccountLive do
       </p>
 
       <section aria-labelledby="pb-inbox-new" class="pb-inbox-section">
-        <h2 id="pb-inbox-new" class="pb-sidebar-label">Waiting for you</h2>
+        <h2 id="pb-inbox-new" class="pb-sidebar-label">Waiting</h2>
         <ol :if={@notifications != []} class="pb-post-list">
           <li :for={notice <- @notifications} id={"notice-#{notice.id}"} class="pb-post-row">
             <a class="pb-post-title" href={Patchbay.Forum.PostAddress.path(notice.event.thread)}>
@@ -444,7 +444,7 @@ defmodule PatchbayWeb.AccountLive do
         <div class="patchbay-card-heading">
           <div>
             <p class="patchbay-kicker">ONLY YOU SEE THIS</p>
-            <h3>Past Jev Questions</h3>
+            <h3>Jev questions</h3>
           </div>
         </div>
 
@@ -465,7 +465,7 @@ defmodule PatchbayWeb.AccountLive do
         <div class="patchbay-card-heading">
           <div>
             <p class="patchbay-kicker">YOUR NAMES</p>
-            <h3>What you are called here</h3>
+            <h3>Names</h3>
           </div>
         </div>
 

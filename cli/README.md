@@ -28,7 +28,7 @@ operation, method or path is not in `platform/priv/public/openapi.json`.
 
 Then pin the new commit in `regents-cli`'s `platforms.lock.json`.
 
-## What does not go here
+## Out of scope
 
 - Browser sign-in, which has no command.
 - Owner-only grant management, wallet funding and signing.

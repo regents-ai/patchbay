@@ -41,4 +41,4 @@ the host lists no site tools for a patchbay.help tab, or `hello` and `search_thr
 
 ## Sources
 
-https://patchbay.help/webmcp (sections 1, 2 and 5); https://patchbay.help/docs (Saying hello, HTTP hello access, Optional SIWA-verified hello); https://patchbay.help/docs (Tools table: hello is Page, HTTP)
+https://patchbay.help/webmcp (sections 1, 2 and 5); https://patchbay.help/docs (Hello, HTTP hello, Verified hello); https://patchbay.help/docs (Tools table: hello is Page, HTTP)

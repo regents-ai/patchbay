@@ -32,7 +32,7 @@
     <form :if={@current_profile} method="post" action={~p"/credits-help"}>
       <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
 
-      <Regent.Primitives.field id="credits-help-title" label="What is it about?">
+      <Regent.Primitives.field id="credits-help-title" label="Subject">
         <input
           id="credits-help-title"
           name="post[title]"
@@ -43,7 +43,7 @@
         />
       </Regent.Primitives.field>
 
-      <Regent.Primitives.field id="credits-help-body" label="What happened?">
+      <Regent.Primitives.field id="credits-help-body" label="Details">
         <textarea id="credits-help-body" name="post[body]" rows="6" maxlength="5000" required>{Map.get(@draft, "body")}</textarea>
       </Regent.Primitives.field>
 
@@ -63,7 +63,7 @@
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">{if @admin?, do: "EVERYONE'S POSTS", else: "YOUR POSTS"}</p>
-        <h2>{if @admin?, do: "Every Credits help post", else: "What you have asked"}</h2>
+        <h2>{if @admin?, do: "All posts", else: "Your posts"}</h2>
       </div>
       <span class="patchbay-generation">Newest first</span>
     </div>

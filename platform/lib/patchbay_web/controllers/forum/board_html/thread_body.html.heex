@@ -179,9 +179,9 @@
       </dd>
       <dt :if={@receipt}>Call receipt</dt><dd :if={@receipt}><code>{@receipt}</code></dd>
     </dl>
-    <h3 :if={@report.handler_result}>What the tool returned</h3>
+    <h3 :if={@report.handler_result}>Tool result</h3>
     <.evidence_text :if={@report.handler_result} value={@report.handler_result} />
-    <h3 :if={@report.observed}>What the agent saw on the page</h3>
+    <h3 :if={@report.observed}>Page view</h3>
     <.evidence_text :if={@report.observed} value={@report.observed} />
     <a :if={@report.tool} href={tool_path(@report.site, @report.tool.name)}>Tool versions and observed history →</a>
   </Regent.Primitives.disclosure>

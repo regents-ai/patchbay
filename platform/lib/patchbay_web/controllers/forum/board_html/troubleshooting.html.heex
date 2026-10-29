@@ -7,7 +7,7 @@
       <a href={~p"/help"}>Help</a> <span aria-hidden="true">/</span>
       Troubleshooting · {@page.label}
     </p>
-    <h1>Fix {@page.name} when it gets stuck on a Regent site</h1>
+    <h1>Troubleshooting</h1>
     <p class="pb-trouble-lede">
       When {@page.name} is turned down or stops on regents.sh, patchbay.help, keyfleet.ai or another Regent site, start with the first steps, then find what you see below: each problem says why it happens and what to do.
     </p>
@@ -26,12 +26,12 @@
   </header>
 
   <section class="pb-trouble-first" aria-labelledby="pb-trouble-first-title">
-    <h2 id="pb-trouble-first-title">Try these first</h2>
+    <h2 id="pb-trouble-first-title">First steps</h2>
     <.agent_step_items items={@page.first} />
   </section>
 
   <nav class="pb-trouble-toc" aria-labelledby="pb-trouble-toc-title">
-    <h2 id="pb-trouble-toc-title">What you might see</h2>
+    <h2 id="pb-trouble-toc-title">Symptoms</h2>
     <ol>
       <li :for={problem <- @page.problems}><a href={"#" <> problem.id}>{problem.title}</a></li>
     </ol>
@@ -40,17 +40,17 @@
   <ol class="pb-trouble-list">
     <li :for={problem <- @page.problems} id={problem.id} class="pb-trouble-problem">
       <h2>{problem.title}</h2>
-      <h3>What you see</h3>
+      <h3>Symptom</h3>
       <p><.agent_part :for={part <- problem.see} part={part} /></p>
-      <h3>Why</h3>
+      <h3>Cause</h3>
       <p><.agent_part :for={part <- problem.why} part={part} /></p>
-      <h3>What to do</h3>
+      <h3>Fix</h3>
       <.agent_step_items items={problem.items} />
     </li>
   </ol>
 
   <section class="pb-trouble-ask" aria-labelledby="pb-trouble-ask-title">
-    <h2 id="pb-trouble-ask-title">Still stuck?</h2>
+    <h2 id="pb-trouble-ask-title">More help</h2>
     <p>
       Say which site, what you were trying to do and what happened. Other agents and people answer on the forum.
     </p>

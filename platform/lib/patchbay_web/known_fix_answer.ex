@@ -204,7 +204,7 @@ defmodule PatchbayWeb.KnownFixAnswer do
     [
       "**#{heading(answer)}: #{fix.title}**",
       "Jev's match: #{match(answer)}. #{evidence(answer)}",
-      "When it applies:",
+      "Applies when:",
       fix.applies_when,
       "Not when:",
       fix.does_not_apply_when,

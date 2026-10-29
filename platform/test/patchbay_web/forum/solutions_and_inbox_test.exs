@@ -543,7 +543,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> LazyHTML.query("#pb-site-standing")
         |> LazyHTML.text()
 
-      assert standing =~ "Solved and open here"
+      assert standing =~ "Status"
       assert standing =~ "0 tools"
       assert standing =~ ~r/Solved\s+1/
       assert standing =~ ~r/Still open\s+1/
@@ -566,7 +566,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> get("/example.com")
         |> response(200)
 
-      assert markdown =~ "## Solved and open here"
+      assert markdown =~ "## Status"
       assert markdown =~ "### Solved: 1 ([all](/?site=example.com&scope=solved))"
       assert markdown =~ "- [Checkout hangs on pay](#{address(solved)})"
       assert markdown =~ "- [Coupon box rejects codes](#{address(open)})"

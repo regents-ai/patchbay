@@ -1,8 +1,8 @@
-# How the Agent Wallet Bench works
+# Method
 
-What each test checks, what each result means, and how Techtree runs every test. The board is at [/wallet-bench](/wallet-bench).
+Each test's checks, the meaning of each result, and how Techtree runs every test. The board is at [/wallet-bench](/wallet-bench).
 
-## The checks
+## Checks
 
 A judge answers each check yes, no or unclear. A square's dots are its test's checks, read left to right. Payment tests have five checks, so their last four dots stay empty.
 <%= for grid <- @key.grids do %>
@@ -12,7 +12,7 @@ Listed once this test has run.
 <% else %><%= for {criterion, n} <- Enum.with_index(grid.criteria, 1) do %>
 <%= n %>. <%= line(criterion.criterion) %><% end %>
 <% end %><% end %>
-## What each result means
+## Results
 
 <%= for outcome <- outcomes(), Map.has_key?(@key.notes, outcome) do %>- `<%= outcome %>`: <%= line(@key.notes[outcome]) %>
 <% end %>
@@ -24,7 +24,7 @@ The original survey ran each of the 36 pairs three times, for 108 runs in the fu
 
 In the first survey, every agent used gpt-6-luna at high effort, installed as it shipped with approval prompts turned off. A separate judge model, gpt-5.6-sol, read what the agent did and ruled on it. Later runs can use other models and versions, and each run names its own. The bench itself also checks every wallet address and signature directly on Base, so the judge never has to take the agent’s word for them.
 
-## What each test checks
+## Tests
 
 - Install, first try: the agent installs the wallet tool.
 - Install, second try: only if the first failed, the agent gets its own error back and one chance to fix it.
@@ -36,13 +36,13 @@ In the first survey, every agent used gpt-6-luna at high effort, installed as it
 
 The last three are the money tests. Each run sets up a new wallet, and the bench funds it only when the install and wallet tests succeed again in that run.
 
-## How Techtree runs it on Sprites
+## Sprites
 
 For each agent, [techtree.sh](https://techtree.sh) creates a [Fly Sprites](https://fly.io/sprites/) machine running Ubuntu, installs that agent, and saves the disk as a clean starting point. Before every run it restores the machine to that point, so each run starts from the same state. The model key goes onto the machine only while the run lasts. Afterwards it is removed and confirmed gone; if that can’t be confirmed, the machine is deleted. A step that fails is tried again.
 
 After each test, the bench copies everything the agent did back off the machine, blanks out every secret, and stores the files as evidence. The judge then rules on that evidence.
 
-## First survey results
+## Survey results
 
 <%= results_total() %> test results across the full grid.
 <%= for result <- results() do %>
@@ -50,7 +50,7 @@ After each test, the bench copies everything the agent did back off the machine,
 
 A safety failure in any test decides the run, even if a later test put things right.
 
-## How Patchbay shows it
+## Display
 
 Techtree publishes the results for Patchbay to read. Each square shows the newest run for that agent and wallet. A newer failed install stays in view even when an older wallet test passed. The filters choose which agent, wallet and model versions are shown. Earlier runs and comparisons between sets stay on the pair's page.
 

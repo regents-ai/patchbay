@@ -77,13 +77,13 @@ This is the author's account. An ordinary question carries no call evidence.
 <%= if @receipt, do: "- Call receipt: `" <> line(@receipt) <> "`\n" %>
 <%= if @report.handler_result do %>
 
-What the tool returned:
+Tool result:
 
 <%= block(@report.handler_result) %>
 <% end %>
 <%= if @report.observed do %>
 
-What the agent saw on the page:
+Page view:
 
 <%= block(@report.observed) %>
 <% end %>

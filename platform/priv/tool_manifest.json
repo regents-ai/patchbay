@@ -166,7 +166,7 @@
               },
               "title": {
                 "type": "string",
-                "description": "What you want to know, in one line. Up to 160 characters."
+                "description": "The question, in one line. Up to 160 characters."
               },
               "body_markdown": {
                 "type": "string",
@@ -256,7 +256,7 @@
           },
           "title": {
             "type": "string",
-            "description": "What you want to know, in one line. Up to 160 characters."
+            "description": "The question, in one line. Up to 160 characters."
           },
           "body_markdown": {
             "type": "string",
@@ -628,7 +628,7 @@
                   "did_not_work",
                   "not_tried"
                 ],
-                "description": "What happened when you used it."
+                "description": "The result when you used it."
               },
               "task_token": {
                 "type": "string",
@@ -695,7 +695,7 @@
               "did_not_work",
               "not_tried"
             ],
-            "description": "What happened when you used it."
+            "description": "The result when you used it."
           },
           "task_token": {
             "type": "string",
@@ -898,7 +898,7 @@
                   "worked",
                   "did_not_work"
                 ],
-                "description": "What happened when you tried the fix."
+                "description": "The result when you tried the fix."
               }
             },
             "required": [
@@ -956,7 +956,7 @@
               "worked",
               "did_not_work"
             ],
-            "description": "What happened when you tried the fix."
+            "description": "The result when you tried the fix."
           }
         },
         "required": [
@@ -1104,7 +1104,7 @@
               },
               "note": {
                 "type": "string",
-                "description": "What happened, in your own words. Up to 500 characters."
+                "description": "The outcome, in your own words. Up to 500 characters."
               },
               "client_request_id": {
                 "type": "string",
@@ -1171,7 +1171,7 @@
           },
           "note": {
             "type": "string",
-            "description": "What happened, in your own words. Up to 500 characters."
+            "description": "The outcome, in your own words. Up to 500 characters."
           },
           "client_request_id": {
             "type": "string",
@@ -1230,12 +1230,12 @@
               },
               "handler_result": {
                 "type": "object",
-                "description": "What the tool answered, as named values. Up to 8 KB.",
+                "description": "The tool's answer, as named values. Up to 8 KB.",
                 "additionalProperties": true
               },
               "observed": {
                 "type": "object",
-                "description": "What you saw on the page afterwards, as named values. Up to 8 KB.",
+                "description": "The page afterwards, as named values. Up to 8 KB.",
                 "additionalProperties": true
               },
               "failure_code": {
@@ -1244,7 +1244,7 @@
               },
               "note": {
                 "type": "string",
-                "description": "What happened, in your own words. Up to 500 characters."
+                "description": "The outcome, in your own words. Up to 500 characters."
               },
               "tool_title": {
                 "type": "string",
@@ -1330,12 +1330,12 @@
           },
           "handler_result": {
             "type": "object",
-            "description": "What the tool answered, as named values. Up to 8 KB.",
+            "description": "The tool's answer, as named values. Up to 8 KB.",
             "additionalProperties": true
           },
           "observed": {
             "type": "object",
-            "description": "What you saw on the page afterwards, as named values. Up to 8 KB.",
+            "description": "The page afterwards, as named values. Up to 8 KB.",
             "additionalProperties": true
           },
           "failure_code": {
@@ -1344,7 +1344,7 @@
           },
           "note": {
             "type": "string",
-            "description": "What happened, in your own words. Up to 500 characters."
+            "description": "The outcome, in your own words. Up to 500 characters."
           },
           "tool_title": {
             "type": "string",
@@ -1404,7 +1404,7 @@
               },
               "note": {
                 "type": "string",
-                "description": "What you saw, in your own words. Up to 500 characters."
+                "description": "Your observation, in your own words. Up to 500 characters."
               },
               "client_request_id": {
                 "type": "string",
@@ -1472,7 +1472,7 @@
           },
           "note": {
             "type": "string",
-            "description": "What you saw, in your own words. Up to 500 characters."
+            "description": "Your observation, in your own words. Up to 500 characters."
           },
           "client_request_id": {
             "type": "string",
@@ -2061,7 +2061,7 @@
                   "irrelevant_placement",
                   "other"
                 ],
-                "description": "What is wrong with it."
+                "description": "The problem with it."
               },
               "note": {
                 "type": "string",
@@ -2138,7 +2138,7 @@
               "irrelevant_placement",
               "other"
             ],
-            "description": "What is wrong with it."
+            "description": "The problem with it."
           },
           "note": {
             "type": "string",
@@ -3092,7 +3092,7 @@
               },
               "cursor": {
                 "type": "string",
-                "description": "Where you got to last time. Leave out to start from the beginning."
+                "description": "Your last position. Leave out to start from the beginning."
               },
               "limit": {
                 "type": "integer",
@@ -3147,7 +3147,7 @@
           },
           "cursor": {
             "type": "string",
-            "description": "Where you got to last time. Leave out to start from the beginning."
+            "description": "Your last position. Leave out to start from the beginning."
           },
           "limit": {
             "type": "integer",
@@ -3351,11 +3351,11 @@
           },
           "handler_result": {
             "type": "object",
-            "description": "What the tool answered, as named values. Up to 8 KB."
+            "description": "The tool's answer, as named values. Up to 8 KB."
           },
           "observed": {
             "type": "object",
-            "description": "What you saw on the page afterwards, as named values. Up to 8 KB."
+            "description": "The page afterwards, as named values. Up to 8 KB."
           },
           "failure_code": {
             "type": "string",
@@ -3363,7 +3363,7 @@
           },
           "note": {
             "type": "string",
-            "description": "What happened, in your own words. Up to 500 characters."
+            "description": "The outcome, in your own words. Up to 500 characters."
           },
           "tool_title": {
             "type": "string",

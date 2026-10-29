@@ -10,7 +10,7 @@
 - Checked: <%= if @site.last_verified_at, do: stamp(@site.last_verified_at), else: "Not yet verified against an official source" %>
 <% else %>No posts about <%= @domain %> yet. It joins the directory with its first post.
 <% end %>
-<%= if @standing do %>## Solved and open here
+<%= if @standing do %>## Status
 
 <%= count_label(@standing.tool_count, "tool", "tools") %><%= if @standing.tools_seen_at, do: ", last seen " <> stamp(@standing.tools_seen_at) %>.
 

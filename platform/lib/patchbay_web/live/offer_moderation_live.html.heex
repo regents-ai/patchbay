@@ -1,6 +1,6 @@
 <main class="patchbay-shell patchbay-board pb-offmod" id="pb-offer-moderation">
   <.board_header>
-    <:title>Agent Offers admin</:title>
+    <:title>Offers admin</:title>
     <:crumbs>PATCHBAY / ADMIN / OFFERS</:crumbs>
     <:meta>
       <span class="patchbay-generation">Private</span>
@@ -157,7 +157,7 @@
           <p class="pb-offmod-figures">This wording: {figures(report.version)}.</p>
 
           <details class="pb-offmod-screening">
-            <summary>What screening found</summary>
+            <summary>Screening</summary>
             <ul>
               <li :for={review <- report.version.reviews}>
                 {review_label(review)} · {review_decision_label(review.decision)}{if review.decided_at,
@@ -185,7 +185,7 @@
             <input type="hidden" name="report_id" value={report.id} />
             <Regent.Primitives.field
               id={"pb-offmod-why-#{report.id}"}
-              label="Why (kept with the decision)"
+              label="Reason (kept with the decision)"
             >
               <input
                 id={"pb-offmod-why-#{report.id}"}
@@ -230,7 +230,7 @@
             <p class="patchbay-muted">{removal_words(report.placement, board)}</p>
             <Regent.Primitives.field
               id={"pb-offmod-remove-why-#{report.id}"}
-              label="Why remove it (kept with the decision)"
+              label="Reason (kept with the decision)"
             >
               <input
                 id={"pb-offmod-remove-why-#{report.id}"}

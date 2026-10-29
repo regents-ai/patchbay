@@ -53,7 +53,7 @@ defmodule PatchbayWeb.OffersLive.BidTest do
     settle(market, 1)
     render(view)
 
-    assert has_element?(view, "#pb-offers-outbid", "You were outbid and Credits are returned")
+    assert has_element?(view, "#pb-offers-outbid", "Outbid")
     assert credits(owner) == %{available: "10", held: "0"}
 
     # The same details against the slot as it stands now: a new bid, judged on

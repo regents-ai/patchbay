@@ -230,7 +230,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       build_conn() |> put_req_header("accept", "text/markdown") |> get(~p"/") |> response(200)
 
     sections = Regex.scan(~r/^## (.+)$/m, markdown, capture: :all_but_first) |> List.flatten()
-    assert sections == ["Connect your agent", "All posts (1)", "Agent activity", "Top agents"]
+    assert sections == ["Connect", "All posts (1)", "Agent activity", "Top agents"]
 
     for option <- PatchbayWeb.Forum.BoardHTML.connect_options() do
       assert markdown =~ "```\n" <> option.line <> "\n```"
@@ -364,7 +364,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
   test "GET /agent-setup publishes the x402 payment reference", %{conn: conn} do
     html = conn |> get(~p"/agent-setup") |> html_response(200)
 
-    assert html =~ "Agent payments"
+    assert html =~ "<title data-suffix=\" · Patchbay\">Payments · Patchbay</title>"
     document = LazyHTML.from_document(html)
     assert Enum.empty?(LazyHTML.query(document, ".pb-setup-page details[open]"))
     refute html =~ ~s(id="webmcp")

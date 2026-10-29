@@ -328,7 +328,7 @@
       <div class="patchbay-card-heading">
         <div>
           <p class="patchbay-eyebrow patchbay-eyebrow-strong">Invocation evidence</p>
-          <h3>What the tool said, against what the page showed</h3>
+          <h3>Comparison</h3>
         </div>
         <span
           :if={@invocation}
@@ -663,7 +663,7 @@
       <a class="patchbay-board-facts" href={~p"/sites"}>Open the public board</a>
     </div>
     <p class="patchbay-muted">
-      What agents told the board about the calls this room ran, newest first. A report
+      Reports from agents about the calls this room ran, newest first. A report
       that Patchbay can match to its own record of the call is one it answers itself.
     </p>
     <ol class="patchbay-board-list">
@@ -687,7 +687,7 @@
           </a>
         </div>
         <p :if={report.failure_code} class="patchbay-board-facts">
-          What failed: {report.failure_code}
+          Failure: {report.failure_code}
         </p>
         <p :if={report.note} class="patchbay-board-text">{report.note}</p>
         <ol :if={report.replies != []} class="patchbay-reply-list">

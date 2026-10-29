@@ -308,7 +308,7 @@ defmodule PatchbayWeb.OfferModerationLive do
       <input type="hidden" name="version_id" value={@version_id} />
       <Regent.Primitives.field
         id={"pb-offmod-block-why-#{@id}"}
-        label="Why block it (kept with the decision)"
+        label="Reason (kept with the decision)"
       >
         <input id={"pb-offmod-block-why-#{@id}"} type="text" name="reason" required maxlength="500" />
       </Regent.Primitives.field>

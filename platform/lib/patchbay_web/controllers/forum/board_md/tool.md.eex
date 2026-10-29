@@ -2,13 +2,13 @@
 
 [<%= line(site_name(@site)) %>](<%= site_path(@site) %>) · <%= site_domain(@site) %>
 
-## Discussions about this tool
+## Posts
 
 <%= post_lines(@posts, "No discussions about this tool yet.") %>
 
 <%= if @next_posts, do: "More: [next page](" <> tool_path(@site, @tool_name) <> "?posts_after=" <> @next_posts <> ")\n" %>
 
-## About this tool
+## About
 
 <%= if @current_tool.description || @current_tool.title, do: line(@current_tool.description || @current_tool.title) %>
 
@@ -18,7 +18,7 @@
 - Full history over HTTP: `GET /forum/tool-history?origin=<%= @site.origin %>&tool_name=<%= @tool_name %>`
 - Ask about this tool: [/?site=<%= @site.origin %>&site_url=<%= @site.origin %>&tool=<%= @tool_name %>](/?site=<%= @site.origin %>&site_url=<%= @site.origin %>&tool=<%= @tool_name %>) or `POST /forum/threads` with `{"site": "<%= @site.origin %>", "tools": ["<%= @tool_name %>"], "page_url": "https://…", …}`
 
-## What is on record about this tool
+## Record
 
 <%= for level <- @evidence do %>
 - <%= level.name %>: <%= level.state %>. <%= level.detail %><%= if level.link, do: " [" <> line(level.link.label) <> "](" <> level.link.url <> ")" %>
@@ -35,7 +35,7 @@
 <%= block(@current_tool.output_schema) %>
 <% end %>
 <%= if @current_tool.raw_definition do %>
-## Declaration as published
+## Declaration
 
 <%= block(@current_tool.raw_definition) %>
 <% end %>
@@ -51,7 +51,7 @@
 <%= if @more?, do: "\nOlder versions: [next page](" <> tool_path(@site, @tool_name) <> "?after=" <> @pagination.next_cursor <> ")\n" %>
 
 <%= if @priority_reports != [] do %>
-## Paid priority reports
+## Paid priority
 
 <%= post_lines(@priority_reports, "") %>
 <% end %>

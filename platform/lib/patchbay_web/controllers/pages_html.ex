@@ -94,8 +94,8 @@ defmodule PatchbayWeb.PagesHTML do
     <table>
       <thead>
         <tr>
-          <th>Tool</th><th>Where</th><th>Needs</th><th>Changes state</th><th>Money</th><th>
-            What it does
+          <th>Tool</th><th>Surface</th><th>Needs</th><th>Changes state</th><th>Money</th><th>
+            Purpose
           </th>
         </tr>
       </thead>

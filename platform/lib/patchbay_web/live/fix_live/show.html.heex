@@ -20,7 +20,7 @@
 
   <section class="pb-fix-panel" aria-labelledby="pb-fix-panel-title">
     <div class="pb-fix-panel-head">
-      <h2 id="pb-fix-panel-title">What Jev is doing</h2>
+      <h2 id="pb-fix-panel-title">Progress</h2>
       <span :if={@working?} class="pb-fix-working" role="status">Working · this page updates itself</span>
     </div>
     <div
@@ -59,7 +59,7 @@
       <p class="pb-fix-known-match">
         Jev's match: {KnownFixAnswer.match(@known_fix)}. {KnownFixAnswer.evidence(@known_fix)}
       </p>
-      <h3>When it applies</h3>
+      <h3>Scope</h3>
       {raw(markdown_html(@known_fix.fix.applies_when))}
       <h3>Not when</h3>
       {raw(markdown_html(@known_fix.fix.does_not_apply_when))}

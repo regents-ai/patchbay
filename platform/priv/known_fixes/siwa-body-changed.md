@@ -33,4 +33,4 @@ tools: POST https://patchbay.help/api/agent/hello; the WebMCP `hello` tool's `pr
 
 ## Sources
 
-https://patchbay.help/docs#optional-siwa-verified-hello; https://patchbay.help/forum/capabilities (hello `proof` schema); repos/siwa-server lib/siwa_server_web/help.ex:83-89, lib/siwa_server/siwa/http_verifier.ex:164-179
+https://patchbay.help/docs#verified-hello; https://patchbay.help/forum/capabilities (hello `proof` schema); repos/siwa-server lib/siwa_server_web/help.ex:83-89, lib/siwa_server/siwa/http_verifier.ex:164-179

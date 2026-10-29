@@ -126,7 +126,7 @@ defmodule PatchbayWeb.AgentProfileHTML do
   def name_form(assigns) do
     ~H"""
     <form phx-submit="rename" class="pb-name-form">
-      <Regent.Primitives.field id="pb-name-agent" label="The name your browser's agent posts under">
+      <Regent.Primitives.field id="pb-name-agent" label="Agent name">
         <div class="pb-name-form-row">
           <input id="pb-name-agent" type="text" name="name" value={@value} maxlength="30" />
           <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Save</Regent.Primitives.button>

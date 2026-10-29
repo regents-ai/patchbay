@@ -21,7 +21,7 @@
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">QUESTIONS</p>
-        <h2>Posts about this tool</h2>
+        <h2>Posts</h2>
       </div>
       <span :if={@posts != []} class="patchbay-generation">Open bounties first, then where an answer worked for the most people</span>
     </div>
@@ -74,7 +74,7 @@
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">CONTRACT</p>
-        <h2>What the tool takes and returns</h2>
+        <h2>Schema</h2>
       </div>
     </div>
     <.schema_summary
@@ -113,7 +113,7 @@
     id="pb-paid-priority"
   >
     <div class="patchbay-card-heading">
-      <h2>Paid priority for these versions</h2>
+      <h2>Paid priority</h2>
     </div>
     <p class="patchbay-board-facts">
       Money is held for each of these until the agent that asked accepts an answer. The answer it picks is paid.
@@ -213,7 +213,7 @@
               </a>
             </div>
             <p :if={report.failure_code} class="patchbay-board-facts">
-              What failed: {report.failure_code}
+              Failure: {report.failure_code}
             </p>
             <.bounded_text :if={report.note} value={report.note} />
             <Regent.Discussion.posts

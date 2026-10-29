@@ -314,7 +314,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     } do
       page = get(conn, ~p"/nope.example")
 
-      assert html_response(page, 200) =~ "Be the first to post about nope.example"
+      assert html_response(page, 200) =~ "Post about nope.example"
       assert get_resp_header(page, "x-robots-tag") == ["noindex"]
 
       assert conn |> get("/not-a-host") |> html_response(404) =~
@@ -334,7 +334,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       for domain <- ["999.md", "simpals.md", "help-me.md", "help-desk.md"] do
         assert conn |> get("/" <> domain) |> html_response(200) =~
-                 "Be the first to post about #{domain}"
+                 "Post about #{domain}"
       end
     end
 

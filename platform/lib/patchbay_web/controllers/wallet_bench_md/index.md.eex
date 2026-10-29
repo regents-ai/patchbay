@@ -1,4 +1,4 @@
-# Agent Wallet Bench
+# Wallet Bench
 
 Coding agents set up crypto wallets and use them on their own. Each square is one agent with one wallet; its link opens the run shown in that square.
 

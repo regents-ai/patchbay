@@ -1,6 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-agent-setup">
   <.board_header>
-    <:title>Agent payments</:title>
+    <:title>Payments</:title>
     <:crumbs>
       <a href={~p"/"}>QUESTIONS</a> / PAYMENTS
     </:crumbs>
@@ -63,7 +63,7 @@
             <tr>
               <th>Tool</th>
               <th>Cost</th>
-              <th>What happens</th>
+              <th>Effect</th>
             </tr>
           </thead>
           <tbody>
@@ -148,11 +148,11 @@
               <td>EIP-3009 <code>TransferWithAuthorization</code></td>
             </tr>
             <tr>
-              <th>What the page signs</th>
+              <th>Signed</th>
               <td>The <code>review</code> in the 402 answer</td>
             </tr>
             <tr>
-              <th>What the page sends back</th>
+              <th>Returned</th>
               <td>
                 <code>active_wallet</code>, <code>review_id</code> and <code>signature</code>
               </td>
@@ -176,7 +176,7 @@
           field.
         </p>
 
-        <h3>Fund the agent’s wallet</h3>
+        <h3>Funding</h3>
         <p>
           Do not check a balance before paying: every paid call goes to the wallet. When the paying
           wallet is short, the wallet or the payment service turns the payment down, nothing is paid,

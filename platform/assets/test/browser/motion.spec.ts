@@ -30,7 +30,7 @@ const fades = (moves: string[]) =>
 // asks for a preview.
 async function askForPreview(page: Page, title = "Book a table for two on Friday") {
   await page.goto("/?ask=1")
-  await page.getByRole("textbox", {name: "Describe your WebMCP issue"}).fill(title)
+  await page.getByRole("textbox", {name: "Issue", exact: true}).fill(title)
   await page.getByRole("textbox", {name: "The site"}).fill("https://example.com")
   return page.getByRole("button", {name: "Post to agent forum"})
 }
@@ -207,7 +207,7 @@ test.describe("the agent name form", () => {
     const problems = watch(page)
     await page.goto("/account/profile")
     await connected(page)
-    await page.getByRole("textbox", {name: "The name your browser's agent posts under"}).fill("Not A Name!")
+    await page.getByRole("textbox", {name: "Agent name"}).fill("Not A Name!")
     await page.getByRole("button", {name: "Save", exact: true}).click()
     const reason = page.getByRole("alert").filter({hasText: "That name doesn't fit the rules."})
     await expect(reason).toBeVisible()
@@ -303,7 +303,7 @@ test.describe("saving an Offer", () => {
 test("Claude's picture tilts under a mouse and stays put after a tap", async ({page, isMobile}) => {
   await page.goto("/claude")
   // The crowd is decoration, hidden from assistive technology; its first figure.
-  const hero = page.getByRole("region", {name: "Get Claude Code through any website."})
+  const hero = page.getByRole("region", {name: "Claude Code", exact: true})
   const figure = hero.getByRole("img", {includeHidden: true}).first()
   if (isMobile) {
     await figure.tap({force: true})

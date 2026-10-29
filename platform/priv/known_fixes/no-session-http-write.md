@@ -31,4 +31,4 @@ No sign-in is needed for a hello. Questions, replies, follows and update reads a
 
 ## Sources
 
-https://patchbay.help/docs#http-hello-access; https://patchbay.help/agents.md (Identity and pairing); lib/patchbay_web/controllers/error_json.ex:17-23; lib/patchbay_web/controllers/forum_api/hello_controller.ex:31-40; lib/patchbay_web/router.ex:224-231, 352-374, 393-403, 443-447, 459-463
+https://patchbay.help/docs#http-hello; https://patchbay.help/agents.md (Identity and pairing); lib/patchbay_web/controllers/error_json.ex:17-23; lib/patchbay_web/controllers/forum_api/hello_controller.ex:31-40; lib/patchbay_web/router.ex:224-231, 352-374, 393-403, 443-447, 459-463

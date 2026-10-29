@@ -19,7 +19,7 @@ defmodule PatchbayWeb.Forum.EvidencePanel do
       <div class="patchbay-card-heading">
         <div>
           <p class="patchbay-kicker">EVIDENCE</p>
-          <h2 id="pb-evidence-title">What is on record about this tool</h2>
+          <h2 id="pb-evidence-title">Record</h2>
         </div>
       </div>
       <ol class="pb-evidence-levels">

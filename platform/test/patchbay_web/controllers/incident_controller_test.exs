@@ -38,14 +38,14 @@ defmodule PatchbayWeb.IncidentControllerTest do
     html = conn |> get(~p"/incidents/emudhra") |> html_response(200)
 
     assert html =~ emudhra.title
-    assert html =~ "Do this now"
+    assert html =~ "Actions"
     assert html =~ ~s(href="/incidents/emudhra.md")
     assert html =~ ~s(href="#{PostAddress.path(fix)}")
     refute html =~ ~s(href="#{PostAddress.path(other)}")
 
     markdown = conn |> get("/incidents/emudhra.md") |> response(200)
     assert markdown =~ "# #{emudhra.title}"
-    assert markdown =~ "## Do this now"
+    assert markdown =~ "## Actions"
     assert markdown =~ "(#{PostAddress.path(fix)})"
     refute markdown =~ "(#{PostAddress.path(other)})"
 

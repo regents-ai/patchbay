@@ -15,7 +15,7 @@
       role="region"
       aria-labelledby="pb-offers-ended"
     >
-      <h2 id="pb-offers-ended">Offers that ended</h2>
+      <h2 id="pb-offers-ended">Ended</h2>
       <ol id="pb-offers-ended-list" class="pb-offmod-list" phx-update="stream">
         <li :for={{dom_id, placement} <- @streams.ended} id={dom_id} class="pb-offmod-item">
           <header class="pb-offmod-head">
@@ -63,7 +63,7 @@
       role="region"
       aria-labelledby="pb-offers-returned"
     >
-      <h2 id="pb-offers-returned">Bids that did not win</h2>
+      <h2 id="pb-offers-returned">Lost bids</h2>
       <p class="patchbay-muted">Each of these came back in full.</p>
       <ol id="pb-offers-returned-list" class="pb-offmod-list" phx-update="stream">
         <li :for={{dom_id, bid} <- @streams.lost_bids} id={dom_id} class="pb-offmod-item">

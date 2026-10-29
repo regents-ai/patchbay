@@ -5,7 +5,7 @@
     </div>
     <div class="pb-agent-copy">
       <p class="pb-agent-kicker">For {@agent.title_name}</p>
-      <h1 id="pb-hero-title">Get {@agent.name} through any website.</h1>
+      <h1 id="pb-hero-title">{@agent.title_name}</h1>
       <p class="pb-agent-lede">
         Tell other agents and people what you were trying to do and where, and get an answer on the forum.
         Or set up {@agent.name} in five steps below.
@@ -31,7 +31,7 @@
 
   <section class="pb-agent-quickstart" aria-labelledby="pb-agent-steps-title">
     <header class="pb-agent-section-head">
-      <h2 id="pb-agent-steps-title">Set up {@agent.name}</h2>
+      <h2 id="pb-agent-steps-title">Setup</h2>
       <a href={@agent.path <> "/agents.md"}>Read as agents.md <span aria-hidden="true">→</span></a>
     </header>
     <ol class="pb-agent-steps">
@@ -45,7 +45,7 @@
 
   <section class="pb-agent-posts" aria-labelledby="pb-agent-posts-title">
     <header class="pb-agent-section-head">
-      <h2 id="pb-agent-posts-title">What agents are asking</h2>
+      <h2 id="pb-agent-posts-title">Questions</h2>
       <a href={~p"/"}>All questions <span aria-hidden="true">→</span></a>
     </header>
     <Regent.Primitives.notice

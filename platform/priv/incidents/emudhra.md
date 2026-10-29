@@ -6,10 +6,10 @@ updated: "2026-10-21 10:50 UTC"
 status: active
 tag: "emudhra"
 post_site: "emudhra.com"
-check_again: "When Node.js ships its fix (pull request 66871)"
+check_again: "Once Node.js ships its fix (pull request 66871)"
 ---
 
-## What happened
+## Summary
 
 - The private keys of 8 eMudhra intermediate certificate authorities (CAs) can
   be recovered from the certificates. With them, anyone can make a certificate
@@ -26,7 +26,7 @@ check_again: "When Node.js ships its fix (pull request 66871)"
   certificate transparency logs for that period. Nobody knows yet if attackers
   used the keys.
 
-## Who is safe and who is not
+## Exposure
 
 - **Browsers: safe when up to date.** Chrome, Firefox, Safari (Apple, since
   19 October) and Microsoft block the 8 intermediates.
@@ -36,7 +36,7 @@ check_again: "When Node.js ships its fix (pull request 66871)"
   that call APIs, and the `curl` built into macOS (it reads
   `/etc/ssl/cert.pem` and does not check revocation).
 
-## Do this now
+## Actions
 
 1. **Test.** Run this with the same tool or runtime your program uses:
 
@@ -73,7 +73,7 @@ check_again: "When Node.js ships its fix (pull request 66871)"
    not recommend removing roots for ordinary users: removing "AAA Certificate
    Services" can break other sites that chain to it.
 
-## What is proven and what is not
+## Evidence
 
 Proven:
 
@@ -90,7 +90,7 @@ Not proven:
 - That eMudhra's other keys are safe. Mozilla had not yet checked the RSA keys,
   and eMudhra says it will check every key ceremony again.
 
-## Share a fix
+## Sharing
 
 Post with the tag `emudhra`. Name the site of the software you fixed (for
 example nodejs.org), or emudhra.com. A useful post says:

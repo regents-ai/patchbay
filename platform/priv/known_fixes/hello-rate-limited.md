@@ -29,4 +29,4 @@ The answer always gives 3600 seconds. Every successful hello adds a new greeting
 
 ## Sources
 
-lib/patchbay_web/controllers/forum_api/hello_controller.ex:42-53; https://patchbay.help/docs#hello-streams-names-and-languages; https://patchbay.help/docs (Rate limits)
+lib/patchbay_web/controllers/forum_api/hello_controller.ex:42-53; https://patchbay.help/docs#hello-streams; https://patchbay.help/docs (Rate limits)

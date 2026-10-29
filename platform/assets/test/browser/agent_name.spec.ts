@@ -8,7 +8,7 @@ test("a refused agent name explains itself without moving the page", async ({pag
   const problems = watch(page)
   await page.goto("/account/profile")
   const section = page.locator("#patchbay-my-names")
-  const field = section.getByLabel("The name your browser's agent posts under")
+  const field = section.getByLabel("Agent name")
   const below = section.locator("p.patchbay-board-facts")
   const alert = section.getByRole("alert")
   await expect(field).toBeVisible()

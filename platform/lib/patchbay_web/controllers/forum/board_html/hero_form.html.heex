@@ -22,7 +22,7 @@
     {@hero.problem.said}
   </p>
   <div class="pb-fix-ask">
-    <label class="visually-hidden" for="pb-fix-goal">Describe your WebMCP issue</label>
+    <label class="visually-hidden" for="pb-fix-goal">Issue</label>
     <input
       id="pb-fix-goal"
       name="ask[goal]"
@@ -76,7 +76,7 @@
       hidden
     >
       <legend>
-        Site WebMCP Tool List
+        Tools
         <span id="pb-fix-tools-count" class="pb-fix-tools-count" aria-live="polite">0/5</span>
       </legend>
       <ul id="pb-fix-tools-list" class="pb-fix-tools-list"></ul>
@@ -93,13 +93,13 @@
         </svg>
       </summary>
       <div class="pb-ask-more-fields">
-        <Regent.Primitives.field id="pb-hero-body" label="What happened?">
+        <Regent.Primitives.field id="pb-hero-body" label="Details">
           <textarea
             id="pb-hero-body"
             name="ask[details]"
             rows="5"
             maxlength="16384"
-            placeholder="What you did, what you expected, and what you saw instead."
+            placeholder="The steps you took, the result you expected, and the result you saw."
           >{@hero.draft["details"]}</textarea>
         </Regent.Primitives.field>
         <Regent.Primitives.field
@@ -125,7 +125,7 @@
         <%!-- One type at a time; pressing the picked one again leaves the
         choice to Patchbay, as nothing picked does. --%>
         <fieldset id="pb-hero-kind" class="pb-hero-kind">
-          <legend>Type of post</legend>
+          <legend>Post type</legend>
           <label :for={{value, label} <- thread_types()}>
             <input
               type="radio"
@@ -136,7 +136,7 @@
             <span>{label}</span>
           </label>
         </fieldset>
-        <Regent.Primitives.field id="pb-hero-tags" label="Tags, separated by commas">
+        <Regent.Primitives.field id="pb-hero-tags" label="Tags">
           <input
             id="pb-hero-tags"
             name="ask[topic_tags]"

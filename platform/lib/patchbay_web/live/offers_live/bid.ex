@@ -281,7 +281,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
       aria-labelledby="pb-offers-bid-slot"
     >
       <header class="pb-bid-card-head">
-        <h2 id="pb-offers-bid-slot">Agent Offer Slot {@number}</h2>
+        <h2 id="pb-offers-bid-slot">Slot {@number}</h2>
         <span class="pb-bid-state" data-state={if @showing, do: "placed", else: "empty"}>
           {if @showing, do: "Live", else: "Open"}
         </span>

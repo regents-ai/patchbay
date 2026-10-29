@@ -81,7 +81,7 @@ defmodule PatchbayWeb.WalletBenchRunHTML do
           <table class="pb-wb-report-table">
             <thead>
               <tr>
-                <th scope="col">Check</th><th scope="col">Answer</th><th scope="col">Why</th>
+                <th scope="col">Check</th><th scope="col">Answer</th><th scope="col">Reason</th>
               </tr>
             </thead>
             <tbody>

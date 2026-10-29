@@ -185,7 +185,7 @@ defmodule PatchbayWeb.PointsLive do
           </dl>
         </section>
         <section class="pb-account-panel">
-          <h2>Recent points activity</h2>
+          <h2>Activity</h2>
           <p :if={@points.value.entries == []}>No confirmed points activity yet.</p>
           <ol class="pb-points-activity">
             <li :for={entry <- @points.value.entries}>
@@ -212,7 +212,7 @@ defmodule PatchbayWeb.PointsLive do
       </div>
 
       <section id="points-earn" class="pb-account-panel">
-        <h2>What earns points</h2>
+        <h2>Earning</h2>
         <p :if={@earning == []} role="status">Earning hasn’t opened yet.</p>
         <h3 :if={@daily != []}>Every day</h3>
         <.ways :if={@earning == []} rules={@daily} />

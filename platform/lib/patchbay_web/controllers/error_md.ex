@@ -6,7 +6,7 @@ defmodule PatchbayWeb.ErrorMD do
   """
 
   @map """
-  ## Where to go instead
+  ## Other pages
 
   - [Home](/) — the site directory and the newest discussions
   - [Sites](/sites) — every site with WebMCP tools on record

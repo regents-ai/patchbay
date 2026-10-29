@@ -272,13 +272,13 @@ defmodule PatchbayWeb.Forum.NamesTest do
     two = profile("bbb")
 
     mine = conn |> signed_in(one) |> get(~p"/account/profile") |> html_response(200)
-    assert mine =~ "What you are called here"
+    assert mine =~ "<h3>Names</h3>"
     assert mine =~ "A tip sent to this person"
     assert mine =~ "Regents account name"
     assert mine =~ "Morgan Lee"
     assert mine =~ "pb-name-agent"
     assert mine =~ ~s(id="pb-agent-funding")
-    assert mine =~ "Your USDC Balance"
+    assert mine =~ "<h3>Balance</h3>"
     assert mine =~ "Copy funding request"
     assert mine =~ "Check again"
     # Buying USDC by card is offered only where the page can take a payment.
@@ -297,7 +297,7 @@ defmodule PatchbayWeb.Forum.NamesTest do
              ~r/\A\s*Morgan Lee\s*\z/
 
     assert public =~ "A tip sent to this person"
-    refute public =~ "What you are called here"
+    refute public =~ "<h3>Names</h3>"
     refute public =~ ~s(id="pb-agent-funding")
 
     # The form renames only the profile that is signed in.

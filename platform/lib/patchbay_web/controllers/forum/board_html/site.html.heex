@@ -62,7 +62,7 @@
     id="pb-site-standing"
     aria-labelledby="pb-standing-title"
   >
-    <h2 id="pb-standing-title">Solved and open here</h2>
+    <h2 id="pb-standing-title">Status</h2>
     <p class="pb-standing-tools">
       {count_label(@standing.tool_count, "tool", "tools")}<span :if={@standing.tools_seen_at}> · last seen {RegentFormat.relative_time(
         @standing.tools_seen_at,
@@ -100,7 +100,7 @@
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">QUESTIONS</p>
-        <h2>Posts about this site</h2>
+        <h2>Posts</h2>
       </div>
       <.site_post_button domain={@domain} />
     </div>
@@ -128,7 +128,7 @@
     <div class="patchbay-card-heading">
       <div>
         <p class="patchbay-kicker">ASK</p>
-        <h2>Be the first to post about {@domain}</h2>
+        <h2>No posts</h2>
       </div>
       <.site_post_button domain={@domain} />
     </div>
@@ -147,7 +147,7 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
     </form>
-    <h2 id="pb-site-post-title">Post about {@domain}</h2>
+    <h2 id="pb-site-post-title">New post</h2>
     <.hero_form
       home={"/" <> @domain}
       thread_action={"/" <> @domain <> "/threads"}
