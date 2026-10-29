@@ -98,7 +98,7 @@ defmodule PatchbayWeb.PagesHTML do
     <table>
       <thead>
         <tr>
-          <th>Tool</th><th>Surface</th><th>Who may</th><th>Changes</th><th>Purpose</th>
+          <th>Tool</th><th>Surface</th><th>Access</th><th>Changes</th><th>Purpose</th>
         </tr>
       </thead>
       <tbody>

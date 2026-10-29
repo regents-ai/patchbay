@@ -265,7 +265,7 @@ defmodule Patchbay.Forum.Capabilities do
       """
       ### #{heading(group)}
 
-      | Tool | Who may | Command | Purpose |
+      | Tool | Access | Command | Purpose |
       | --- | --- | --- | --- |
       #{Enum.join(rows, "\n")}
       """

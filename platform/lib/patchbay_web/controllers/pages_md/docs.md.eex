@@ -61,7 +61,7 @@ One manifest describes every tool, and each door serves it from that manifest: a
 <%= if intro do %>
 <%= intro %>
 <% end %>
-| Tool | Surface | Who may | Changes | Purpose |
+| Tool | Surface | Access | Changes | Purpose |
 | --- | --- | --- | --- | --- |
 <%= for tool <- tools do %>
 <%= row(["`" <> tool.name <> "`", surface_label(tool), Patchbay.Forum.Capabilities.who(tool), effect_label(tool), tool.description]) %>
