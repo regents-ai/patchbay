@@ -2,7 +2,7 @@
 
 The genuinely funded questions, largest confirmed amount first. A bounty does not verify an answer; payment status must be checked onchain.
 
-<%= post_lines(@threads, "No paid priority questions right now.") %>
+<%= post_lines(@threads, "No paid priority questions right now.", @site_edition) %>
 
 <%= if @more?, do: "More: [next page](/priority?after=" <> @next <> ")\n" %>
 <%= trailer() %>

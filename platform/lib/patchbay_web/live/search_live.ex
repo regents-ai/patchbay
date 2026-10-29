@@ -38,7 +38,8 @@ defmodule PatchbayWeb.SearchLive do
          opened?: false,
          limited?: false,
          search_read: %Read{},
-         visitor: Map.fetch!(session, "visitor")
+         visitor: Map.fetch!(session, "visitor"),
+         site_edition: Map.fetch!(session, "site_edition")
        )}
 
   def handle_event("open", _params, socket) do
@@ -81,31 +82,37 @@ defmodule PatchbayWeb.SearchLive do
   defp normalize(q) when is_binary(q), do: q |> String.trim() |> String.slice(0, 100)
   defp normalize(_), do: ""
 
-  defp named(q) do
+  defp named(q, site_edition) do
     needle = String.downcase(q)
 
     [
       {"Pages",
        [
          %{kind: :page, label: "Questions", path: ~p"/"},
-         %{kind: :page, label: "Sites", path: ~p"/sites"},
-         %{kind: :page, label: "Agent Offers", path: ~p"/offers"},
-         %{kind: :page, label: "Account", path: ~p"/account"},
-         %{kind: :page, label: "Agent guide", path: ~p"/agents.md"},
-         %{kind: :page, label: "Help", path: ~p"/help"}
-       ]},
+         %{kind: :page, label: "Sites", path: ~p"/sites"}
+       ] ++
+         main_only(site_edition, [%{kind: :page, label: "Agent Offers", path: ~p"/offers"}]) ++
+         [
+           %{kind: :page, label: "Account", path: ~p"/account"},
+           %{kind: :page, label: "Agent guide", path: ~p"/agents.md"},
+           %{kind: :page, label: "Help", path: ~p"/help"}
+         ]},
       {"Actions",
-       [
-         %{kind: :action, label: "Ask a question", path: ~p"/?ask=1" <> "#pb-hero"},
-         %{kind: :action, label: "Create Offer", path: ~p"/offers/create"}
-       ]}
+       [%{kind: :action, label: "Ask a question", path: ~p"/?ask=1" <> "#pb-hero"}] ++
+         main_only(site_edition, [
+           %{kind: :action, label: "Create Offer", path: ~p"/offers/create"}
+         ])}
     ]
     |> Enum.map(fn {group, items} ->
       {group, Enum.filter(items, &String.contains?(String.downcase(&1.label), needle))}
     end)
   end
 
-  defp groups(q, value) do
+  # Agent Offers are patchbay.help's alone (PatchbayWeb.SiteEdition).
+  defp main_only(:main, items), do: items
+  defp main_only(:open, _items), do: []
+
+  defp groups(q, value, site_edition) do
     found =
       case value do
         %{questions: questions, sites: sites, tools: tools} ->
@@ -148,7 +155,7 @@ defmodule PatchbayWeb.SearchLive do
           []
       end
 
-    Enum.reject(named(q) ++ found, fn {_group, items} -> items == [] end)
+    Enum.reject(named(q, site_edition) ++ found, fn {_group, items} -> items == [] end)
   end
 
   def render(assigns) do
@@ -157,7 +164,11 @@ defmodule PatchbayWeb.SearchLive do
     search =
       if assigns.limited?,
         do: %{query: assigns.q, results: [], state: :limited},
-        else: %{query: assigns.q, results: groups(assigns.q, read.value), state: read.state}
+        else: %{
+          query: assigns.q,
+          results: groups(assigns.q, read.value, assigns.site_edition),
+          state: read.state
+        }
 
     assigns =
       assign(assigns,

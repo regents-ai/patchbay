@@ -57,6 +57,7 @@
     <.post_list
       :if={@reports != :unavailable}
       posts={@reports}
+      site_edition={@site_edition}
       earned_tips={%{}}
       empty="No posts yet"
       ask={@agent.path}

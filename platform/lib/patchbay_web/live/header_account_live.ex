@@ -19,6 +19,10 @@ defmodule PatchbayWeb.HeaderAccountLive do
   dialog has been opened, so a page that never opens it never reads a wallet. Any
   page opens it with `JS.dispatch("pb:credits-open", to: "#pb-credits")`, or with
   a `data-credits-open` button (`assets/js/account_menu.ts`).
+
+  The open address (`PatchbayWeb.SiteEdition`) shows no Credits and no wallet:
+  the menu keeps the name, the agents, Pair New Agent, Manage Account and Sign
+  out.
   """
 
   use PatchbayWeb, :live_view
@@ -34,6 +38,15 @@ defmodule PatchbayWeb.HeaderAccountLive do
   @impl true
   def mount(_params, _session, %{assigns: %{current_profile: nil}} = socket),
     do: {:ok, assign(socket, opened: false, credits: %Read{})}
+
+  def mount(_params, _session, %{assigns: %{site_edition: :open}} = socket) do
+    %{privy_user_id: did} = socket.assigns.current_profile
+
+    if connected?(socket),
+      do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentAgents.topic(did))
+
+    {:ok, assign(socket, opened: false, credits: %Read{})}
+  end
 
   def mount(_params, _session, socket) do
     %{privy_user_id: did} = socket.assigns.current_profile
@@ -81,6 +94,7 @@ defmodule PatchbayWeb.HeaderAccountLive do
     ~H"""
     <div class="pb-credits">
       <button
+        :if={@site_edition == :main}
         id="pb-credits-balance"
         type="button"
         class="pb-credits-balance"
@@ -94,6 +108,7 @@ defmodule PatchbayWeb.HeaderAccountLive do
         <.amount credits={@credits} />
       </button>
       <Regent.Structure.dialog
+        :if={@site_edition == :main}
         id="pb-credits"
         class="pb-credits-dialog"
         phx-hook="PatchbayCreditsDialog"
@@ -118,15 +133,15 @@ defmodule PatchbayWeb.HeaderAccountLive do
       <Regent.Account.menu
         id="account-menu"
         name={AgentProfile.name_for(@current_profile, :human)}
-        wallet={@current_profile.wallet_address}
-        ens_name={@current_profile.ens_name}
+        wallet={if @site_edition == :main, do: @current_profile.wallet_address}
+        ens_name={if @site_edition == :main, do: @current_profile.ens_name}
         manage_href={~p"/account"}
         pair_href={~p"/account/agents#account-pairing"}
       >
         <:picture>
           <PatchbayWeb.Forum.Nameplate.author_avatar author={@current_profile} kind={:human} />
         </:picture>
-        <:balance>
+        <:balance :if={@site_edition == :main}>
           <button
             type="button"
             id="account-menu-credits"

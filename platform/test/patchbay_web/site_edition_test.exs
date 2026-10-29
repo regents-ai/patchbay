@@ -60,6 +60,26 @@ defmodule PatchbayWeb.SiteEditionTest do
     assert conn |> get("/priority") |> html_response(200)
   end
 
+  test "the open address's pages leave out every tool whose route is patchbay.help's" do
+    assert SiteEdition.left_out_tools(:main) == []
+
+    assert SiteEdition.left_out_tools(:open) ==
+             ~w(report_agent_offer list_offer_slots get_offer_bid_options bid_on_offer_slot
+                ask_offer_fit save_agent_offer reword_agent_offer delete_agent_offer
+                list_my_active_offers list_my_offer_history request_free_fix get_assist
+                account_balances account_credits_history account_points ask_credits_help
+                list_credits_help get_credits_help)
+  end
+
+  test "a page names the tools its address leaves out", %{conn: conn} do
+    left_out = Enum.join(SiteEdition.left_out_tools(:open), " ")
+
+    assert conn |> get("/") |> html_response(200) =~ ~s(name="tools-left-out" content="")
+
+    assert conn |> on_open() |> get("/") |> html_response(200) =~
+             ~s(name="tools-left-out" content="#{left_out}")
+  end
+
   test "a connected page the other address does not have goes to the home page" do
     socket = %Phoenix.LiveView.Socket{}
 

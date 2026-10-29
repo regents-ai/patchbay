@@ -187,7 +187,7 @@
   </Regent.Primitives.disclosure>
 
   <Regent.Primitives.disclosure
-    :if={@report.priority_amount_atomic}
+    :if={@site_edition == :main && @report.priority_amount_atomic}
     id="pb-thread-payment"
     summary="Paid priority · separate from evidence"
     open={not is_nil(@escrow_problem)}

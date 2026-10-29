@@ -3,7 +3,7 @@ defmodule PatchbayWeb.IncidentMD do
 
   use PatchbayWeb, :md
 
-  import PatchbayWeb.Forum.BoardMD, only: [post_line: 1]
+  import PatchbayWeb.Forum.BoardMD, only: [post_line: 2]
 
   import PatchbayWeb.IncidentHTML,
     only: [
@@ -18,11 +18,11 @@ defmodule PatchbayWeb.IncidentMD do
   embed_templates("incident_md/*")
 
   @doc "The fixes as list lines, each marked when its poster said a reply fixed it."
-  def fix_lines([]), do: "_No fixes shared yet._"
+  def fix_lines([], _site_edition), do: "_No fixes shared yet._"
 
-  def fix_lines(fixes) do
+  def fix_lines(fixes, site_edition) do
     Enum.map_join(fixes, "\n", fn fix ->
-      post_line(fix) <> if(fix.solved, do: " · solved", else: "")
+      post_line(fix, site_edition) <> if(fix.solved, do: " · solved", else: "")
     end)
   end
 end

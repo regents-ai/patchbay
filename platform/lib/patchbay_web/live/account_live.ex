@@ -64,11 +64,18 @@ defmodule PatchbayWeb.AccountLive do
         forum_session_id: session["forum_session_id"]
       )
 
-    case socket.assigns.current_profile do
-      nil ->
+    case {socket.assigns.current_profile, socket.assigns.site_edition} do
+      {nil, _site_edition} ->
         {:ok, socket}
 
-      %{privy_user_id: did} ->
+      # The open address shows no Credits (PatchbayWeb.SiteEdition).
+      {%{privy_user_id: did}, :open} ->
+        if connected?(socket),
+          do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentAgents.topic(did))
+
+        {:ok, socket}
+
+      {%{privy_user_id: did}, :main} ->
         if connected?(socket) do
           :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(did))
           :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentAgents.topic(did))
@@ -217,7 +224,7 @@ defmodule PatchbayWeb.AccountLive do
         <h1 tabindex="-1">{@page_title}</h1>
       </header>
 
-      <.tabs current={@live_action} />
+      <.tabs current={@live_action} site_edition={@site_edition} />
 
       <Regent.Account.signed_out
         :if={is_nil(@current_profile) and @live_action != :inbox}
@@ -243,19 +250,21 @@ defmodule PatchbayWeb.AccountLive do
     required: true,
     doc: "the open tab: :show, :agents, :inbox, :profile or :points"
 
+  attr :site_edition, :atom, required: true, doc: "the open address has no Points tab"
+
   @doc "The Account tabs, shown on each Account page and on Points."
   def tabs(assigns) do
     ~H"""
     <nav class="pb-feed-tabs pb-account-tabs" aria-label="Account">
       <a
         :for={
-          {tab, label, path} <- [
-            {:show, "Account", ~p"/account"},
-            {:agents, "Agents", ~p"/account/agents"},
-            {:inbox, "Inbox", ~p"/account/inbox"},
-            {:profile, "Profile", ~p"/account/profile"},
-            {:points, "Points", ~p"/points"}
-          ]
+          {tab, label, path} <-
+            [
+              {:show, "Account", ~p"/account"},
+              {:agents, "Agents", ~p"/account/agents"},
+              {:inbox, "Inbox", ~p"/account/inbox"},
+              {:profile, "Profile", ~p"/account/profile"}
+            ] ++ if(@site_edition == :main, do: [{:points, "Points", ~p"/points"}], else: [])
         }
         href={path}
         aria-current={if @current == tab, do: "page"}
@@ -268,6 +277,7 @@ defmodule PatchbayWeb.AccountLive do
 
   # The layout every Regent site's Account page shares (`Regent.Account.layout`):
   # the account card across the top, then Credits beside the person's public name.
+  # The open address (`PatchbayWeb.SiteEdition`) shows no wallet and no Credits.
   defp overview(assigns) do
     ~H"""
     <Regent.Account.layout id="account">
@@ -275,15 +285,15 @@ defmodule PatchbayWeb.AccountLive do
         <Regent.Account.identity
           id="account-identity"
           name={AgentProfile.own_name(@current_profile)}
-          wallet={@current_profile.wallet_address}
-          ens_name={@current_profile.ens_name}
+          wallet={if @site_edition == :main, do: @current_profile.wallet_address}
+          ens_name={if @site_edition == :main, do: @current_profile.ens_name}
         >
           <:picture>
             <PatchbayWeb.Forum.Nameplate.author_avatar author={@current_profile} kind={:human} />
           </:picture>
         </Regent.Account.identity>
       </:identity>
-      <:credits>
+      <:credits :if={@site_edition == :main}>
         <Regent.Account.credits_summary
           id="account-credits"
           available={@credits.value && RegentCredits.Amount.format(@credits.value.available)}
@@ -329,6 +339,7 @@ defmodule PatchbayWeb.AccountLive do
           id="account-agents"
           profile={@current_profile}
           lease={@session_lease}
+          site_edition={@site_edition}
         />
       </:agents>
       <:pairing>
@@ -448,15 +459,15 @@ defmodule PatchbayWeb.AccountLive do
       <p class="patchbay-muted">
         What everyone sees on <a href={AgentProfile.profile_url(@profile)}>your public profile</a>.
       </p>
-      <.profile_facts profile={@profile} tips={@tips} />
+      <.profile_facts profile={@profile} tips={@tips} site_edition={@site_edition} />
 
       <%!-- Its balance and buttons are filled in by the page's own script. --%>
-      <div id="account-funding" phx-update="ignore">
+      <div :if={@site_edition == :main} id="account-funding" phx-update="ignore">
         <.funding_card wallet={@profile.wallet_address} payments_enabled={@payments_enabled?} />
       </div>
 
       <section
-        :if={@jev_runs != []}
+        :if={@site_edition == :main && @jev_runs != []}
         class="pb-sheet-section patchbay-board-card"
         id="patchbay-past-jev"
       >
@@ -490,9 +501,11 @@ defmodule PatchbayWeb.AccountLive do
 
         <p class="patchbay-muted">
           You post under your Regents account name, the same on every Regents site. Change it
-          in your Regents profile on your <a href={~p"/account"}>Account page</a>. If your
-          wallet has an ENS name, that comes first, and until you set a name you show under
-          your short wallet address.
+          in your Regents profile on your <a href={~p"/account"}>Account page</a>.
+          <span :if={@site_edition == :main}>
+            If your wallet has an ENS name, that comes first, and until you set a name you show
+            under your short wallet address.
+          </span>
         </p>
 
         <div class="patchbay-facts" id="patchbay-account-name">

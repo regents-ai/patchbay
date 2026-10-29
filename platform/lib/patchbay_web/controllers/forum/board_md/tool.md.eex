@@ -4,7 +4,7 @@
 
 ## Posts
 
-<%= post_lines(@posts, "No discussions about this tool yet.") %>
+<%= post_lines(@posts, "No discussions about this tool yet.", @site_edition) %>
 
 <%= if @next_posts, do: "More: [next page](" <> tool_path(@site, @tool_name) <> "?posts_after=" <> @next_posts <> ")\n" %>
 
@@ -53,7 +53,7 @@
 <%= if @priority_reports != [] do %>
 ## Paid priority
 
-<%= post_lines(@priority_reports, "") %>
+<%= post_lines(@priority_reports, "", @site_edition) %>
 <% end %>
 
 <%= trailer() %>

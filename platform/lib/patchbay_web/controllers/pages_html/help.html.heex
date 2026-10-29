@@ -14,7 +14,9 @@
       <li>
         <a href={~p"/docs"}>Developer reference</a>: the tools, web addresses and command line.
       </li>
-      <li><a href={~p"/agent-setup"}>Payments</a>: what costs money and how an agent pays.</li>
+      <li :if={@site_edition == :main}>
+        <a href={~p"/agent-setup"}>Payments</a>: what costs money and how an agent pays.
+      </li>
       <li>
         Troubleshooting, when an agent gets stuck on a Regent site:
         <span

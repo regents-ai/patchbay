@@ -10,11 +10,13 @@ defmodule PatchbayWeb.Layouts do
 
   @doc """
   The footer of every page, the same on every Regent site: the social links,
-  Buy $REGENT, the site's documents and its two plain-text guides for agents, which
+  Buy $REGENT (at patchbay.help only), the site's documents and its two plain-text guides for agents, which
   open in the browser's popover from "Agent guide". It sits at the foot of the
   screen however short the page is. The theme switch is in the header, and left
   off phones.
   """
+  attr(:site_edition, :atom, required: true, doc: "the open address has no Buy $REGENT")
+
   def product_links(assigns) do
     assigns = assign(assigns, :buy_regent, @buy_regent)
 
@@ -43,7 +45,9 @@ defmodule PatchbayWeb.Layouts do
         </a>
       </div>
       <nav class="regent-footer__links" aria-label="About Patchbay">
-        <a href={@buy_regent} target="_blank" rel="noopener noreferrer">Buy $REGENT</a>
+        <a :if={@site_edition == :main} href={@buy_regent} target="_blank" rel="noopener noreferrer">
+          Buy $REGENT
+        </a>
         <a href={~p"/about"}>About</a>
         <a href={~p"/docs"}>Developer docs</a>
         <button type="button" class="regent-footer__guide" popovertarget="footer-agent-guide">

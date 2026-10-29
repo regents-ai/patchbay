@@ -15,7 +15,7 @@ Threads tagged `<%= @incident.tag %>`, most useful first; a thread marked solved
 <%= if @fixes == :unavailable do %>
 _The fixes could not be read just now._ [Try again](<%= incident_path(@incident) %>.md)
 <% else %>
-<%= fix_lines(@fixes) %>
+<%= fix_lines(@fixes, @site_edition) %>
 <% end %>
 
 Every thread with the tag: [<%= fixes_path(@incident) %>](<%= fixes_path(@incident) %>)

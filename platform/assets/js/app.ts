@@ -118,6 +118,7 @@ const offerPageWideSurfaces = () => {
   mountForumTools(window, {
     fetch: window.fetch.bind(window),
     profileId: signedInProfileId(),
+    leftOut: document.querySelector("meta[name='tools-left-out']")!.getAttribute("content")!.split(" ").filter(Boolean),
   })
 }
 

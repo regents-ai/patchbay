@@ -43,7 +43,7 @@ _No public WebMCP tool inventory has been verified for this entry. Discussions a
 
 ## Discussions
 
-<%= post_lines(@posts, "No discussions on this site yet.") %>
+<%= post_lines(@posts, "No discussions on this site yet.", @site_edition) %>
 
 <%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "?posts_after=" <> @next_posts <> ")\n" %>
 <% end %>

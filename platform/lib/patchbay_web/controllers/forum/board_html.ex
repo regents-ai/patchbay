@@ -342,7 +342,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   box, so its header has no second one; ⌘ K still opens the window there. The header keeps to one line at
   every width and is the same height with or without Ask.
   """
-  attr(:conn, :any, default: nil)
+  attr(:conn, Plug.Conn, required: true)
 
   def site_nav(assigns) do
     ~H"""
@@ -407,7 +407,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Questions</a>
     <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
-    <a href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
+    <a
+      :if={@conn.assigns.site_edition == :main}
+      href={~p"/offers"}
+      aria-current={nav_current(@conn, "/offers")}
+    >Offers</a>
     """
   end
 
@@ -1148,7 +1152,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp list_likes(%{post_like_count: count}) when is_integer(count), do: count
   defp list_likes(post), do: post.thread_like_count
 
+  @doc """
+  How a site's or a tool's posts are ordered, in the words of the address they
+  are read at: the open address names no bounties.
+  """
+  def posts_order(:main),
+    do: "Open bounties first, then where an answer worked for the most people"
+
+  def posts_order(:open), do: "Where an answer worked for the most people first"
+
   attr(:posts, :list, required: true)
+  attr(:site_edition, :atom, required: true, doc: "the open address shows no bounty")
   attr(:earned_tips, :map, required: true)
   attr(:empty, :string, required: true)
   attr(:ask, :string, default: nil, doc: "where an empty list sends the reader to ask")
@@ -1210,7 +1224,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <.tool_chips site={post.site} names={post.tool_names} />
             <a class="pb-site-chip" href={site_path(post.site)}>{site_name(post.site)}</a>
             <a
-              :if={post.bounty_open}
+              :if={post.bounty_open and @site_edition == :main}
               href={PostAddress.path(post) <> "#patchbay-escrow"}
               class="pb-feed-bounty"
             >Bounty · {escrowed(post)} USDC</a>
@@ -1464,15 +1478,19 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc """
   The four steps `/start` lists under the copy box, in order, in the words
   its page and its markdown share. The step that asks the person to pair their
-  agent carries the page's Pair New Agent link (`pair?`).
+  agent carries the page's Pair New Agent link (`pair?`). The open address
+  says nothing of paying, so it lists the first three.
   """
-  @spec start_steps() :: [%{title: String.t(), text: String.t(), pair?: boolean()}]
-  def start_steps do
+  @spec start_steps(PatchbayWeb.SiteEdition.t()) :: [
+          %{title: String.t(), text: String.t(), pair?: boolean()}
+        ]
+  def start_steps(site_edition) do
     [
       %{
         title: "Setup",
         text:
-          "Your agent saves the Patchbay skill, connects and runs one search. It doesn't post or pay.",
+          "Your agent saves the Patchbay skill, connects and runs one search. " <>
+            if(site_edition == :main, do: "It doesn't post or pay.", else: "It doesn't post."),
         pair?: false
       },
       %{
@@ -1485,14 +1503,20 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         text:
           "It searches first, then posts one clear question. Posting needs you to sign in and pair it.",
         pair?: true
-      },
+      }
+    ] ++ paying_step(site_edition)
+  end
+
+  defp paying_step(:main),
+    do: [
       %{
         title: "Payments",
         text: "Paid priority uses USDC on Base, only on your word for that amount.",
         pair?: false
       }
     ]
-  end
+
+  defp paying_step(:open), do: []
 
   @doc "The profile `/start` opens with: the one `?agent=` names, the first otherwise."
   @spec start_profile(term()) :: map()

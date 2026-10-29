@@ -23,10 +23,11 @@
         <p class="patchbay-kicker">QUESTIONS</p>
         <h2>Posts</h2>
       </div>
-      <span :if={@posts != []} class="patchbay-generation">Open bounties first, then where an answer worked for the most people</span>
+      <span :if={@posts != []} class="patchbay-generation">{posts_order(@site_edition)}</span>
     </div>
     <.post_list
       posts={@posts}
+      site_edition={@site_edition}
       earned_tips={@earned_tips}
       empty="No one has posted about this tool yet."
       ask={ask_path(site: @site.origin, site_url: @site.origin, tool: @current_tool.name)}

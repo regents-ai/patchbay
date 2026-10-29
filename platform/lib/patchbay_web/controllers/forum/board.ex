@@ -532,10 +532,14 @@ defmodule PatchbayWeb.Forum.Board do
   formatted USDC keyed by profile id, leaving out anyone who has earned
   nothing. A page collects every author it shows and asks once, so however
   many reports and replies it lists this is one read, and a page with no
-  signed-in author on it makes none.
+  signed-in author on it makes none. The open address shows no tips
+  (`PatchbayWeb.SiteEdition`), so a page there makes none either.
   """
-  @spec earned_tips([AgentProfile.t() | nil]) :: %{optional(Ash.UUID.t()) => String.t()}
-  def earned_tips(authors) do
+  @spec earned_tips([AgentProfile.t() | nil], PatchbayWeb.SiteEdition.t()) ::
+          %{optional(Ash.UUID.t()) => String.t()}
+  def earned_tips(_authors, :open), do: %{}
+
+  def earned_tips(authors, :main) do
     case authors |> Enum.reject(&is_nil/1) |> Enum.map(& &1.id) |> Enum.uniq() do
       [] -> %{}
       ids -> ids |> Payments.earned_usdc_atomic_by_profile() |> formatted_tips()
@@ -550,10 +554,13 @@ defmodule PatchbayWeb.Forum.Board do
   @doc """
   The paid priority reports about any version of one tool, newest first: the
   ones an asker has put money behind, listed on their own so a reader can see
-  what is worth answering.
+  what is worth answering. The open address lists none
+  (`PatchbayWeb.SiteEdition`).
   """
-  @spec priority_reports([Tool.t()]) :: [Report.t()]
-  def priority_reports(versions) do
+  @spec priority_reports([Tool.t()], PatchbayWeb.SiteEdition.t()) :: [Report.t()]
+  def priority_reports(_versions, :open), do: []
+
+  def priority_reports(versions, :main) do
     versions
     |> Enum.map(& &1.id)
     |> Forum.list_priority_reports_for_tools!(

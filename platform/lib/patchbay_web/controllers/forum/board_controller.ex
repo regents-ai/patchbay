@@ -901,9 +901,10 @@ defmodule PatchbayWeb.Forum.BoardController do
             },
             refresh_session: board.site && %{"origin" => board.site.origin},
             standing: board.site && Board.site_standing(board.site),
-            agent_offers: Patchbay.Offers.Serving.for_site(board.site),
+            agent_offers: agent_offers(conn, board.site),
             posts_cursor: params["posts_after"],
-            earned_tips: Board.earned_tips(Enum.map(board.posts, & &1.author)),
+            earned_tips:
+              Board.earned_tips(Enum.map(board.posts, & &1.author), conn.assigns.site_edition),
             ask: ask,
             directory: FixCheck.directory?(conn),
             hero: hero
@@ -1000,7 +1001,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   defp tool_page(conn, site, name, params) do
-    case tool_catalog(site, name, params) do
+    case tool_catalog(site, name, params, conn.assigns.site_edition) do
       {:ok, assigns} ->
         render_catalog(conn, :tool, assigns)
 
@@ -1030,7 +1031,8 @@ defmodule PatchbayWeb.Forum.BoardController do
     site = site!(host)
 
     if host == site.origin do
-      case tool_catalog(site, name, params) do
+      # Its JSON names no paid report or tip, so it is the same at either address.
+      case tool_catalog(site, name, params, :main) do
         {:ok, assigns} ->
           catalog_json(:tool, assigns, :ok)
 
@@ -1049,12 +1051,14 @@ defmodule PatchbayWeb.Forum.BoardController do
     NotFoundError -> {:not_found, PatchbayWeb.ErrorJSON.render("404.json", %{})}
   end
 
-  # One tool's page: its versions, what agents reported, and its posts.
-  defp tool_catalog(site, name, params) do
+  # One tool's page: its versions, what agents reported, and its posts, as read
+  # at `site_edition`'s address.
+  defp tool_catalog(site, name, params, site_edition) do
     with {:ok, history} <- Board.tool_history(site, name, params["after"]),
          {:ok, current_tool} <- history_header(site, name, params["after"], history),
          {:ok, posts, next_posts} <- Board.ranked_posts(site, name, params["posts_after"]) do
-      {:ok, tool_assigns(site, name, params, history, current_tool, {posts, next_posts})}
+      {:ok,
+       tool_assigns(site, name, params, history, current_tool, {posts, next_posts}, site_edition)}
     end
   end
 
@@ -1072,12 +1076,12 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  defp tool_assigns(site, name, params, history, current_tool, {posts, next_posts}) do
+  defp tool_assigns(site, name, params, history, current_tool, {posts, next_posts}, site_edition) do
     versions = history.versions
 
     if is_nil(current_tool), do: raise(NotFoundError)
     reports = Board.reports_by_version(versions)
-    priority_reports = Board.priority_reports(versions)
+    priority_reports = Board.priority_reports(versions, site_edition)
 
     [
       page_title: "#{name} on #{site.display_name || site.origin}",
@@ -1100,7 +1104,8 @@ defmodule PatchbayWeb.Forum.BoardController do
       earned_tips:
         Board.earned_tips(
           Board.authors(Enum.concat(Map.values(reports))) ++
-            Enum.map(priority_reports, & &1.author) ++ Enum.map(posts, & &1.author)
+            Enum.map(priority_reports, & &1.author) ++ Enum.map(posts, & &1.author),
+          site_edition
         )
     ]
   end
@@ -1365,7 +1370,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         report: report,
         # Only the reply the asker marked is shown above the question.
         answer: report.solution_reply,
-        agent_offers: Patchbay.Offers.Serving.for_site(report.site),
+        agent_offers: agent_offers(conn, report.site),
         following: followed_sites(conn),
         reply_filter: filter,
         replies: replies,
@@ -1374,7 +1379,11 @@ defmodule PatchbayWeb.Forum.BoardController do
         reply_problem: Keyword.get(problems, :reply_problem),
         escrow_problem: Keyword.get(problems, :escrow_problem),
         liked: Board.liked(report, replies, conn.assigns.current_profile),
-        earned_tips: Board.earned_tips([report.author | Enum.map(replies, & &1.author)]),
+        earned_tips:
+          Board.earned_tips(
+            [report.author | Enum.map(replies, & &1.author)],
+            conn.assigns.site_edition
+          ),
         techtree: techtree_result(report)
       )
     else
@@ -1453,4 +1462,11 @@ defmodule PatchbayWeb.Forum.BoardController do
        )}
     end
   end
+
+  # Agent Offers are patchbay.help's alone (PatchbayWeb.SiteEdition), so the
+  # open address neither shows nor serves them.
+  defp agent_offers(%{assigns: %{site_edition: :main}}, site),
+    do: Patchbay.Offers.Serving.for_site(site)
+
+  defp agent_offers(_open, _site), do: nil
 end

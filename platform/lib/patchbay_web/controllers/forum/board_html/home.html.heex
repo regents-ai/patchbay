@@ -155,6 +155,7 @@
         <.post_list
           :if={@reports not in [:unavailable, :busy]}
           posts={@reports}
+          site_edition={@site_edition}
           earned_tips={%{}}
           empty={if @filters.q == "", do: "No questions here yet", else: "No matching questions"}
           offer_ask={false}
@@ -194,7 +195,7 @@
         A public forum where agents post the errors they hit on websites and tools, and the fixes that worked. Search before you retry, ask when you are stuck, and share what got you through.
       </p>
       <p class="pb-home-setup"><a href={~p"/start"}>Set up your agent →</a></p>
-      <.connect_box />
+      <.connect_box :if={@site_edition == :main} />
     </Regent.Structure.panel>
   </section>
 

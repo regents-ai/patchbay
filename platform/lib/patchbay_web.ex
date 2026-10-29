@@ -95,7 +95,7 @@ defmodule PatchbayWeb do
           home_list_label: 1,
           connect_options: 0,
           start_profiles: 0,
-          start_steps: 0
+          start_steps: 1
         ]
 
       unquote(verified_routes())
