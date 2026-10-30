@@ -20,7 +20,16 @@ defmodule Patchbay.Forum.SolutionCard do
     repo(Patchbay.Repo)
 
     custom_indexes do
-      index([:search_vector], using: "GIN", concurrently: true)
+      # A search reads this instead of every card: exactly `search_vector`'s
+      # expression, so the index answers it.
+      index(
+        [
+          "to_tsvector('english'::regconfig, coalesce(problem_summary, '') || ' ' || coalesce(proposed_steps, '') || ' ' || coalesce(caveats, ''))"
+        ],
+        name: "forum_solution_cards_search_words_index",
+        using: "GIN",
+        concurrently: true
+      )
     end
   end
 
@@ -72,14 +81,6 @@ defmodule Patchbay.Forum.SolutionCard do
   attributes do
     uuid_primary_key(:id)
 
-    # The words a search finds a card by, kept by the database from its
-    # summary, steps and caveats, so a search reads an index.
-    attribute(:search_vector, AshPostgres.Tsvector,
-      generated?: true,
-      writable?: false,
-      select_by_default?: false
-    )
-
     attribute(:problem_summary, :string, allow_nil?: false, public?: true)
     attribute(:applicability, :string, allow_nil?: true, public?: true)
     attribute(:proposed_steps, :string, allow_nil?: false, public?: true)
@@ -110,9 +111,25 @@ defmodule Patchbay.Forum.SolutionCard do
   end
 
   calculations do
+    # The words a search finds a card by: its summary, steps and caveats.
+    # Written exactly as `forum_solution_cards_search_words_index` is built, so
+    # a search reads the index.
+    calculate(
+      :search_vector,
+      AshPostgres.Tsvector,
+      expr(
+        fragment(
+          "to_tsvector('english'::regconfig, coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, ''))",
+          problem_summary,
+          proposed_steps,
+          caveats
+        )
+      )
+    )
+
     # The words the questions list's filter finds a card by. Read by
-    # `Patchbay.Forum.Feed`; the full-text search reads the same fields, stored
-    # (`search_vector`).
+    # `Patchbay.Forum.Feed`; the full-text search reads the same fields as
+    # `search_vector`.
     calculate(
       :searched_words,
       :string,

@@ -109,18 +109,6 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": true,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "search_vector",
-      "type": "tsvector"
-    },
-    {
       "allow_nil?": false,
       "default": "nil",
       "generated?": false,
@@ -338,19 +326,17 @@
     {
       "all_tenants?": false,
       "concurrently": true,
-      "error_fields": [
-        "search_vector"
-      ],
+      "error_fields": [],
       "fields": [
         {
-          "type": "atom",
-          "value": "search_vector"
+          "type": "string",
+          "value": "(to_tsvector('english'::regconfig, coalesce(body_markdown, '') || ' ' || coalesce(note, '') || ' ' || coalesce(fix->>'software', '') || ' ' || coalesce(fix->>'affected_versions', '') || ' ' || coalesce(fix->>'change', '') || ' ' || coalesce(fix->>'test', '') || ' ' || coalesce(fix->>'result', '') || ' ' || coalesce(fix->>'not_covered', '')) || coalesce(jsonb_to_tsvector('english'::regconfig, fix->'versions', '[\"string\"]'), ''::tsvector) || coalesce(jsonb_to_tsvector('english'::regconfig, fix->'sources', '[\"string\"]'), ''::tsvector) || coalesce(jsonb_to_tsvector('english'::regconfig, jsonb_path_query_array(fix, '$.updates[*].text'), '[\"string\"]'), ''::tsvector))"
         }
       ],
       "include": null,
       "include_base_filter?": true,
       "message": null,
-      "name": null,
+      "name": "forum_replies_search_words_index",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -361,7 +347,7 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "82F83A894B9976EDC84585721C0BB8277209E317103FF57B448ECD13C1F3D2B5",
+  "hash": "66042C5A423D8E667D2E290EAD19B44554F8EB105224F7D68111D7EC3862A644",
   "identities": [
     {
       "all_tenants?": false,

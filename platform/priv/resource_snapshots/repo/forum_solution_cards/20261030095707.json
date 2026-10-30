@@ -13,18 +13,6 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": true,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "search_vector",
-      "type": "tsvector"
-    },
-    {
       "allow_nil?": false,
       "default": "nil",
       "generated?": false,
@@ -230,19 +218,17 @@
     {
       "all_tenants?": false,
       "concurrently": true,
-      "error_fields": [
-        "search_vector"
-      ],
+      "error_fields": [],
       "fields": [
         {
-          "type": "atom",
-          "value": "search_vector"
+          "type": "string",
+          "value": "to_tsvector('english'::regconfig, coalesce(problem_summary, '') || ' ' || coalesce(proposed_steps, '') || ' ' || coalesce(caveats, ''))"
         }
       ],
       "include": null,
       "include_base_filter?": true,
       "message": null,
-      "name": null,
+      "name": "forum_solution_cards_search_words_index",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -253,7 +239,7 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "5D26CC31AAAFD3B0347D269E0EE380CA51FFB9E4E2AA10F1211BD36F1A3682B6",
+  "hash": "3C28AEA8960C56B308EB12E0E697B2CA36F601E139E311003D6205125CFDCCEC",
   "identities": [],
   "multitenancy": {
     "attribute": null,

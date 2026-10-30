@@ -42,7 +42,16 @@ defmodule Patchbay.Forum.Site do
     repo(Patchbay.Repo)
 
     custom_indexes do
-      index([:search_vector], using: "GIN", concurrently: true)
+      # A search reads this instead of every site: exactly `search_vector`'s
+      # expression, so the index answers it.
+      index(
+        [
+          "to_tsvector('english'::regconfig, coalesce(origin, '') || ' ' || coalesce(display_name, ''))"
+        ],
+        name: "forum_sites_search_words_index",
+        using: "GIN",
+        concurrently: true
+      )
     end
   end
 
@@ -119,14 +128,6 @@ defmodule Patchbay.Forum.Site do
 
   attributes do
     uuid_primary_key(:id)
-
-    # The words a search finds a site by, kept by the database from its address
-    # and name, so a search reads an index.
-    attribute(:search_vector, AshPostgres.Tsvector,
-      generated?: true,
-      writable?: false,
-      select_by_default?: false
-    )
 
     attribute :origin, :string do
       allow_nil?(false)
@@ -221,6 +222,20 @@ defmodule Patchbay.Forum.Site do
   end
 
   calculations do
+    # The words a search finds a site by: its address and name. Written exactly
+    # as `forum_sites_search_words_index` is built, so a search reads the index.
+    calculate(
+      :search_vector,
+      AshPostgres.Tsvector,
+      expr(
+        fragment(
+          "to_tsvector('english'::regconfig, coalesce(?, '') || ' ' || coalesce(?, ''))",
+          origin,
+          display_name
+        )
+      )
+    )
+
     # Whether a visitor may refresh the site: its last picture, and its last
     # failed try at one, are both a day old or more.
     calculate(

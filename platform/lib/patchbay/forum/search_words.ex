@@ -3,12 +3,15 @@ defmodule Patchbay.Forum.SearchWords do
   The threads a search's words find (`Patchbay.Forum.Report`'s `:search`),
   read from indexes rather than every post.
 
-  A thread is found by its own stored words, its title spelled a little wrong or
-  an exact tool name; by its site's address or name, matched on the site's own
-  stored words; by a published reply's words and fix; or by a published card.
-  PostgreSQL cannot use an index for each of those when they are joined by "or"
-  across four tables, so each is its own query, each reading its index, and the
-  search keeps the threads any of them found.
+  A thread is found by its own words, its title spelled a little wrong or an
+  exact tool name; by its site's address or name; by its own words and its
+  site's together, each holding some of the words typed; by a published reply's
+  words and fix; or by a published card. Each place's words (`search_vector`)
+  are written exactly as the index built for them, and the words typed are read
+  as quoted words (`Patchbay.Forum.SearchTerms`). PostgreSQL cannot use an
+  index for each place when they are joined by "or" across four tables, so each
+  is its own query, each reading its indexes, and the search keeps the threads
+  any of them found.
 
   A common word finds most threads, and the search's order counts what others
   say worked on each one, which is slow to count for thousands. Only a thread
@@ -40,23 +43,19 @@ defmodule Patchbay.Forum.SearchWords do
   def modify(%Ash.Query{arguments: %{term: term}} = ash_query, query) when is_binary(term) do
     with {:ok, found} <- found(term),
          {:ok, threads} <- threads(ash_query),
+         {:ok, ranked} <- first_by_rank(ash_query, term),
          {:ok, worked} <- worked() do
-      found_threads = where(threads, [t], t.id in subquery(found))
-
       first_unworked =
-        from(t in found_threads,
-          where: t.id not in subquery(worked),
-          order_by: [
-            desc: fragment("ts_rank(?, plainto_tsquery('english', ?))", t.search_vector, ^term),
-            desc: t.last_activity_at,
-            desc: t.id
-          ],
-          limit: ^(ash_query.offset + ash_query.limit),
-          select: t.id
-        )
+        ranked
+        |> where([t], t.id in subquery(found) and t.id not in subquery(worked))
+        |> exclude(:select)
+        |> select([t], t.id)
 
       candidates =
-        from(t in found_threads, where: t.id in subquery(worked), select: t.id)
+        from(t in threads,
+          where: t.id in subquery(found) and t.id in subquery(worked),
+          select: t.id
+        )
         |> union(^from(t in subquery(first_unworked), select: t.id))
 
       {:ok, where(query, [thread], thread.id in subquery(candidates))}
@@ -69,28 +68,47 @@ defmodule Patchbay.Forum.SearchWords do
     [
       Ash.Query.filter(
         Report,
-        fragment("? @@ plainto_tsquery('english', ?)", search_vector, ^term) or
+        fragment("? @@ ?", search_vector, search_terms(^term, :all)) or
           fragment("? @> ARRAY[?]::text[]", tool_names, ^term) or
           fragment("? OPERATOR(public.<%) ?", ^term, title)
       ),
+      # Asked as "its site matches" rather than through the site joined in: a
+      # joined site may be missing, and a missing site's words read as empty
+      # rather than nothing, so PostgreSQL would read every thread to check.
       Ash.Query.filter(
         Report,
-        site.origin == ^term or
-          fragment("? @@ plainto_tsquery('english', ?)", site.search_vector, ^term)
+        exists(
+          site,
+          origin == ^term or fragment("? @@ ?", search_vector, search_terms(^term, :all))
+        )
+      ),
+      # Some words in the thread and the rest in its site's address or name:
+      # each holds one word at least, which both indexes answer, and together
+      # they hold every word.
+      Ash.Query.filter(
+        Report,
+        fragment("? @@ ?", search_vector, search_terms(^term, :any)) and
+          fragment("? @@ ?", site.search_vector, search_terms(^term, :any)) and
+          fragment(
+            "(? || ?) @@ ?",
+            search_vector,
+            site.search_vector,
+            search_terms(^term, :all)
+          )
       ),
       Ash.Query.filter(
         Report,
         exists(
           replies,
           visibility == :published and
-            fragment("? @@ plainto_tsquery('english', ?)", search_vector, ^term)
+            fragment("? @@ ?", search_vector, search_terms(^term, :all))
         )
       ),
       Ash.Query.filter(
         Report,
         exists(
           solution_cards,
-          fragment("? @@ plainto_tsquery('english', ?)", search_vector, ^term)
+          fragment("? @@ ?", search_vector, search_terms(^term, :all))
         )
       )
     ]
@@ -115,6 +133,16 @@ defmodule Patchbay.Forum.SearchWords do
       {:ok, query} -> {:ok, exclude(query, :select)}
       {:error, error} -> {:error, error}
     end
+  end
+
+  # The same threads in the order of those nobody says worked yet (rank, last
+  # activity, id), as many as reach the end of the page asked for.
+  defp first_by_rank(ash_query, term) do
+    ash_query
+    |> Ash.Query.unset([:sort, :load, :limit, :offset])
+    |> Ash.Query.sort(search_rank: {%{term: term}, :desc}, last_activity_at: :desc, id: :desc)
+    |> Ash.Query.limit(ash_query.offset + ash_query.limit)
+    |> Ash.Query.data_layer_query(no_modify?: true)
   end
 
   # Every thread with a published reply that enough people may say worked:

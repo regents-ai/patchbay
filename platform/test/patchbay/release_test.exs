@@ -223,6 +223,41 @@ defmodule Patchbay.ReleaseTest do
     assert applied_versions(config) == release_versions()
   end
 
+  test "an index a stopped build left unusable stops the release, and migrate builds it again" do
+    config = disposable_database()
+    with_repo(config, fn _repo -> LocalDatabaseFixture.create_shared_tables!() end)
+    capture_io(fn -> Release.migrate_shared(config: config) end)
+    url = release_url(config)
+    Release.migrate(config: [url: url])
+
+    # A unique index built over two equal rows stops part way, as a build that
+    # loses its machine does, and is left behind unusable. One takes the name
+    # of a search index whose migration then never finished.
+    query!(config, "CREATE TABLE public.stopped_build(x integer)")
+    query!(config, "INSERT INTO public.stopped_build VALUES (1), (1)")
+    query!(config, "DROP INDEX public.forum_sites_search_words_index")
+    query!(config, "DELETE FROM public.schema_migrations WHERE version = 20261030095701")
+
+    for name <- ~w(forum_sites_search_words_index stopped_build_x) do
+      assert_raise Postgrex.Error, fn ->
+        query!(config, "CREATE UNIQUE INDEX CONCURRENTLY #{name} ON public.stopped_build (x)")
+      end
+    end
+
+    # The search index's migration runs again and rebuilds it; the other has
+    # no migration, so the release stops and names it.
+    assert_raise RuntimeError,
+                 "Unusable indexes left by a stopped build: stopped_build_x. Run migrate again.",
+                 fn -> Release.migrate(config: [url: url]) end
+
+    assert query!(
+             config,
+             "SELECT indisvalid, indrelid::regclass::text FROM pg_index WHERE indexrelid = 'public.forum_sites_search_words_index'::regclass"
+           ).rows == [[true, "forum_sites"]]
+
+    assert applied_versions(config) == release_versions()
+  end
+
   test "incomplete imported history stops before changing either ledger" do
     config = disposable_database()
 

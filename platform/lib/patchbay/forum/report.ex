@@ -63,9 +63,17 @@ defmodule Patchbay.Forum.Report do
     end
 
     custom_indexes do
-      # A search reads these instead of every post (`:search`): the stored
-      # words, the title spelled a little wrong, and an exact tool name.
-      index([:search_vector], using: "GIN", concurrently: true)
+      # A search reads these instead of every post (`:search`): the thread's
+      # words (exactly `search_vector`'s expression, so the index answers it),
+      # the title spelled a little wrong, and an exact tool name.
+      index(
+        [
+          "to_tsvector('english'::regconfig, coalesce(title, '') || ' ' || coalesce(body_markdown, '') || ' ' || coalesce(note, '') || ' ' || coalesce(tool_names[1], '') || ' ' || coalesce(tool_names[2], '') || ' ' || coalesce(tool_names[3], '') || ' ' || coalesce(tool_names[4], '') || ' ' || coalesce(tool_names[5], ''))"
+        ],
+        name: "forum_reports_search_words_index",
+        using: "GIN",
+        concurrently: true
+      )
 
       index(["title public.gin_trgm_ops"],
         name: "forum_reports_title_trgm_index",
@@ -171,16 +179,6 @@ defmodule Patchbay.Forum.Report do
     # Writable so that a paid priority report can be filed under the id its
     # payment intent froze, which is the id the escrow already names.
     uuid_primary_key(:id, writable?: true)
-
-    # The words a search finds a thread by, kept by the database from the title,
-    # the question, the note and the tool names (at most five,
-    # `Changes.NormalizeToolNames`), so a search reads an index. The migration
-    # that adds it says how it is made.
-    attribute(:search_vector, AshPostgres.Tsvector,
-      generated?: true,
-      writable?: false,
-      select_by_default?: false
-    )
 
     # The reporting session is an opaque identifier the browser sends. Nothing
     # verifies it, so it is an attribute rather than a relationship to a row we
@@ -480,10 +478,38 @@ defmodule Patchbay.Forum.Report do
   calculations do
     calculate(:feed_engagement, :integer, expr(post_like_count + reply_count))
 
+    # The words a search finds a thread by: its title, question, note and tool
+    # names (at most five, `Changes.NormalizeToolNames`). Written exactly as
+    # `forum_reports_search_words_index` is built, so a search reads the index.
+    calculate(
+      :search_vector,
+      AshPostgres.Tsvector,
+      expr(
+        fragment(
+          "to_tsvector('english'::regconfig, coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce((?)[1], '') || ' ' || coalesce((?)[2], '') || ' ' || coalesce((?)[3], '') || ' ' || coalesce((?)[4], '') || ' ' || coalesce((?)[5], ''))",
+          title,
+          body_markdown,
+          note,
+          tool_names,
+          tool_names,
+          tool_names,
+          tool_names,
+          tool_names
+        )
+      )
+    )
+
+    # How well a thread's own words match every word typed (`:search`'s order).
+    calculate :search_rank,
+              :float,
+              expr(fragment("ts_rank(?, ?)", search_vector, search_terms(^arg(:term), :all))) do
+      argument(:term, :string, allow_nil?: true)
+    end
+
     # The words the questions list's filter finds a thread by: its own words,
     # its tools and its site. Its replies and cards add theirs (`Reply`,
     # `SolutionCard`). Read by `Patchbay.Forum.Feed`; the full-text search reads
-    # the same fields, stored (`search_vector`).
+    # the same fields as `search_vector`.
     calculate(
       :searched_words,
       :string,
@@ -825,14 +851,7 @@ defmodule Patchbay.Forum.Report do
         term = Ash.Query.get_argument(query, :term)
 
         Ash.Query.sort(query, [
-          {calc(
-             fragment(
-               "ts_rank(?, plainto_tsquery('english', ?))",
-               search_vector,
-               ^term
-             ),
-             type: :float
-           ), :desc},
+          {:search_rank, {%{term: term}, :desc}},
           {:worked_count, :desc},
           {:last_worked_at, :desc_nils_last},
           {:last_activity_at, :desc},

@@ -5,8 +5,8 @@ defmodule Patchbay.Forum.Feed do
   alias Patchbay.Forum.SearchSlots
 
   # Search the same words the full-text search reads (`searched_words` on the
-  # thread, its published replies and its cards; stored as `search_vector`
-  # for the full-text search), and the title
+  # thread, its published replies and its cards; the full-text search reads
+  # them as `search_vector`), and the title
   # spelled a little wrong (pg_trgm's word similarity). Filtering happens before
   # keyset pagination, not against an arbitrary handful of tool versions. A
   # list with words in it is a text search, so each read of it takes one of

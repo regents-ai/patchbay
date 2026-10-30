@@ -35,6 +35,14 @@ defmodule Patchbay.Release do
   """
   @schema_exists "SELECT EXISTS (SELECT 1 FROM pg_catalog.pg_namespace WHERE nspname = $1)"
 
+  @unusable_indexes """
+  SELECT c.relname FROM pg_catalog.pg_index AS i
+  JOIN pg_catalog.pg_class AS c ON c.oid = i.indexrelid
+  JOIN pg_catalog.pg_namespace AS n ON n.oid = c.relnamespace
+  WHERE n.nspname = $1 AND NOT i.indisvalid
+  ORDER BY c.relname
+  """
+
   # Every shared library with its own schema and ledger, in the order their
   # changes apply: Credits' pairing grants build on Agents' pairing history.
   @shared [
@@ -47,14 +55,16 @@ defmodule Patchbay.Release do
 
   @doc """
   Runs every pending migration over the release connection
-  (`Patchbay.DatabaseConfig.release_config!/1`). Its options are the
-  bootstrap's: `:config` names another connection.
+  (`Patchbay.DatabaseConfig.release_config!/1`), then stops if any index in
+  Patchbay's schema is unusable. Its options are the bootstrap's: `:config`
+  names another connection.
   """
   def migrate(opts \\ []) when is_list(opts) do
     with_release_repo(opts, fn repo ->
       require_imported_history!(repo, migrations_path())
       require_signed_access_schema!(repo)
       run_migrations!(repo, migrations_path())
+      require_usable_indexes!(repo)
     end)
   end
 
@@ -254,6 +264,20 @@ defmodule Patchbay.Release do
 
   defp run_migrations!(repo, path),
     do: Ecto.Migrator.run(repo, [path], :up, all: true, prefix: repo.default_prefix())
+
+  # An index built while writes go on is left unusable when its build stops
+  # part way, and PostgreSQL then never reads it. Its migration drops and
+  # rebuilds it, so the release stops and says to run again.
+  defp require_usable_indexes!(repo) do
+    case Ecto.Adapters.SQL.query!(repo, @unusable_indexes, [repo.default_prefix()]).rows do
+      [] ->
+        :ok
+
+      names ->
+        raise "Unusable indexes left by a stopped build: " <>
+                Enum.map_join(names, ", ", &hd/1) <> ". Run migrate again."
+    end
+  end
 
   defp require_imported_history!(repo, path) do
     if repo.default_prefix() != "public" do
