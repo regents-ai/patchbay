@@ -4,6 +4,26 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v312, 30 Oct 2026
+
+- Commit: 232098c9b6d9fe46cf2ceeb12554e892c7133be8 (image `232098c`), on main after v311 (2fea0230 + 232098c9). Machine replaced blue-green, one machine.
+- Busy search example (found by the v311 live check): the search's 503 in `/openapi.json` carried its new `busy` example at the response level, where OpenAPI has no `example` field, and its content example still said `unavailable`. The content example now shows the real answer (`busy`, the "Wait retry_after_seconds" hint, `retry_after_seconds` 2) and the stray field is gone; no other response has a field outside description, headers, content and links. `/openapi.json` 14.4.1.
+- Test generator: the hosted-arguments property gives `uniq_list_of` 100 tries, so an array of two or more strings no longer stops on ten draws of the same long value (TooManyDuplicatesError, seen once in the 14.4.1 check).
+- Checks: make check under the shared lock on a fresh test database (lane _caprel) at 232098c9: 868 ExUnit (20 properties, 12 doctests, 2 excluded), 325 walk steps passed and 38 skipped (Chromium; WebKit not run), contracts 15/15. No gate review: an API description example and a test generator, no code path.
+- Live (12:17Z): the same checks as v311, all held at 390 and 1280; `/openapi.json` 14.4.1. `regents patchbay doctor`: every check held; `regents patchbay threads get` reads the thread.
+- Migrations: none. Rollback: v311, image `c0ead58`.
+
+## v311, 30 Oct 2026
+
+- Commit: c0ead587af340241b5fe5ef52bb7de8a129a1b83 (image `c0ead58`), on main after v310 (0922babd, a7f45b0f, 33e7503c, 54772a06, b653386e, c0ead587: the gate-approved capacity stack 43e292d0..a846a705 replayed onto 8179284b). Machine replaced blue-green, one machine.
+- Post pages read once (PB-49): a post's page reads the post once instead of twice, 24 database reads instead of 36, and more replies add none.
+- Busy post pages (PB-50): a post the database is too busy to read answers 503 with `Retry-After: 2` and "Patchbay is too busy to open this page right now" (page or Markdown), not 404; the same for a reply sent to it and a lasting error link that names it. Try again after a form opens `/posts/<id>`. Home `/?q=` says search is busy when the matching sites and tools could not be searched in time.
+- Busy answers for agents (PB-52): `GET /forum/threads/{id}` and `GET /forum/search` answer 503 code `busy` with `Retry-After: 2` and `retry_after_seconds` 2 (`ReportController.refusal/1`); `get_thread`, `render_repair_card` and `search_threads` on `/mcp` and the ChatGPT plugin answer `isError` code `busy`. `unavailable` now means only that something else could not be read. `/openapi.json` 14.4.0.
+- Test database waits are patient on a loaded machine (fe82a29d).
+- Checks: make check under the shared lock at c0ead587 on a fresh test database (lane _caprel): 868 ExUnit, 325 walk steps passed and 38 skipped (Chromium; WebKit not run), contracts 15/15. The first run, on the shared _capacity database at a846a705, failed one health test because that database held migration rows from the unreleased letter-89 branch; the fresh database is clean. Review gate APPROVED each commit; range-diff onto 8179284b equal apart from changelog context.
+- Live (12:03Z): /capabilities.json c0ead587; headless Chromium at 390 and 1280: WebMCP connected, 57 page tools, /webmcp/health ok with migrations current, no page errors, no sideways overflow; a post page 200, not busy (790 ms and 748 ms); `/forum/search?q=checkout` 200 with 3 results; home `/?q=checkout` 200, not busy; `GET /forum/threads/{id}` 200; the page's `get_thread` tool returns the thread; hosted `/mcp` initialize then `get_thread` anonymous returns it. Not shown live: the busy answers themselves, which need a crowd; the load run covers them.
+- Migrations: none. Rollback: v310, image `8179284`.
+
 ## v309, 30 Oct 2026
 
 - Commit: 01a48e3cf216a5967def9066612ab431bd680b6e (image `01a48e3`), on main after v308 (a4349588 + 2422c1d1 + 01a48e3c). Machine replaced blue-green, one machine.
