@@ -17,7 +17,7 @@ defmodule PatchbayWeb.WalletBenchController do
   alias Patchbay.WalletBench.Board
   alias Patchbay.WalletBench.ExtraNotes
   alias Patchbay.WalletBench.Matrix
-  alias Patchbay.WalletBench.PublicRun
+  alias Patchbay.WalletBench.RunRecords
   alias Patchbay.WalletBench.Sets
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.WalletBenchHTML
@@ -228,7 +228,7 @@ defmodule PatchbayWeb.WalletBenchController do
   defp report(nil), do: {nil, false}
 
   defp report(run) do
-    case PublicRun.fetch(run) do
+    case RunRecords.read(run) do
       {:ok, report} -> {report, false}
       {:error, _reason} -> {nil, true}
     end

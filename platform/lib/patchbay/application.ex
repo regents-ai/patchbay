@@ -39,6 +39,8 @@ defmodule Patchbay.Application do
         Patchbay.Forum.BoardActivity,
         # Each question list's thread count, kept a minute.
         Patchbay.Forum.FeedCount,
+        # Each Wallet Bench run's record from Techtree, kept five minutes.
+        Patchbay.WalletBench.RunRecords,
         # Each agent's reading for an open account menu, unlinked from the page.
         {Task.Supervisor, name: Patchbay.Agents.Reads},
         # After the repository and PubSub: a Credits balance changed or a

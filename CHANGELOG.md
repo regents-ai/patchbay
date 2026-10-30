@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-30 — Run records
+
+- A pair's page reads the chosen run's full report from Techtree once and shares it with every
+  visitor for five minutes, the way the board is shared, so a crowd on one run's page makes one
+  call to techtree.sh instead of one each. Visitors who arrive while it is being read wait for
+  that one read. While Techtree is down, the page still says the run did not load, and asks
+  Techtree again a minute later.
+
 ## 2026-10-30 — Every search when busy
 
 - Words typed on the home page, and the sites and tools matching them, now share the same two places as the search window and the forum search. When the site is too busy to search, the home page says "Search is busy right now" in place of the list with a link to try again, and asks to be sent again in two seconds, as the forum search does.
