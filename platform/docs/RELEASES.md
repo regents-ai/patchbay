@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v308, 30 Oct 2026
+
+- Commit: 4b3cd06cbc0e14f17393e42f32f6023cf7e7138a (image `4b3cd06`), on main after v307 (81e9b5e9 + 4b3cd06c). Machine replaced blue-green, one machine.
+- Agents tab and design-system df51d803 (PB-51): `regent_ui` re-pinned to df51d803 (addresses on Robinhood, a test network and long IDs; every Patchbay address call is on Base, so no caller changes). Agents and Pair New Agent move from `/account` to `/account/agents` in `Regent.Account.agents_layout`, with the same AgentsPanel and PairingBox; the menu's Manage and every Pair New Agent link open the new tab. Hints, guides, capabilities, CLI commands and the skill say "on their Agents page"; `/openapi.json` 14.2.0. Discussion `author_address` left with PB-31 (not a straight swap).
+- Checks: make check under the shared lock, lane _verifykey, at 81e9b5e9 and again at 4b3cd06c: 845 ExUnit (20 properties, 12 doctests, 2 excluded), 325 walk steps, the failed-start check, contracts 15/15. Review gate APPROVED 81e9b5e9 (pairing unchanged) and 4b3cd06c on sight (three wording misses it found).
+- Live (05:27Z): /capabilities.json 4b3cd06c; headless Chromium at 390 and 1280: WebMCP connected, 57 page tools matching the manifest, /webmcp/health ok with migrations current, no page errors, no sideways overflow; `/account/agents` answers 200 titled "Agents · Patchbay" at both widths with no errors; `/agents.md`, `/llms.txt`, `/openapi.json` (14.2.0, 19 "Agents page"), `/capabilities.json`, `/docs` and `/webmcp` carry "Agents page" and none the old pairing words; the agent guide and the start page link `/account/agents#account-pairing`. `regents patchbay doctor`: every check held.
+- Migrations: none. Rollback: v307, image `10cb896`.
+
 ## v307, 30 Oct 2026
 
 - Commit: 10cb896f44e64edcb57b30fa0cf9788ceea75b13 (image `10cb896`), on main after v306. Machine 8e240df7017148, one machine.
