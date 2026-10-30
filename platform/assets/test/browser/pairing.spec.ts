@@ -1,12 +1,12 @@
 import {expect, signedIn, test, watch} from "./support/test"
 
-// Pairing an agent on the Account page: Pair New Agent under the agents leads to the
+// Pairing an agent on the Agents page: Pair New Agent under the agents leads to the
 // page's pairing box, and choosing an agent gives the message to paste to it.
 test.use(signedIn)
 
 test("the pairing message names the Regents Labs account and the site", async ({page}) => {
   const problems = watch(page)
-  await page.goto("/account")
+  await page.goto("/account/agents")
   await expect(page.locator("[data-phx-main].phx-connected")).toBeAttached()
   await page.locator("#account-agents").getByRole("link", {name: "Pair New Agent"}).click()
 

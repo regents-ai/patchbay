@@ -10,7 +10,10 @@ import {expect, signedIn, test} from "./support/test"
 //
 // Left out until their owners change them, each named in the hand-off:
 // - /privacy and /terms, which are versioned and change only on Sean's go;
-// - the blog's index heading, which design-system draws for every Regent site.
+// - the blog's index heading, which design-system draws for every Regent site;
+// - the Agents tab (/account/agents), whose headings and legend design-system draws
+//   for every Regent site: Pair New Agent is a fixed label, the Paired heading holds
+//   its tip, and the pairing box's legend is the library's.
 // An incident's title and a changelog entry's are their articles' titles, as written.
 const skippedPages = ["/privacy", "/terms"]
 const content =

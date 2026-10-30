@@ -1,12 +1,14 @@
 defmodule PatchbayWeb.AccountLive do
   @moduledoc """
-  The signed-in person's Account page, as in the Regent template, in four
+  The signed-in person's Account page, as in the Regent template, in five
   tabs:
 
   - Account (`/account`): who Patchbay knows them as, their wallet with its
-    ENS name when it has one, the agents they paired and pairing a new one
-    (`#account-pairing`), their Credits and their Profile on every Regent site,
-    in the layout every Regent site shares (`Regent.Account.layout`).
+    ENS name when it has one, their Credits and their Profile on every Regent
+    site, in the layout every Regent site shares (`Regent.Account.layout`).
+  - Agents (`/account/agents`): the agents they paired and pairing a new one
+    (`#account-pairing`), in the layout every Regent site's Agents page shares
+    (`Regent.Account.agents_layout`).
   - Inbox (`/account/inbox`): what happened on the sites, tools and threads
     they follow, and what they follow. It reads this browser's own follows
     too, so it works before signing in.
@@ -83,6 +85,9 @@ defmodule PatchbayWeb.AccountLive do
 
   defp open_tab(socket, :show, _params),
     do: assign(socket, PatchbayWeb.PublicDocuments.page("/account"))
+
+  defp open_tab(socket, :agents, _params),
+    do: assign(socket, PatchbayWeb.PublicDocuments.page("/account/agents"))
 
   defp open_tab(socket, :inbox, params) do
     cursor = if is_binary(params["after"]), do: params["after"]
@@ -187,7 +192,7 @@ defmodule PatchbayWeb.AccountLive do
   def handle_info(:credits_changed, socket), do: {:noreply, read_credits(socket)}
 
   def handle_info(:agents_changed, socket) do
-    if socket.assigns.live_action == :show do
+    if socket.assigns.live_action == :agents do
       send_update(PatchbayWeb.AgentsPanel, id: "account-agents", agents_changed: true)
       send_update(PatchbayWeb.PairingBox, id: "account-pairing-box", agents_changed: true)
     end
@@ -227,13 +232,16 @@ defmodule PatchbayWeb.AccountLive do
       </Regent.Account.signed_out>
 
       <.overview :if={@current_profile && @live_action == :show} {assigns} />
+      <.agents :if={@current_profile && @live_action == :agents} {assigns} />
       <.inbox :if={@live_action == :inbox} {assigns} />
       <.profile :if={@current_profile && @live_action == :profile} {assigns} />
     </main>
     """
   end
 
-  attr :current, :atom, required: true, doc: "the open tab: :show, :inbox, :profile or :points"
+  attr :current, :atom,
+    required: true,
+    doc: "the open tab: :show, :agents, :inbox, :profile or :points"
 
   @doc "The Account tabs, shown on each Account page and on Points."
   def tabs(assigns) do
@@ -243,6 +251,7 @@ defmodule PatchbayWeb.AccountLive do
         :for={
           {tab, label, path} <- [
             {:show, "Account", ~p"/account"},
+            {:agents, "Agents", ~p"/account/agents"},
             {:inbox, "Inbox", ~p"/account/inbox"},
             {:profile, "Profile", ~p"/account/profile"},
             {:points, "Points", ~p"/points"}
@@ -258,8 +267,7 @@ defmodule PatchbayWeb.AccountLive do
   end
 
   # The layout every Regent site's Account page shares (`Regent.Account.layout`):
-  # the account card and the agents across the top, then pairing beside Credits
-  # over the person's public name. Pair New Agent is `#account-pairing`.
+  # the account card across the top, then Credits beside the person's public name.
   defp overview(assigns) do
     ~H"""
     <Regent.Account.layout id="account">
@@ -275,22 +283,6 @@ defmodule PatchbayWeb.AccountLive do
           </:picture>
         </Regent.Account.identity>
       </:identity>
-      <:agents>
-        <.live_component
-          module={PatchbayWeb.AgentsPanel}
-          id="account-agents"
-          profile={@current_profile}
-          lease={@session_lease}
-        />
-      </:agents>
-      <:pairing>
-        <.live_component
-          module={PatchbayWeb.PairingBox}
-          id="account-pairing-box"
-          profile={@current_profile}
-          lease={@session_lease}
-        />
-      </:pairing>
       <:credits>
         <Regent.Account.credits_summary
           id="account-credits"
@@ -322,6 +314,32 @@ defmodule PatchbayWeb.AccountLive do
         </div>
       </:profile>
     </Regent.Account.layout>
+    """
+  end
+
+  # The layout every Regent site's Agents page shares (`Regent.Account.agents_layout`):
+  # the agents across the top, then pairing a new one. Pair New Agent is
+  # `#account-pairing`.
+  defp agents(assigns) do
+    ~H"""
+    <Regent.Account.agents_layout id="account">
+      <:agents>
+        <.live_component
+          module={PatchbayWeb.AgentsPanel}
+          id="account-agents"
+          profile={@current_profile}
+          lease={@session_lease}
+        />
+      </:agents>
+      <:pairing>
+        <.live_component
+          module={PatchbayWeb.PairingBox}
+          id="account-pairing-box"
+          profile={@current_profile}
+          lease={@session_lease}
+        />
+      </:pairing>
+    </Regent.Account.agents_layout>
     """
   end
 

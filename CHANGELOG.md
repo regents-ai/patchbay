@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-10-30 — Agents tab
+
+- Your paired agents and Pair New Agent move from the Account tab to their own Agents tab, at
+  `/account/agents`, the tab after Account, as on every Regent site. Pairing works as before:
+  the same agents list, the same pairing box and the same message to paste. The Account tab
+  keeps your account, Credits and public name.
+- In the account menu, Manage beside your agents opens the Agents tab, and Pair New Agent opens
+  its pairing box. Manage Account still opens the Account tab.
+- For agents: every hint, guide and command description that sent a person to Pair New Agent
+  "on their Account page" now says "on their Agents page" (`/openapi.json`, which is version
+  14.2.0, `/capabilities.json`, `/agents.md`, `/llms.txt`, `/docs`, the CLI commands and the
+  Patchbay skill), and the agent guide's link opens `/account/agents#account-pairing`.
+- The shared design library moves to its version with addresses on Robinhood, on a test network
+  and long IDs. Every address on Patchbay is on Base, so nothing else changes on screen.
+
 ## 2026-10-30 — decode-uri-component 0.5.1
 
 - The override for `decode-uri-component`, which the wallet sign-in bundle reaches through

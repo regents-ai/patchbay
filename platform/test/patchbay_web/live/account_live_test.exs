@@ -58,7 +58,7 @@ defmodule PatchbayWeb.AccountLiveTest do
     assert render(view) =~ "Nothing waiting."
   end
 
-  test "every link in the account menu lands on this site's Account page, on a part it has",
+  test "every link in the account menu lands on this site's Account or Agents page, on a part it has",
        %{conn: conn} do
     person =
       Identity.upsert_from_privy!(%{
@@ -75,10 +75,10 @@ defmodule PatchbayWeb.AccountLiveTest do
     assert length(links) == 3
     assert page |> LazyHTML.query(~s(#account-menu a[href^="/"][target])) |> Enum.empty?()
 
-    {:ok, view, _html} = live(conn, ~p"/account")
-
     for link <- links do
-      %URI{host: nil, path: "/account", fragment: fragment} = URI.parse(link)
+      %URI{host: nil, path: path, fragment: fragment} = URI.parse(link)
+      assert path in ["/account", "/account/agents"], link
+      {:ok, view, _html} = live(conn, path)
       if fragment, do: assert(has_element?(view, "#" <> fragment), link)
     end
   end

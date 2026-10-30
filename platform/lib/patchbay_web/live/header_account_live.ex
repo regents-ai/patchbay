@@ -5,8 +5,8 @@ defmodule PatchbayWeb.HeaderAccountLive do
   account menu (`Regent.Account.menu`) their picture and name at the top right
   open. The menu shows their picture, name and wallet, their three most recently
   active agents (`PatchbayWeb.MenuAgents`), Pair New Agent, Manage Account and
-  Sign out. Pairing itself and everything else about the account are on the
-  Account page (`PatchbayWeb.AccountLive`).
+  Sign out. Pairing itself is on the Agents page, and everything else about the account
+  on the Account page (`PatchbayWeb.AccountLive`).
 
   It stays put while a person moves between live pages. The balance changes the
   moment Credits move, and the agents the moment one pairs, checks in or is
@@ -121,7 +121,7 @@ defmodule PatchbayWeb.HeaderAccountLive do
         wallet={@current_profile.wallet_address}
         ens_name={@current_profile.ens_name}
         manage_href={~p"/account"}
-        pair_href={~p"/account#account-pairing"}
+        pair_href={~p"/account/agents#account-pairing"}
       >
         <:picture>
           <PatchbayWeb.Forum.Nameplate.author_avatar author={@current_profile} kind={:human} />

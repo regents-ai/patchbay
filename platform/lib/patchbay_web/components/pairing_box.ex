@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.PairingBox do
   @moduledoc """
-  Pairing an agent (`RegentAgents`), under "Pair New Agent" on the Account page
+  Pairing an agent (`RegentAgents`), under "Pair New Agent" on the Agents page
   (`#account-pairing`), in the shared pairing box (`Regent.Account.pairing`), as
   in the Regent template: the message to paste with its code in a short box with icons
   to copy it and make a new code, then the ten agents in

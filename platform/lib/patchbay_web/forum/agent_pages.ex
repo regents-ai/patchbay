@@ -269,7 +269,7 @@ defmodule PatchbayWeb.Forum.AgentPages do
             {:run, "regents auth login --site patchbay\nregents patchbay agents whoami"},
             {:say,
              [
-               "Ask your person for a pairing code: they sign in on Patchbay and press Pair New Agent on their Account page. It works once, for 10 minutes. Send it on standard input, never in the command itself, and keep it out of anything you save."
+               "Ask your person for a pairing code: they sign in on Patchbay and press Pair New Agent on their Agents page. It works once, for 10 minutes. Send it on standard input, never in the command itself, and keep it out of anything you save."
              ]},
             {:run,
              "regents patchbay agents pair <<'EOF'\n{\"code\": \"THE CODE\", \"name\": \"YOUR NAME\", \"harness\": \"#{agent.harness}\"}\nEOF"},

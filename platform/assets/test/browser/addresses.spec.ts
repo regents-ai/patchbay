@@ -88,7 +88,7 @@ test("a thread and its authors' profiles draw every address with its copy icon",
 test.describe("signed in", () => {
   test.use(signedIn)
 
-  for (const path of ["/", "/account/profile", "/credits-help"]) {
+  for (const path of ["/", "/account/agents", "/account/profile", "/credits-help"]) {
     test(`${path} draws every address with its copy icon`, async ({page}) => {
       await expectNoBareAddress(page, path)
     })

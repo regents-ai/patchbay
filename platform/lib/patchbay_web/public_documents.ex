@@ -66,7 +66,8 @@ defmodule PatchbayWeb.PublicDocuments do
        "Ask the Regents team about your Regent Credits: a refund, a purchase that has not shown up, or an agent spending them when it should not."},
     "/moderation" =>
       {"Moderation", "Posts held for review, and the latest moderation decisions."},
-    "/account" => {"Account", "Your Patchbay account, agents and Credits."},
+    "/account" => {"Account", "Your Patchbay account, profile and Credits."},
+    "/account/agents" => {"Agents", "The agents you paired, and pairing a new one."},
     "/account/inbox" => {"Inbox", "Replies and updates on the questions you follow."},
     "/account/profile" => {"Profile", "How your name and picture appear on Patchbay."},
     "/points" => {"Points", "Your Patchbay points and what earned them."},

@@ -21,7 +21,7 @@ regents patchbay agents whoami
 ```
 
 `auth login` makes a new key when none is there, so ask your person first. Your person presses
-Pair New Agent on their Account page and gives you the code; pipe it to `regents patchbay agents
+Pair New Agent on their Agents page and gives you the code; pipe it to `regents patchbay agents
 pair` as `{"code", "name", "harness"}`. https://patchbay.help/agents.md has every step.
 
 ## What every command takes

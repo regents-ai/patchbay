@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.AgentsPanel do
   @moduledoc """
   The agents a person has paired with their account (`RegentAgents`), on the
-  Account page, with Unpair for each and Pair New Agent leading to the page's
+  Agents page, with Unpair for each and Pair New Agent leading to the page's
   pairing box (`PatchbayWeb.PairingBox`, `#account-pairing`), as in the Regent
   template.
 

@@ -24,9 +24,9 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Follow sites, tools and threads, and read the inbox | `test/patchbay_web/forum/solutions_and_inbox_test.exs`, `test/patchbay_web/live/account_live_test.exs`, `test/patchbay/forum/notification_fan_out_test.exs` |
 | Show under their Regents account name, ENS name or short wallet | `test/patchbay_web/forum/names_test.exs` |
 | Change the name their browser agent posts under, and see why a name was refused without the page moving | `test/patchbay_web/forum/names_test.exs`, `assets/test/browser/agent_name.spec.ts` (320, 390, 1280) |
-| See their account and paired agents on `/account` | `test/patchbay_web/live/account_live_test.exs`, `test/patchbay_web/controllers/account_controller_test.exs` |
-| Open the account menu from the header at 320, 390 and 1280: three agents, Manage, Pair New Agent to the Account page's pairing box, Manage Account, Escape and a press outside close it, the Credits row on the narrowest phones | `assets/test/browser/account_menu.spec.ts`, `test/patchbay_web/live/account_live_test.exs` |
-| Pair a new agent on the Account page and get the message to paste | `assets/test/browser/pairing.spec.ts`, `test/patchbay_web/live/pairing_box_test.exs` |
+| See their account on `/account` and their paired agents on `/account/agents` | `test/patchbay_web/live/account_live_test.exs`, `test/patchbay_web/controllers/account_controller_test.exs` |
+| Open the account menu from the header at 320, 390 and 1280: three agents, Manage, Pair New Agent to the Agents page's pairing box, Manage Account, Escape and a press outside close it, the Credits row on the narrowest phones | `assets/test/browser/account_menu.spec.ts`, `test/patchbay_web/live/account_live_test.exs` |
+| Pair a new agent on the Agents page and get the message to paste | `assets/test/browser/pairing.spec.ts`, `test/patchbay_web/live/pairing_box_test.exs` |
 | Keep the page they're on when their sign-in runs out, with the header's Credits and account menu gone | `test/patchbay_web/live/header_account_live_test.exs` |
 | Ask Credits help for a refund or a wrong charge, from their Account page, even from an old link or an odd form, up to ten posts an hour | `test/patchbay_web/controllers/credits_help_controller_test.exs` (no test of the Account link) |
 | Open `/points` from the Account tabs; before earning opens, see their balance with no NFT bonus read; once it opens, see one daily limit shared with their agents | `test/patchbay_web/live/points_live_test.exs` |

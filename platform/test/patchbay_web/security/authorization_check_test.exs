@@ -355,7 +355,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       )
     end
 
-    test "b cannot unpair a's agent through the Account page or the API", %{
+    test "b cannot unpair a's agent through the Agents page or the API", %{
       a: a,
       b: b,
       a_agent: a_agent,
@@ -364,7 +364,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       before = paired_ids(a)
       expect("a's agent is paired", true, a_agent.pairing.id in before)
 
-      {:ok, view, _html} = live(as(b), ~p"/account")
+      {:ok, view, _html} = live(as(b), ~p"/account/agents")
 
       view
       |> with_target("#account-agents")
@@ -458,7 +458,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
       expect("a opening a's Jev question", :ok, elem(live(as(a), ~p"/fixes/#{run.id}"), 0))
 
-      for path <- [~p"/account", ~p"/account/profile", ~p"/points", ~p"/"] do
+      for path <- [~p"/account", ~p"/account/agents", ~p"/account/profile", ~p"/points", ~p"/"] do
         {_status, conn} = outcome(fn -> get(as(b), path) end)
         expect_absent("b's #{path} shows a's pairing code", conn.resp_body, code)
       end

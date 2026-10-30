@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.PairingBoxTest do
   @moduledoc """
-  Pair New Agent on the Account page: each agent keeps its own code until it
+  Pair New Agent on the Agents page: each agent keeps its own code until it
   expires or a new one is asked for, and the form arriving with no agent chosen,
   as a reconnecting page sends it, changes nothing.
   """
@@ -13,7 +13,7 @@ defmodule PatchbayWeb.PairingBoxTest do
   alias PatchbayWeb.Plugs.CurrentProfile
 
   test "Pair New Agent sent with no agent chosen changes nothing", %{conn: conn} do
-    view = conn |> signed_in("did:privy:pair-empty", "e") |> account()
+    view = conn |> signed_in("did:privy:pair-empty", "e") |> agents_page()
     box = element(view, "#account-pairing-box")
 
     render_change(box, %{"_target" => ["harness"]})
@@ -27,7 +27,7 @@ defmodule PatchbayWeb.PairingBoxTest do
     box =
       conn
       |> signed_in("did:privy:pair-keep", "f")
-      |> account()
+      |> agents_page()
       |> element("#account-pairing-box")
 
     code_for = fn harness -> box |> render_change(%{"harness" => harness}) |> code() end
@@ -55,8 +55,8 @@ defmodule PatchbayWeb.PairingBoxTest do
     conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
   end
 
-  defp account(conn) do
-    {:ok, view, _html} = live(conn, ~p"/account")
+  defp agents_page(conn) do
+    {:ok, view, _html} = live(conn, ~p"/account/agents")
     view
   end
 

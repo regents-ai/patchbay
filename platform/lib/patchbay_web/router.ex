@@ -366,6 +366,7 @@ defmodule PatchbayWeb.Router do
       on_mount: [{PatchbayWeb.CurrentProfile, :account}],
       session: {PatchbayWeb.VisitLog, :session, []} do
       live "/account", AccountLive, :show
+      live "/account/agents", AccountLive, :agents
       live "/account/inbox", AccountLive, :inbox
       live "/account/profile", AccountLive, :profile
       live "/points", PointsLive, :show

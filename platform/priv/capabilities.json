@@ -31,7 +31,7 @@
   "conditions": [
     {
       "name": "pairing_code",
-      "words": "A pairing code the person made with Pair New Agent on their Account page."
+      "words": "A pairing code the person made with Pair New Agent on their Agents page."
     },
     {
       "name": "spending_allowed",

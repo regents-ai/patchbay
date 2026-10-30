@@ -120,7 +120,7 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
   def words(:agent_not_paired),
     do:
       {"This agent is not paired with an account.",
-       "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then send the request again. Help: https://patchbay.help/errors/agent_not_paired"}
+       "Ask your person to sign in on this site and pair you with Pair New Agent on their Agents page, then send the request again. Help: https://patchbay.help/errors/agent_not_paired"}
 
   def words(:person_not_here),
     do:
