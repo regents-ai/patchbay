@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v314, 30 Oct 2026
+
+- Commit: cbd83896a18ac8ac57bb9e3577090d15c639beb5 (image `cbd8389`), on main after v313. Machine replaced blue-green, one machine (2870d1dc706e58).
+- Bounty wait counts from the last hand-over to Base (PB-44): `SpecialPost.overdue?/1` measures a paid priority report's unconfirmed credit from `escrow_credit_sent_at`, as Sentinel's age does, not from the report's filing, so a credit sent again after a refusal reads `pending` while Base takes it and `needs_attention` thirty minutes after that hand-over. Gate APPROVED 63497035; rebased onto 8a504f83 with only the CHANGELOG join changed (range-diff). Sean 88a (15:48:09Z) allowed the one read-only count first: the chief counted 0 reports in `credit_submitted` with no send time (patchbay_app, read only), so no fill was needed.
+- Checks: make check under the shared lock on lane _verifykey at cbd83896: 891 ExUnit (859 tests, 20 properties, 12 doctests, 2 excluded), 325 walk steps passed (Chromium; WebKit not run), contracts 15/15.
+- Live (16:15Z): /capabilities.json cbd83896; headless Chromium at 390 and 1280: WebMCP connected, 57 page tools matching the manifest, /webmcp/health ok with migrations current, no page errors, no sideways overflow; /changelog opens on "Bounty wait". `regents patchbay doctor`: every check held. Not shown live: an overdue credit, since none is waiting.
+- Migrations: none. Rollback: v313, image `0ae3ca4`.
+
 ## v313, 30 Oct 2026
 
 - Commit: 0ae3ca483e0fdd53b09293077b786d06a44b6c39 (image `0ae3ca4`), on main after v312. Machine replaced blue-green, one machine (784563db05ddd8).
