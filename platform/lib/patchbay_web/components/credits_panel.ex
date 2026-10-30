@@ -368,7 +368,7 @@ defmodule PatchbayWeb.CreditsPanel do
     socket
     |> assign(
       profile: profile,
-      linked: profile.account_wallets,
+      linked: profile.wallet_addresses,
       own: String.downcase(profile.wallet_address)
     )
     |> sync()

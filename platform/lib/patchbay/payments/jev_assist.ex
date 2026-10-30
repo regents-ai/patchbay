@@ -54,6 +54,7 @@ defmodule Patchbay.Payments.JevAssist do
        %{
          amount_atomic: @fee_atomic,
          pay_to_address: pay_to_address,
+         credits: :refused,
          target_id: run_id,
          payload: author_origin(%{"run_id" => run_id, "request" => request}, actor),
          recipient_snapshot: [

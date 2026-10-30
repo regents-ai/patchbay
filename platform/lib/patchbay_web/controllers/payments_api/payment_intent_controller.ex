@@ -154,15 +154,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
           %{payment_intent_id: intent_id}
         )
 
-      {:wallet_mismatch, intent_id, note} ->
-        send_wallet_refusal(
-          conn,
-          "wallet_mismatch",
-          "Your wallet app has another wallet open.",
-          "Switch your wallet app to the wallet you signed in with, then pay again.",
-          %{payment_intent_id: intent_id, wallet_note: note}
-        )
-
       {:payment_refused, intent_id, reason} ->
         send_wallet_refusal(
           conn,

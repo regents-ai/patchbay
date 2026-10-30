@@ -105,7 +105,7 @@
             id="pb-account"
             class="pb-account"
             data-account-wallets={
-              @current_profile && Enum.join(@current_profile.account_wallets, " ")
+              @current_profile && Enum.join(@current_profile.wallet_addresses, " ")
             }
             data-account-wallet={@current_profile && @current_profile.wallet_address}
           >

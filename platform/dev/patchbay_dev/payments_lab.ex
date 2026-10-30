@@ -41,7 +41,6 @@ defmodule PatchbayDev.PaymentsLab do
   alias Patchbay.Identity
   alias PatchbayWeb.Plugs.CurrentProfile
   alias RegentPayments.USDC
-  alias RegentPayments.WalletPayment
 
   @wallets [
     {"A", "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"},
@@ -161,7 +160,7 @@ defmodule PatchbayDev.PaymentsLab do
 
   defp account(nil), do: "Signed out."
 
-  defp account(profile), do: "Signed in with #{name(WalletPayment.signed_in(profile))}."
+  defp account(profile), do: "Signed in with #{name(profile.wallet_address)}."
 
   defp wallet_choices do
     Enum.map_join(@wallets, "\n", fn {name, address} ->

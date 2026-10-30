@@ -176,21 +176,6 @@ test("a wallet whose account is not the review's signer is asked nothing to sign
   assert.equal(asked.some(one => one.method === "eth_signTypedData_v4"), false);
 });
 
-test("a wallet Patchbay does not know for the account comes back with its note", async () => {
-  const note = "You're signed in with 0xcc…cc, but your wallet app has 0xee…ee open.";
-  const {fetch, requests} = patchbay({
-    unsigned: () => jsonResponse(402, refusal("wallet_mismatch", "Your wallet app has another wallet open.", "Switch wallets.", {wallet_note: note})),
-  });
-  const {asked, wallet} = standInWallet({address: `0x${"e".repeat(40)}`});
-
-  const outcome = await payForIntent({fetch, wallet}, ACTION);
-
-  assert.equal(outcome.unsigned, "wallet_mismatch");
-  assert.equal(refusalOf(outcome.body).wallet_note, note);
-  assert.deepEqual(asked, []);
-  assert.equal(requests.length, 2);
-});
-
 test("with no wallet to sign, Patchbay is still asked and the reason comes back", async () => {
   const {fetch, requests} = patchbay({
     unsigned: () => jsonResponse(402, refusal("wallet_unavailable", "No wallet is connected.", "Connect your wallet.")),

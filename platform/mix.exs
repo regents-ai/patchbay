@@ -4,7 +4,7 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "14013e420600b7d201c690a29d19078b8ae43952"
+  @elixir_utils_ref "ba6a5715f4e78289acf05f104dbeafa11d6941bc"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "df51d803ee26e5dd83ffe8d6cef4ee5e3f9d5b65"
 
@@ -63,10 +63,14 @@ defmodule Patchbay.MixProject do
       # regent_credits names regent_chain by a sibling path; this pin replaces it.
       {:regent_chain,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain", override: true},
-      {:regent_credits, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credits"},
+      # regent_payments names regent_credits by a sibling path; this pin replaces it.
+      {:regent_credits,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credits", override: true},
       {:regent_points, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "points"},
       {:regent_http, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "http"},
-      {:regent_agent_access, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access"},
+      # regent_mcp_agents names regent_agent_access by a sibling path; this pin replaces it.
+      {:regent_agent_access,
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "agent_access", override: true},
       {:regent_mcp_events, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "mcp_events"},
       {:ens_elixir, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "ens"},
       {:phoenix, "~> 1.8.9"},

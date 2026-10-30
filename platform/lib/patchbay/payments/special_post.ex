@@ -73,6 +73,7 @@ defmodule Patchbay.Payments.SpecialPost do
        %{
          amount_atomic: amount_atomic,
          pay_to_address: escrow_address,
+         credits: :refused,
          target_id: report_id,
          payload:
            author_origin(

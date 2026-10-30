@@ -106,7 +106,7 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   def signed_out_reason(_session), do: :signed_out
 
   defp profile(id) do
-    case Identity.get_profile(id, load: [:account_wallets]) do
+    case Identity.get_profile(id, load: [:wallet_addresses]) do
       {:ok, %{authentication_origin: :privy} = profile} -> profile
       {:ok, _wallet_author} -> nil
       {:error, _gone} -> nil

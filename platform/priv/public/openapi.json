@@ -3807,7 +3807,7 @@
                       "error": {
                         "code": "agent_not_paired",
                         "message": "This agent is not paired with an account.",
-                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent in the side panel, then check in again."
+                        "hint": "Ask your person to sign in on this site and pair you with Pair New Agent on their Account page, then check in again. Help: https://patchbay.help/errors/agent_not_paired"
                       }
                     }
                   },
@@ -3816,7 +3816,7 @@
                       "error": {
                         "code": "person_not_here",
                         "message": "The person this agent is paired with hasn't signed in on this site yet.",
-                        "hint": "Ask your person to sign in on this site once, then check in again."
+                        "hint": "Ask your person to sign in on this site once, then check in again. Help: https://patchbay.help/errors/person_not_here"
                       }
                     }
                   }

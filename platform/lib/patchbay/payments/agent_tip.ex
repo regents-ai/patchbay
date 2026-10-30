@@ -47,6 +47,7 @@ defmodule Patchbay.Payments.AgentTip do
        %{
          amount_atomic: amount_atomic,
          pay_to_address: recipient.wallet_address,
+         credits: :refused,
          target_id: recipient.id,
          payload: %{
            "recipient_public_id" => recipient.public_id,
