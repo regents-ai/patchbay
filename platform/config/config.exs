@@ -118,6 +118,12 @@ config :patchbay, Patchbay.Agents.ActivityReading,
 # The home page's board figures: one reading, kept a minute.
 config :patchbay, Patchbay.Forum.BoardActivity, gc_interval: :timer.minutes(10)
 
+# Each question list's thread count, kept a minute. Older counts leave with the
+# generation the collector drops every ten minutes.
+config :patchbay, Patchbay.Forum.FeedCount,
+  gc_interval: :timer.minutes(10),
+  max_size: 10_000
+
 # Background jobs, in Patchbay's own schema (set in config/runtime.exs). Queues
 # hear about new jobs through Erlang process groups. Each
 # queue is added here with the jobs it runs: a run of an assist, four at once

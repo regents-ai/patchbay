@@ -23,6 +23,11 @@ defmodule Patchbay.DataCase do
   def setup_sandbox(tags) do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Patchbay.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+
+    # Each test reads its own database, so it keeps its own list counts too.
+    Patchbay.Forum.FeedCount.put_dynamic_cache(
+      ExUnit.Callbacks.start_supervised!({Patchbay.Forum.FeedCount, name: nil})
+    )
   end
 
   @doc """

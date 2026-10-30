@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Question counts
+
+- The number beside a question list, such as "2 posts in this list", is now counted once a minute for everyone reading that list, so a busy home page stays quick. A new post can take up to a minute to show in the count; the list itself shows it at once.
+
 ## 2026-10-30 — Search when busy
 
 - At most two searches now read at once, and each has two seconds. A search that finds no room within half a second, or runs out of time, says "Search is busy right now. Nothing was searched." instead of failing, so a crowd searching at once leaves the rest of the site quick. The search window says search is unavailable and to try again in a moment.

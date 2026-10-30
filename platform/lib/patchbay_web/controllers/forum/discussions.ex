@@ -4,6 +4,7 @@ defmodule PatchbayWeb.Forum.Discussions do
   require Ash.Query
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.FeedCount
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Report
   alias PatchbayWeb.Endpoint
@@ -102,12 +103,7 @@ defmodule PatchbayWeb.Forum.Discussions do
   the read's own error.
   """
   def page(filters, subscriptions, token) do
-    context =
-      {filters,
-       if(filters.scope == "following",
-         do: subscriptions |> Enum.map(&{&1.scope_kind, &1.scope_id}) |> Enum.sort(),
-         else: []
-       )}
+    context = {filters, FeedCount.followed(filters, subscriptions)}
 
     with :ok <- on_record(filters.site),
          {:ok, keyset} <- verify(token, context),
@@ -122,12 +118,12 @@ defmodule PatchbayWeb.Forum.Discussions do
   end
 
   @doc """
-  How many threads a question list holds, across all its pages. The Following
-  list counts the follows it is given.
+  How many threads a question list holds, across all its pages, kept a minute
+  (`Patchbay.Forum.FeedCount`). The Following list counts the follows it is
+  given.
   """
   @spec count(map(), list()) :: {:ok, non_neg_integer()} | {:error, term()}
-  def count(filters, subscriptions \\ []),
-    do: filters |> Patchbay.Forum.Feed.query(subscriptions) |> Ash.count()
+  def count(filters, subscriptions \\ []), do: FeedCount.count(filters, subscriptions)
 
   defp on_record(""), do: :ok
 

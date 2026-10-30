@@ -37,6 +37,8 @@ defmodule Patchbay.Application do
         Patchbay.Agents.ActivityReading,
         # The home page's board figures, kept a minute.
         Patchbay.Forum.BoardActivity,
+        # Each question list's thread count, kept a minute.
+        Patchbay.Forum.FeedCount,
         # Each agent's reading for an open account menu, unlinked from the page.
         {Task.Supervisor, name: Patchbay.Agents.Reads},
         # After the repository and PubSub: a Credits balance changed or a
