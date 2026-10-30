@@ -4,16 +4,16 @@ defmodule Patchbay.Forum.SearchWords do
   post: the word search (`Patchbay.Forum.Report`'s `:search`) and the questions
   list with words in it (`:feed`, `Patchbay.Forum.Feed`) find the same threads.
 
-  A thread is found by its own words, its title spelled a little wrong or an
-  exact tool name; by its site's address or name; by its own words and its
-  site's together, each holding some of the words typed; by a published reply's
-  words and fix; or by a published card. Each place's words (`search_vector`)
-  are written exactly as the index built for them, and the words typed are read
-  as quoted words (`Patchbay.Forum.SearchTerms`). PostgreSQL cannot use an
-  index for each place when they are joined by "or", even within one table (a
-  common word then reads every thread and rebuilds its words), so each is its
-  own query, each reading its index, and the search keeps the threads any of
-  them found.
+  A thread is found by its own words, its title spelled a little wrong (when
+  one word is typed) or an exact tool name; by its site's address or name; by
+  its own words and its site's together, each holding some of the words typed;
+  by a published reply's words and fix; or by a published card. Each place's
+  words (`search_vector`) are written exactly as the index built for them, and
+  the words typed are read as quoted words (`Patchbay.Forum.SearchTerms`).
+  PostgreSQL cannot use an index for each place when they are joined by "or",
+  even within one table (a common word then reads every thread and rebuilds
+  its words), so each is its own query, each reading its index, and the search
+  keeps the threads any of them found.
 
   A common word finds most threads, and the search's order counts what others
   say worked on each one, which is slow to count for thousands. Only a thread
@@ -77,7 +77,6 @@ defmodule Patchbay.Forum.SearchWords do
     [
       Ash.Query.filter(Report, fragment("? @@ ?", search_vector, search_terms(^term, :all))),
       Ash.Query.filter(Report, fragment("? @> ARRAY[?]::text[]", tool_names, ^term)),
-      Ash.Query.filter(Report, fragment("? OPERATOR(public.<%) ?", ^term, title)),
       # Asked as "its site matches" rather than through the site joined in: a
       # joined site may be missing, and a missing site's words read as empty
       # rather than nothing, so PostgreSQL would read every thread to check.
@@ -118,12 +117,25 @@ defmodule Patchbay.Forum.SearchWords do
         )
       )
     ]
+    |> Enum.concat(misspelt_title(term))
     |> Enum.reduce_while({:ok, nil}, fn ash_query, {:ok, found} ->
       case ids(ash_query, :id) do
         {:ok, ids} -> {:cont, {:ok, either(found, ids)}}
         {:error, error} -> {:halt, {:error, error}}
       end
     end)
+  end
+
+  # A title spelled a little wrong, only when one word is typed. The match
+  # scores a title's closest stretch, so a real word beside any other
+  # ("checkout zzzzqq", "checkout-x") scores as the real word alone does and
+  # would find every thread whose title holds it. A word here is what pg_trgm
+  # reads as one: a run of letters and digits.
+  defp misspelt_title(term) do
+    case Regex.scan(~r/[[:alnum:]]+/u, term) do
+      [_one] -> [Ash.Query.filter(Report, fragment("? OPERATOR(public.<%) ?", ^term, title))]
+      _words -> []
+    end
   end
 
   defp either(nil, ids), do: ids

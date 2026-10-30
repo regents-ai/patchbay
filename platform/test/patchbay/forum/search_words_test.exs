@@ -37,7 +37,7 @@ defmodule Patchbay.Forum.SearchWordsTest do
 
     on_exit(fn -> :telemetry.detach(handler) end)
 
-    Forum.search_threads!("nonce too low", page: [limit: 10])
+    Forum.search_threads!("nonce", page: [limit: 10])
     assert_received {:searched, sql, params}
 
     # With every way to read a table but a bitmap of index matches turned off,
@@ -83,7 +83,7 @@ defmodule Patchbay.Forum.SearchWordsTest do
         ask!(
           site,
           "Card declined",
-          "The payment failed at checkout on tool_31, error 5004, build 1234."
+          "The payment failed at checkout on tool_31, error 5004, build 1234, v1.2.30, 1.0.220."
         )
 
       for search <- [&listed/1, &searched/1] do
@@ -96,6 +96,20 @@ defmodule Patchbay.Forum.SearchWordsTest do
         assert search.("tool_3") == []
         assert search.("tool_31") == [thread.id]
         assert search.("error 5004") == [thread.id]
+        assert search.("1.0.22") == []
+        assert search.("v1.2.3") == []
+        assert search.("1.0.220") == [thread.id]
+      end
+    end
+
+    test "finds a title spelled a little wrong only when one word is typed", %{site: site} do
+      thread = ask!(site, "Card declined at checkout", "Nothing more to say.")
+
+      for search <- [&listed/1, &searched/1] do
+        assert search.("checkot") == [thread.id]
+        assert search.("checkout x") == []
+        assert search.("checkout-x") == []
+        assert search.("checkout zzzzqq") == []
       end
     end
 
@@ -125,7 +139,7 @@ defmodule Patchbay.Forum.SearchWordsTest do
     end
 
     test "reads the search indexes" do
-      {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"q" => "nonce too low"})
+      {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"q" => "nonce"})
 
       {:ok, query} =
         filters

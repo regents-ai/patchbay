@@ -9,9 +9,9 @@ defmodule Patchbay.Forum.SearchTerms do
   The query is built from those words themselves, each quoted, so nothing typed
   is ever read as a query operator. The last word typed may be half written, so
   it is found at the start of a word: "pay" finds "payment"; "ment" does not.
-  Only when it has three letters or more and is not a number: "1", "500" or the
-  "3" of "tool_3" would otherwise find every number that starts with it. Every
-  other word is found whole.
+  Only when it has three letters or more and holds no digit: "1", "500", the
+  "3" of "tool_3", "1.0.22" or "v1.2.3" would otherwise find every number or
+  version that starts with it. Every other word is found whole.
   """
 
   use Ash.CustomExpression,
@@ -25,7 +25,7 @@ defmodule Patchbay.Forum.SearchTerms do
   ARRAY(
     SELECT quote_literal(lexeme) ||
       CASE WHEN at = (SELECT max(p) FROM unnest(to_tsvector('simple', ?)), unnest(positions) p)
-        AND length(lexeme) >= 3 AND lexeme !~ '^[0-9]+$'
+        AND length(lexeme) >= 3 AND lexeme !~ '[0-9]'
       THEN ':*' ELSE '' END
     FROM (SELECT lexeme, positions[array_length(positions, 1)] AS at
           FROM unnest(to_tsvector('english', ?))) typed

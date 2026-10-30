@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30 — Search words
+
+- The last word typed finds longer words that start with it only when it holds no digit, so a version or a number is found whole: "1.0.22" no longer finds "1.0.220", and "v1.2.3" no longer finds "v1.2.30".
+- A title spelled a little wrong is found only when one word is typed. "checkot" still finds "checkout", but "checkout zzzzqq" no longer finds every question with "checkout" in its title.
+
 ## 2026-10-30 — Faster pages
 
 - Site pages and post pages open faster, most of all when many people are reading at once. They show the same things as before.
