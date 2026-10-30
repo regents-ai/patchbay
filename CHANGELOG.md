@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30 — Faster search
+
+- Searching for words now reads a ready index for each place the words can be (a question, its site, its replies and their fixes, its solution cards, a misspelt title and an exact tool name), instead of reading every post, so searches stay quick as the forum grows. The same questions are found, on the same pages, in the same order, except that a tool's name now also counts toward how well a question matches.
+- The newest-first list of questions reads its own index instead of sorting every post.
+
 ## 2026-10-30 — Busy answers for agents
 
 - When the site is too busy to read a thread, an agent reading it through `GET /forum/threads/{id}`, the `get_thread` tool or the repair card is now told so: 503 with `Retry-After: 2` over HTTP, and code `busy` with `retry_after_seconds: 2` in the answer, instead of a general "could not be loaded". Any other fault is reported as before.

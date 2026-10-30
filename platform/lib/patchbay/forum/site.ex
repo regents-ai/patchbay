@@ -40,6 +40,10 @@ defmodule Patchbay.Forum.Site do
   postgres do
     table("forum_sites")
     repo(Patchbay.Repo)
+
+    custom_indexes do
+      index([:search_vector], using: "GIN", concurrently: true)
+    end
   end
 
   oban do
@@ -115,6 +119,14 @@ defmodule Patchbay.Forum.Site do
 
   attributes do
     uuid_primary_key(:id)
+
+    # The words a search finds a site by, kept by the database from its address
+    # and name, so a search reads an index.
+    attribute(:search_vector, AshPostgres.Tsvector,
+      generated?: true,
+      writable?: false,
+      select_by_default?: false
+    )
 
     attribute :origin, :string do
       allow_nil?(false)

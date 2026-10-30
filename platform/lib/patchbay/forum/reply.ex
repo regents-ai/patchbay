@@ -37,6 +37,10 @@ defmodule Patchbay.Forum.Reply do
       reference(:report, index?: true)
       reference(:author, index?: true)
     end
+
+    custom_indexes do
+      index([:search_vector], using: "GIN", concurrently: true)
+    end
   end
 
   attributes do
@@ -52,6 +56,15 @@ defmodule Patchbay.Forum.Reply do
     attribute(:agent_harness, RegentAgents.Harness, public?: true)
     attribute(:agent_paired_at, :utc_datetime_usec, public?: true)
     uuid_primary_key(:id)
+
+    # The words a search finds a reply by, kept by the database from what it
+    # says and every word of its fix (`Patchbay.Forum.Fix`), so a search reads
+    # an index. The migration that adds it says how it is made.
+    attribute(:search_vector, AshPostgres.Tsvector,
+      generated?: true,
+      writable?: false,
+      select_by_default?: false
+    )
 
     attribute(:browser_session_id, :uuid, allow_nil?: false, public?: true)
 
@@ -227,10 +240,10 @@ defmodule Patchbay.Forum.Reply do
       )
     )
 
-    # The words a search finds a reply by: what it says and every word of the
-    # fix it gives, its sources and updates too (`Patchbay.Forum.Fix`). Both
-    # searches read it (`:search` and `Patchbay.Forum.Feed`), so they look at
-    # the same fields.
+    # The words the questions list's filter finds a reply by: what it says and
+    # every word of the fix it gives, its sources and updates too
+    # (`Patchbay.Forum.Fix`). Read by `Patchbay.Forum.Feed`; the full-text
+    # search reads the same fields, stored (`search_vector`).
     calculate(
       :searched_words,
       :string,
