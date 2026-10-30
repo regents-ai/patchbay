@@ -151,8 +151,7 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # purchases on chain (`regent_credits`); and a site's check
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
-# sites wait only on each other, with the ten-minute ask for checks of listed
-# sites no check has been asked for yet (`Patchbay.Forum.SiteCheckSweep`); the daily clearing of saved errors
+# sites wait only on each other; the daily clearing of saved errors
 # (`Patchbay.ErrorPruner`); the daily forgetting of the words of posts
 # turned away a month ago (`Patchbay.Forum.PostCheckPruner`); and reading a
 # signed-in wallet's ENS name and picture from Ethereum
@@ -164,7 +163,10 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # bounty is confirmed and whether it has been refunded (`:read_escrow_credit`
 # and `:read_escrow_refund`) on a queue of their own, so a slow Base node holds
 # up nothing else. Each minute the producers of the figures every visitor sees
-# alike are asked to read again (`Patchbay.SharedReading.Heal`, on `default`).
+# alike are asked to read again (`Patchbay.SharedReading.Heal`, on `default`),
+# and every ten minutes checks are asked for a few listed sites no check has
+# been asked for yet (`Patchbay.Forum.SiteCheckSweep`, on `default`, so the
+# ask never takes one of the two check places).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   notifier: Oban.Notifiers.PG,
@@ -189,8 +191,9 @@ config :patchbay, Oban,
     answer_watch: 2,
     outside_calls: 2,
     escrow_reads: 2,
-    # The template runs 5 here; Patchbay's only job on it is the minute's
-    # SharedReading.Heal, which sends one message, so one is enough.
+    # The template runs 5 here; Patchbay's only jobs on it are the minute's
+    # SharedReading.Heal, which sends one message, and the ten-minute
+    # SiteCheckSweep, which writes five asks, so one is enough.
     default: 1
   ],
   # AshOban adds each trigger's minute sweep here.

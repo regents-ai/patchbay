@@ -5,10 +5,11 @@ defmodule Patchbay.Forum.SiteCheckSweep do
   directory is read without a visitor opening it. Each ask is the same
   `:request` a visitor's makes and queues the check's job in the same write;
   the `site_checks` queue still runs two checks at once, so this only adds to
-  the line. A domain already asked for, by anyone, is never asked again here:
+  the line. The ask itself runs on `default`, so it never takes one of those
+  two places. A domain already asked for, by anyone, is never asked again here:
   after its first check, visitors' daily rule decides when it is read.
   """
-  use Oban.Worker, queue: :site_checks, max_attempts: 1
+  use Oban.Worker, queue: :default, max_attempts: 1
 
   alias Patchbay.Forum
   alias Patchbay.Forum.SiteDirectory
