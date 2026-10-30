@@ -13,6 +13,7 @@ defmodule PatchbayWeb.MCP.Tools do
   wallet; tipping happens on the website.
   """
 
+  alias Patchbay.DatabaseBusy
   alias Patchbay.Forum.Capabilities
   alias Patchbay.Forum.SiteDirectory
   alias Patchbay.Offers.Disclosure
@@ -649,8 +650,12 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp forum_answer({:error, {:invalid, messages}}), do: {:error, ApiError.invalid(messages)}
 
-  defp forum_answer({:error, {:unavailable, words}}),
-    do: {:error, ApiError.body("unavailable", words, @try_again)}
+  defp forum_answer({:error, {:busy, words}}) do
+    {:error,
+     ApiError.body("busy", words, "Wait retry_after_seconds, then call again.", %{
+       retry_after_seconds: DatabaseBusy.retry_after_seconds()
+     })}
+  end
 
   defp forum_answer({:error, _unavailable}) do
     {:error,

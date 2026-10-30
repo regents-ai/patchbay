@@ -19,7 +19,13 @@ defmodule Patchbay.DatabaseBusy do
 
   def kind(_error), do: nil
 
+  @retry_after_seconds 2
+
+  @doc "Seconds to wait before asking again."
+  @spec retry_after_seconds() :: pos_integer()
+  def retry_after_seconds, do: @retry_after_seconds
+
   @doc "Seconds to wait before asking again, as a Retry-After header says it."
   @spec retry_after() :: String.t()
-  def retry_after, do: "2"
+  def retry_after, do: Integer.to_string(@retry_after_seconds)
 end

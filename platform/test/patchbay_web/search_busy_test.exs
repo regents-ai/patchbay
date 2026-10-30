@@ -4,8 +4,8 @@ defmodule PatchbayWeb.SearchBusyTest do
   (`Patchbay.Forum.SearchSlots`): the word search, the question list with words
   in it and its count, and the site and tool matches. A search with no place
   free, or whose read runs out of time, asks to be sent again shortly at every
-  door: the forum API answers 503 with Retry-After, the MCP tool answers
-  `unavailable`, the home page says so in place of the list, and the search
+  door: the forum API answers 503 `busy` with Retry-After, the MCP tool answers
+  `busy` with the seconds to wait, the home page says so in place of the list, and the search
   window says so. It never answers 500 or an empty list. Any other error is a
   fault and is never answered as busy.
   """
@@ -28,7 +28,7 @@ defmodule PatchbayWeb.SearchBusyTest do
     test "the forum API answers 503 with Retry-After", %{conn: conn} do
       conn = get(conn, "/forum/search?q=reservation")
 
-      assert %{"error" => %{"code" => "unavailable", "message" => message}} =
+      assert %{"error" => %{"code" => "busy", "message" => message, "retry_after_seconds" => 2}} =
                json_response(conn, 503)
 
       assert message == SearchUnavailable.words()
@@ -40,7 +40,7 @@ defmodule PatchbayWeb.SearchBusyTest do
     } do
       conn = get(conn, "/forum/search?q=reservation&sort=recent")
 
-      assert %{"error" => %{"code" => "unavailable"}} = json_response(conn, 503)
+      assert %{"error" => %{"code" => "busy"}} = json_response(conn, 503)
       assert get_resp_header(conn, "retry-after") == ["2"]
     end
 
@@ -62,7 +62,7 @@ defmodule PatchbayWeb.SearchBusyTest do
       assert SearchUnavailable.in?(error)
     end
 
-    test "the MCP tool answers unavailable", %{conn: conn} do
+    test "the MCP tool answers busy", %{conn: conn} do
       call = %{"name" => "search_threads", "arguments" => %{"q" => "reservation"}}
 
       conn =
@@ -76,7 +76,9 @@ defmodule PatchbayWeb.SearchBusyTest do
       assert %{"result" => %{"isError" => true, "content" => [%{"text" => text}]}} =
                json_response(conn, 200)
 
-      assert %{"error" => %{"code" => "unavailable", "message" => message}} = Jason.decode!(text)
+      assert %{"error" => %{"code" => "busy", "message" => message, "retry_after_seconds" => 2}} =
+               Jason.decode!(text)
+
       assert message == SearchUnavailable.words()
     end
 
@@ -93,7 +95,7 @@ defmodule PatchbayWeb.SearchBusyTest do
     end
   end
 
-  test "a read that runs past two seconds is stopped and answers unavailable" do
+  test "a read that runs past two seconds is stopped and answers busy" do
     Forum.register_site!("slow.example")
     lock_table("forum_reports")
 

@@ -194,16 +194,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   def search(conn, params) do
     case Reads.search(params, :full) do
-      {:ok, payload} ->
-        json(conn, payload)
-
-      {:error, {:unavailable, _words} = failure} ->
-        conn
-        |> put_resp_header("retry-after", DatabaseBusy.retry_after())
-        |> send_failure(failure)
-
-      {:error, failure} ->
-        send_failure(conn, failure)
+      {:ok, payload} -> json(conn, payload)
+      {:error, failure} -> send_failure(conn, failure)
     end
   end
 
@@ -217,6 +209,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp send_thread_failure(conn, failure)
        when failure in [:not_found, :invalid_cursor, :response_too_large],
        do: send_failure(conn, failure)
+
+  defp send_thread_failure(conn, {:busy, _words} = failure), do: send_failure(conn, failure)
 
   defp send_thread_failure(conn, failure) do
     error_type = if is_struct(failure), do: failure.__struct__, else: :unknown
@@ -526,6 +520,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         Integer.to_string(max(DateTime.diff(until, DateTime.utc_now()), 1))
       )
 
+  defp retry_after(conn, {:busy, _words}),
+    do: put_resp_header(conn, "retry-after", DatabaseBusy.retry_after())
+
   defp retry_after(conn, _failure), do: conn
 
   @doc """
@@ -576,6 +573,13 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   def refusal({:solution_refused, reason, words}) do
     {solution_status(reason), ApiError.body(Atom.to_string(reason), words, solution_hint(reason))}
+  end
+
+  def refusal({:busy, words}) do
+    {:service_unavailable,
+     ApiError.body("busy", words, @wait_then_retry, %{
+       retry_after_seconds: DatabaseBusy.retry_after_seconds()
+     })}
   end
 
   def refusal({:unavailable, words}) do
