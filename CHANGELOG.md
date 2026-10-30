@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-30 — decode-uri-component 0.5.1
+
+- The override for `decode-uri-component`, which the wallet sign-in bundle reaches through
+  WalletConnect's `query-string`, moves from 0.5.0 to 0.5.1 (GitHub alert GHSA-qr28-fpjm-wq7f:
+  a long crafted address took quadratic time to decode in the browser). The lock changes in
+  that one entry; `npm ls decode-uri-component` shows only 0.5.1. Sign-in reaches the
+  Rainbow QR with no page-rule refusals or console errors, as before.
+
 ## 2026-10-30 — Wallet Bench pair pages
 
 - Each pair's page on the Wallet Bench, and the sitemap, now open from the results read once a minute for everyone, as the board does, so they stay quick at any number of visitors. A pair that leaves the bench drops off at the next minute's read.
