@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-08 — Site matches
+
+- The sites and tools shown beside words you type on the home page now appear quickly, however many sites and tools Patchbay lists. The same sites and tools are found, in the same order.
+
 ## 2026-11-08 — Points
 
 - The Points page is redrawn as on every Regent site: your total with today and yesterday, your place, the actions left and the leaderboard, all as the page opens. A person with no name shows on the leaderboard by their ENS name or wallet, with its copy icon.

@@ -26,6 +26,22 @@ defmodule Patchbay.Forum.Tool do
   postgres do
     table("forum_tools")
     repo(Patchbay.Repo)
+
+    custom_indexes do
+      # The tool match (`:find`) reads these: a name or title containing the
+      # typed words, or a name nearly matching them.
+      index(["name public.gin_trgm_ops"],
+        name: "forum_tools_name_trgm_index",
+        using: "GIN",
+        concurrently: true
+      )
+
+      index(["title public.gin_trgm_ops"],
+        name: "forum_tools_title_trgm_index",
+        using: "GIN",
+        concurrently: true
+      )
+    end
   end
 
   attributes do
@@ -210,14 +226,8 @@ defmodule Patchbay.Forum.Tool do
 
       argument(:text, :string, allow_nil?: false, constraints: [min_length: 2, max_length: 200])
 
-      filter(
-        expr(
-          current? and
-            (contains(string_downcase(name), string_downcase(^arg(:text))) or
-               contains(string_downcase(title), string_downcase(^arg(:text))) or
-               fragment("? OPERATOR(public.<%) ?", ^arg(:text), name))
-        )
-      )
+      filter(expr(current?))
+      prepare({Patchbay.Forum.FindText, contains: [:name, :title], near: [:name]})
 
       prepare(
         build(
