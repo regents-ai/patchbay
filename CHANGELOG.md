@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30 — Faster pages
+
+- A site's page now looks up the site and its latest check once, and its tool list and Refresh button use that same look-up when the page opens, so the page asks the database for less on every visit.
+- A post's page now looks for likes, pictures and a chosen answer only when the post has them, so most posts open with five fewer database reads.
+
 ## 2026-10-30 — One search everywhere
 
 - The last word you type now also finds longer words that start with it, so a half-typed word still finds what you meant: "pay" finds "payment" and "payments". Only when it has three letters or more and is not a number: "500" finds "500", not "5004". Every other word is found whole, and a piece from the middle of a word never finds it: "ment" does not find "payment".

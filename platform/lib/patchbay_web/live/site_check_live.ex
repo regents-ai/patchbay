@@ -50,37 +50,39 @@ defmodule PatchbayWeb.SiteCheckLive do
        ask: session["ask"],
        limited?: session["limited"] == true
      )
-     |> assign_tools(SiteChecks.current(domain))}
+     |> assign_new(:site, fn -> read_site(domain) end)
+     |> assign_new(:check, fn -> SiteChecks.current(domain) end)
+     |> assign_tools()}
   end
 
   # A finished check may also have added its tools to the site's list, so the
-  # list is read again with it.
+  # site is read again with it.
   @impl true
   def handle_info(%Ash.Notifier.Notification{data: check}, socket),
-    do: {:noreply, assign_tools(socket, check)}
+    do:
+      {:noreply,
+       socket |> assign(check: check, site: read_site(socket.assigns.domain)) |> assign_tools()}
+
+  defp read_site(domain) do
+    case Board.fetch_site(domain) do
+      {:ok, site} -> site
+      :error -> nil
+    end
+  end
 
   # The one list of tools: Patchbay's list a page at a time and, before its
   # first page, the tools the check found on the front page that the list
   # does not hold yet. Each row says where it came from when there are both.
-  defp assign_tools(socket, check) do
-    %{domain: domain, cursor: cursor} = socket.assigns
-
-    site =
-      case Board.fetch_site(domain) do
-        {:ok, site} -> site
-        :error -> nil
-      end
-
-    {listed, next_tools} = if site, do: Board.inventory(site, cursor), else: {[], nil}
+  defp assign_tools(socket) do
+    %{site: site, check: check, cursor: cursor} = socket.assigns
+    {listed, next_tools} = inventory(site, cursor)
     found = found_tools(check)
     found_names = MapSet.new(found, & &1["name"])
-    held = if site, do: Board.listed(site, MapSet.to_list(found_names)), else: MapSet.new()
+    held = held(site, cursor, listed, next_tools, found_names)
     only_found = Enum.reject(found, &MapSet.member?(held, &1["name"]))
     list_count = (site && site.tool_count) || 0
 
     assign(socket,
-      check: check,
-      site: site,
       listed: listed,
       next_tools: next_tools,
       only_found: if(cursor, do: [], else: only_found),
@@ -90,6 +92,21 @@ defmodule PatchbayWeb.SiteCheckLive do
     )
     |> assign_copy_text()
   end
+
+  # A site whose list holds no tools has no page of them to read.
+  defp inventory(nil, _cursor), do: {[], nil}
+  defp inventory(%{tool_count: 0}, nil), do: {[], nil}
+  defp inventory(site, cursor), do: Board.inventory(site, cursor)
+
+  # Which found tools the site's list holds. A first page with no page after
+  # it is the whole list, so it answers without another read.
+  defp held(nil, _cursor, _listed, _next_tools, _found_names), do: MapSet.new()
+
+  defp held(_site, nil, listed, nil, found_names),
+    do: listed |> MapSet.new(& &1.name) |> MapSet.intersection(found_names)
+
+  defp held(site, _cursor, _listed, _next_tools, found_names),
+    do: Board.listed(site, MapSet.to_list(found_names))
 
   defp found_tools(check) do
     case check_findings(check) do
