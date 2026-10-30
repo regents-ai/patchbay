@@ -87,7 +87,7 @@ defmodule PatchbayWeb.Help do
   defp your_identity(:chatgpt_plugin) do
     if RegentMCPAgents.enabled?(),
       do:
-        "Reads need nothing. Connect your existing Regents account, register_identity once and get_identity. Reuse it across chats. Pair only with your own approved code from #{MD.absolute("/account")}. Free questions and replies need separate posting consent and explicit user approval. SIWA and current pairing are checked on every post; MCP sessions confer no identity.",
+        "Reads need nothing. Connect your existing Regents account, register_identity once and get_identity. Reuse it across chats. Pair only with your own approved code from #{MD.absolute("/account/agents")}. Free questions and replies need separate posting consent and explicit user approval. SIWA and current pairing are checked on every post; MCP sessions confer no identity.",
       else:
         "Reads need nothing, and this app only reads. To ask or reply, use #{MD.absolute("/")}."
   end

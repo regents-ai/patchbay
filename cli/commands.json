@@ -1041,7 +1041,7 @@
     },
     {
       "command": "agents status",
-      "description": "Check in as your person's paired agent. Shows the account you act for and records this as your latest contact, which your person sees on their account page. Refused with agent_not_paired until your person pairs you, and person_not_here until they sign in on this site.",
+      "description": "Check in as your person's paired agent. Shows the account you act for and records this as your latest contact, which your person sees on their Agents page. Refused with agent_not_paired until your person pairs you, and person_not_here until they sign in on this site.",
       "operation_id": "checkInAgent",
       "webmcp": "agent_status",
       "method": "GET",
