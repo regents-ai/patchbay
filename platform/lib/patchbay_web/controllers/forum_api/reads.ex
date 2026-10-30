@@ -550,20 +550,23 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          _sort,
          offset
        ) do
-    Forum.search_threads(
-      q || tool_name,
-      %{
-        site_id: site && site.id,
-        tool_name: q && tool_name,
-        since: search.since,
-        software: fixed.software,
-        version: fixed.version
-      },
-      load: thread_search_loads(),
-      page: [limit: @search_report_limit, offset: offset]
-    )
-    |> case do
-      {:ok, page} -> {:ok, Map.put(page, :offset, offset)}
+    # Loaded after the read, as the lists above are: the words narrow the
+    # threads in `Patchbay.Forum.SearchWords.modify/2`.
+    with {:ok, page} <-
+           Forum.search_threads(
+             q || tool_name,
+             %{
+               site_id: site && site.id,
+               tool_name: q && tool_name,
+               since: search.since,
+               software: fixed.software,
+               version: fixed.version
+             },
+             page: [limit: @search_report_limit, offset: offset]
+           ),
+         {:ok, page} <- Ash.load(page, thread_search_loads()) do
+      {:ok, Map.put(page, :offset, offset)}
+    else
       {:error, error} -> searched_failure(error)
     end
   end
