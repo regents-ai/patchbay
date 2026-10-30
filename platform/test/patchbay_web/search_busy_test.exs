@@ -15,9 +15,11 @@ defmodule PatchbayWeb.SearchBusyTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.FeedCount
   alias Patchbay.Forum.SearchSlots
   alias Patchbay.Forum.SearchUnavailable
   alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Forum.Discussions
 
   describe "with both places taken" do
     setup do
@@ -60,6 +62,15 @@ defmodule PatchbayWeb.SearchBusyTest do
     test "the site and tool matches take a place" do
       assert {:error, error} = Board.matches("reservation")
       assert SearchUnavailable.in?(error)
+    end
+
+    test "counting a list with words takes a place; counting one without does not" do
+      {:ok, words} = Discussions.filters(%{"q" => "reservation"})
+      assert {:error, error} = FeedCount.count(words, [])
+      assert SearchUnavailable.in?(error)
+
+      {:ok, plain} = Discussions.filters(%{})
+      assert {:ok, _count} = FeedCount.count(plain, [])
     end
 
     test "the MCP tool answers busy", %{conn: conn} do

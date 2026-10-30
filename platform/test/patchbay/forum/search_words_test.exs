@@ -78,6 +78,27 @@ defmodule Patchbay.Forum.SearchWordsTest do
       end
     end
 
+    test "finds only the last word typed by its beginning, and never a number", %{site: site} do
+      thread =
+        ask!(
+          site,
+          "Card declined",
+          "The payment failed at checkout on tool_31, error 5004, build 1234."
+        )
+
+      for search <- [&listed/1, &searched/1] do
+        assert search.("pay") == [thread.id]
+        assert search.("checkout pay") == [thread.id]
+        assert search.("pay checkout") == []
+        assert search.("pa") == []
+        assert search.("1") == []
+        assert search.("500") == []
+        assert search.("tool_3") == []
+        assert search.("tool_31") == [thread.id]
+        assert search.("error 5004") == [thread.id]
+      end
+    end
+
     test "holds the same threads as the word search", %{site: site} do
       ask!(site, "Wallet will not connect", "The approve step hangs on a nonce too low error.")
       ask!(site, "Checkout fails", "Payments stop at the approve step.")

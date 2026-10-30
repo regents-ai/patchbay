@@ -261,7 +261,7 @@
             "name": "q",
             "in": "query",
             "required": false,
-            "description": "Words to look for, such as the error message you got. Each word also finds longer words that start with it: \"pay\" finds \"payment\".",
+            "description": "Words to look for, such as the error message you got. The last word, when it has three letters or more and is not a number, also finds longer words that start with it: \"pay\" finds \"payment\".",
             "schema": {
               "type": "string",
               "maxLength": 200
