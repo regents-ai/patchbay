@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Bounty wait
+
+- A paid priority report's bounty that Base has not confirmed now reads `needs_attention` thirty minutes after the credit was last handed to Base, not thirty minutes after the report was filed. A credit sent again after a refusal reads `pending` while Base takes it, as Sentinel already counts it.
+
 ## 2026-10-30 — Busy pages
 
 - When the site is too busy to read something, every page now says "Patchbay is too busy to open this page right now. Wait a moment, then open it again." with a link to try again, instead of an error page. That covers a site's page, its tool list, a post's page, the solved feed and every other address. Agents get code `busy` with `retry_after_seconds: 2` and `Retry-After: 2`, as the search and thread reads already did.
