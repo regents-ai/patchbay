@@ -61,6 +61,28 @@ defmodule Patchbay.Forum.Report do
         message: "is not a type a thread can be"
       )
     end
+
+    custom_indexes do
+      # A search reads these instead of every post (`:search`): the stored
+      # words, the title spelled a little wrong, and an exact tool name.
+      index([:search_vector], using: "GIN", concurrently: true)
+
+      index(["title public.gin_trgm_ops"],
+        name: "forum_reports_title_trgm_index",
+        using: "GIN",
+        concurrently: true
+      )
+
+      index([:tool_names], using: "GIN", concurrently: true)
+
+      # The questions list, newest first, reads this instead of sorting every
+      # post (`Patchbay.Forum.Feed`).
+      index([:inserted_at, :id],
+        name: "forum_reports_feed_index",
+        where: "visibility = 'published' AND techtree_digest IS NULL",
+        concurrently: true
+      )
+    end
   end
 
   oban do
@@ -149,6 +171,16 @@ defmodule Patchbay.Forum.Report do
     # Writable so that a paid priority report can be filed under the id its
     # payment intent froze, which is the id the escrow already names.
     uuid_primary_key(:id, writable?: true)
+
+    # The words a search finds a thread by, kept by the database from the title,
+    # the question, the note and the tool names (at most five,
+    # `Changes.NormalizeToolNames`), so a search reads an index. The migration
+    # that adds it says how it is made.
+    attribute(:search_vector, AshPostgres.Tsvector,
+      generated?: true,
+      writable?: false,
+      select_by_default?: false
+    )
 
     # The reporting session is an opaque identifier the browser sends. Nothing
     # verifies it, so it is an attribute rather than a relationship to a row we
@@ -448,10 +480,10 @@ defmodule Patchbay.Forum.Report do
   calculations do
     calculate(:feed_engagement, :integer, expr(post_like_count + reply_count))
 
-    # The words a search finds a thread by: its own words, its tools and its
-    # site. Its replies and cards add theirs (`Reply`, `SolutionCard`).
-    # Both searches read it (`:search` and `Patchbay.Forum.Feed`), so they look
-    # at the same fields.
+    # The words the questions list's filter finds a thread by: its own words,
+    # its tools and its site. Its replies and cards add theirs (`Reply`,
+    # `SolutionCard`). Read by `Patchbay.Forum.Feed`; the full-text search reads
+    # the same fields, stored (`search_vector`).
     calculate(
       :searched_words,
       :string,
@@ -729,10 +761,10 @@ defmodule Patchbay.Forum.Report do
 
     read :search do
       description("""
-      Full-text search over the words a thread, its published replies and
-      their fixes, and its published cards carry (`searched_words`), matched
-      directly against the site's records — not bounded by a handful of
-      observed tool versions.
+      Full-text search over the words a thread, its site, its published replies
+      and their fixes, and its published cards carry (`search_vector`), read
+      from their indexes (`Patchbay.Forum.SearchWords`) — not bounded by a
+      handful of observed tool versions.
       """)
 
       # The words to look for: an error message, a site, a tool. A search by
@@ -777,36 +809,8 @@ defmodule Patchbay.Forum.Report do
         )
       )
 
-      filter(
-        expr(
-          is_nil(^arg(:term)) or
-            fragment(
-              "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
-              searched_words,
-              ^arg(:term)
-            ) or
-            site.origin == ^arg(:term) or
-            ^arg(:term) in tool_names or
-            fragment("? OPERATOR(public.<%) coalesce(?, '')", ^arg(:term), title) or
-            exists(
-              replies,
-              visibility == :published and
-                fragment(
-                  "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
-                  searched_words,
-                  ^arg(:term)
-                )
-            ) or
-            exists(
-              solution_cards,
-              fragment(
-                "to_tsvector('english', ?) @@ plainto_tsquery('english', ?)",
-                searched_words,
-                ^arg(:term)
-              )
-            )
-        )
-      )
+      # The words, matched against the indexes of each place they can be.
+      modify_query({Patchbay.Forum.SearchWords, :modify, []})
 
       filter(expr(is_nil(^arg(:site_id)) or site_id == ^arg(:site_id)))
 
@@ -823,10 +827,8 @@ defmodule Patchbay.Forum.Report do
         Ash.Query.sort(query, [
           {calc(
              fragment(
-               "ts_rank(to_tsvector('english', coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')), plainto_tsquery('english', ?))",
-               title,
-               body_markdown,
-               note,
+               "ts_rank(?, plainto_tsquery('english', ?))",
+               search_vector,
                ^term
              ),
              type: :float
@@ -1382,4 +1384,11 @@ defmodule Patchbay.Forum.Report do
       evidence: @max_evidence_bytes
     }
   end
+
+  @doc """
+  How many different people must say a reply worked before it counts toward
+  `:worked_count` and `:last_worked_at`.
+  """
+  @spec worked_by_at_least() :: pos_integer()
+  def worked_by_at_least, do: @worked_by_at_least
 end

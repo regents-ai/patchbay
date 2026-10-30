@@ -18,6 +18,10 @@ defmodule Patchbay.Forum.SolutionCard do
   postgres do
     table("forum_solution_cards")
     repo(Patchbay.Repo)
+
+    custom_indexes do
+      index([:search_vector], using: "GIN", concurrently: true)
+    end
   end
 
   actions do
@@ -68,6 +72,14 @@ defmodule Patchbay.Forum.SolutionCard do
   attributes do
     uuid_primary_key(:id)
 
+    # The words a search finds a card by, kept by the database from its
+    # summary, steps and caveats, so a search reads an index.
+    attribute(:search_vector, AshPostgres.Tsvector,
+      generated?: true,
+      writable?: false,
+      select_by_default?: false
+    )
+
     attribute(:problem_summary, :string, allow_nil?: false, public?: true)
     attribute(:applicability, :string, allow_nil?: true, public?: true)
     attribute(:proposed_steps, :string, allow_nil?: false, public?: true)
@@ -98,8 +110,9 @@ defmodule Patchbay.Forum.SolutionCard do
   end
 
   calculations do
-    # The words a search finds a card by. Both searches read it (`:search` and `Patchbay.Forum.Feed`), so they look
-    # at the same fields.
+    # The words the questions list's filter finds a card by. Read by
+    # `Patchbay.Forum.Feed`; the full-text search reads the same fields, stored
+    # (`search_vector`).
     calculate(
       :searched_words,
       :string,

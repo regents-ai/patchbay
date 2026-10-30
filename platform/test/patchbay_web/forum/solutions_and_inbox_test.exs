@@ -351,6 +351,56 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
 
       assert [^two | _] = Enum.map(popular, & &1["id"])
     end
+
+    # The search counts "worked" only for threads that can have it and reads
+    # the rest's order from their own columns (`Patchbay.Forum.SearchWords`).
+    test "every page of a word search is the same slice of one long page" do
+      word = "quaggastripe#{System.unique_integer([:positive])}"
+      asker = visitor()
+
+      replies =
+        for n <- 1..9 do
+          %{"thread_id" => id} = ask(asker, "#{word} thread #{n}") |> json_response(201)
+          %{"reply_id" => reply_id} = answer(visitor(), id, "Try this.") |> json_response(201)
+          {id, reply_id}
+        end
+
+      %{"thread_id" => closest} =
+        ask(asker, "#{word} #{word} #{word} closest") |> json_response(201)
+
+      use! = fn reply_id ->
+        visitor()
+        |> post_json("/forum/replies/#{reply_id}/uses", %{
+          "outcome" => "worked",
+          "task_token" => Ecto.UUID.generate()
+        })
+        |> json_response(201)
+      end
+
+      # The oldest threads: two worked for two people each, one for three, and
+      # one only for one person, which counts nothing.
+      [{first, first_reply}, {second, second_reply}, {third, third_reply}, {_, single} | _] =
+        replies
+
+      for reply_id <- [first_reply, first_reply, second_reply, second_reply],
+          do: use!.(reply_id)
+
+      for _ <- 1..3, do: use!.(third_reply)
+      use!.(single)
+
+      found = fn page -> Enum.map(Forum.search_threads!(word, page: page).results, & &1.id) end
+
+      whole = found.(limit: 50)
+      assert length(whole) == 10
+      # Most matching words first, then the most people it worked for, then
+      # the latest word it worked; the rest newest first.
+      assert Enum.take(whole, 4) == [closest, third, second, first]
+
+      for limit <- 1..4, offset <- 0..10 do
+        assert found.(limit: limit, offset: offset) == Enum.slice(whole, offset, limit),
+               "limit #{limit} offset #{offset}"
+      end
+    end
   end
 
   describe "the thread page leads with the asker's pick" do
