@@ -17,6 +17,8 @@
 
 - A post the site is too busy to read now says "Patchbay is too busy to open this page right now. Wait a moment, then open it again." instead of saying the post does not exist. The same goes for a reply sent to it and for a lasting error link that names it. A post that really is not there still says so.
 - When the words on the home page found questions but the matching sites and tools could not be searched in time, that part now says search is busy, with a link to try again, instead of saying it could not be loaded.
+- Try again on that page opens the same address again. After sending a reply, it opens the post instead.
+- If your refund went through to Base but the post was then too busy to show, the page now says "Your refund went through to Base. This page could not refresh to show it." instead of only saying the site is busy.
 - For agents: a busy post page answers 503 with `Retry-After: 2`, as a page or as Markdown.
 
 ## 2026-10-30 — Post pages read once
