@@ -1,19 +1,19 @@
 defmodule PatchbayWeb.HeaderAccountLive do
   @moduledoc """
   The signed-in person's part of the header on every page, as in the Regent
-  template: their Credits balance with the Buy Credits dialog it opens, and the
-  account menu (`Regent.Account.menu`) their picture and name at the top right
-  open. The menu shows their picture, name and wallet, their three most recently
+  template: the account menu (`Regent.Account.menu`) their picture and name at
+  the top right open, and the Buy Credits dialog it opens. The menu shows their
+  picture, name and wallet, their Credits balance, their three most recently
   active agents (`PatchbayWeb.MenuAgents`), Pair New Agent, Manage Account and
-  Sign out. Pairing itself is on the Agents page, and everything else about the account
-  on the Account page (`PatchbayWeb.AccountLive`).
+  Sign out. Pairing itself is on the Agents page, and everything else about the
+  account on the Account page (`PatchbayWeb.AccountLive`).
 
   It stays put while a person moves between live pages. The balance changes the
   moment Credits move, and the agents the moment one pairs, checks in or is
   unpaired, whichever Regent site it happened on. Only a balance just read shows;
-  while it is read again, or when it can't be, the figure is a dash. Narrower than
-  22.5rem the header leaves the balance out and the menu shows it instead, opening
-  the same dialog.
+  while it is read again, or when it can't be, the figure is a dash. The balance
+  is the menu's own row at every width, under the wallet, and pressing it opens
+  Buy Credits; the header has no balance of its own.
 
   The Buy Credits panel (`PatchbayWeb.CreditsPanel`) is drawn only once the
   dialog has been opened, so a page that never opens it never reads a wallet. Any
@@ -93,20 +93,6 @@ defmodule PatchbayWeb.HeaderAccountLive do
   def render(assigns) do
     ~H"""
     <div class="pb-credits">
-      <button
-        :if={@site_edition == :main}
-        id="pb-credits-balance"
-        type="button"
-        class="pb-credits-balance"
-        phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
-        phx-hook="MotionCount"
-        data-variant="flash"
-        aria-haspopup="dialog"
-        aria-controls="pb-credits"
-        aria-label={label(@credits)}
-      >
-        <.amount credits={@credits} />
-      </button>
       <Regent.Structure.dialog
         :if={@site_edition == :main}
         id="pb-credits"
@@ -145,6 +131,8 @@ defmodule PatchbayWeb.HeaderAccountLive do
           <button
             type="button"
             id="account-menu-credits"
+            phx-hook="MotionCount"
+            data-variant="flash"
             aria-haspopup="dialog"
             aria-controls="pb-credits"
             aria-label={label(@credits)}
@@ -172,19 +160,19 @@ defmodule PatchbayWeb.HeaderAccountLive do
 
   attr :credits, Read, required: true
 
-  # "12.40 Credits", whose unit a phone's header leaves out for room.
+  # "12.40 Credits", the figure on its own so it can roll when it changes.
   defp amount(%{credits: %{state: :ready, value: balance}} = assigns) do
     [number, unit] = String.split(Amount.format(balance.available), " ", parts: 2)
     assigns = assign(assigns, number: number, unit: unit)
 
     ~H"""
-    <span data-count>{@number}</span> <span class="pb-credits-unit">{@unit}</span>
+    <span data-count>{@number}</span> {@unit}
     """
   end
 
   defp amount(assigns) do
     ~H"""
-    <span data-count>—</span> <span class="pb-credits-unit">Credits</span>
+    <span data-count>—</span> Credits
     """
   end
 end

@@ -1,30 +1,16 @@
-/* Regent Credits: the header's balance, the Buy Credits dialog it opens and
-   the panel inside it, as in the Regent template, in Patchbay's own tokens. */
+/* Regent Credits: the account menu's balance row, the Buy Credits dialog it
+   opens and the panel inside it, as in the Regent template, in Patchbay's own
+   tokens. */
 
 .pb-credits {
   display: contents;
 }
 
-.pb-credits-balance {
-  display: inline-flex;
-  align-items: center;
-  gap: .25em;
-  min-height: 2.75rem;
-  padding-inline: var(--space-2);
-  border: 1px solid var(--pb-line-strong);
-  border-radius: var(--radius);
-  background: var(--pb-surface);
-  color: var(--pb-text);
-  font: inherit;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-@media (hover: hover) {
-  .pb-credits-balance:hover {
-    background: var(--pb-surface-sunk);
-  }
+/* The balance is the account menu's row at every width; the header has none.
+   The shared menu (Regent.Account.menu) shows the row only on the narrowest
+   phones, where a site's header would leave its own balance out. */
+.rg-account-menu .rg-account-menu__balance {
+  display: block;
 }
 
 /* The shared window frame (Regent.Structure.dialog) draws the box, its corners

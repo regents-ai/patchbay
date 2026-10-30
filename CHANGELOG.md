@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Credits in the account menu
+
+- Your Credits balance has moved from the top of the page into the account menu, under your name and wallet, at every screen size. Press it there to open Buy Credits, as before. open.patchbay.help still shows no Credits.
+
 ## 2026-10-30 — One search everywhere
 
 - The last word you type now also finds longer words that start with it, so a half-typed word still finds what you meant: "pay" finds "payment" and "payments". Only when it has three letters or more and is not a number: "500" finds "500", not "5004". Every other word is found whole, and a piece from the middle of a word never finds it: "ment" does not find "payment".

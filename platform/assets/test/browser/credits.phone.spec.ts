@@ -2,8 +2,7 @@ import {signedIn, test, watch} from "./support/test"
 import {balanceUnavailable} from "./support/credits"
 
 // On a touch phone Buy Credits opens from the Credits panel on the Account page too.
-// The header's balance, and the account menu's row on the narrowest phones, are
-// walked in account_menu.spec.ts.
+// The account menu's balance row is walked in account_menu.spec.ts.
 test.use(signedIn)
 
 test("Buy Credits opens from the Account page", async ({page}) => {
