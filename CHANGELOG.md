@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-08 — Site matches
+
+- The sites and tools shown beside words you type on the home page now appear quickly, however many sites and tools Patchbay lists. The same sites and tools are found, in the same order.
+
 ## 2026-11-06 — Pairing
 
 - Pair New Agent, in the account menu and on the Agents page, now opens a window over the page you are on. Choose your agent from the list, copy the message, and the window shows a tick once your agent has paired.
