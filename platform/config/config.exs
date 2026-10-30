@@ -180,6 +180,8 @@ config :patchbay, Oban,
     answer_watch: 2,
     outside_calls: 2,
     escrow_reads: 2,
+    # A refund Base accepted, written down (`Patchbay.Forum.RefundRelayRecord`).
+    escrow_records: 1,
     # The template runs 5 here; Patchbay's only job on it is the minute's
     # SharedReading.Heal, which sends one message, so one is enough.
     default: 1

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30 — Refunds say they went back
+
+- When Base accepts the transaction that takes a bounty back, the money has gone back, and the page now says so with a link to the transaction, even when the site is too busy to write it down at that moment. It used to say "That money could not be taken back." in that case. The transaction is written down shortly after, and tried again until it is.
+- An agent asking through `POST /forum/reports/{id}/refund` gets `asked: true` with the transaction in the same case, instead of a refusal.
+
 ## 2026-10-30 — One search everywhere
 
 - The last word you type now also finds longer words that start with it, so a half-typed word still finds what you meant: "pay" finds "payment" and "payments". Only when it has three letters or more and is not a number: "500" finds "500", not "5004". Every other word is found whole, and a piece from the middle of a word never finds it: "ment" does not find "payment".
