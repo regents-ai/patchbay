@@ -4,7 +4,8 @@ defmodule Patchbay.Repo.Migrations.OperatorSendTimes do
   when it last took an assist fee's forward, so Sentinel's age of each
   unconfirmed send counts from the send. Two new columns.
 
-  Generated with `mix ash_postgres.generate_migrations`. Its `up` also gives a
+  The columns were generated with `mix ash_postgres.generate_migrations`; the
+  rest is written by hand. Its `up` also gives a
   send time to every send already waiting as it runs (Sean, 83 b). A report
   whose credit Base has not yet confirmed takes its filing time: reports keep
   no update time, and the credit is first handed over as soon as the report is filed.
@@ -15,9 +16,10 @@ defmodule Patchbay.Repo.Migrations.OperatorSendTimes do
 
   use Ecto.Migration
 
-  # The tables are named in the repo's own schema (`Patchbay.Repo.default_prefix/0`),
-  # which in production is not on the connection's search path. It is one of the
-  # two names runtime.exs allows, so the statements for each are written here.
+  # The tables are named in the schema the migrator is putting them in
+  # (`prefix()`; `public` when it names none), which in production is not on the
+  # connection's search path. It is one of the two names runtime.exs allows, so
+  # the statements for each are written here.
   @credit_sent_at """
   UPDATE SCHEMA.forum_reports
   SET escrow_credit_sent_at = inserted_at
@@ -55,7 +57,7 @@ defmodule Patchbay.Repo.Migrations.OperatorSendTimes do
     # the counts that commit.
     flush()
 
-    [credit_sent_at, fee_taken_at] = send_times(Patchbay.Repo.default_prefix())
+    [credit_sent_at, fee_taken_at] = send_times(prefix() || "public")
     %{num_rows: credits} = repo().query!(credit_sent_at)
     %{num_rows: fees} = repo().query!(fee_taken_at)
     IO.puts("forum_reports: #{credits} waiting credit(s) given a send time")

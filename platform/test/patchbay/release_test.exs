@@ -256,44 +256,7 @@ defmodule Patchbay.ReleaseTest do
   end
 
   test "under production's schema the search change applies and finds words spelled a little wrong" do
-    # Production imported its tables and their migration ledger into
-    # patchbay_app and migrates from there. Here: every migration production
-    # has run in public, the tables moved, then the rest under the prefix.
-    # Oban's jobs stay in public, where this test run's Oban reads them.
-    public = disposable_database()
-
-    config =
-      Keyword.merge(public,
-        default_prefix: "patchbay_app",
-        migration_default_prefix: "patchbay_app"
-      )
-
-    with_repo(public, fn _repo -> LocalDatabaseFixture.create_shared_tables!() end)
-    capture_io(fn -> Release.migrate_shared(config: public) end)
-
-    with_repo(public, fn repo ->
-      Ecto.Migrator.run(repo, [release_migrations_path()], :up, to: 20_261_027_073_355)
-      Ecto.Adapters.SQL.query!(repo, "CREATE SCHEMA patchbay_app", [])
-
-      for [name, kind] <-
-            Ecto.Adapters.SQL.query!(
-              repo,
-              "SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v') AND c.relname NOT LIKE 'oban_%' ORDER BY c.relkind",
-              []
-            ).rows do
-        object = if kind == "v", do: "VIEW", else: "TABLE"
-
-        Ecto.Adapters.SQL.query!(
-          repo,
-          ~s(ALTER #{object} public."#{name}" SET SCHEMA patchbay_app),
-          []
-        )
-      end
-    end)
-
-    with_repo(config, fn repo ->
-      Ecto.Migrator.run(repo, [release_migrations_path()], :up, all: true, prefix: "patchbay_app")
-    end)
+    config = production_schema_database()
 
     assert query!(
              config,
@@ -340,6 +303,104 @@ defmodule Patchbay.ReleaseTest do
 
     assert query!(config, "SELECT count(*) FROM pg_extension WHERE extname = 'pg_trgm'").rows ==
              [[1]]
+  end
+
+  test "under production's schema the send times are given to the sends already waiting" do
+    config = production_schema_database()
+    version = 20_261_029_203_941
+    migration = Patchbay.Repo.Migrations.OperatorSendTimes
+
+    filed_at =
+      with_repo(config, fn _repo ->
+        asker =
+          Patchbay.Identity.upsert_from_privy!(%{
+            privy_user_id: "did:privy:release-send-times",
+            wallet_address: "0x" <> String.duplicate("a", 40)
+          })
+
+        site = Patchbay.Forum.register_site!("kettlebell.example")
+
+        tool =
+          Patchbay.Forum.observe_tool!(%{
+            site_id: site.id,
+            address: "https://kettlebell.example/",
+            name: "empty_basket",
+            contract_sha256: String.duplicate("a", 64)
+          })
+
+        report =
+          Patchbay.Forum.file_priority_report!(
+            %{
+              tool_id: tool.id,
+              browser_session_id: Ash.UUID.generate(),
+              arguments_sha256: String.duplicate("b", 64),
+              verdict: :verified_failure,
+              note: "The basket never empties.",
+              priority_amount_atomic: 5_000_000,
+              payment_intent_id: Ash.UUID.generate()
+            },
+            actor: asker
+          )
+
+        {:ok, _claimed} = Patchbay.Forum.claim_escrow_credit(report, authorize?: false)
+        report.inserted_at
+      end)
+
+    output =
+      capture_io(fn ->
+        with_repo(config, fn repo ->
+          Ecto.Migrator.down(repo, version, migration, prefix: "patchbay_app", log: false)
+          Ecto.Migrator.up(repo, version, migration, prefix: "patchbay_app", log: false)
+        end)
+      end)
+
+    assert output =~ "forum_reports: 1 waiting credit(s) given a send time"
+
+    assert query!(config, "SELECT escrow_credit_sent_at FROM patchbay_app.forum_reports").rows ==
+             [[DateTime.to_naive(filed_at)]]
+  end
+
+  # Production imported its tables and their migration ledger into
+  # patchbay_app and migrates from there. Here: every migration production
+  # has run in public, the tables moved, then the rest under the prefix.
+  # Oban's jobs stay in public, where this test run's Oban reads them.
+  defp production_schema_database do
+    public = disposable_database()
+
+    config =
+      Keyword.merge(public,
+        default_prefix: "patchbay_app",
+        migration_default_prefix: "patchbay_app"
+      )
+
+    with_repo(public, fn _repo -> LocalDatabaseFixture.create_shared_tables!() end)
+    capture_io(fn -> Release.migrate_shared(config: public) end)
+
+    with_repo(public, fn repo ->
+      Ecto.Migrator.run(repo, [release_migrations_path()], :up, to: 20_261_027_073_355)
+      Ecto.Adapters.SQL.query!(repo, "CREATE SCHEMA patchbay_app", [])
+
+      for [name, kind] <-
+            Ecto.Adapters.SQL.query!(
+              repo,
+              "SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v') AND c.relname NOT LIKE 'oban_%' ORDER BY c.relkind",
+              []
+            ).rows do
+        object = if kind == "v", do: "VIEW", else: "TABLE"
+
+        Ecto.Adapters.SQL.query!(
+          repo,
+          ~s(ALTER #{object} public."#{name}" SET SCHEMA patchbay_app),
+          []
+        )
+      end
+    end)
+
+    with_repo(config, fn repo ->
+      Ecto.Migrator.run(repo, [release_migrations_path()], :up, all: true, prefix: "patchbay_app")
+    end)
+
+    config
   end
 
   defp staging_getenv do
