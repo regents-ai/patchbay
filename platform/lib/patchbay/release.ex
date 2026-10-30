@@ -266,8 +266,10 @@ defmodule Patchbay.Release do
     do: Ecto.Migrator.run(repo, [path], :up, all: true, prefix: repo.default_prefix())
 
   # An index built while writes go on is left unusable when its build stops
-  # part way, and PostgreSQL then never reads it. Its migration drops and
-  # rebuilds it, so the release stops and says to run again.
+  # part way, and PostgreSQL then never reads it. A build stopped inside a
+  # migration already stops the release there, and its migration drops and
+  # rebuilds it on the next run; one still unusable afterwards belongs to no
+  # pending migration, so only dropping it by hand clears it.
   defp require_usable_indexes!(repo) do
     case Ecto.Adapters.SQL.query!(repo, @unusable_indexes, [repo.default_prefix()]).rows do
       [] ->
@@ -275,7 +277,8 @@ defmodule Patchbay.Release do
 
       names ->
         raise "Unusable indexes left by a stopped build: " <>
-                Enum.map_join(names, ", ", &hd/1) <> ". Run migrate again."
+                Enum.map_join(names, ", ", &hd/1) <>
+                ". No migration rebuilds them; drop each by hand before releasing."
     end
   end
 

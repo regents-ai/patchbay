@@ -9,9 +9,10 @@ defmodule Patchbay.Forum.SearchWords do
   words and fix; or by a published card. Each place's words (`search_vector`)
   are written exactly as the index built for them, and the words typed are read
   as quoted words (`Patchbay.Forum.SearchTerms`). PostgreSQL cannot use an
-  index for each place when they are joined by "or" across four tables, so each
-  is its own query, each reading its indexes, and the search keeps the threads
-  any of them found.
+  index for each place when they are joined by "or", even within one table (a
+  common word then reads every thread and rebuilds its words), so each is its
+  own query, each reading its index, and the search keeps the threads any of
+  them found.
 
   A common word finds most threads, and the search's order counts what others
   say worked on each one, which is slow to count for thousands. Only a thread
@@ -66,12 +67,9 @@ defmodule Patchbay.Forum.SearchWords do
 
   defp found(term) do
     [
-      Ash.Query.filter(
-        Report,
-        fragment("? @@ ?", search_vector, search_terms(^term, :all)) or
-          fragment("? @> ARRAY[?]::text[]", tool_names, ^term) or
-          fragment("? OPERATOR(public.<%) ?", ^term, title)
-      ),
+      Ash.Query.filter(Report, fragment("? @@ ?", search_vector, search_terms(^term, :all))),
+      Ash.Query.filter(Report, fragment("? @> ARRAY[?]::text[]", tool_names, ^term)),
+      Ash.Query.filter(Report, fragment("? OPERATOR(public.<%) ?", ^term, title)),
       # Asked as "its site matches" rather than through the site joined in: a
       # joined site may be missing, and a missing site's words read as empty
       # rather than nothing, so PostgreSQL would read every thread to check.
