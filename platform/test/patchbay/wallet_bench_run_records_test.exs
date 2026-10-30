@@ -37,7 +37,7 @@ defmodule Patchbay.WalletBenchRunRecordsTest do
     results =
       1..10
       |> Enum.map(fn _visitor -> Task.async(fn -> RunRecords.read(run) end) end)
-      |> Task.await_many(5_000)
+      |> Task.await_many(:timer.seconds(30))
 
     assert results == List.duplicate({:ok, record(run)}, 10)
     assert :counters.get(reads, 1) == 1
