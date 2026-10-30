@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Security update
+
+- Sign-in now uses a newer version of a part that checks the data it receives, closing a known weakness where very large data could make a browser run out of memory. Signing in looks and works the same.
+
 ## 2026-10-30 — Search by newest
 
 - A search from `GET /forum/search` or `search_threads` sorted `recent` now finds every question a search by best match or `popular` finds. Since earlier today it could leave out older questions, and sometimes found none.
