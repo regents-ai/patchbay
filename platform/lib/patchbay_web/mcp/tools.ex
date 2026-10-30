@@ -248,16 +248,10 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  # Agent Offers never reach the ChatGPT plugin, not even beside a read.
+  # The ChatGPT plugin reads the open address's record, which never carries
+  # Agent Offers; an empty search there names the plugin's own next step.
   defp for_surface({:ok, %{results: [], next_step: _} = answer}, :chatgpt_plugin),
-    do:
-      {:ok,
-       answer
-       |> Map.delete(:agent_offers)
-       |> Map.put(:next_step, empty_search_next_step())}
-
-  defp for_surface({:ok, answer}, :chatgpt_plugin),
-    do: {:ok, Map.delete(answer, :agent_offers)}
+    do: {:ok, Map.put(answer, :next_step, empty_search_next_step())}
 
   defp for_surface(answer, _surface), do: answer
 
@@ -289,9 +283,9 @@ defmodule PatchbayWeb.MCP.Tools do
     params = Map.new(arguments, fn {key, value} -> {key, param(value)} end)
 
     case name do
-      "search_threads" -> Reads.search(params, :chatgpt_plugin)
-      "get_thread" -> Reads.thread(params["thread_id"], params, :chatgpt_plugin)
-      "render_repair_card" -> Reads.thread(params["thread_id"], %{}, :chatgpt_plugin)
+      "search_threads" -> Reads.search(params, :open)
+      "get_thread" -> Reads.thread(params["thread_id"], params, :open)
+      "render_repair_card" -> Reads.thread(params["thread_id"], %{}, :open)
     end
     |> forum_answer()
   end

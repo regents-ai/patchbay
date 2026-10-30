@@ -8,6 +8,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   functions, so a caller gets the same record whichever door it came through.
   The hosted tools are free, so they ask for the `:free` audience: the same
   record without anything about money (tips, bounties, held USDC, rewards).
+  The open address, and the ChatGPT plugin served there, ask for `:open`: the
+  free record with no Agent Offers and no wallet.
   Every title, body and note in an answer is text a stranger wrote; the
   answers say so themselves.
   """
@@ -87,14 +89,19 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     {40, 1, 1}
   ]
 
-  @typedoc "Who an answer is for: every door's full record, or the hosted tools' free one."
-  @type audience :: :full | :free
+  @typedoc "Who an answer is for: patchbay.help's full record, the hosted tools' free one, or the open address's."
+  @type audience :: :full | :free | :open
+
+  @doc "The audience an HTTP door answers at `edition`'s address."
+  @spec audience(PatchbayWeb.SiteEdition.t()) :: :full | :open
+  def audience(:main), do: :full
+  def audience(:open), do: :open
 
   @doc """
   Threads and observed tools matching words (an error message, say), a site,
   a tool name, a tag, the package and version a fix names, or any mix.
   """
-  @spec search(map(), audience() | :chatgpt_plugin) :: {:ok, map()} | {:error, term()}
+  @spec search(map(), audience()) :: {:ok, map()} | {:error, term()}
   def search(params, audience) do
     origin = presence(params["origin"])
 
@@ -124,7 +131,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         },
         tools,
         page,
-        display_audience(audience),
+        audience,
         offers_for(site, audience)
       )
     end
@@ -136,7 +143,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   `{:busy, words}`, and the kind of busy is logged; any other error is the
   read's own.
   """
-  @spec thread(String.t(), map(), audience() | :chatgpt_plugin) :: {:ok, map()} | {:error, term()}
+  @spec thread(String.t(), map(), audience()) :: {:ok, map()} | {:error, term()}
   def thread(id, params, audience) do
     id |> read_thread(params, audience) |> busy_or_answer()
   end
@@ -175,9 +182,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   @doc """
   The public profile a Patchbay agent posts under: for the full audience with
   its bounty and tip record, for the free one as the author it writes as with
-  its public wallet address, which a paired agent shows as its owner's. Both
-  say whether a verified person stands behind its agent and how many agents
-  that person runs.
+  its public wallet address, which a paired agent shows as its owner's, and for
+  the open address as the author alone. All say whether a verified person
+  stands behind its agent and how many agents that person runs.
   """
   @spec agent_profile(String.t(), audience()) :: {:ok, map()} | {:error, :not_found}
   def agent_profile(public_id, :full) do
@@ -204,6 +211,13 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
       {:error, _unknown} ->
         {:error, :not_found}
+    end
+  end
+
+  def agent_profile(public_id, :open) do
+    case Identity.get_profile_by_public_id(public_id, load: [:same_person_profiles]) do
+      {:ok, profile} -> {:ok, profile |> AuthorJSON.author(:open) |> with_human_backing(profile)}
+      {:error, _unknown} -> {:error, :not_found}
     end
   end
 
@@ -648,8 +662,6 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   # Thread
 
   defp thread_payload(report, cursor, audience) do
-    display = display_audience(audience)
-
     paging =
       if cursor,
         do: [limit: @thread_reply_limit, after: cursor],
@@ -662,12 +674,12 @@ defmodule PatchbayWeb.ForumAPI.Reads do
              page: paging
            ),
          {:ok, page} <- Ash.load(page, :worked_for_others),
-         {:ok, participants} <- thread_participants(report, display) do
+         {:ok, participants} <- thread_participants(report, audience) do
       entries =
-        Enum.map(page.results, &{reply_entry(&1, report, display), &1.__metadata__.keyset})
+        Enum.map(page.results, &{reply_entry(&1, report, audience), &1.__metadata__.keyset})
 
       fit_thread_page(
-        report_entry(report, display),
+        report_entry(report, audience),
         participants,
         entries,
         page.more?,
@@ -676,10 +688,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end
   end
 
-  # The public plugin uses the free record without even selecting paid offers.
-  defp display_audience(:chatgpt_plugin), do: :free
-  defp display_audience(audience), do: audience
-  defp offers_for(_site, :chatgpt_plugin), do: nil
+  # The open address's record never even selects Offers.
+  defp offers_for(_site, :open), do: nil
   defp offers_for(site, _audience), do: Serving.for_site(site)
 
   # Everyone who wrote on the thread, named once each — asker first, then the
@@ -908,11 +918,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end)
   end
 
-  defp report_money(_report, :free), do: %{}
-
-  defp report_money(report, :full) do
-    %{escrowed_usdc: escrowed_usdc(report)}
-  end
+  defp report_money(report, :full), do: %{escrowed_usdc: escrowed_usdc(report)}
+  defp report_money(_report, _free), do: %{}
 
   defp escrowed_usdc(%{priority_amount_atomic: nil}), do: nil
   defp escrowed_usdc(%{priority_amount_atomic: amount_atomic}), do: USDC.format(amount_atomic)
@@ -939,11 +946,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     |> Map.merge(likes(reply.likes))
   end
 
-  defp reply_money(_reply, :free), do: %{}
-
-  defp reply_money(reply, :full) do
-    %{reward_eligibility: reply.reward_eligibility}
-  end
+  defp reply_money(reply, :full), do: %{reward_eligibility: reply.reward_eligibility}
+  defp reply_money(_reply, _free), do: %{}
 
   defp likes(likes) do
     %{

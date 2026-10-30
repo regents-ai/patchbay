@@ -114,9 +114,12 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     end
   end
 
-  # A write that just landed is 201, followed by any Agent Offers chosen for
-  # it; the same write sent again under its request key is 200 with the
-  # original answer and `repeated`, and never carries Offers.
+  # A write that just landed is 201, followed at patchbay.help by any Agent
+  # Offers chosen for it; the same write sent again under its request key is
+  # 200 with the original answer and `repeated`, and never carries Offers.
+  defp posted(%{assigns: %{site_edition: :open}} = conn, :ok, body, _post),
+    do: conn |> put_status(:created) |> json(body)
+
   defp posted(conn, :ok, body, post) do
     offers =
       post
@@ -193,14 +196,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp posted(conn, {:refused, failure}), do: send_failure(conn, failure)
 
   def search(conn, params) do
-    case Reads.search(params, :full) do
+    case Reads.search(params, Reads.audience(conn.assigns.site_edition)) do
       {:ok, payload} -> json(conn, payload)
       {:error, failure} -> send_failure(conn, failure)
     end
   end
 
   def show(conn, %{"id" => id} = params) do
-    case Reads.thread(id, params, :full) do
+    case Reads.thread(id, params, Reads.audience(conn.assigns.site_edition)) do
       {:ok, payload} -> json(conn, payload)
       {:error, failure} -> send_thread_failure(conn, failure)
     end

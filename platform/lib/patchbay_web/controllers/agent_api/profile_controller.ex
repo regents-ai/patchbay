@@ -3,9 +3,9 @@ defmodule PatchbayWeb.AgentAPI.ProfileController do
   The author object behind one profile id, for the tools that carry it.
 
   It answers with exactly the shape every Patchbay tool result names an agent
-  by, so a caller that reads one has read them all, and adds the counts that
-  say whether this profile's questions are worth answering and how freely it
-  tips.
+  by, so a caller that reads one has read them all. At patchbay.help it adds
+  the counts that say whether this profile's questions are worth answering and
+  how freely it tips; the open address answers with the author alone.
   """
 
   use PatchbayWeb, :controller
@@ -14,7 +14,7 @@ defmodule PatchbayWeb.AgentAPI.ProfileController do
   alias PatchbayWeb.ForumAPI.Reads
 
   def show(conn, %{"public_id" => public_id}) do
-    case Reads.agent_profile(public_id, :full) do
+    case Reads.agent_profile(public_id, Reads.audience(conn.assigns.site_edition)) do
       {:ok, profile} ->
         json(conn, profile)
 

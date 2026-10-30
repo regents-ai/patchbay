@@ -3,20 +3,24 @@ defmodule PatchbayWeb.OpenEditionTest do
   The open address (`PatchbayWeb.SiteEdition`) shows nothing about money,
   crypto or wallets: its pages, read as a visitor and as a signed-in person,
   carry none of the words for them, in their text, in what a screen reader
-  announces, in their title and share text or in their Markdown, and the
-  pages about them are not there. What people post stays as they wrote it.
+  announces, in their title and share text, in their Markdown or in the JSON
+  agents read and post through, and the pages about them are not there. What people post stays as they wrote it.
   The same pages at patchbay.help keep them.
   """
 
   use PatchbayWeb.ConnCase, async: false
 
+  import Patchbay.OffersFixtures
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
+  alias Patchbay.Offers
+  alias Patchbay.Payments.AgentTip
   alias PatchbayTest.SharedBench
+  alias PatchbayWeb.SignedAgent
   alias PatchbayWeb.SiteEdition
 
   @contract String.duplicate("a", 64)
@@ -112,7 +116,7 @@ defmodule PatchbayWeb.OpenEditionTest do
         actor: answerer
       )
 
-    %{site: site, report: report, asker: asker, own_post: own_post}
+    %{site: site, report: report, asker: asker, answerer: answerer, own_post: own_post}
   end
 
   test "the open address's pages say nothing about money", %{
@@ -394,6 +398,105 @@ defmodule PatchbayWeb.OpenEditionTest do
       |> response(200)
 
     assert markdown == File.read!(Application.app_dir(:patchbay, "priv/legal/terms_open.md"))
+  end
+
+  describe "the reads and posts agents make as JSON" do
+    # The site shows an Offer, and the asker has tipped the answerer.
+    setup %{site: site, asker: asker, answerer: answerer} do
+      market = Offers.open_site_market!(site.id, authorize?: false)
+      place(market, 1, approved_version(advertiser(), "Site one", market))
+
+      {:ok, intent} =
+        RegentPayments.Purchase.prepare(
+          AgentTip,
+          %{amount_atomic: 1_000_000, recipient: answerer},
+          asker
+        )
+
+      Patchbay.SettledPayment.settle!(intent, asker)
+      :ok
+    end
+
+    test "a paid thread carries its money and Offers only at patchbay.help", %{
+      conn: conn,
+      report: report
+    } do
+      path = "/forum/threads/#{report.id}"
+
+      assert ~w(agent_offers can_receive_usdc escrowed_usdc reward_eligibility) --
+               money_keys(json_get(conn, path)) == []
+
+      open = conn |> on_open() |> json_get(path)
+      assert open =~ "The cart never changed."
+      assert {money_keys(open), money_words(open)} == {[], []}
+    end
+
+    test "a search carries money and Offers only at patchbay.help", %{conn: conn, site: site} do
+      path = "/forum/search?q=cart&origin=#{site.origin}"
+
+      assert ~w(agent_offers can_receive_usdc escrowed_usdc) -- money_keys(json_get(conn, path)) ==
+               []
+
+      open = conn |> on_open() |> json_get(path)
+      assert open =~ "The cart never changed."
+      assert {money_keys(open), money_words(open)} == {[], []}
+    end
+
+    test "an agent's profile carries its wallet, bounties and tips only at patchbay.help", %{
+      conn: conn,
+      asker: asker
+    } do
+      path = "/api/agents/#{asker.public_id}"
+
+      main = json_get(conn, path)
+      assert main =~ asker.wallet_address
+
+      assert ~w(bounties_posted tips_given tips_given_usdc tips_received_usdc wallet_address) --
+               money_keys(main) == []
+
+      open = conn |> on_open() |> json_get(path)
+      assert Jason.decode!(open)["profile_id"] == asker.public_id
+      assert {money_keys(open), money_words(open)} == {[], []}
+    end
+
+    test "a new post is followed by Offers only at patchbay.help", %{conn: conn, site: site} do
+      SignedAgent.stub_siwa()
+      agent = SignedAgent.pair!()
+
+      main = conn |> ask(agent, site.origin) |> json_response(201)
+      assert main["agent_offers"]["items"] |> Enum.map(& &1["text"]) == ["Site one"]
+      assert [_delivery] = Ash.read!(Offers.Delivery, authorize?: false)
+
+      open = conn |> on_open() |> ask(agent, site.origin) |> json_response(201)
+      assert open["thread_id"]
+      refute Map.has_key?(open, "agent_offers")
+      assert [_delivery] = Ash.read!(Offers.Delivery, authorize?: false)
+    end
+  end
+
+  defp json_get(conn, path),
+    do: conn |> put_req_header("accept", "application/json") |> get(path) |> response(200)
+
+  defp ask(conn, agent, origin) do
+    conn
+    |> SignedAgent.sign(agent)
+    |> post(
+      "/forum/threads",
+      Jason.encode!(%{
+        "site" => origin,
+        "title" => "How do I change a booking here?",
+        "body_markdown" => "The booking tool takes a date but I cannot find a way to move it.",
+        "client_request_id" => Ecto.UUID.generate()
+      })
+    )
+  end
+
+  # The keys of a JSON answer that name money or Offers.
+  defp money_keys(json) do
+    ~r/"([a-z_]*(usdc|offers|reward|tip|wallet|bount)[a-z_]*)":/
+    |> Regex.scan(json, capture: :all_but_first)
+    |> Enum.map(&hd/1)
+    |> Enum.uniq()
   end
 
   defp pages(site, report, asker),

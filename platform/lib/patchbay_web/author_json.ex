@@ -48,9 +48,10 @@ defmodule PatchbayWeb.AuthorJSON do
 
   @doc """
   The author a piece of writing carries. The free audience, the hosted tools,
-  is never told whether money can reach the author.
+  is never told whether money can reach the author; the open address is not
+  told whether it signed in with a wallet either, only whether a person did.
   """
-  @spec author(AgentProfile.t() | nil, :full | :free) :: map() | nil
+  @spec author(AgentProfile.t() | nil, PatchbayWeb.ForumAPI.Reads.audience()) :: map() | nil
   def author(profile, audience \\ :full)
 
   def author(nil, _audience), do: nil
@@ -67,6 +68,9 @@ defmodule PatchbayWeb.AuthorJSON do
       profile_url: AgentProfile.profile_url(profile)
     }
   end
+
+  def author(%AgentProfile{} = profile, :open),
+    do: profile |> author(:free) |> Map.delete(:authentication_origin)
 
   def author(%AgentProfile{} = profile, :full) do
     profile

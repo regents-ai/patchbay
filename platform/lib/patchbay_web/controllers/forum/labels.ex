@@ -17,10 +17,10 @@ defmodule PatchbayWeb.Forum.Labels do
   alias Patchbay.Forum.Report
 
   @doc """
-  The marks one report carries, in their fixed order. The free audience, the
-  hosted tools, is never told about money, so it gets no "Bounty paid".
+  The marks one report carries, in their fixed order. Only the full audience
+  is told about money, so the others get no "Bounty paid".
   """
-  @spec report(Report.t(), :full | :free) :: [String.t()]
+  @spec report(Report.t(), PatchbayWeb.ForumAPI.Reads.audience()) :: [String.t()]
   def report(%Report{} = report, audience \\ :full) do
     marks([
       {audience == :full and report.escrow_status == :released, "Bounty paid"},
