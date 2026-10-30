@@ -1,10 +1,11 @@
 defmodule PatchbayWeb.Forum.PostBusyTest do
   # A post the database is too busy to read is not called missing: its page,
   # as a page or as Markdown, a form sent to it and its lasting error link
-  # answer 503 with Retry-After and ask to be opened again. Try again opens
-  # the address that was opened, or after a form the post itself. A post that
-  # is not there is still missing, and any other database error is a fault,
-  # never busy.
+  # answer 503 with Retry-After and ask to be opened again, and an agent
+  # reading it through the forum API or the get_thread tool is told busy and
+  # how long to wait. Try again opens the address that was opened, or after a
+  # form the post itself. A post that is not there is still missing, and any
+  # other database error is a fault, never busy.
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
@@ -41,12 +42,14 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
       "/threads/#{post.id}/replies"
     ]
 
-    [page, as_markdown, error_link | sent_replies] =
+    [page, as_markdown, error_link, api, tool | sent_replies] =
       while_the_connection_is_held(
         [
           fn -> get(conn, PostAddress.path(post) <> "?after=x") end,
           fn -> get(markdown, PostAddress.path(post)) end,
-          fn -> get(conn, "/errors/#{code}") end
+          fn -> get(conn, "/errors/#{code}") end,
+          fn -> get(conn, "/forum/threads/#{post.id}") end,
+          fn -> get_thread(conn, post.id) end
         ] ++ Enum.map(forms, fn form -> fn -> post(conn, form, reply) end end)
       )
 
@@ -69,6 +72,16 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
     assert [content_type] = get_resp_header(as_markdown, "content-type")
     assert content_type =~ "text/markdown"
     assert get_resp_header(as_markdown, "retry-after") == ["2"]
+
+    assert %{"error" => %{"code" => "busy", "retry_after_seconds" => 2}} =
+             json_response(api, 503)
+
+    assert get_resp_header(api, "retry-after") == ["2"]
+
+    assert %{"result" => %{"isError" => true, "content" => [%{"text" => text}]}} =
+             json_response(tool, 200)
+
+    assert %{"error" => %{"code" => "busy", "retry_after_seconds" => 2}} = Jason.decode!(text)
   end
 
   test "a post that is not there is still missing", %{conn: conn} do
@@ -79,6 +92,23 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
     Patchbay.Repo.query!("ALTER TABLE forum_reports RENAME COLUMN visibility TO hidden_away")
 
     assert_error_sent 500, fn -> get(conn, PostAddress.path(post)) end
+
+    api = get(conn, "/forum/threads/#{post.id}")
+    assert %{"error" => %{"code" => "unavailable"}} = json_response(api, 503)
+    assert get_resp_header(api, "retry-after") == []
+
+    assert %{"result" => %{"isError" => true, "content" => [%{"text" => text}]}} =
+             conn |> get_thread(post.id) |> json_response(200)
+
+    assert %{"error" => %{"code" => "unavailable"}} = Jason.decode!(text)
+  end
+
+  defp get_thread(conn, id) do
+    call = %{"name" => "get_thread", "arguments" => %{"thread_id" => id}}
+
+    conn
+    |> put_req_header("content-type", "application/json")
+    |> post("/mcp", Jason.encode!(%{jsonrpc: "2.0", id: 1, method: "tools/call", params: call}))
   end
 
   defp try_again(answer) do

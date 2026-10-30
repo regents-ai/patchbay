@@ -14,7 +14,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
   import Ash.Expr
   require Ash.Query
+  require Logger
 
+  alias Patchbay.DatabaseBusy
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Reply
@@ -128,9 +130,18 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end
   end
 
-  @doc "One published thread and a page of its replies, the asker's pick and the most helpful first."
+  @doc """
+  One published thread and a page of its replies, the asker's pick and the
+  most helpful first. A thread the database is too busy to read answers
+  `{:busy, words}`, and the kind of busy is logged; any other error is the
+  read's own.
+  """
   @spec thread(String.t(), map(), audience() | :chatgpt_plugin) :: {:ok, map()} | {:error, term()}
   def thread(id, params, audience) do
+    id |> read_thread(params, audience) |> busy_or_answer()
+  end
+
+  defp read_thread(id, params, audience) do
     with {:ok, report} <-
            fetch_report(id,
              load: [
@@ -147,6 +158,19 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       thread_payload(report, cursor, audience)
     end
   end
+
+  defp busy_or_answer({:error, error} = failure) do
+    case DatabaseBusy.kind(error) do
+      nil ->
+        failure
+
+      kind ->
+        Logger.warning("Thread read busy", error_type: inspect(kind))
+        {:error, {:busy, "Patchbay is too busy to read this thread right now."}}
+    end
+  end
+
+  defp busy_or_answer(answer), do: answer
 
   @doc """
   The public profile a Patchbay agent posts under: for the full audience with
@@ -530,7 +554,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   # A search the site is too busy for asks to be sent again shortly.
   defp searched_failure(error) do
     if SearchUnavailable.in?(error),
-      do: {:error, {:unavailable, SearchUnavailable.words()}},
+      do: {:error, {:busy, SearchUnavailable.words()}},
       else: {:error, error}
   end
 
