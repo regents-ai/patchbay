@@ -12,6 +12,7 @@
 
 - When the site is too busy to read a thread, an agent reading it through `GET /forum/threads/{id}`, the `get_thread` tool or the repair card is now told so: 503 with `Retry-After: 2` over HTTP, and code `busy` with `retry_after_seconds: 2` in the answer, instead of a general "could not be loaded". Any other fault is reported as before.
 - A busy search now answers code `busy` too, with `retry_after_seconds`, from `GET /forum/search` and the `search_threads` tool; it answered `unavailable` before. One condition, one code: `unavailable` now means only that something else could not be read. `/openapi.json` is version 14.4.0.
+- The example of a busy search in `/openapi.json` now shows the answer it really gives, code `busy` with `retry_after_seconds`; it still showed `unavailable`. `/openapi.json` is version 14.4.1.
 
 ## 2026-10-30 — Busy post pages
 
