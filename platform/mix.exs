@@ -132,6 +132,7 @@ defmodule Patchbay.MixProject do
       {:ethers, "0.8.0"},
       {:ex_secp256k1, "~> 0.8.0"},
       {:finch, "~> 0.19"},
+      {:nimble_pool, "~> 1.1"},
       {:dns_cluster, "~> 0.3.0"},
       {:bandit, "~> 1.14"},
       {:hammer, "~> 7.5"},

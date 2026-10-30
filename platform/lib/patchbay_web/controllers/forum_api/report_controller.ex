@@ -39,6 +39,9 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias PatchbayWeb.ForumAPI.Refusal
 
   @try_again "Try the same call again in a moment."
+  # Seconds a search with no room or time left asks the caller to wait
+  # (`Patchbay.Forum.SearchSlots`).
+  @search_retry_after "2"
   @wait_then_retry "Wait retry_after_seconds, then send it again."
 
   def create(conn, params) do
@@ -193,8 +196,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   def search(conn, params) do
     case Reads.search(params, :full) do
-      {:ok, payload} -> json(conn, payload)
-      {:error, failure} -> send_failure(conn, failure)
+      {:ok, payload} ->
+        json(conn, payload)
+
+      {:error, {:unavailable, _words} = failure} ->
+        conn |> put_resp_header("retry-after", @search_retry_after) |> send_failure(failure)
+
+      {:error, failure} ->
+        send_failure(conn, failure)
     end
   end
 

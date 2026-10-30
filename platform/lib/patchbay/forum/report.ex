@@ -752,6 +752,11 @@ defmodule Patchbay.Forum.Report do
       argument(:software, :string, allow_nil?: true, constraints: [max_length: 80])
       argument(:version, :string, allow_nil?: true, constraints: [max_length: 40])
 
+      # At most two searches read at once, each in one transaction whose
+      # statements stop after two seconds (`Patchbay.Forum.SearchSlots`).
+      transaction?(true)
+      prepare(Patchbay.Forum.SearchSlots)
+
       filter(expr(visibility == :published))
       filter(expr(is_nil(^arg(:since)) or last_activity_at >= ^arg(:since)))
 

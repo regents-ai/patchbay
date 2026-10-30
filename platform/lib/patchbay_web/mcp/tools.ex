@@ -649,6 +649,9 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp forum_answer({:error, {:invalid, messages}}), do: {:error, ApiError.invalid(messages)}
 
+  defp forum_answer({:error, {:unavailable, words}}),
+    do: {:error, ApiError.body("unavailable", words, @try_again)}
+
   defp forum_answer({:error, _unavailable}) do
     {:error,
      ApiError.body(

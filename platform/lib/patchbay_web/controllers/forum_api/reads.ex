@@ -18,6 +18,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Reply
+  alias Patchbay.Forum.SearchUnavailable
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
   alias Patchbay.Offers.Disclosure
@@ -506,20 +507,29 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          _sort,
          offset
        ) do
-    {:ok,
-     Forum.search_threads!(
-       q || tool_name,
-       %{
-         site_id: site && site.id,
-         tool_name: q && tool_name,
-         since: search.since,
-         software: fixed.software,
-         version: fixed.version
-       },
-       load: thread_search_loads(),
-       page: [limit: @search_report_limit, offset: offset]
-     )
-     |> Map.put(:offset, offset)}
+    Forum.search_threads(
+      q || tool_name,
+      %{
+        site_id: site && site.id,
+        tool_name: q && tool_name,
+        since: search.since,
+        software: fixed.software,
+        version: fixed.version
+      },
+      load: thread_search_loads(),
+      page: [limit: @search_report_limit, offset: offset]
+    )
+    |> case do
+      {:ok, page} -> {:ok, Map.put(page, :offset, offset)}
+      {:error, error} -> searched_failure(error)
+    end
+  end
+
+  # A search with no room or time left asks to be sent again shortly.
+  defp searched_failure(error) do
+    if SearchUnavailable.in?(error),
+      do: {:error, {:unavailable, SearchUnavailable.words()}},
+      else: {:error, error}
   end
 
   # A plain cutoff keeps a "recent" read honest: threads touched at or after
