@@ -8,7 +8,7 @@ search, thread reading and the repair card.
 Connect the user's existing Regents account with OAuth. `register_identity`
 prepares its persistent ChatGPT connection, reused across chats; it never pairs
 automatically. `get_identity` checks pairing without awarding Points. The person
-makes a one-use code at https://open.patchbay.help/account and approves `pair_identity`.
+makes a one-use code at https://open.patchbay.help/account/agents and approves `pair_identity`.
 Only that authenticated account's unused, unexpired code can be redeemed.
 No command-line installation, private key or sign-in credential is requested.
 

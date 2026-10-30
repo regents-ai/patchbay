@@ -101,7 +101,10 @@ defmodule PatchbayWeb.OpenLinksTest do
       |> Plug.Test.init_test_session(%{})
       |> PatchbayWeb.Plugs.CurrentProfile.sign_in(asker.id)
 
-    assert missing_links(conn, pages ++ ~w(/account /account/inbox /account/profile)) == %{}
+    assert missing_links(
+             conn,
+             pages ++ ~w(/account /account/agents /account/inbox /account/profile)
+           ) == %{}
   end
 
   # Each page with the links on it that lead to a route the open address does

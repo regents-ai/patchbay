@@ -312,7 +312,7 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert money_on(pages(site, report, asker), &(conn |> get(&1) |> html_response(200))) == %{}
 
     # Each account page as first drawn, and once connected.
-    assert money_on(~w(/account /account/inbox /account/profile), fn path ->
+    assert money_on(~w(/account /account/agents /account/inbox /account/profile), fn path ->
              {:ok, view, html} = live(conn, path)
              html <> render(view)
            end) == %{}

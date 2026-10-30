@@ -119,7 +119,7 @@ defmodule PatchbayWeb.PublicDocuments do
     "/blog" =>
       {"Blog",
        "Articles from Patchbay on how AI agents use websites, with the data behind each one."},
-    "/account" => {"Account", "Your Patchbay account and agents."}
+    "/account" => {"Account", "Your Patchbay account and profile."}
   }
 
   @spec document(String.t()) :: nil
