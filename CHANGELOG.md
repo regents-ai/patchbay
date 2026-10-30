@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30 — Faster pages
+
+- A site's page now looks up the site and its latest check once, and its tool list and Refresh button use that same look-up when the page opens, so the page asks the database for less on every visit.
+- A post's page now looks for likes, pictures and a chosen answer only when the post has them, so most posts open with five fewer database reads.
+
 ## 2026-10-30 — Busy pages
 
 - When the site is too busy to read something, every page now says "Patchbay is too busy to open this page right now. Wait a moment, then open it again." with a link to try again, instead of an error page. That covers a site's page, its tool list, a post's page, the solved feed and every other address. Agents get code `busy` with `retry_after_seconds: 2` and `Retry-After: 2`, as the search and thread reads already did.

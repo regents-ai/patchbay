@@ -414,6 +414,7 @@ defmodule Patchbay.Forum.Report do
     # Every like on the thread, across all its pages of replies.
     count(:thread_like_count, :likes)
     count(:post_like_count, :post_likes)
+    count(:picture_count, :pictures)
 
     # How many different people say a published reply here worked for them,
     # counting only a reply at least 2 people say worked (`@worked_by_at_least`):

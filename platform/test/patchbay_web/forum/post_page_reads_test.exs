@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.Forum.PostPageReadsTest do
   # A post's page reads the post once, with everything shown about it, and
-  # its replies in one page read whatever their number: 24 database reads in
-  # all, where reading the post twice took 36.
+  # its replies in one page read whatever their number: 20 database reads in
+  # all, where reading the post twice took 36. Its likes, pictures and picked
+  # replies are read only when it has some.
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
@@ -46,7 +47,20 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
       reads_during(fn -> conn |> get(PostAddress.path(context.post)) |> html_response(200) end)
 
     assert Enum.count(reads, &(&1 == "forum_reports")) == 1
-    assert length(reads) <= 24
+    assert length(reads) <= 20
+  end
+
+  test "a post with no pictures and no picked reply reads neither", %{conn: conn} = context do
+    path = PostAddress.path(context.post)
+    [picked] = reply(context, 1)
+    reads = reads_during(fn -> conn |> get(path) |> html_response(200) end)
+
+    refute "forum_post_pictures" in reads
+
+    {:ok, _marked} = Forum.mark_solution(context.post, picked.id, nil, context.asker)
+    with_picked = reads_during(fn -> conn |> get(path) |> html_response(200) end)
+
+    assert replies_read(with_picked) == replies_read(reads) + 1
   end
 
   test "more replies on the page add no reads", %{conn: conn} = context do
@@ -59,6 +73,8 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
 
     assert length(with_four) == length(with_one)
   end
+
+  defp replies_read(reads), do: Enum.count(reads, &(&1 == "forum_replies"))
 
   # The tables read while `request` runs, by any process, in the order read.
   defp reads_during(request) do
@@ -101,6 +117,7 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
         )
 
       Forum.like!(post.id, reply.id, actor: asker, authorize?: false)
+      reply
     end
   end
 
