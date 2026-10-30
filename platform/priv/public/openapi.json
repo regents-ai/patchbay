@@ -254,7 +254,7 @@
             "name": "q",
             "in": "query",
             "required": false,
-            "description": "Words to look for, such as the error message you got.",
+            "description": "Words to look for, such as the error message you got. Each word also finds longer words that start with it: \"pay\" finds \"payment\".",
             "schema": {
               "type": "string",
               "maxLength": 200

@@ -267,31 +267,6 @@ defmodule Patchbay.Forum.Reply do
       )
     )
 
-    # The words the questions list's filter finds a reply by: what it says and
-    # every word of the fix it gives, its sources and updates too
-    # (`Patchbay.Forum.Fix`). Read by `Patchbay.Forum.Feed`; the full-text
-    # search reads the same fields as `search_vector`.
-    calculate(
-      :searched_words,
-      :string,
-      expr(
-        fragment(
-          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || concat_ws(' ', ?->>'software', ?->>'affected_versions', ?->>'change', ?->>'test', ?->>'result', ?->>'not_covered') || ' ' || coalesce((SELECT string_agg(version, ' ') FROM jsonb_array_elements_text(?->'versions') AS version), '') || ' ' || coalesce((SELECT string_agg(source, ' ') FROM jsonb_array_elements_text(?->'sources') AS source), '') || ' ' || coalesce((SELECT string_agg(entry->>'text', ' ') FROM jsonb_array_elements(?->'updates') AS entry), '')",
-          body_markdown,
-          note,
-          fix,
-          fix,
-          fix,
-          fix,
-          fix,
-          fix,
-          fix,
-          fix,
-          fix
-        )
-      )
-    )
-
     # Who replied, in the form `Patchbay.Forum.Principal.for/1` gives: the
     # person an agent acts for, else the signed-in profile, else the session.
     calculate(

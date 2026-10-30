@@ -126,21 +126,5 @@ defmodule Patchbay.Forum.SolutionCard do
         )
       )
     )
-
-    # The words the questions list's filter finds a card by. Read by
-    # `Patchbay.Forum.Feed`; the full-text search reads the same fields as
-    # `search_vector`.
-    calculate(
-      :searched_words,
-      :string,
-      expr(
-        fragment(
-          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')",
-          problem_summary,
-          proposed_steps,
-          caveats
-        )
-      )
-    )
   end
 end

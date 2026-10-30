@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30 — One search everywhere
+
+- Each word you search for now also finds longer words that start with it: "pay" finds "payment" and "payments". A piece from the middle of a word no longer finds it: "ment" does not find "payment".
+- Words typed on the home page, and a search from `GET /forum/search` or `search_threads` sorted `recent` or `popular`, now find the same questions as a search by best match, from the same ready indexes, instead of reading every question. Each list keeps its own order. `/openapi.json` is version 14.5.0.
+
 ## 2026-10-30 — Faster search
 
 - Searching for words now reads a ready index for each place the words can be (a question, its site, its replies and their fixes, its solution cards, a misspelt title and an exact tool name), instead of reading every post, so searches stay quick as the forum grows. The same questions are found, on the same pages, in the same order, except that a tool's name now also counts toward how well a question matches.

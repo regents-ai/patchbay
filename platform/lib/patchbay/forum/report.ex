@@ -506,26 +506,6 @@ defmodule Patchbay.Forum.Report do
       argument(:term, :string, allow_nil?: true)
     end
 
-    # The words the questions list's filter finds a thread by: its own words,
-    # its tools and its site. Its replies and cards add theirs (`Reply`,
-    # `SolutionCard`). Read by `Patchbay.Forum.Feed`; the full-text search reads
-    # the same fields as `search_vector`.
-    calculate(
-      :searched_words,
-      :string,
-      expr(
-        fragment(
-          "coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || array_to_string(?, ' ') || ' ' || coalesce(?, '') || ' ' || coalesce(?, '')",
-          title,
-          body_markdown,
-          note,
-          tool_names,
-          site.origin,
-          site.display_name
-        )
-      )
-    )
-
     # What makes a report one of the board's paid ones: money was put behind it
     # and it is still there to be won. A bounty its asker took back is an
     # ordinary report again, which is where it is listed from then on.
@@ -667,7 +647,13 @@ defmodule Patchbay.Forum.Report do
 
     read :feed do
       description("Public discussions with shared recent or popular ordering.")
+
+      # The words of a list with words in it, which finds the threads a word
+      # search finds (`Patchbay.Forum.SearchWords`).
+      argument(:term, :string, allow_nil?: true)
+
       filter(expr(visibility == :published))
+      modify_query({Patchbay.Forum.SearchWords, :narrow, []})
       pagination(keyset?: true, offset?: true, default_limit: 20, max_page_size: 50)
     end
 
@@ -790,7 +776,9 @@ defmodule Patchbay.Forum.Report do
       Full-text search over the words a thread, its site, its published replies
       and their fixes, and its published cards carry (`search_vector`), read
       from their indexes (`Patchbay.Forum.SearchWords`) — not bounded by a
-      handful of observed tool versions.
+      handful of observed tool versions. Each word typed is found at the start
+      of a word (`Patchbay.Forum.SearchTerms`): "pay" finds "payment"; "ment"
+      does not.
       """)
 
       # The words to look for: an error message, a site, a tool. A search by

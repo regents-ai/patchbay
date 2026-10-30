@@ -36,7 +36,9 @@ defmodule Patchbay.Forum.FeedCount do
   def followed(_filters, _subscriptions), do: []
 
   defp count_and_keep(key, filters, subscriptions) do
-    with {:ok, count} <- filters |> Feed.query(subscriptions) |> Ash.count() do
+    query = filters |> Feed.query(subscriptions) |> Ash.Query.for_read(:feed)
+
+    with {:ok, count} <- Ash.count(query) do
       put!(key, count, ttl: @kept)
       {:ok, count}
     end

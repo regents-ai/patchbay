@@ -2,13 +2,15 @@ defmodule Patchbay.Forum.SearchWordsTest do
   @moduledoc """
   A word search reads an index for every place a thread's words can be
   (`Patchbay.Forum.SearchWords`), and the questions list newest first reads
-  its own (`Patchbay.Forum.Feed`), never every row of a table.
+  its own (`Patchbay.Forum.Feed`), never every row of a table. A list with
+  words in it finds what the word search finds, each word at the start of a
+  word.
   """
 
   use Patchbay.DataCase, async: true
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.Feed
+  alias Patchbay.Forum.{Feed, FeedCount}
 
   @indexes ~w(
     forum_reports_search_words_index
@@ -54,14 +56,84 @@ defmodule Patchbay.Forum.SearchWordsTest do
     site = Forum.register_site!("example.com")
     thread = ask!(site, "Hooks stopped", "Every call ends in webhookfail#{n}.")
 
-    assert searched("example.com webhookfail#{n}") == [thread.id]
-    assert searched("webhookfail#{n} example.com") == [thread.id]
-    assert searched("example.com webhookfail#{n} nowhere#{n}") == []
+    for search <- [&listed/1, &searched/1] do
+      assert search.("example.com webhookfail#{n}") == [thread.id]
+      assert search.("webhookfail#{n} example.com") == [thread.id]
+      assert search.("example.com webhookfail#{n} nowhere#{n}") == []
+    end
+  end
+
+  describe "a list with words in it" do
+    setup do
+      %{site: Forum.register_site!("search-words-#{System.unique_integer([:positive])}.example")}
+    end
+
+    test "finds a word by its beginning, never by its middle", %{site: site} do
+      thread = ask!(site, "The cart never changed", "The quaggapayment failed at checkout.")
+
+      for search <- [&listed/1, &searched/1] do
+        assert search.("quaggapay") == [thread.id]
+        assert search.("quaggapayments") == [thread.id]
+        assert search.("payment") == []
+      end
+    end
+
+    test "holds the same threads as the word search", %{site: site} do
+      ask!(site, "Wallet will not connect", "The approve step hangs on a nonce too low error.")
+      ask!(site, "Checkout fails", "Payments stop at the approve step.")
+      ask!(site, "Rainbow sign in", "eth_sendRawTransaction answers nothing.")
+      ask!(site, "Nothing in common", "A plain question.")
+
+      for words <- ["approve", "pay", "nonce too", "eth_send", site.origin, "connect", "zzz"] do
+        assert Enum.sort(listed(words)) == Enum.sort(searched(words)), words
+      end
+
+      assert length(listed("approve")) == 2
+    end
+
+    test "counts the threads it lists", %{site: site} do
+      n = System.unique_integer([:positive])
+      ask!(site, "Counted once", "countword#{n} in the first.")
+      ask!(site, "Counted twice", "countword#{n} in the second.")
+      ask!(site, "Not counted", "Nothing to find here.")
+
+      {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"q" => "countword#{n}"})
+
+      assert FeedCount.count(filters, []) == {:ok, 2}
+      assert length(listed("countword#{n}")) == 2
+    end
+
+    test "reads the search indexes" do
+      {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"q" => "nonce too low"})
+
+      {:ok, query} =
+        filters
+        |> Feed.query()
+        |> Ash.Query.for_read(:feed)
+        |> Ash.Query.limit(20)
+        |> Ash.Query.data_layer_query()
+
+      {sql, params} = Repo.to_sql(:all, query)
+
+      for scan <- ~w(seqscan indexscan indexonlyscan),
+          do: Repo.query!("SET LOCAL enable_#{scan} = off")
+
+      plan = Repo.query!("EXPLAIN " <> sql, params).rows |> Enum.map_join("\n", &hd/1)
+
+      for index <- @indexes, do: assert(plan =~ index, "#{index} not read:\n#{plan}")
+    end
   end
 
   test "the questions list, newest first, reads its own index" do
     {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{})
-    {:ok, query} = filters |> Feed.query() |> Ash.Query.limit(20) |> Ash.Query.data_layer_query()
+
+    {:ok, query} =
+      filters
+      |> Feed.query()
+      |> Ash.Query.for_read(:feed)
+      |> Ash.Query.limit(20)
+      |> Ash.Query.data_layer_query()
+
     {sql, params} = Repo.to_sql(:all, query)
 
     Repo.query!("SET LOCAL enable_seqscan = off")
@@ -83,6 +155,15 @@ defmodule Patchbay.Forum.SearchWordsTest do
       # Posts the test's own thread; asking is not what this test checks.
       authorize?: false
     )
+  end
+
+  # The threads the questions list with these words holds, and those the word
+  # search finds.
+  defp listed(words) do
+    {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"q" => words})
+
+    Forum.list_feed_reports!(query: Feed.query(filters), page: [limit: 50]).results
+    |> Enum.map(& &1.id)
   end
 
   defp searched(words),
