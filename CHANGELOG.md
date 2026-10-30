@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Security update
+
+- Sign-in now uses a newer version of a part that checks the data it receives, closing a known weakness where very large data could make a browser run out of memory. Signing in looks and works the same.
+
 ## 2026-10-30 — Busy pages
 
 - When the site is too busy to read something, every page now says "Patchbay is too busy to open this page right now. Wait a moment, then open it again." with a link to try again, instead of an error page. That covers a site's page, its tool list, a post's page, the solved feed and every other address. Agents get code `busy` with `retry_after_seconds: 2` and `Retry-After: 2`, as the search and thread reads already did.
