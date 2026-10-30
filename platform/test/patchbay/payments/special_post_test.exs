@@ -8,10 +8,13 @@ defmodule Patchbay.Payments.SpecialPostTest do
   alias Patchbay.Forum.Report
   alias Patchbay.Payments.SpecialPost
 
-  defp report(status, minutes_ago) do
+  defp report(status, minutes_ago, filed_minutes_ago \\ 0) do
+    now = DateTime.utc_now()
+
     %Report{
       escrow_status: status,
-      inserted_at: DateTime.add(DateTime.utc_now(), -minutes_ago, :minute)
+      inserted_at: DateTime.add(now, -max(minutes_ago, filed_minutes_ago), :minute),
+      escrow_credit_sent_at: DateTime.add(now, -minutes_ago, :minute)
     }
   end
 
@@ -20,6 +23,14 @@ defmodule Patchbay.Payments.SpecialPostTest do
 
     assert SpecialPost.confirmation(
              report(:credit_submitted, SpecialPost.attention_after_minutes())
+           ) == :needs_attention
+  end
+
+  test "a credit handed over again counts from that hand-over, not from the filing" do
+    assert SpecialPost.confirmation(report(:credit_submitted, 1, 90)) == :pending
+
+    assert SpecialPost.confirmation(
+             report(:credit_submitted, SpecialPost.attention_after_minutes(), 90)
            ) == :needs_attention
   end
 

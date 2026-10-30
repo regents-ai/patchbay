@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Bounty wait
+
+- A paid priority report's bounty that Base has not confirmed now reads `needs_attention` thirty minutes after the credit was last handed to Base, not thirty minutes after the report was filed. A credit sent again after a refusal reads `pending` while Base takes it, as Sentinel already counts it.
+
 ## 2026-10-30 — decode-uri-component 0.5.1
 
 - The override for `decode-uri-component`, which the wallet sign-in bundle reaches through

@@ -168,7 +168,8 @@ defmodule Patchbay.Payments.SpecialPost do
   `:pending` while Base has the credit and has not confirmed it, `:confirmed`
   once the chain recorded it (and thereafter, whatever the money did next),
   and `:needs_attention` when Base would not take the credit or has gone
-  #{@attention_after_minutes} minutes without confirming it. Nothing here
+  #{@attention_after_minutes} minutes from its last hand-over without
+  confirming it. Nothing here
   moves money, and nothing here is a reason to pay again.
   """
   @spec confirmation(Report.t()) :: :pending | :confirmed | :needs_attention
@@ -182,10 +183,13 @@ defmodule Patchbay.Payments.SpecialPost do
 
   def confirmation(%Report{}), do: :confirmed
 
-  @doc "Whether a handed-over credit has waited long enough to need a person."
+  @doc """
+  Whether a handed-over credit has waited long enough to need a person,
+  counted from its last hand-over to Base, as Sentinel's age of it is.
+  """
   @spec overdue?(Report.t()) :: boolean()
-  def overdue?(%Report{escrow_status: :credit_submitted, inserted_at: filed_at}) do
-    DateTime.diff(DateTime.utc_now(), filed_at, :minute) >= @attention_after_minutes
+  def overdue?(%Report{escrow_status: :credit_submitted, escrow_credit_sent_at: sent_at}) do
+    DateTime.diff(DateTime.utc_now(), sent_at, :minute) >= @attention_after_minutes
   end
 
   def overdue?(%Report{}), do: false
