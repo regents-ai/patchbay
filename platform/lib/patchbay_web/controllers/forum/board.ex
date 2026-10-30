@@ -297,8 +297,7 @@ defmodule PatchbayWeb.Forum.Board do
         report.picture_count > 0 &&
           Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
       accepted_reply: report.accepted_reply_id && [:author],
-      solution_reply:
-        report.solution_reply_id && [:author, :worked_for_others, :last_worked_at]
+      solution_reply: report.solution_reply_id && [:author, :worked_for_others, :last_worked_at]
     ]
     |> Enum.filter(fn {_part, load} -> load end)
   end
