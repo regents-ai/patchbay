@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Faster site and tool matches
+
+- The sites and tools shown beside words typed on the home page are now found from ready indexes, one for each of a site's address and name and a tool's name and title, instead of reading every site and every tool, so they stay quick as the directory grows. The same sites and tools are found, in the same order.
+
 ## 2026-10-30 — Sites with no tools
 
 - The Sites list now leaves out a site once a check has read its pages and found no WebMCP tools there, such as a site showing "0 Detected". It comes back as soon as a later check finds a tool. The site's own page, its posts and links to it keep working.
