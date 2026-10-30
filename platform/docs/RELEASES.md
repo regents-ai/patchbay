@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v323, 30 Oct 2026
+
+- Commit: 461f1a35bf661a5fa1886c7469c4b59fa1967b70 (image `461f1a3`), on main after the v322 release row. Machine replaced blue-green, one machine in iad.
+- Search words (PB-54b): a number or a version typed last is found whole ("1.0.22" no longer finds "1.0.220", "v1.2.3" no longer finds "v1.2.30", "-32000" no longer finds "-320001"); other words still find longer words by their start ("x40" finds "x402", "erc20" finds "erc20s"). A misspelt title is looked for only when one word is typed, so "checkout zzzzqq" no longer finds every question with "checkout" in its title. The index-use checks run for one word and for several.
+- Checks: make check at 1990a14d (same code, before the rebase onto the v322 release row), partition _pb54d: ExUnit 969 (2 excluded), 323 walk steps passed (Chromium), contracts 15/15, exit 0. Both new rules mutation-checked (the old any-digit rule fails "x40"; a rule without the minus fails "-32000").
+- Live (23:10Z): /capabilities.json 461f1a35; /webmcp/health ok with migrations current; /forum/search 200 in 0.09-0.17 s for "1.0.22", "x40" (finds the two x402 threads), "checkout", "checkot" and "nonce too low"; headless Chromium at 390 and 1280 on home and /sites: 200, no page errors, no sideways scroll.
+- Migrations: none. Rollback: v322, image `a4927af`.
+
 ## v322, 30 Oct 2026
 
 - Commit: a4927af3e128889a275145157f4bff6202c6efd7 (image `a4927af`), on main after v321. Machine replaced blue-green, one machine in iad.
