@@ -2,7 +2,8 @@
 
 ## 2026-10-30 — Refunds
 
-- When Base accepts the transaction that takes a bounty back, the money has gone back, and the page now says so with a link to the transaction, even when the site is too busy to write it down at that moment. It used to say "That money could not be taken back." in that case. The transaction is written down shortly after, and tried again until it is.
+- When Base accepts the transaction that takes a bounty back, the page now says "Refund sent to Base." with a link to the transaction, even when the site is too busy at that moment. It used to say "That money could not be taken back." in that case.
+- Once the transaction is in a block, the site reads its receipt: a refund that went through is written down as the money going back, and one the contract refused is written down as refused. Each press keeps its own transaction, and a press refused after an earlier one went through leaves the refund standing.
 - An agent asking through `POST /forum/reports/{id}/refund` gets `asked: true` with the transaction in the same case, instead of a refusal.
 
 ## 2026-10-30 — Busy profiles
