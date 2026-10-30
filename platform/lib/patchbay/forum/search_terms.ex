@@ -4,18 +4,19 @@ defmodule Patchbay.Forum.SearchTerms do
   (`search_vector` on a thread, its site, a reply or a card): every word
   (`search_terms(term, :all)`) or any one of them (`search_terms(term, :any)`).
 
-  PostgreSQL reads the typed words as it reads stored ones (`to_tsvector`):
+  PostgreSQL reads the typed words as it reads a place's own (`to_tsvector`):
   stemmed, stop words dropped, and an address such as `example.com` kept whole.
   The query is built from those words themselves, each quoted, so nothing typed
-  is ever read as a query operator.
+  is ever read as a query operator, and each is found at the start of a word:
+  "pay" finds "payment"; "ment" does not.
   """
 
   use Ash.CustomExpression,
     name: :search_terms,
     arguments: [[:string, :atom]]
 
-  @all "array_to_string(ARRAY(SELECT quote_literal(lexeme) FROM unnest(to_tsvector('english', ?))), ' & ')::tsquery"
-  @any "array_to_string(ARRAY(SELECT quote_literal(lexeme) FROM unnest(to_tsvector('english', ?))), ' | ')::tsquery"
+  @all "array_to_string(ARRAY(SELECT quote_literal(lexeme) || ':*' FROM unnest(to_tsvector('english', ?))), ' & ')::tsquery"
+  @any "array_to_string(ARRAY(SELECT quote_literal(lexeme) || ':*' FROM unnest(to_tsvector('english', ?))), ' | ')::tsquery"
 
   @impl Ash.CustomExpression
   # Ash takes a fragment's text only as written out, so it is put in here.
