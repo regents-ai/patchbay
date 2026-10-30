@@ -607,7 +607,7 @@ defmodule PatchbayWeb.Forum.BoardController do
          {:ok, posted} <- post_thread_reply(conn, report, draft) do
       landing(conn, report, posted)
     else
-      {:error, problem} -> show_report(conn, id, params, reply_problem: problem)
+      {:error, problem} -> show_report(conn, report, params, reply_problem: problem)
     end
   end
 
@@ -1093,8 +1093,10 @@ defmodule PatchbayWeb.Forum.BoardController do
     path = PostAddress.path(report)
 
     if conn.request_path == path do
+      # The page shows the post as read above, so a reader's first view is
+      # counted from their next one.
       :ok = Board.record_view(report, conn.assigns)
-      show_report(conn, id, params, [])
+      show_report(conn, report, params, [])
     else
       conn
       |> put_status(:moved_permanently)
@@ -1117,7 +1119,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         redirect(conn, to: PostAddress.path(accepted) <> "#reply-#{reply_id}")
 
       {:error, failure} ->
-        show_report(conn, id, %{}, escrow_problem: accept_refusal(failure))
+        show_report(conn, fetch_report!(id), %{}, escrow_problem: accept_refusal(failure))
     end
   end
 
@@ -1145,14 +1147,14 @@ defmodule PatchbayWeb.Forum.BoardController do
         redirect(conn, to: PostAddress.path(fetch_report!(id)) <> "#patchbay-escrow")
 
       {:ok, _refused} ->
-        show_report(conn, id, %{},
+        show_report(conn, fetch_report!(id), %{},
           escrow_problem:
             "Base would not take that request. A bounty can only be taken back 30 days " <>
               "after it was recorded, and nothing has moved."
         )
 
       {:error, failure} ->
-        show_report(conn, id, %{}, escrow_problem: refund_refusal(failure))
+        show_report(conn, fetch_report!(id), %{}, escrow_problem: refund_refusal(failure))
     end
   end
 
@@ -1193,7 +1195,7 @@ defmodule PatchbayWeb.Forum.BoardController do
          {:ok, posted} <- add_reply(conn, report, draft) do
       landing(conn, report, posted)
     else
-      {:error, problem} -> show_report(conn, id, params, reply_problem: problem)
+      {:error, problem} -> show_report(conn, report, params, reply_problem: problem)
     end
   end
 
@@ -1305,8 +1307,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp techtree_result(%{techtree_digest: nil}), do: nil
   defp techtree_result(%{techtree_digest: digest}), do: Patchbay.Techtree.fetch_result(digest)
 
-  defp show_report(conn, id, params, problems) do
-    report = fetch_report!(id)
+  defp show_report(conn, report, params, problems) do
     filter = if params["replies"] in ["solution", "official"], do: params["replies"], else: "all"
 
     with {:ok, keyset} <- ReplyCursor.verify(report.id, params["after"]),

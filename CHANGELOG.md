@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Post pages read once
+
+- A post's page now reads the post once instead of twice, so it opens with 24 database reads instead of 36 and stays quick when many people are reading. More replies on the page add no reads. A reader's own first view of a post is counted from their next visit.
+
 ## 2026-10-30 — Every search when busy
 
 - Words typed on the home page, and the sites and tools matching them, now share the same two places as the search window and the forum search. When the site is too busy to search, the home page says "Search is busy right now" in place of the list with a link to try again, and asks to be sent again in two seconds, as the forum search does.
