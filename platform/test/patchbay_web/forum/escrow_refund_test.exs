@@ -22,6 +22,22 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
   @contract String.duplicate("e", 64)
   @arguments String.duplicate("f", 64)
+  @refund_tx "0x" <> String.duplicate("f", 64)
+  # What the synthetic Base node answers: every transaction is taken.
+  @base_node %{
+    "eth_chainId" => "0x7a69",
+    "eth_getTransactionCount" => "0x0",
+    "eth_estimateGas" => "0x186a0",
+    "eth_gasPrice" => "0x3b9aca00",
+    "eth_maxPriorityFeePerGas" => "0x1",
+    "eth_feeHistory" => %{
+      oldestBlock: "0x0",
+      baseFeePerGas: ["0x1", "0x1"],
+      gasUsedRatio: [0.5],
+      reward: [["0x1"]]
+    },
+    "eth_sendRawTransaction" => @refund_tx
+  }
 
   setup do
     site = Forum.register_site!("shop.example.com")
@@ -107,6 +123,104 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       authorize?: false
     )
   end
+
+  describe "a refund Base takes" do
+    setup do
+      old_escrow = Application.get_env(:patchbay, :escrow)
+
+      # Synthetic operator key, generated for this run. It never reaches a real chain.
+      Application.put_env(:patchbay, :escrow,
+        contract_address: "0x" <> String.duplicate("c", 40),
+        operator_private_key: Base.encode16(:crypto.strong_rand_bytes(32), case: :lower),
+        rpc_url: base_node()
+      )
+
+      on_exit(fn -> Application.put_env(:patchbay, :escrow, old_escrow) end)
+    end
+
+    test "says it went through when the post is then too busy to read", %{
+      conn: conn,
+      tool: tool
+    } do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+      hold_the_connection_once_the_refund_is_written()
+
+      # Asked from another process, as a visitor's request is, so the sandbox
+      # drops its wait from the queue as it would a crowd's.
+      refunded =
+        fn -> conn |> signed_in(asker) |> post("/posts/#{report.id}/refund", %{}) end
+        |> Task.async()
+        |> Task.await(30_000)
+
+      assert_received {:holder, holder}
+      send(holder, :release)
+
+      html = html_response(refunded, 503)
+      assert html =~ "Your refund went through to Base. This page could not refresh to show it."
+      assert html =~ ~s(href="/posts/#{report.id}")
+      assert get_resp_header(refunded, "retry-after") == ["2"]
+      assert Forum.get_report!(report.id).escrow_refund_tx_hash == @refund_tx
+    end
+  end
+
+  # Once the refund Base took is written down, another process takes the
+  # test's one database connection, so the post's next read waits in the
+  # queue until the sandbox drops it.
+  defp hold_the_connection_once_the_refund_is_written do
+    test = self()
+    id = {__MODULE__, make_ref()}
+
+    :telemetry.attach(
+      id,
+      [:patchbay, :repo, :query],
+      fn _event, _measurements, %{query: query}, _config ->
+        if refund_written?(query) and is_nil(Process.get(id)) do
+          holder = spawn(&hold_until_released/0)
+          Process.put(id, holder)
+          send(test, {:holder, holder})
+        end
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
+  end
+
+  # It holds until released, however long the refund's own steps took.
+  defp hold_until_released do
+    Patchbay.Repo.transaction(fn -> receive do: (:release -> :ok) end, timeout: :infinity)
+  end
+
+  # The write that sets the refund's transaction, not one that only returns it.
+  defp refund_written?("UPDATE " <> update),
+    do: update |> String.split(" RETURNING ") |> hd() |> String.contains?("escrow_refund_tx_hash")
+
+  defp refund_written?(_query), do: false
+
+  defp base_node do
+    server =
+      start_supervised!(
+        {Bandit,
+         plug: fn conn, _options ->
+           {:ok, raw, conn} = Plug.Conn.read_body(conn)
+
+           conn
+           |> Plug.Conn.put_resp_content_type("application/json")
+           |> Plug.Conn.send_resp(200, raw |> Jason.decode!() |> rpc() |> Jason.encode!())
+         end,
+         ip: {127, 0, 0, 1},
+         port: 0}
+      )
+
+    {:ok, {_address, port}} = ThousandIsland.listener_info(server)
+    "http://127.0.0.1:#{port}"
+  end
+
+  defp rpc(requests) when is_list(requests), do: Enum.map(requests, &rpc/1)
+
+  defp rpc(%{"id" => id, "method" => method}),
+    do: %{jsonrpc: "2.0", id: id, result: Map.fetch!(@base_node, method)}
 
   describe "what the board decides" do
     test "a chain that will not take the request leaves the money held", %{tool: tool} do

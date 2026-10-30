@@ -1,8 +1,10 @@
 defmodule PatchbayWeb.Forum.PostBusyTest do
   # A post the database is too busy to read is not called missing: its page,
   # as a page or as Markdown, a form sent to it and its lasting error link
-  # answer 503 with Retry-After and ask to be opened again. A post that is not there is still missing, and
-  # any other database error is a fault, never busy.
+  # answer 503 with Retry-After and ask to be opened again. Try again opens
+  # the address that was opened, or after a form the post itself. A post that
+  # is not there is still missing, and any other database error is a fault,
+  # never busy.
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
@@ -33,17 +35,34 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
     markdown = put_req_header(conn, "accept", "text/markdown")
     reply = %{"reply" => %{"note" => "It worked."}}
 
-    [page, as_markdown, sent_reply, error_link] =
-      while_the_connection_is_held([
-        fn -> get(conn, PostAddress.path(post)) end,
-        fn -> get(markdown, PostAddress.path(post)) end,
-        fn -> post(conn, "/posts/#{post.id}/replies", reply) end,
-        fn -> get(conn, "/errors/#{code}") end
-      ])
+    forms = [
+      "/posts/#{post.id}/replies",
+      "/reports/#{post.id}/replies",
+      "/threads/#{post.id}/replies"
+    ]
 
-    for answer <- [page, sent_reply, error_link] do
+    [page, as_markdown, error_link | sent_replies] =
+      while_the_connection_is_held(
+        [
+          fn -> get(conn, PostAddress.path(post) <> "?after=x") end,
+          fn -> get(markdown, PostAddress.path(post)) end,
+          fn -> get(conn, "/errors/#{code}") end
+        ] ++ Enum.map(forms, fn form -> fn -> post(conn, form, reply) end end)
+      )
+
+    for answer <- [page, error_link | sent_replies] do
       assert html_response(answer, 503) =~ "Patchbay is too busy to open this page right now."
       assert get_resp_header(answer, "retry-after") == ["2"]
+    end
+
+    assert try_again(page) == PostAddress.path(post) <> "?after=x"
+    assert try_again(error_link) == "/errors/#{code}"
+
+    # A form's own address cannot be opened, so Try again opens the post.
+    for sent_reply <- sent_replies do
+      assert try_again(sent_reply) == "/posts/#{post.id}"
+      opened = get(build_conn(), try_again(sent_reply))
+      assert redirected_to(opened, 301) == PostAddress.path(post)
     end
 
     assert response(as_markdown, 503) =~ "# Patchbay is too busy to open this page right now."
@@ -60,6 +79,15 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
     Patchbay.Repo.query!("ALTER TABLE forum_reports RENAME COLUMN visibility TO hidden_away")
 
     assert_error_sent 500, fn -> get(conn, PostAddress.path(post)) end
+  end
+
+  defp try_again(answer) do
+    answer
+    |> html_response(503)
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("a.pb-cta")
+    |> LazyHTML.attribute("href")
+    |> hd()
   end
 
   # Another process holds the test's one database connection while `requests`
