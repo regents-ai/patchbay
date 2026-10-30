@@ -1175,10 +1175,11 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # Base has accepted the refund, so the money has gone back, and the page says
-  # so with its transaction: the post as read now, with the transaction this
-  # answer holds, since writing it down is a job that may not have run yet
-  # (`Patchbay.Forum.RefundRelayRecord`). A post too busy to read still says so.
+  # Base has accepted the refund transaction, and the page says it was sent,
+  # with that transaction: the post as read now, with the transaction this
+  # answer holds, since what became of it is written by a job once its receipt
+  # is in (`Patchbay.Forum.RefundRelayRecord`). A post too busy to read still
+  # says so.
   defp refunded(conn, id, tx_hash) do
     show_report(conn, %{fetch_report!(id) | escrow_refund_tx_hash: tx_hash}, %{}, [])
   rescue
@@ -1186,7 +1187,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       BusyPage.respond(conn, busy.cause,
         try_again: "/posts/#{id}",
         note:
-          "Your money went back: Base accepted the refund, transaction #{tx_hash}. " <>
+          "Refund sent to Base, transaction #{tx_hash}. " <>
             "This page could not refresh to show it."
       )
   end
