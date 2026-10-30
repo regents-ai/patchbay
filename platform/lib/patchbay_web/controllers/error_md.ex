@@ -44,11 +44,11 @@ defmodule PatchbayWeb.ErrorMD do
     """
   end
 
-  def render("503.md", _assigns) do
+  def render("503.md", %{note: note}) do
     """
     # Patchbay is too busy to open this page right now.
 
-    Wait a moment, then open it again. The answer says how many seconds in its Retry-After header.
+    #{if note, do: note <> "\n\n"}Wait a moment, then open it again. The answer says how many seconds in its Retry-After header.
     """
   end
 

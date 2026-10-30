@@ -19,8 +19,9 @@
           <Regent.Structure.panel class="pb-error-inner">
             <p class="pb-kicker">Patchbay · 503</p>
             <h1>Patchbay is too busy to open this page right now.</h1>
+            <p :if={@note} class="pb-error-lede">{@note}</p>
             <p class="pb-error-lede">Wait a moment, then open it again.</p>
-            <a class="pb-cta rg-button rg-button--primary" href=""><span class="rg-button__label">Try again</span></a>
+            <a class="pb-cta rg-button rg-button--primary" href={@try_again}><span class="rg-button__label">Try again</span></a>
             <a href="/">Back to questions</a>
             <Regent.ThemeToggle.button
               id="pb-error-theme-toggle"

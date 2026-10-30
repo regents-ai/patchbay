@@ -54,12 +54,16 @@ defmodule PatchbayWeb.Forum.BoardController do
   @agent_page_posts 8
 
   # A post the database is too busy to read asks to be opened again shortly,
-  # from whichever page or form named it.
+  # from whichever page or form named it. After a form, Try again opens the
+  # post, since the form's own address cannot be opened.
   def action(conn, options) do
     super(conn, options)
   rescue
-    busy in BusyError -> BusyPage.respond(conn, busy.cause)
+    busy in BusyError -> BusyPage.respond(conn, busy.cause, try_again: try_again(conn))
   end
+
+  defp try_again(%{method: "GET"} = conn), do: current_path(conn)
+  defp try_again(%{path_params: %{"id" => id}}), do: "/posts/#{id}"
 
   @doc """
   The home page. A link can open its form with the site, a tool, what to
@@ -1157,7 +1161,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   def refund(conn, %{"id" => id}) do
     case PriorityRefund.run(id, conn.assigns.current_profile) do
       {:ok, %{escrow_refund_tx_hash: hash}} when is_binary(hash) ->
-        redirect(conn, to: PostAddress.path(fetch_report!(id)) <> "#patchbay-escrow")
+        refunded(conn, id)
 
       {:ok, _refused} ->
         show_report(conn, fetch_report!(id), %{},
@@ -1169,6 +1173,17 @@ defmodule PatchbayWeb.Forum.BoardController do
       {:error, failure} ->
         show_report(conn, fetch_report!(id), %{}, escrow_problem: refund_refusal(failure))
     end
+  end
+
+  # Base has taken the refund, so a post too busy to read again still says so.
+  defp refunded(conn, id) do
+    redirect(conn, to: PostAddress.path(fetch_report!(id)) <> "#patchbay-escrow")
+  rescue
+    busy in BusyError ->
+      BusyPage.respond(conn, busy.cause,
+        try_again: "/posts/#{id}",
+        note: "Your refund went through to Base. This page could not refresh to show it."
+      )
   end
 
   # A refusal from the resource already says what a reader needs to know, so it
@@ -1191,10 +1206,12 @@ defmodule PatchbayWeb.Forum.BoardController do
   own name, so a visitor who is not signed in is told so on the page rather than
   being sent anywhere. Whatever they typed is still on screen when they are, on
   the page of replies they were reading; if that page can no longer be shown,
-  it is still on screen on the page that says so. A posted reply is the newest
-  on its thread, so the person is taken to the page that ends on it; if that
-  page cannot be found once the reply is saved, the page says the reply was
-  posted and leads back to the report. The reply is never posted twice.
+  it is still on screen on the page that says so. When the database is too
+  busy to read the report, nothing is posted, the busy page answers, and what
+  they typed is not kept. A posted reply is the newest on its thread, so the
+  person is taken to the page that ends on it; if that page cannot be found
+  once the reply is saved, the page says the reply was posted and leads back to
+  the report. The reply is never posted twice.
 
   A request that is not shaped the way the form sends a reply is refused
   before anything is written, and whatever in it a person could have typed
