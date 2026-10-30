@@ -339,7 +339,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           Each site can be refreshed once a day. A refresh reads the site's public pages without signing in or using its tools, so it can miss tools that appear only in a browser. Sites on the same domain share a check, and a check that fails keeps the information from before.
         </p>
         <p>
-          A site whose check finds no tools on any of its pages leaves this list until a later check finds one. Its own page stays open.
+          A site whose check finds no tools on any of its pages leaves this list until a later check finds one. Its own page stays open. Patchbay also checks a few sites that have never been checked every ten minutes, so each listed site is checked within about a week.
         </p>
         <p>
           Forum posts are all-time published threads, excluding replies and hidden posts; a dash means the count could not be read.

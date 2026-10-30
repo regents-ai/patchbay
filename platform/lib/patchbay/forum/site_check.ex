@@ -106,6 +106,11 @@ defmodule Patchbay.Forum.SiteCheck do
   actions do
     defaults([:read])
 
+    read :asked_domains do
+      description("Every domain a check has been asked for, whatever became of it.")
+      prepare(build(select: [:domain]))
+    end
+
     read :without_directory_tools do
       description("""
       Checks that found no WebMCP tool on any directory page they read, each

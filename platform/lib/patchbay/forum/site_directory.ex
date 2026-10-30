@@ -15,7 +15,11 @@ defmodule Patchbay.Forum.SiteDirectory do
                {:ok, domain} <- [Origin.normalize(entry["host"])],
                do: Map.put(entry, "domain", domain)
   @by_domain Enum.group_by(@entries, & &1["domain"])
+  @domains @entries |> Enum.map(& &1["domain"]) |> Enum.uniq()
   @page_size 30
+
+  @doc "Every listed domain, once, in listing order."
+  def domains, do: @domains
 
   def categories, do: @entries |> Enum.map(& &1["category"]) |> Enum.uniq() |> Enum.sort()
 

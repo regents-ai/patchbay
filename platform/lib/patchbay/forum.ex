@@ -39,6 +39,7 @@ defmodule Patchbay.Forum do
       define(:get_site_check, action: :read, get_by: [:domain])
       define(:record_site_check, action: :record)
       define(:list_site_checks_without_directory_tools, action: :without_directory_tools)
+      define(:list_asked_site_check_domains, action: :asked_domains)
     end
 
     resource Patchbay.Forum.PostPicture do

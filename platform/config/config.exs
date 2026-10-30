@@ -151,7 +151,8 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # purchases on chain (`regent_credits`); and a site's check
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
-# sites wait only on each other; the daily clearing of saved errors
+# sites wait only on each other, with the ten-minute ask for checks of listed
+# sites no check has been asked for yet (`Patchbay.Forum.SiteCheckSweep`); the daily clearing of saved errors
 # (`Patchbay.ErrorPruner`); the daily forgetting of the words of posts
 # turned away a month ago (`Patchbay.Forum.PostCheckPruner`); and reading a
 # signed-in wallet's ENS name and picture from Ethereum
@@ -197,6 +198,8 @@ config :patchbay, Oban,
     crontab: [
       {"17 4 * * *", Patchbay.ErrorPruner},
       {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
+      # Five sites no check has been asked for yet, every ten minutes.
+      {"*/10 * * * *", Patchbay.Forum.SiteCheckSweep},
       {"0 6 * * 1", Patchbay.AnswerWatch.WeeklyRun},
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
