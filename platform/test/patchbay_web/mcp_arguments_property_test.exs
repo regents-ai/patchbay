@@ -151,11 +151,14 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
   defp valid(%{"type" => "integer"} = field),
     do: integer(Map.get(field, "minimum", -5)..Map.get(field, "maximum", 500))
 
+  # A string item is the same long value half the time, so finding distinct
+  # items can take more than StreamData's default ten tries.
   defp valid(%{"type" => "array", "items" => item} = field),
     do:
       uniq_list_of(valid(item),
         min_length: Map.get(field, "minItems", 0),
-        max_length: min(Map.get(field, "maxItems", 3), 3)
+        max_length: min(Map.get(field, "maxItems", 3), 3),
+        max_tries: 100
       )
 
   # The patterns the hosted schemas use, each with values that match it.
