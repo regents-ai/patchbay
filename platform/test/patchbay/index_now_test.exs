@@ -35,10 +35,13 @@ defmodule Patchbay.IndexNowTest do
     assert (PatchbayWeb.Endpoint.url() <> "/") in job.args["urls"]
   end
 
-  test "before the Wallet Bench has been read, the hourly job waits a minute and queues nothing" do
+  test "before the Wallet Bench has been read, the hourly job waits a minute and queues nothing, for an hour at most" do
     PatchbayTest.SharedBench.forget()
 
     assert {:snooze, 60} = perform_job(IndexNow, %{})
+
+    an_hour_ago = DateTime.add(DateTime.utc_now(), -3600)
+    assert :ok = IndexNow |> build_job(%{}) |> Map.put(:inserted_at, an_hour_ago) |> perform_job()
     assert [] = all_enqueued(worker: IndexNow)
   end
 

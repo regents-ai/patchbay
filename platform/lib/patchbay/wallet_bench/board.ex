@@ -70,8 +70,10 @@ defmodule Patchbay.WalletBench.Board do
   @spec key(part()) :: SharedReading.key()
   def key({:checks, grid}) when is_binary(grid), do: {@kind, "checks:" <> grid}
 
+  # Each id is escaped, so no two pairs share a key whatever their ids hold.
   def key({:pair, harness_id, wallet_id}) when is_binary(harness_id) and is_binary(wallet_id),
-    do: {@kind, "pair:" <> harness_id <> "/" <> wallet_id}
+    do:
+      {@kind, "pair:" <> URI.encode_www_form(harness_id) <> "/" <> URI.encode_www_form(wallet_id)}
 
   def key(part) when part in @whole, do: {@kind, Atom.to_string(part)}
 
@@ -182,8 +184,9 @@ defmodule Patchbay.WalletBench.Board do
   def refresh do
     with {:ok, rows} <- read(),
          {:ok, parts} <- built(rows),
+         :ok <- forget_left(parts),
          :ok <- put(parts) do
-      forget_left(parts)
+      :ok
     else
       {:error, reason} = failed ->
         Logger.warning(
@@ -204,8 +207,10 @@ defmodule Patchbay.WalletBench.Board do
         Enum.map(fixed_parts(), &key/1) ++ Enum.map(SharedReading.ids(@kind), &{@kind, &1})
       )
 
-  # A pair that has left the roster is forgotten once the pages that named it
-  # have been replaced, so no visit finds it named and not held.
+  # A pair that has left the roster is forgotten before the new parts are
+  # put, so the kind's key limit only ever has to hold one roster's pairs. A
+  # visit sent from the pages before they are replaced may find a pair that
+  # just left unread, and is told to try again in a minute.
   defp forget_left(parts) do
     shared = MapSet.new(parts, fn {part, _reading} -> key(part) end)
 

@@ -160,6 +160,26 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     assert conn |> get("/wallet-bench/H1/W1") |> html_response(200) =~ "Wallet One"
   end
 
+  test "pairs that left are forgotten before new ones are shared, so the key limit holds one roster" do
+    SharedBench.share!()
+
+    # Fill the kind to its 400 keys with pairs a past roster held.
+    for n <- 1..(400 - length(Patchbay.SharedReading.ids(:wallet_bench))) do
+      :ok = Patchbay.SharedReading.put(Board.key({:pair, "H0", "W#{n}"}), %{})
+    end
+
+    Repo.query!(
+      "INSERT INTO techtree_app.wallet_bench_roster (kind, id, name) VALUES ('wallet', 'W3', 'Wallet Three')"
+    )
+
+    assert :ok = Board.refresh()
+    assert {:ok, _held, _read} = Board.pair("H1", "W3")
+
+    refute Board.key({:pair, "H0", "W1"})
+           |> elem(1)
+           |> Kernel.in(Patchbay.SharedReading.ids(:wallet_bench))
+  end
+
   test "a run that finishes shows on the next read, not before" do
     SharedBench.share!()
     {:ok, before, _read} = Board.board(%{}, ["install"])

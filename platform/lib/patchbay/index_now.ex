@@ -35,8 +35,9 @@ defmodule Patchbay.IndexNow do
 
   # The hourly job: queue the sitemap once for each release, which is when the
   # fixed pages change. While the sitemap answers 503 it waits a minute and
-  # tries again, so the release's one submission lists every page.
-  def perform(%Oban.Job{args: %{}}) do
+  # tries again, so the release's one submission lists every page. After an
+  # hour it stops, since the next hour's job has taken over.
+  def perform(%Oban.Job{args: %{}, inserted_at: inserted_at}) do
     with key when is_binary(key) <- key(),
          {:ok, urls} <- SitemapController.urls() do
       %{"urls" => urls, "released" => SitemapController.released_at()}
@@ -45,8 +46,11 @@ defmodule Patchbay.IndexNow do
 
       :ok
     else
-      nil -> :ok
-      :unread -> {:snooze, 60}
+      nil ->
+        :ok
+
+      :unread ->
+        if DateTime.diff(DateTime.utc_now(), inserted_at) < 3600, do: {:snooze, 60}, else: :ok
     end
   end
 
