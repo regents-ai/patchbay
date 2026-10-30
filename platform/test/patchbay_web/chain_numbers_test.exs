@@ -10,6 +10,7 @@ defmodule PatchbayWeb.ChainNumbersTest do
 
   use Patchbay.DataCase, async: false
 
+  import ExUnit.CaptureIO
   import ExUnit.CaptureLog
 
   alias Patchbay.Assist
@@ -157,6 +158,49 @@ defmodule PatchbayWeb.ChainNumbersTest do
     assert DateTime.diff(DateTime.utc_now(), claimed_at) < 60
   end
 
+  test "a send already waiting when the send times arrive is aged from its filing or taking" do
+    old_assist = Application.get_env(:patchbay, :assist)
+    on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
+    Application.put_env(:patchbay, :assist, pay_to_address: "0x" <> String.duplicate("c", 40))
+
+    asker = profile("before")
+    {:ok, claimed} = Forum.claim_escrow_credit(paid_report(asker), authorize?: false)
+    {:ok, taken} = Assist.take_fee(answered_run(), authorize?: false)
+
+    # Confirmed already, so nothing waits on it and it is left as it is.
+    {:ok, _confirmed} =
+      paid_report(asker)
+      |> submitted(DateTime.utc_now())
+      |> Forum.confirm_escrow_credit(%{escrow_funded_at: DateTime.utc_now()}, authorize?: false)
+
+    an_hour_ago = DateTime.add(DateTime.utc_now(), -3600, :second)
+
+    # Filed an hour ago, and the fee taken then.
+    for {table, column, id} <- [
+          {"forum_reports", "inserted_at", claimed.id},
+          {"assist_runs", "updated_at", taken.id}
+        ] do
+      Repo.query!("UPDATE #{table} SET #{column} = $1 WHERE id = $2", [
+        an_hour_ago,
+        Ecto.UUID.dump!(id)
+      ])
+    end
+
+    # The release before the send times, then the one that brings them.
+    output =
+      capture_io(fn ->
+        migrate(:down)
+        migrate(:up)
+      end)
+
+    assert output =~ "forum_reports: 1 waiting credit(s) given a send time"
+    assert output =~ "assist_runs: 1 fee forward(s) given a taken time"
+
+    assert :ok = Telemetry.oldest_unconfirmed_sends({OperatorWallet, :unconfirmed_sends, []})
+    assert value("health_wallet_unconfirmed_oldest_seconds", [~s(flow="escrow_credit")]) >= 3600
+    assert value("health_wallet_unconfirmed_oldest_seconds", [~s(flow="fee_forward")]) >= 3600
+  end
+
   test "escrow money not yet recorded and assist fees not yet forwarded are counted" do
     old_assist = Application.get_env(:patchbay, :assist)
     on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
@@ -286,6 +330,25 @@ defmodule PatchbayWeb.ChainNumbersTest do
       },
       nil
     )
+  end
+
+  defp migrate(direction) do
+    version = 20_261_029_203_941
+    migration = Patchbay.Repo.Migrations.OperatorSendTimes
+
+    unless Code.ensure_loaded?(migration) do
+      Repo
+      |> Ecto.Migrator.migrations_path()
+      |> Path.join("#{version}_operator_send_times.exs")
+      |> Code.require_file()
+    end
+
+    # The migrator runs the migration in a task of its own, which shares this
+    # test's connection, so it takes no lock that would hold that connection.
+    case direction do
+      :down -> Ecto.Migrator.down(Repo, version, migration, migration_lock: false, log: false)
+      :up -> Ecto.Migrator.up(Repo, version, migration, migration_lock: false, log: false)
+    end
   end
 
   defp hash, do: "0x" <> Base.encode16(:crypto.strong_rand_bytes(32), case: :lower)
