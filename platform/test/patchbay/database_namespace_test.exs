@@ -98,16 +98,8 @@ defmodule Patchbay.DatabaseNamespaceTest do
                "SELECT count(*) FROM public.forum_sites WHERE origin='namespace.example'"
              ).rows
 
-    # A copy names its columns: the database writes a site's search words itself.
-    [[columns]] =
-      Repo.query!("""
-      SELECT string_agg(quote_ident(column_name), ', ' ORDER BY ordinal_position)
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND table_name = 'forum_sites' AND is_generated = 'NEVER'
-      """).rows
-
     Repo.query!(
-      "INSERT INTO public.forum_sites (#{columns}) SELECT #{columns} FROM patchbay.forum_sites WHERE origin='namespace.example'"
+      "INSERT INTO public.forum_sites SELECT * FROM patchbay.forum_sites WHERE origin='namespace.example'"
     )
 
     Repo.query!(

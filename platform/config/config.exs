@@ -11,6 +11,9 @@ import Config
 # marks. Keep the stricter byte validators on public report and reply fields.
 config :ash, default_string_length_count: :codepoints
 
+# `search_terms(term, :all | :any)`: how every search reads the words typed.
+config :ash, custom_expressions: [Patchbay.Forum.SearchTerms]
+
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
 # Regent Points: one account per person, shared by every Regent site, in the

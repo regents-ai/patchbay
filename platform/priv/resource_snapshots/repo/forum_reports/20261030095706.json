@@ -111,18 +111,6 @@
     {
       "allow_nil?": true,
       "default": "nil",
-      "generated?": true,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "search_vector",
-      "type": "tsvector"
-    },
-    {
-      "allow_nil?": true,
-      "default": "nil",
       "generated?": false,
       "precision": null,
       "primary_key?": false,
@@ -785,19 +773,17 @@
     {
       "all_tenants?": false,
       "concurrently": true,
-      "error_fields": [
-        "search_vector"
-      ],
+      "error_fields": [],
       "fields": [
         {
-          "type": "atom",
-          "value": "search_vector"
+          "type": "string",
+          "value": "to_tsvector('english'::regconfig, coalesce(title, '') || ' ' || coalesce(body_markdown, '') || ' ' || coalesce(note, '') || ' ' || coalesce(tool_names[1], '') || ' ' || coalesce(tool_names[2], '') || ' ' || coalesce(tool_names[3], '') || ' ' || coalesce(tool_names[4], '') || ' ' || coalesce(tool_names[5], ''))"
         }
       ],
       "include": null,
       "include_base_filter?": true,
       "message": null,
-      "name": null,
+      "name": "forum_reports_search_words_index",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -880,7 +866,7 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "C60EF8AE50C05DFC897BA6805A67F4FA1D88A537D49A33F82DEFE0E44F54624E",
+  "hash": "312C3181EEB66F23BC27AFCACE25EEDB942407D24A5CB47F427C6764F674D0C8",
   "identities": [
     {
       "all_tenants?": false,

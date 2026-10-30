@@ -13,18 +13,6 @@
       "type": "uuid"
     },
     {
-      "allow_nil?": true,
-      "default": "nil",
-      "generated?": true,
-      "precision": null,
-      "primary_key?": false,
-      "references": null,
-      "scale": null,
-      "size": null,
-      "source": "search_vector",
-      "type": "tsvector"
-    },
-    {
       "allow_nil?": false,
       "default": "nil",
       "generated?": false,
@@ -332,19 +320,17 @@
     {
       "all_tenants?": false,
       "concurrently": true,
-      "error_fields": [
-        "search_vector"
-      ],
+      "error_fields": [],
       "fields": [
         {
-          "type": "atom",
-          "value": "search_vector"
+          "type": "string",
+          "value": "to_tsvector('english'::regconfig, coalesce(origin, '') || ' ' || coalesce(display_name, ''))"
         }
       ],
       "include": null,
       "include_base_filter?": true,
       "message": null,
-      "name": null,
+      "name": "forum_sites_search_words_index",
       "nulls_distinct": true,
       "prefix": null,
       "table": null,
@@ -355,7 +341,7 @@
   ],
   "custom_statements": [],
   "has_create_action": true,
-  "hash": "7453E69DB9812C9E4FF15D004055AFED40FD6522A8124A32A2114524722BE06F",
+  "hash": "EF59018152D59C8C1E7FABE705EF51B06B741DE41EB53D13AB2320524288EC35",
   "identities": [
     {
       "all_tenants?": false,

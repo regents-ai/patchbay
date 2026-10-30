@@ -39,7 +39,16 @@ defmodule Patchbay.Forum.Reply do
     end
 
     custom_indexes do
-      index([:search_vector], using: "GIN", concurrently: true)
+      # A search reads this instead of every reply: exactly `search_vector`'s
+      # expression, so the index answers it.
+      index(
+        [
+          "(to_tsvector('english'::regconfig, coalesce(body_markdown, '') || ' ' || coalesce(note, '') || ' ' || coalesce(fix->>'software', '') || ' ' || coalesce(fix->>'affected_versions', '') || ' ' || coalesce(fix->>'change', '') || ' ' || coalesce(fix->>'test', '') || ' ' || coalesce(fix->>'result', '') || ' ' || coalesce(fix->>'not_covered', '')) || coalesce(jsonb_to_tsvector('english'::regconfig, fix->'versions', '[\"string\"]'), ''::tsvector) || coalesce(jsonb_to_tsvector('english'::regconfig, fix->'sources', '[\"string\"]'), ''::tsvector) || coalesce(jsonb_to_tsvector('english'::regconfig, jsonb_path_query_array(fix, '$.updates[*].text'), '[\"string\"]'), ''::tsvector))"
+        ],
+        name: "forum_replies_search_words_index",
+        using: "GIN",
+        concurrently: true
+      )
     end
   end
 
@@ -56,15 +65,6 @@ defmodule Patchbay.Forum.Reply do
     attribute(:agent_harness, RegentAgents.Harness, public?: true)
     attribute(:agent_paired_at, :utc_datetime_usec, public?: true)
     uuid_primary_key(:id)
-
-    # The words a search finds a reply by, kept by the database from what it
-    # says and every word of its fix (`Patchbay.Forum.Fix`), so a search reads
-    # an index. The migration that adds it says how it is made.
-    attribute(:search_vector, AshPostgres.Tsvector,
-      generated?: true,
-      writable?: false,
-      select_by_default?: false
-    )
 
     attribute(:browser_session_id, :uuid, allow_nil?: false, public?: true)
 
@@ -215,6 +215,33 @@ defmodule Patchbay.Forum.Reply do
   end
 
   calculations do
+    # The words a search finds a reply by: what it says and every word of its
+    # fix, its versions, sources and update texts too (`Patchbay.Forum.Fix`).
+    # Written exactly as `forum_replies_search_words_index` is built, so a
+    # search reads the index.
+    calculate(
+      :search_vector,
+      AshPostgres.Tsvector,
+      expr(
+        fragment(
+          """
+          (to_tsvector('english'::regconfig, coalesce(?, '') || ' ' || coalesce(?, '') || ' ' || coalesce(?->>'software', '') || ' ' || coalesce(?->>'affected_versions', '') || ' ' || coalesce(?->>'change', '') || ' ' || coalesce(?->>'test', '') || ' ' || coalesce(?->>'result', '') || ' ' || coalesce(?->>'not_covered', '')) || coalesce(jsonb_to_tsvector('english'::regconfig, ?->'versions', '["string"]'), ''::tsvector) || coalesce(jsonb_to_tsvector('english'::regconfig, ?->'sources', '["string"]'), ''::tsvector) || coalesce(jsonb_to_tsvector('english'::regconfig, jsonb_path_query_array(?, '$.updates[*].text'), '["string"]'), ''::tsvector))
+          """,
+          body_markdown,
+          note,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix,
+          fix
+        )
+      )
+    )
+
     # Whether the asker marked this reply as solving their problem.
     calculate(
       :asker_pick,
@@ -243,7 +270,7 @@ defmodule Patchbay.Forum.Reply do
     # The words the questions list's filter finds a reply by: what it says and
     # every word of the fix it gives, its sources and updates too
     # (`Patchbay.Forum.Fix`). Read by `Patchbay.Forum.Feed`; the full-text
-    # search reads the same fields, stored (`search_vector`).
+    # search reads the same fields as `search_vector`.
     calculate(
       :searched_words,
       :string,
