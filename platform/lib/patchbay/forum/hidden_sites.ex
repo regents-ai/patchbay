@@ -62,23 +62,36 @@ defmodule Patchbay.Forum.HiddenSites do
   """
   @spec refresh() :: :ok | {:error, term()}
   def refresh do
-    with {:ok, hosts} <- SiteDirectory.read_hidden_hosts(),
-         :ok <-
-           SharedReading.put(@key, %{
-             hosts: Enum.sort(hosts),
-             domains: hosts |> SiteDirectory.hidden_domains() |> Enum.sort()
-           }) do
-      :ok
-    else
-      {:error, reason} = failed ->
-        Logger.warning(
-          "Hidden sites: the read of site checks failed, so listings keep the last " <>
-            "reading: #{inspect(reason, limit: 5)}"
-        )
+    case SiteDirectory.read_hidden_hosts() do
+      {:ok, hosts} ->
+        hosts |> shared() |> kept()
 
-        SharedReading.degraded(@key)
+      {:error, reason} = failed ->
+        degraded("the read of site checks failed", reason)
         failed
     end
+  end
+
+  defp shared(hosts) do
+    SharedReading.put(@key, %{
+      hosts: Enum.sort(hosts),
+      domains: hosts |> SiteDirectory.hidden_domains() |> Enum.sort()
+    })
+  end
+
+  defp kept(:ok), do: :ok
+
+  defp kept({:error, reason} = refused) do
+    degraded("the shared reading refused the new reading", reason)
+    refused
+  end
+
+  defp degraded(what, reason) do
+    Logger.warning(
+      "Hidden sites: #{what}, so listings keep the last reading: #{inspect(reason, limit: 5)}"
+    )
+
+    SharedReading.degraded(@key)
   end
 
   @impl true
