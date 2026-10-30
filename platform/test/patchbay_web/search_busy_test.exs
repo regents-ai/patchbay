@@ -84,7 +84,9 @@ defmodule PatchbayWeb.SearchBusyTest do
 
     test "the search window says search is unavailable", %{conn: conn} do
       {:ok, view, _html} =
-        live_isolated(conn, PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
+        live_isolated(conn, PatchbayWeb.SearchLive,
+          session: %{"visitor" => visitor(), "site_edition" => :main}
+        )
 
       render_hook(view, "open", %{"recent" => []})
       render_async(view, 2_000)
