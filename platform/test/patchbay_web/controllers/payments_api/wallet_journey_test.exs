@@ -335,7 +335,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     refute agents =~ "Take my money back"
 
     withdrawn = build_conn() |> signed_in(c.person) |> post("/posts/#{report.id}/refund", %{})
-    assert redirected_to(withdrawn) == path <> "#patchbay-escrow"
+    assert html_response(withdrawn, 200) =~ "The asker took this money back"
     assert Forum.get_report!(report.id).refund_requested_at
 
     # The five-minute sweep writes down the bounty the contract sent back.

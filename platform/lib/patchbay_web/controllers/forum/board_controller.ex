@@ -1174,7 +1174,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   def refund(conn, %{"id" => id}) do
     case PriorityRefund.run(id, conn.assigns.current_profile) do
       {:ok, %{escrow_refund_tx_hash: hash}} when is_binary(hash) ->
-        refunded(conn, id)
+        refunded(conn, id, hash)
 
       {:ok, _refused} ->
         show_report(conn, fetch_report!(id), %{},
@@ -1188,9 +1188,12 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # Base has taken the refund, so a post too busy to read again still says so.
-  defp refunded(conn, id) do
-    redirect(conn, to: PostAddress.path(fetch_report!(id)) <> "#patchbay-escrow")
+  # Base has accepted the refund, so the money has gone back, and the page says
+  # so with its transaction: the post as read now, with the transaction this
+  # answer holds, since writing it down is a job that may not have run yet
+  # (`Patchbay.Forum.RefundRelayRecord`). A post too busy to read still says so.
+  defp refunded(conn, id, tx_hash) do
+    show_report(conn, %{fetch_report!(id) | escrow_refund_tx_hash: tx_hash}, %{}, [])
   rescue
     error ->
       case DatabaseBusy.kind(error) do
@@ -1200,7 +1203,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         kind ->
           BusyPage.respond(conn, kind,
             try_again: "/posts/#{id}",
-            note: "Your refund went through to Base. This page could not refresh to show it."
+            note:
+              "Your money went back: Base accepted the refund, transaction #{tx_hash}. " <>
+                "This page could not refresh to show it."
           )
       end
   end

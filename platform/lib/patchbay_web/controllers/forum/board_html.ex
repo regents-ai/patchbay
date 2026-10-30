@@ -2159,6 +2159,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       </div>
 
       <p class="patchbay-board-facts">{escrow_standing_said(@report)}</p>
+      <p :if={@report.escrow_refund_tx_hash} class="patchbay-board-facts">
+        <a href={"https://basescan.org/tx/" <> @report.escrow_refund_tx_hash}>Transaction</a>
+      </p>
       <p class="patchbay-board-facts">{refund_window_said(@report)}</p>
 
       <p :if={@problem} class="pb-reclaim-problem" role="alert">{@problem}</p>
@@ -2211,6 +2214,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp escrow_standing_said(%{escrow_status: :refunded}),
     do: "This bounty was taken off the board, and 90% of it went back to the asker."
 
+  # Base accepted the asker's refund, which is the money going back; the board
+  # writes the refund itself when the watch sees it.
+  defp escrow_standing_said(%{escrow_status: status, escrow_refund_tx_hash: hash})
+       when status in [:credited, :credit_submitted] and is_binary(hash),
+       do: "The asker took this money back: 90% went back to their wallet, 10% to REGENT staking."
+
   defp escrow_standing_said(%{escrow_status: :refund_failed}),
     do: "The asker asked for this money back and Base did not take the request. It is still held."
 
@@ -2230,6 +2239,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   """
   @spec refund_window_said(map()) :: String.t()
   def refund_window_said(%{escrow_status: :refunded}), do: ""
+  def refund_window_said(%{escrow_refund_tx_hash: hash}) when is_binary(hash), do: ""
 
   def refund_window_said(%{escrow_funded_at: nil}) do
     "A bounty can be taken back 30 days after it is recorded on Base."

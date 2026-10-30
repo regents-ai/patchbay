@@ -10,7 +10,8 @@ defmodule Patchbay.Forum.PriorityRefund do
   back is never the cheaper way out of it.
 
   Patchbay's part is only a relay for the asker's convenience, and it pays the
-  gas, which is why it relays for the asker alone. Nothing here decides whether
+  gas, which is why it relays for the asker alone. Once Base accepts the
+  transaction, the refund has happened. Nothing here decides whether
   the money can move. Every press reaches the chain, including a press before
   the thirty days and a second press while an earlier one is in flight, and
   what the chain says is written down. A press the chain refuses costs gas and
@@ -19,7 +20,9 @@ defmodule Patchbay.Forum.PriorityRefund do
 
   alias Patchbay.Escrow
   alias Patchbay.Forum
-  alias Patchbay.Forum.Report
+  alias Patchbay.Forum.{RefundRelayRecord, Report}
+
+  require Logger
 
   @doc """
   Relays `actor`'s request to take the bounty on `report_id` back, and returns
@@ -72,18 +75,33 @@ defmodule Patchbay.Forum.PriorityRefund do
   def missing?(_error), do: false
 
   # The money goes back to the payer the contract already recorded, so nothing
-  # here says where it goes. A transaction Base accepted is not money that
-  # moved, so the relay writes down the transaction and leaves the money where
-  # the board believes it is until the watch sees the refund happen.
+  # here says where it goes. Base accepting the transaction is the refund
+  # happening, so the answer says so whatever the database can write now: the
+  # transaction is written down by a job (`RefundRelayRecord`), tried again
+  # until it is. The watch still writes the refund itself when it sees the
+  # money go back.
   defp send_back(asked) do
     case Escrow.refund(asked.id) do
       {:ok, tx_hash} ->
-        # Nothing over HTTP may write what the escrow said, so this is written
-        # deliberately without an actor.
-        Forum.record_refund_relay(asked, %{escrow_refund_tx_hash: tx_hash}, authorize?: false)
+        queue_record(asked, tx_hash)
+        {:ok, %{asked | escrow_refund_tx_hash: tx_hash}}
 
       {:error, _reason} ->
         refused(asked)
+    end
+  end
+
+  # A database too busy to take even the job loses only the job: the refund
+  # has happened, and the watch writes it down when it sees the money go back.
+  defp queue_record(asked, tx_hash) do
+    case Oban.insert(RefundRelayRecord.new_record(asked.id, tx_hash)) do
+      {:ok, _job} ->
+        :ok
+
+      {:error, _reason} ->
+        Logger.warning(
+          "refund #{tx_hash} for report #{asked.id} was accepted by Base but not queued to be written down"
+        )
     end
   end
 
