@@ -110,17 +110,16 @@ defmodule Patchbay.Forum.PriorityRefund do
   Records that Base refused a refund: when the transaction was handed over, or
   in its receipt afterwards.
 
-  A refusal changes nothing on a bounty Base has not yet confirmed is held: it
-  is still waiting on Base, and writing the refusal over that would lose the
-  confirmation when it comes. Nor on one already refunded: a second press
-  refused because the first took the money back leaves the refund standing.
+  Only a bounty Base holds is written refused: one confirmed held, or one
+  already refused before. Every other state is what Base last confirmed, and
+  a refused press leaves it standing: a bounty not yet confirmed held would
+  lose that confirmation, and one paid to the answer's author or refunded
+  stays paid out. The asker's button reaches the chain in every state, so a
+  press on a paid-out bounty is refused there and must not undo the payout.
   """
   @spec refused(Report.t()) :: {:ok, Report.t()} | {:error, term()}
   def refused(%Report{escrow_status: status} = asked)
-      when status in [:credit_submitted, :refunded],
-      do: {:ok, asked}
-
-  def refused(asked) do
+      when status in [:credited, :refund_failed] do
     # Nothing over HTTP may write what the escrow said, so this is written
     # deliberately without an actor.
     Forum.record_escrow_refund(
@@ -129,4 +128,6 @@ defmodule Patchbay.Forum.PriorityRefund do
       authorize?: false
     )
   end
+
+  def refused(asked), do: {:ok, asked}
 end
