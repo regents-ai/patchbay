@@ -51,6 +51,9 @@ defmodule PatchbayWeb.Forum.Board do
   ]
   # A site's own page puts the site on its posts itself (`on_site/2`).
   @site_post_loads (@post_loads -- [:site, tool: [:site]]) ++ [:tool]
+  # A post's own page puts its site on its tool itself (`fetch_report/1`).
+  @report_loads (@post_loads -- [tool: [:site]]) ++
+                  [:tool, :discussion_state, :jev_reading, :post_like_count, :picture_count]
 
   @tool_loads [
     :report_count,
@@ -271,26 +274,46 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error | {:error, term()}
   def fetch_report(id) do
-    case Forum.get_report(id,
-           load:
-             @post_loads ++
-               [
-                 :discussion_state,
-                 :jev_reading,
-                 post_likes: [:author],
-                 # The pictures' places only; each image is read when it is served.
-                 pictures: Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
-                 accepted_reply: [:author],
-                 solution_reply: [:author, :worked_for_others, :last_worked_at]
-               ]
-         ) do
+    with {:ok, %{visibility: :published} = report} <-
+           Forum.get_report(id, load: @report_loads),
+         {:ok, report} <- Ash.load(report, parts(report)) do
+      {:ok, report |> put_site(report.site) |> without_parts()}
+    else
       # An address that names no report, or names one held out of sight, is
       # not on the board.
-      {:ok, %{visibility: :published} = report} -> {:ok, report}
       {:ok, _held} -> :error
       {:error, %Ash.Error.Invalid{}} -> :error
       {:error, failure} -> {:error, failure}
     end
+  end
+
+  # Its likes, pictures and picked replies are read only when it has them;
+  # `without_parts/1` gives the rest their empty value.
+  defp parts(report) do
+    [
+      post_likes: report.post_like_count > 0 && [:author],
+      # The pictures' places only; each image is read when it is served.
+      pictures:
+        report.picture_count > 0 &&
+          Ash.Query.select(Patchbay.Forum.PostPicture, [:id, :position]),
+      accepted_reply: report.accepted_reply_id && [:author],
+      solution_reply:
+        report.solution_reply_id && [:author, :worked_for_others, :last_worked_at]
+    ]
+    |> Enum.filter(fn {_part, load} -> load end)
+  end
+
+  defp without_parts(report) do
+    Enum.reduce(
+      [post_likes: [], pictures: [], accepted_reply: nil, solution_reply: nil],
+      report,
+      fn {part, empty}, report ->
+        case Map.fetch!(report, part) do
+          %Ash.NotLoaded{} -> Map.put(report, part, empty)
+          _loaded -> report
+        end
+      end
+    )
   end
 
   @doc """

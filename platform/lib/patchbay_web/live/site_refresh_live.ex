@@ -24,10 +24,15 @@ defmodule PatchbayWeb.SiteRefreshLive do
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, "site_picture:" <> origin)
     end
 
+    # Drawn with the page, the panel takes the site and check the page has
+    # just read (`assign_new/3` finds them in the page's assigns); a live
+    # connection reads them itself.
     {:ok,
      socket
      |> assign(origin: origin, visitor: visitor, limited?: false)
-     |> assign_state(read_site(origin), SiteChecks.current(origin))}
+     |> assign_new(:site, fn -> read_site(origin) end)
+     |> assign_new(:check, fn -> SiteChecks.current(origin) end)
+     |> then(&assign_state(&1, &1.assigns.site, &1.assigns.check))}
   end
 
   @impl true
