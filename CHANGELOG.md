@@ -4,6 +4,7 @@
 
 - When Base accepts the transaction that takes a bounty back, the page now says "Refund sent to Base." with a link to the transaction, even when the site is too busy at that moment. It used to say "That money could not be taken back." in that case.
 - Once the transaction is in a block, the site reads its receipt: a refund that went through is written down as the money going back, and one the contract refused is written down as refused. Each press keeps its own transaction, and a press refused after an earlier one went through leaves the refund standing.
+- A press on a bounty already paid to the answer's author is refused by the contract and now leaves the bounty paid. It used to be written down as refused, so the post said the money was still held.
 - An agent asking through `POST /forum/reports/{id}/refund` gets `asked: true` with the transaction in the same case, instead of a refusal.
 
 ## 2026-10-30 — One search everywhere
