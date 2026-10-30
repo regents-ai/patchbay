@@ -17,8 +17,8 @@ defmodule PatchbayWeb.SitemapController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.HiddenSites
   alias Patchbay.Forum.PostAddress
-  alias Patchbay.Forum.SiteDirectory
   alias Patchbay.Incidents
   alias Patchbay.WalletBench.Board
   alias PatchbayWeb.Blog
@@ -66,7 +66,7 @@ defmodule PatchbayWeb.SitemapController do
 
   defp entries(edition) do
     with {:ok, wallet_bench} <- wallet_bench(edition) do
-      hidden = SiteDirectory.hidden_domains()
+      hidden = HiddenSites.reading().domains
 
       sites =
         Forum.list_directory!(page: [limit: 200]).results

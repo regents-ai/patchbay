@@ -31,6 +31,7 @@ defmodule Patchbay.Application do
         # there before the endpoint below serves a page.
         Patchbay.SharedReading,
         wallet_bench_board(),
+        hidden_sites(),
         # The Wallet Bench's filtered boards, built four at a time.
         Patchbay.WalletBench.Board.builds(),
         # Each paired agent's sign-in service reading, kept five minutes.
@@ -92,6 +93,11 @@ defmodule Patchbay.Application do
   # reads Techtree's views before it asks to.
   defp wallet_bench_board do
     if serving?(), do: Patchbay.WalletBench.Board
+  end
+
+  # The directory's hidden sites are read only where pages are served, like the bench.
+  defp hidden_sites do
+    if serving?(), do: Patchbay.Forum.HiddenSites
   end
 
   defp serving?, do: Phoenix.Endpoint.server?(:patchbay, PatchbayWeb.Endpoint)

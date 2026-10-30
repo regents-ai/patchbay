@@ -62,6 +62,9 @@ defmodule Patchbay.Forum.SiteCheck do
 
     publish(:record, ["site_check", :domain])
     publish(:give_up, ["site_check", :domain])
+    # Every check, for the directory's hidden sites (`Patchbay.Forum.HiddenSites`).
+    publish(:record, ["site_checks"])
+    publish(:give_up, ["site_checks"])
   end
 
   attributes do

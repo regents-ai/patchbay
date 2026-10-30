@@ -4,7 +4,7 @@
 
 - The Sites list now leaves out a site once a check has read its pages and found no WebMCP tools there, such as a site showing "0 Detected". It comes back as soon as a later check finds a tool. The site's own page, its posts and links to it keep working.
 - The count at the top, search and categories count only the sites shown. Sites that have not been checked yet stay listed with their reported tools.
-- Agents see the same list: `GET /sites` in JSON and Markdown and the `read_site_directory` tool (now version 3) leave these sites out too, and so does the sitemap. `/openapi.json` is version 14.6.0.
+- Agents see the same list: `GET /sites` in JSON and Markdown and the `read_site_directory` tool (now version 3) leave these sites out too, and so does the sitemap. `/openapi.json` is version 14.7.0.
 
 ## 2026-10-30 — One search everywhere
 

@@ -4,7 +4,7 @@ defmodule Patchbay.Forum.SiteDirectory do
   require Ash.Query
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.{Origin, Site, SiteCheck}
+  alias Patchbay.Forum.{HiddenSites, Origin, Site, SiteCheck}
 
   @external_resource "priv/data/site_directory.json"
   @document Jason.decode!(File.read!(@external_resource))
@@ -31,31 +31,34 @@ defmodule Patchbay.Forum.SiteDirectory do
   @spec page(map()) :: {:ok, map()} | {:error, {:invalid, [String.t()]}}
   def page(params) do
     with {:ok, number} <- page_number(params["page"]),
-         do: {:ok, params |> select(number, hidden_hosts()) |> read()}
+         do: {:ok, params |> select(number, HiddenSites.reading().hosts) |> read()}
   end
 
   @doc """
-  The listed hosts whose last finished check read every one of their pages
-  and found no WebMCP tool. Every listing leaves them out, and its totals do
-  not count them, until a check finds a tool; their own pages stay open.
+  Reads the listed hosts whose last finished check read every one of their
+  pages and found no WebMCP tool. Every listing leaves them out, and its
+  totals do not count them, until a check finds a tool; their own pages stay
+  open. Listings take them from `Patchbay.Forum.HiddenSites`, which calls this.
   """
-  @spec hidden_hosts() :: MapSet.t(String.t())
-  def hidden_hosts do
-    for check <- Forum.list_site_checks_without_directory_tools!(),
-        seed <- Map.get(@by_domain, check.domain, []),
-        Enum.all?(entry_pages(seed), &(&1 in check.read_directory_pages)),
-        into: MapSet.new(),
-        do: seed["host"]
+  @spec read_hidden_hosts() :: {:ok, MapSet.t(String.t())} | {:error, term()}
+  def read_hidden_hosts do
+    with {:ok, checks} <- Forum.list_site_checks_without_directory_tools() do
+      hosts =
+        for check <- checks,
+            seed <- Map.get(@by_domain, check.domain, []),
+            Enum.all?(entry_pages(seed), &(&1 in check.read_directory_pages)),
+            into: MapSet.new(),
+            do: seed["host"]
+
+      {:ok, hosts}
+    end
   end
 
-  @doc "The domains every listed host of which is hidden (`hidden_hosts/0`)."
-  @spec hidden_domains() :: MapSet.t(String.t())
-  def hidden_domains do
-    hidden = hidden_hosts()
-
+  @doc "The domains every listed host of which is among `hosts`."
+  @spec hidden_domains(MapSet.t(String.t())) :: [String.t()]
+  def hidden_domains(hosts) do
     for {domain, seeds} <- @by_domain,
-        Enum.all?(seeds, &MapSet.member?(hidden, &1["host"])),
-        into: MapSet.new(),
+        Enum.all?(seeds, &MapSet.member?(hosts, &1["host"])),
         do: domain
   end
 

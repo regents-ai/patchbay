@@ -84,6 +84,17 @@ defmodule Patchbay.SharedReading do
       keys: 400,
       bytes: 48_000_000,
       within: 150
+    },
+    # `Patchbay.Forum.HiddenSites`'s one key: the listed hosts and domains a
+    # check found no tools on. Every listed host hidden is about 4,000 short
+    # strings, under 200 KB, so 2 MB leaves room for the listing to grow.
+    hidden_sites: %{
+      open:
+        "Site checks are public (Patchbay.Forum.SiteCheck's read policy authorize_if " <>
+          "always()); every visitor sees the same listing",
+      keys: 1,
+      bytes: 2_000_000,
+      within: 150
     }
   }
 
