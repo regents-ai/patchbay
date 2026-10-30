@@ -49,7 +49,7 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
       )
 
     Forum.like!(post.id, nil, actor: replier, authorize?: false)
-    %{post: post, asker: asker, replier: replier}
+    %{post: post, asker: asker, replier: replier, tool: tool}
   end
 
   test "the page reads the post once", %{conn: conn} = context do
@@ -76,6 +76,27 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
     assert Enum.count(with_picked, &(&1 == "forum_reports")) == 1
   end
 
+  test "a post shows its own likes, apart from its replies' likes", %{conn: conn} = context do
+    reply(context, 1)
+
+    assert markdown(conn, context.post) =~ "Likes: 1 on the post, 2 in the thread"
+
+    unliked =
+      Forum.file_report!(
+        %{
+          tool_id: context.tool.id,
+          browser_session_id: Ash.UUID.generate(),
+          arguments_sha256: String.duplicate("d", 64),
+          verdict: :verified_failure,
+          note: "The total never updated."
+        },
+        actor: context.asker,
+        authorize?: false
+      )
+
+    assert markdown(conn, unliked) =~ "Likes: 0 on the post"
+  end
+
   test "more replies on the page add no reads", %{conn: conn} = context do
     path = PostAddress.path(context.post)
     reply(context, 1)
@@ -86,6 +107,13 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
 
     assert length(with_four) == length(with_one)
   end
+
+  defp markdown(conn, post),
+    do:
+      conn
+      |> put_req_header("accept", "text/markdown")
+      |> get(PostAddress.path(post))
+      |> response(200)
 
   defp replies_read(reads), do: Enum.count(reads, &(&1 == "forum_replies"))
 

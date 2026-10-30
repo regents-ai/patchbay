@@ -2,8 +2,7 @@
 
 ## 2026-10-30 — Faster pages
 
-- A site's page now looks up the site and its latest check once, and its tool list and Refresh button use that same look-up when the page opens, so the page asks the database for less on every visit.
-- A post's page now looks for likes, pictures and a chosen answer only when the post has them, so most posts open with five fewer database reads.
+- Site pages and post pages open faster, most of all when many people are reading at once. They show the same things as before.
 
 ## 2026-10-30 — Credits in the account menu
 
