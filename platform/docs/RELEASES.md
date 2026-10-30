@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v321, 30 Oct 2026
+
+- Commit: 33b64f955cff6ce041ec0f9a2aa9aae949011f38 (image `33b64f9`), on main after v320. Machine replaced blue-green, one machine in iad.
+- Credits in the account menu (PB-66, Sean 30 Oct; 9b229d3b and 33b64f95): the balance leaves the header and is a row in the account menu under the name and wallet at every width, opening Buy Credits. Patchbay overrides the shared menu's 22.49rem rule in platform/assets/css/credits.css until question 94 on the shared menu. Review fixes: a test that the row follows a Credits change, and no "header" Credits left in README, FEATURES, agent-parity or the Bid page.
+- Checks: make check at 67e9556f (same tree before the rebase onto the v320 release row): ExUnit 959/959, 323 walk steps passed and 37 skipped (Chromium), contracts 15/15.
+- Live (22:46Z): /capabilities.json 33b64f95; /webmcp/health ok with migrations current; headless Chromium at 390 and 1280 on home and /sites: 200, no page errors, no sideways scroll; signed out, no Credits in the header; Sign in opens Privy's window with no console errors. The signed-in menu is Sean's check.
+- Migrations: none. Rollback: v320, image `c552399`.
+
 ## v320, 30 Oct 2026
 
 - Commit: c55239996bce7c68ac674a5666251e6a5e6171df (image `c552399`), on main after v319. Machine replaced blue-green, one machine in iad.
