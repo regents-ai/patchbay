@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v306, 30 Oct 2026
+
+- Commit: 1b1d53fe510c3ef198aba929ba3daa84826c54cf (image `1b1d53f`), on main after v305. Machine 28699d2fd14748, one machine.
+- Chain numbers for Sentinel (PB-39, rollout control rollouts/2026-10-29-chain-numbers.md, template 2e158726, Sean's "1. a" 29 Oct 17:52Z): `health_chain_request_failures_total` for every chain request, the operator wallet's included; `health_wallet_unconfirmed_oldest_seconds` by flow for the operator wallet's sends (paid priority report escrow credits, assist fee forwards to staking); Patchbay's own gauges `patchbay_escrow_unrecorded` and `patchbay_assist_fees_unforwarded_usdc`. `GET /api/agents/v1/me` documents its 403 `agent_not_paired` / `person_not_here`; openapi 14.0.1.
+- Send times (PB-39): migration 20261029203941 adds `escrow_credit_sent_at` to forum_reports and the fee's taken time to assist_runs, so a send's age counts from its own hand-over. The fill is Sean's "83 b" (23:57:33Z): credits already waiting take their report's inserted_at, assist runs already forwarding take their updated_at. The release machine printed "forum_reports: 0 waiting credit(s) given a send time" and "assist_runs: 0 fee forward(s) given a taken time"; the migration ran under patchbay_app in 0.0 s.
+- Checks: make check under the shared lock, lane _verifykey, at 1b1d53fe: 842 ExUnit (20 properties, 12 doctests) plus 2 committed, 322 walk steps and 38 skipped, required fixes, CLI contract, SIWA latest, contracts 15/15. Review gate APPROVED c9d3f383 and b1fb5588 (00:35Z); 1b1d53fe adds only a credo-depth tidy in platform/test/patchbay/release_test.exs, cleared by the chief without re-review.
+- Live (01:47Z): /capabilities.json 1b1d53fe; headless Chromium at 390 and 1280 on /: WebMCP connected, 57 page tools matching the manifest, /webmcp/health ok with migrations current, no page errors, no sideways overflow; /agents.md, /llms.txt, /openapi.json (14.0.1, the me 403 listed), /wallet-bench, /sitemap.xml and /changelog 200; `regents patchbay doctor` all held.
+- Migrations: 20261029203941_operator_send_times. Rollback: v305, image `a73929b` (the added columns stay; v305 never reads them).
+
 ## v305, 29 Oct 2026
 
 - Commit: a73929bd287758a89a7181e61d73cb5ed6ebdc92 (image `a73929b`), on main after v304. Machine 8d5207aee65598, one machine.
