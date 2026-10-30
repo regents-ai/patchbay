@@ -46,6 +46,10 @@ defmodule PatchbayWeb.OpenEditionTest do
   @own_words "My USDC never reached the wallet."
   @own_slug "my-usdc-never-reached-the-wallet"
 
+  # The open Terms keep patchbay.help's liability cap word for word, so "paid"
+  # is set aside on /terms inside that one sentence and nowhere else.
+  @cap "THE AMOUNT YOU PAID DIRECTLY TO REGENTS LABS FOR THE RELEVANT SERVICE DURING THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM; OR"
+
   # The directory's sites and their tools are other sites' own names, from the
   # registry it was imported from. Only the directory page shows them, so only
   # there is a word inside one of them set aside.
@@ -389,6 +393,8 @@ defmodule PatchbayWeb.OpenEditionTest do
     open = conn |> on_open() |> get("/terms") |> html_response(200)
     assert open =~ "https://patchbay.help/terms"
     refute open =~ "DIGITAL ASSETS"
+    assert main =~ @cap
+    assert open =~ @cap
 
     markdown =
       conn
@@ -540,11 +546,14 @@ defmodule PatchbayWeb.OpenEditionTest do
   # Each page that names money, with the words it uses.
   defp money_on(paths, read) do
     for path <- paths,
-        words = path |> read.() |> money_words() |> without_directory(path),
+        words = path |> read.() |> without_cap(path) |> money_words() |> without_directory(path),
         words != [],
         into: %{},
         do: {path, words}
   end
+
+  defp without_cap(page, "/terms"), do: String.replace(page, @cap, "")
+  defp without_cap(page, _path), do: page
 
   defp without_directory(words, "/sites"),
     do: Enum.reject(words, &Regex.match?(~r/\b#{Regex.escape(&1)}\b/i, @directory))

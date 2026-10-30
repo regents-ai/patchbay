@@ -1,6 +1,6 @@
 # Regents Labs Terms of Use for open.patchbay.help
 
-**Effective date:** the day this page is first published at open.patchbay.help  
+**Effective date:** 30 October 2026  
 **Version:** 1.0
 
 These Terms of Use (“Terms”) are a binding agreement between you and **Regents Labs, Inc.** (“Regents Labs,” “we,” “us,” or “our”). They govern your access to and use of `open.patchbay.help`, the open address of **Patchbay**, and the pages, command-line tools, browser tools, APIs, hosted services, documentation, and related services that we operate there (collectively, the “Services”).
@@ -214,7 +214,7 @@ Some jurisdictions do not allow certain warranty exclusions, so some exclusions 
 
 TO THE MAXIMUM EXTENT PERMITTED BY LAW, THE TOTAL LIABILITY OF REGENTS LABS FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THE SERVICES OR THESE TERMS WILL NOT EXCEED THE GREATER OF:
 
-1. THE AMOUNT REGENTS LABS RECEIVED DIRECTLY FROM YOU FOR THE RELEVANT SERVICE DURING THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM; OR
+1. THE AMOUNT YOU PAID DIRECTLY TO REGENTS LABS FOR THE RELEVANT SERVICE DURING THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM; OR
 2. 100 U.S. DOLLARS.
 
 These limitations apply regardless of the legal theory and even if a remedy fails of its essential purpose. They do not limit liability that cannot lawfully be limited.
