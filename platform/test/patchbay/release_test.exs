@@ -379,21 +379,7 @@ defmodule Patchbay.ReleaseTest do
     with_repo(public, fn repo ->
       Ecto.Migrator.run(repo, [release_migrations_path()], :up, to: 20_261_027_073_355)
       Ecto.Adapters.SQL.query!(repo, "CREATE SCHEMA patchbay_app", [])
-
-      for [name, kind] <-
-            Ecto.Adapters.SQL.query!(
-              repo,
-              "SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v') AND c.relname NOT LIKE 'oban_%' ORDER BY c.relkind",
-              []
-            ).rows do
-        object = if kind == "v", do: "VIEW", else: "TABLE"
-
-        Ecto.Adapters.SQL.query!(
-          repo,
-          ~s(ALTER #{object} public."#{name}" SET SCHEMA patchbay_app),
-          []
-        )
-      end
+      move_to_patchbay_app(repo)
     end)
 
     with_repo(config, fn repo ->
@@ -401,6 +387,24 @@ defmodule Patchbay.ReleaseTest do
     end)
 
     config
+  end
+
+  # Every table and view in public but Oban's, as production's import moved them.
+  defp move_to_patchbay_app(repo) do
+    for [name, kind] <-
+          Ecto.Adapters.SQL.query!(
+            repo,
+            "SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relkind IN ('r', 'v') AND c.relname NOT LIKE 'oban_%' ORDER BY c.relkind",
+            []
+          ).rows do
+      object = if kind == "v", do: "VIEW", else: "TABLE"
+
+      Ecto.Adapters.SQL.query!(
+        repo,
+        ~s(ALTER #{object} public."#{name}" SET SCHEMA patchbay_app),
+        []
+      )
+    end
   end
 
   defp staging_getenv do
