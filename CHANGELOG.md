@@ -2,7 +2,7 @@
 
 ## 2026-10-29 — Send times
 
-- Patchbay's health watch now counts how long a paid priority report's escrow credit has waited from when it was taken to be handed to Base, or last handed to it, so a credit sent again is only as old as its second hand-over, and an assist fee's forward from when the fee was taken. Nothing people see changes.
+- Patchbay's health watch now counts how long a paid priority report's escrow credit has waited from when it was taken to be handed to Base, or last handed to it, so a credit sent again is only as old as its second hand-over, and an assist fee's forward from when the fee was taken. Credits already waiting when this ships count from when their report was filed, and fee forwards already under way from their last change. Nothing people see changes.
 
 ## 2026-10-29 — Chain numbers
 
