@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v307, 30 Oct 2026
+
+- Commit: 10cb896f44e64edcb57b30fa0cf9788ceea75b13 (image `10cb896`), on main after v306. Machine 8e240df7017148, one machine.
+- Wallet Bench pair pages (PB-37): each pair's page, `GET /api/wallet-bench/{harness_id}/{wallet_id}`, `read_wallet_bench_pair` and the sitemap open from the bench reading shared once a minute, as the board does. Before the first read they say "Try again in a minute" (503 `not_ready` for agents) and IndexNow snoozes for up to an hour. Pairs that left are forgotten before the new ones are shared, and the pair key escapes both ids. `/openapi.json` 14.1.0.
+- decode-uri-component 0.5.1 (from the payments lane, ba1ea6ee, not deployed on its own): the wallet sign-in bundle's override moves from 0.5.0 to 0.5.1 for GHSA-qr28-fpjm-wq7f; one lock entry changes.
+- Checks: make check under the shared lock, lane _verifykey, at 10cb896f: 845 ExUnit (20 properties, 12 doctests, 2 excluded), 322 walk steps, the failed-start check, contracts 15/15. Review gate APPROVED 10cb896f (01:59Z) after L1, L2 and the key nit were fixed in 3162d91a; range-diffs show rebase context only.
+- Live (02:08Z): /capabilities.json 10cb896f; headless Chromium at 390 and 1280: WebMCP connected, 57 page tools matching the manifest, /webmcp/health ok with migrations current, no page errors, no sideways overflow; the sitemap lists 45 pairs; /wallet-bench/H01/W01 opens at both widths, the API answers 200 and the page's `read_wallet_bench_pair` returns the report; /openapi.json 14.1.0; /changelog carries both entries; Sign in opens the wallet window with no page or console errors. `regents patchbay doctor`: every check held.
+- Migrations: none. Rollback: v306, image `1b1d53f`.
+
 ## v306, 30 Oct 2026
 
 - Commit: 1b1d53fe510c3ef198aba929ba3daa84826c54cf (image `1b1d53f`), on main after v305. Machine 28699d2fd14748, one machine.
