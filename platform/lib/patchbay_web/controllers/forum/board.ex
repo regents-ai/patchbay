@@ -276,7 +276,7 @@ defmodule PatchbayWeb.Forum.Board do
   def fetch_report(id) do
     with {:ok, %{visibility: :published} = report} <-
            Forum.get_report(id, load: @report_loads),
-         {:ok, report} <- Ash.load(report, parts(report)) do
+         {:ok, report} <- Ash.load(report, parts(report), reuse_values?: true) do
       {:ok, report |> put_site(report.site) |> without_parts()}
     else
       # An address that names no report, or names one held out of sight, is
