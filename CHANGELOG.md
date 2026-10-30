@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Search by newest
+
+- A search from `GET /forum/search` or `search_threads` sorted `recent` now finds every question a search by best match or `popular` finds. Since earlier today it could leave out older questions, and sometimes found none.
+
 ## 2026-10-30 — Sites with no tools
 
 - The Sites list now leaves out a site once a check has read its pages and found no WebMCP tools there, such as a site showing "0 Detected". It comes back as soon as a later check finds a tool. The site's own page, its posts and links to it keep working.

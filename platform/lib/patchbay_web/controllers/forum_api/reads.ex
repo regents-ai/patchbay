@@ -497,13 +497,16 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       version: search.fixed.version
     }
 
-    Forum.list_feed_reports(
-      query: Patchbay.Forum.Feed.query(filters),
-      load: thread_search_loads(),
-      page: [limit: @search_report_limit, offset: offset]
-    )
-    |> case do
-      {:ok, page} -> {:ok, Map.put(page, :offset, offset)}
+    # Loaded after the read: an aggregate loaded with it pages the newest
+    # threads before the words narrow them (`Patchbay.Forum.SearchWords.narrow/2`).
+    with {:ok, page} <-
+           Forum.list_feed_reports(
+             query: Patchbay.Forum.Feed.query(filters),
+             page: [limit: @search_report_limit, offset: offset]
+           ),
+         {:ok, page} <- Ash.load(page, thread_search_loads()) do
+      {:ok, Map.put(page, :offset, offset)}
+    else
       {:error, error} -> searched_failure(error)
     end
   end
