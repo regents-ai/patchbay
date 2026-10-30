@@ -189,8 +189,9 @@ config :patchbay, Oban,
     answer_watch: 2,
     outside_calls: 2,
     escrow_reads: 2,
-    # The template runs 5 here; Patchbay's only job on it is the minute's
-    # SharedReading.Heal, which sends one message, so one is enough.
+    # The template runs 5 here; Patchbay's jobs on it are the minute's
+    # SharedReading.Heal, which sends one message, and the ten-minute
+    # SiteCheckSweep, a few quick asks, so one is enough.
     default: 1
   ],
   # AshOban adds each trigger's minute sweep here.
