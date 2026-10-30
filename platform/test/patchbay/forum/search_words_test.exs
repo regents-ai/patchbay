@@ -29,7 +29,7 @@ defmodule Patchbay.Forum.SearchWordsTest do
       handler,
       [:patchbay, :repo, :query],
       fn _event, _measurements, meta, _config ->
-        if meta.query =~ "unnest(to_tsvector" and meta.query =~ "<%",
+        if meta.query =~ "unnest(to_tsvector" and meta.query =~ "UNION",
           do: send(test, {:searched, meta.query, meta.params})
       end,
       nil
@@ -38,17 +38,13 @@ defmodule Patchbay.Forum.SearchWordsTest do
     on_exit(fn -> :telemetry.detach(handler) end)
 
     Forum.search_threads!("nonce", page: [limit: 10])
-    assert_received {:searched, sql, params}
+    assert_received {:searched, one_word, one_word_params}
+    Forum.search_threads!("nonce too low", page: [limit: 10])
+    assert_received {:searched, words, words_params}
 
-    # With every way to read a table but a bitmap of index matches turned off,
-    # PostgreSQL plans with an index wherever one answers a condition, however
-    # few rows the tables hold; a part no index can answer names none.
-    for scan <- ~w(seqscan indexscan indexonlyscan),
-        do: Repo.query!("SET LOCAL enable_#{scan} = off")
-
-    plan = Repo.query!("EXPLAIN " <> sql, params).rows |> Enum.map_join("\n", &hd/1)
-
-    for index <- @indexes, do: assert(plan =~ index, "#{index} not read:\n#{plan}")
+    assert_reads(one_word, one_word_params, @indexes)
+    # Several words never look for a misspelt title.
+    assert_reads(words, words_params, @indexes -- ["forum_reports_title_trgm_index"])
   end
 
   test "finds a thread by its own words and its site's together" do
@@ -83,7 +79,7 @@ defmodule Patchbay.Forum.SearchWordsTest do
         ask!(
           site,
           "Card declined",
-          "The payment failed at checkout on tool_31, error 5004, build 1234, v1.2.30, 1.0.220."
+          "The payment failed at checkout on tool_31, error 5004 and -320001, build 1234, v1.2.30, 1.0.220, x402, ERC20s."
         )
 
       for search <- [&listed/1, &searched/1] do
@@ -99,6 +95,9 @@ defmodule Patchbay.Forum.SearchWordsTest do
         assert search.("1.0.22") == []
         assert search.("v1.2.3") == []
         assert search.("1.0.220") == [thread.id]
+        assert search.("-32000") == []
+        assert search.("x40") == [thread.id]
+        assert search.("erc20") == [thread.id]
       end
     end
 
@@ -139,23 +138,11 @@ defmodule Patchbay.Forum.SearchWordsTest do
     end
 
     test "reads the search indexes" do
-      {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"q" => "nonce"})
+      {one_word, one_word_params} = feed_sql("nonce")
+      {words, words_params} = feed_sql("nonce too low")
 
-      {:ok, query} =
-        filters
-        |> Feed.query()
-        |> Ash.Query.for_read(:feed)
-        |> Ash.Query.limit(20)
-        |> Ash.Query.data_layer_query()
-
-      {sql, params} = Repo.to_sql(:all, query)
-
-      for scan <- ~w(seqscan indexscan indexonlyscan),
-          do: Repo.query!("SET LOCAL enable_#{scan} = off")
-
-      plan = Repo.query!("EXPLAIN " <> sql, params).rows |> Enum.map_join("\n", &hd/1)
-
-      for index <- @indexes, do: assert(plan =~ index, "#{index} not read:\n#{plan}")
+      assert_reads(one_word, one_word_params, @indexes)
+      assert_reads(words, words_params, @indexes -- ["forum_reports_title_trgm_index"])
     end
   end
 
@@ -194,6 +181,31 @@ defmodule Patchbay.Forum.SearchWordsTest do
 
   # The threads the questions list with these words holds, and those the word
   # search finds.
+  defp feed_sql(words) do
+    {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"q" => words})
+
+    {:ok, query} =
+      filters
+      |> Feed.query()
+      |> Ash.Query.for_read(:feed)
+      |> Ash.Query.limit(20)
+      |> Ash.Query.data_layer_query()
+
+    Repo.to_sql(:all, query)
+  end
+
+  # With every way to read a table but a bitmap of index matches turned off,
+  # PostgreSQL plans with an index wherever one answers a condition, however
+  # few rows the tables hold; a part no index can answer names none.
+  defp assert_reads(sql, params, indexes) do
+    for scan <- ~w(seqscan indexscan indexonlyscan),
+        do: Repo.query!("SET LOCAL enable_#{scan} = off")
+
+    plan = Repo.query!("EXPLAIN " <> sql, params).rows |> Enum.map_join("\n", &hd/1)
+
+    for index <- indexes, do: assert(plan =~ index, "#{index} not read:\n#{plan}")
+  end
+
   defp listed(words) do
     {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{"q" => words})
 

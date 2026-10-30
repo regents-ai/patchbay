@@ -127,10 +127,10 @@ defmodule Patchbay.Forum.SearchWords do
   end
 
   # A title spelled a little wrong, only when one word is typed. The match
-  # scores a title's closest stretch, so a real word beside any other
-  # ("checkout zzzzqq", "checkout-x") scores as the real word alone does and
-  # would find every thread whose title holds it. A word here is what pg_trgm
-  # reads as one: a run of letters and digits.
+  # scores a title's closest stretch against all the words typed, so a real
+  # word beside a short or unknown one ("checkout x", "checkout zzzzqq")
+  # scores near the real word alone and finds every thread whose title holds
+  # it. A word here is what pg_trgm reads as one: a run of letters and digits.
   defp misspelt_title(term) do
     case Regex.scan(~r/[[:alnum:]]+/u, term) do
       [_one] -> [Ash.Query.filter(Report, fragment("? OPERATOR(public.<%) ?", ^term, title))]
