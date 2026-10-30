@@ -155,13 +155,15 @@ defmodule PatchbayWeb.Forum.Board do
   @doc """
   The site filed under a domain, if the board has one, with anything more a
   page shows loaded in the same read (the site page's status shows when its
-  tools were last seen).
+  tools were last seen). A read that fails is raised, never taken for a site
+  the board does not have.
   """
   @spec fetch_site(String.t(), list()) :: {:ok, Site.t()} | :error
   def fetch_site(origin, load \\ []) do
     case Forum.get_site_by_origin(origin, query: Ash.Query.load(site_summary(), load)) do
       {:ok, site} -> {:ok, site}
-      {:error, _no_such_site} -> :error
+      {:error, %Ash.Error.Invalid{}} -> :error
+      {:error, failure} -> raise failure
     end
   end
 
@@ -197,7 +199,8 @@ defmodule PatchbayWeb.Forum.Board do
   defp fetch_slug(ref) do
     case Forum.get_site_by_slug(ref, query: site_summary()) do
       {:ok, site} -> {:ok, site}
-      {:error, _no_such_slug} -> :error
+      {:error, %Ash.Error.Invalid{}} -> :error
+      {:error, failure} -> raise failure
     end
   end
 
@@ -534,14 +537,15 @@ defmodule PatchbayWeb.Forum.Board do
   @spec earned_tips([AgentProfile.t() | nil]) :: %{optional(Ash.UUID.t()) => String.t()}
   def earned_tips(authors) do
     case authors |> Enum.reject(&is_nil/1) |> Enum.map(& &1.id) |> Enum.uniq() do
-      [] ->
-        %{}
-
-      ids ->
-        {:ok, earned} = Payments.earned_usdc_atomic_by_profile(ids)
-        Map.new(earned, fn {id, atomic} -> {id, USDC.format(atomic)} end)
+      [] -> %{}
+      ids -> ids |> Payments.earned_usdc_atomic_by_profile() |> formatted_tips()
     end
   end
+
+  defp formatted_tips({:ok, earned}),
+    do: Map.new(earned, fn {id, atomic} -> {id, USDC.format(atomic)} end)
+
+  defp formatted_tips({:error, failure}), do: raise(failure)
 
   @doc """
   The paid priority reports about any version of one tool, newest first: the

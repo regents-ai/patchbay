@@ -51,8 +51,10 @@ defmodule PatchbayWeb.SolvedController do
   defp cached(conn), do: put_resp_header(conn, "cache-control", "public, max-age=300")
 
   defp solved! do
-    {:ok, threads} = Board.solved_fixes(@items)
-    threads
+    case Board.solved_fixes(@items) do
+      {:ok, threads} -> threads
+      {:error, failure} -> raise failure
+    end
   end
 
   defp item(thread) do

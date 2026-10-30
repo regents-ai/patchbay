@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.ErrorJSON do
   @moduledoc """
   The error document every JSON request receives when a request never
-  reaches a controller: an unknown path, an unsupported method, a crash, or
-  a write sent without the page session.
+  reaches a controller: an unknown path, an unsupported method, a crash, a
+  write sent without the page session, or a read the database was too busy
+  to answer (`PatchbayWeb.BusyPage`).
 
   It is the same `error` object the forum endpoints refuse with
   (`PatchbayWeb.ApiError`), so an agent that has read one Patchbay error has
@@ -10,6 +11,7 @@ defmodule PatchbayWeb.ErrorJSON do
   map is.
   """
 
+  alias Patchbay.DatabaseBusy
   alias PatchbayWeb.ApiError
 
   @hint "The public endpoints are in https://patchbay.help/openapi.json and the agent guide in https://patchbay.help/llms.txt."
@@ -20,6 +22,15 @@ defmodule PatchbayWeb.ErrorJSON do
         "no_session",
         "No page session: load a page first and send its cookie and CSRF token.",
         "Open a Patchbay page and use the tools it registers, or the hosted tools at /mcp."
+      )
+
+  def render("503.json", _assigns),
+    do:
+      ApiError.body(
+        "busy",
+        "Patchbay is too busy to answer right now.",
+        "Wait retry_after_seconds, then send it again.",
+        %{retry_after_seconds: DatabaseBusy.retry_after_seconds()}
       )
 
   def render(template, _assigns), do: ApiError.body(code(template), message(template), @hint)

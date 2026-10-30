@@ -4,6 +4,10 @@ defmodule Patchbay.ErrorIgnorer do
   request. Anyone can raise those by visiting a wrong address, so saving them
   would let anyone fill the table. Server faults, exits and throws are all kept.
 
+  A read the database was too busy to answer is left out too
+  (`Patchbay.DatabaseBusy`): the site answers it 503 and logs it, and saving it
+  would add a write to a database that is already full.
+
   A job attempt that Oban will retry is left out too: ErrorTracker reports each
   failed attempt with Oban's `state`, which is `:failure` while attempts remain
   and `:discard` on the last one. A job that recovers on a later attempt saves
@@ -12,11 +16,13 @@ defmodule Patchbay.ErrorIgnorer do
 
   @behaviour ErrorTracker.Ignorer
 
+  alias Patchbay.DatabaseBusy
+
   @impl ErrorTracker.Ignorer
   def ignore?(_error, %{state: :failure}), do: true
 
-  def ignore?(%ErrorTracker.Error{kind: "Elixir." <> _module = kind}, _context),
-    do: kind |> String.to_existing_atom() |> visitors?()
+  def ignore?(%ErrorTracker.Error{kind: "Elixir." <> _module = kind, reason: reason}, _context),
+    do: DatabaseBusy.recorded?(kind, reason) or kind |> String.to_existing_atom() |> visitors?()
 
   def ignore?(_error, _context), do: false
 

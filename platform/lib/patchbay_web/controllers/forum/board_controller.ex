@@ -37,7 +37,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.AgentPages
   alias PatchbayWeb.Forum.Board
-  alias PatchbayWeb.Forum.BusyError
   alias PatchbayWeb.Forum.Discussions
   alias PatchbayWeb.Forum.FixCheck
   alias PatchbayWeb.Forum.Hero
@@ -53,17 +52,26 @@ defmodule PatchbayWeb.Forum.BoardController do
   @thread_not_posted "That post could not be published. Try again in a moment."
   @agent_page_posts 8
 
-  # A post the database is too busy to read asks to be opened again shortly,
-  # from whichever page or form named it. After a form, Try again opens the
-  # post, since the form's own address cannot be opened.
+  # A read the database is too busy to answer asks to be opened again shortly,
+  # from whichever page or form asked. After a form, Try again opens the page
+  # the form belongs to, since the form's own address cannot be opened. Any
+  # other error goes on exactly as raised, so Phoenix still answers a request
+  # no action clause matches with 400.
   def action(conn, options) do
     super(conn, options)
-  rescue
-    busy in BusyError -> BusyPage.respond(conn, busy.cause, try_again: try_again(conn))
+  catch
+    :error, reason ->
+      case DatabaseBusy.kind(reason) do
+        nil -> :erlang.raise(:error, reason, __STACKTRACE__)
+        kind -> BusyPage.respond(conn, kind, try_again: try_again(conn))
+      end
   end
 
   defp try_again(%{method: "GET"} = conn), do: current_path(conn)
   defp try_again(%{path_params: %{"id" => id}}), do: "/posts/#{id}"
+  defp try_again(%{private: %{site_page: true}, path_params: %{"host" => host}}), do: "/" <> host
+  defp try_again(%{private: %{home_page: id}}), do: "/" <> id
+  defp try_again(_form), do: "/"
 
   @doc """
   The home page. A link can open its form with the site, a tool, what to
@@ -241,12 +249,12 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # A search the site is too busy for says so in its place, apart from a read
-  # that failed for any other reason.
+  # A search the site or its database is too busy for says so in its place,
+  # apart from a read that failed for any other reason.
   defp searched({:ok, value}, _name), do: value
 
   defp searched({:error, failure}, name) do
-    if SearchUnavailable.in?(failure),
+    if SearchUnavailable.in?(failure) or DatabaseBusy.kind(failure) != nil,
       do: :busy,
       else: section({:error, failure}, name)
   end
@@ -1179,11 +1187,17 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp refunded(conn, id) do
     redirect(conn, to: PostAddress.path(fetch_report!(id)) <> "#patchbay-escrow")
   rescue
-    busy in BusyError ->
-      BusyPage.respond(conn, busy.cause,
-        try_again: "/posts/#{id}",
-        note: "Your refund went through to Base. This page could not refresh to show it."
-      )
+    error ->
+      case DatabaseBusy.kind(error) do
+        nil ->
+          reraise error, __STACKTRACE__
+
+        kind ->
+          BusyPage.respond(conn, kind,
+            try_again: "/posts/#{id}",
+            note: "Your refund went through to Base. This page could not refresh to show it."
+          )
+      end
   end
 
   # A refusal from the resource already says what a reader needs to know, so it
@@ -1403,14 +1417,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     case Board.fetch_report(id) do
       {:ok, report} -> report
       :error -> raise NotFoundError
-      {:error, failure} -> raise unreadable(failure)
-    end
-  end
-
-  defp unreadable(failure) do
-    case DatabaseBusy.kind(failure) do
-      nil -> failure
-      kind -> BusyError.exception(cause: kind)
+      {:error, failure} -> raise failure
     end
   end
 

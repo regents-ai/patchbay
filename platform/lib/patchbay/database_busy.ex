@@ -7,17 +7,38 @@ defmodule Patchbay.DatabaseBusy do
   """
 
   @doc """
-  The kind of busy an error from an Ash read is, or nil for a fault. Ash keeps
-  a database error raised during a read only in its printed form, inside its
-  own error classes, so the printed form is what is read.
+  The kind of busy an error from a read is, or nil for a fault. Ash keeps a
+  database error raised during a read only in its printed form, inside its own
+  error classes, so for an Ash read the printed form is what is read; a read
+  made without Ash raises the database error itself.
   """
   @spec kind(term()) :: :no_connection | :timeout | nil
+  def kind(%DBConnection.ConnectionError{}), do: :no_connection
+  def kind(%Postgrex.Error{postgres: %{code: :query_canceled}}), do: :timeout
   def kind(%{errors: errors}) when is_list(errors), do: Enum.find_value(errors, &kind/1)
   def kind(%{error: "** (DBConnection.ConnectionError) " <> _said}), do: :no_connection
 
   def kind(%{error: "** (Postgrex.Error) ERROR 57014 (query_canceled)" <> _said}), do: :timeout
 
   def kind(_error), do: nil
+
+  @doc """
+  Whether an error as ErrorTracker records it, by the name of its exception
+  and its printed message, is a busy read (`kind/1`): the error itself, or an
+  Ash error that printed one inside it.
+  """
+  @spec recorded?(String.t(), String.t()) :: boolean()
+  def recorded?("Elixir.DBConnection.ConnectionError", _message), do: true
+  def recorded?("Elixir.Postgrex.Error", "ERROR 57014 (query_canceled)" <> _said), do: true
+
+  def recorded?("Elixir.Ash.Error." <> _class, message),
+    do:
+      String.contains?(message, [
+        "** (DBConnection.ConnectionError) ",
+        "** (Postgrex.Error) ERROR 57014 (query_canceled)"
+      ])
+
+  def recorded?(_exception, _message), do: false
 
   @retry_after_seconds 2
 

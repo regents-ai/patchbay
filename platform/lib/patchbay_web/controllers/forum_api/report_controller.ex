@@ -281,7 +281,8 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   @doc """
   Everything `actor`'s person follows, as `GET /forum/subscriptions` and the
-  `get_subscriptions` tool answer: `{:ok, body}` or `{:refused, failure}`.
+  `get_subscriptions` tool answer: `{:ok, body}` or `{:refused, failure}`,
+  busy when the database was too busy to read them.
   """
   @spec get_subscriptions(Patchbay.Agents.Actor.t()) :: {:ok, map()} | {:refused, term()}
   def get_subscriptions(actor) do
@@ -294,10 +295,16 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
            subscriptions: Enum.map(subscriptions, &Map.take(&1, [:id, :scope_kind, :scope_id]))
          }}
 
-      {:error, _} ->
-        {:refused, {:unavailable, "Your follows could not be read just now. Nothing changed."}}
+      {:error, failure} ->
+        {:refused, follows_unread(DatabaseBusy.kind(failure))}
     end
   end
+
+  defp follows_unread(nil),
+    do: {:unavailable, "Your follows could not be read just now. Nothing changed."}
+
+  defp follows_unread(_busy),
+    do: {:busy, "Patchbay is too busy to read your follows right now. Nothing changed."}
 
   def subscribe(conn, params) do
     case Participation.follow(current_profile(conn), params) do

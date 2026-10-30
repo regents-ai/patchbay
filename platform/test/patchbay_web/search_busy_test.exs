@@ -49,7 +49,7 @@ defmodule PatchbayWeb.SearchBusyTest do
 
       html = html_response(conn, 503)
       assert get_resp_header(conn, "retry-after") == ["2"]
-      assert html =~ "Search is busy right now."
+      assert html =~ "Patchbay is busy right now."
       refute html =~ "could not be loaded"
     end
 

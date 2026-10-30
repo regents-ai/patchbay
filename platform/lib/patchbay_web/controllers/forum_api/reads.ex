@@ -551,9 +551,10 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end
   end
 
-  # A search the site is too busy for asks to be sent again shortly.
+  # A search the site or its database is too busy for asks to be sent again
+  # shortly.
   defp searched_failure(error) do
-    if SearchUnavailable.in?(error),
+    if SearchUnavailable.in?(error) or DatabaseBusy.kind(error) != nil,
       do: {:error, {:busy, SearchUnavailable.words()}},
       else: {:error, error}
   end
