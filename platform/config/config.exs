@@ -118,6 +118,14 @@ config :patchbay, Patchbay.Agents.ActivityReading,
 # The home page's board figures: one reading, kept a minute.
 config :patchbay, Patchbay.Forum.BoardActivity, gc_interval: :timer.minutes(10)
 
+# Each Wallet Bench run's public record from Techtree, kept five minutes. At most
+# 1,000 records and about 100 MB are kept; past either, the oldest are dropped first.
+config :patchbay, Patchbay.WalletBench.RunRecords,
+  gc_interval: :timer.minutes(10),
+  max_size: 1_000,
+  allocated_memory: 100_000_000,
+  gc_memory_check_interval: :timer.seconds(10)
+
 # Background jobs, in Patchbay's own schema (set in config/runtime.exs). Queues
 # hear about new jobs through Erlang process groups. Each
 # queue is added here with the jobs it runs: a run of an assist, four at once

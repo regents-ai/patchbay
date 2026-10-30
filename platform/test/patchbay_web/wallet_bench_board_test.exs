@@ -372,5 +372,59 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     assert install.squares[{"H1", "W1"}].display_run.outcome == "FAILED_SAFETY"
   end
 
+  describe "a run's record from Techtree" do
+    setup do
+      SharedBench.share!()
+
+      %{rows: [[attempt_id]]} =
+        Repo.query!(
+          "SELECT attempt_id::text FROM techtree_app.wallet_bench_results WHERE wallet_id = 'W1'"
+        )
+
+      %{attempt_id: attempt_id, reads: :counters.new(1, [])}
+    end
+
+    test "ten visits to a run's page read it from Techtree once", %{
+      conn: conn,
+      attempt_id: attempt_id,
+      reads: reads
+    } do
+      Req.Test.stub(Patchbay.WalletBench.PublicRun, fn request ->
+        :counters.add(reads, 1, 1)
+
+        Req.Test.json(request, %{
+          "id" => attempt_id,
+          "harness_id" => "H1",
+          "wallet_id" => "W1",
+          "timeline" => [%{"at" => nil, "label" => "Waiting for a machine", "failure" => nil}],
+          "funding" => [],
+          "tests" => []
+        })
+      end)
+
+      for _visit <- 1..10 do
+        assert html_response(get(conn, "/wallet-bench/H1/W1?test=install"), 200) =~
+                 "Waiting for a machine"
+      end
+
+      assert :counters.get(reads, 1) == 1
+    end
+
+    test "while Techtree is down, ten visits ask it once and each page says the run did not load",
+         %{conn: conn, reads: reads} do
+      Req.Test.stub(Patchbay.WalletBench.PublicRun, fn request ->
+        :counters.add(reads, 1, 1)
+        Plug.Conn.send_resp(request, 503, "")
+      end)
+
+      for _visit <- 1..10 do
+        assert html_response(get(conn, "/wallet-bench/H1/W1?test=install"), 200) =~
+                 "The whole run did not load"
+      end
+
+      assert :counters.get(reads, 1) == 1
+    end
+  end
+
   defp perform_job(worker, args), do: Oban.Testing.perform_job(worker, args, repo: Repo)
 end

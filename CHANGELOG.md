@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-30 — Run records
+
+- A pair's page reads the chosen run's full report from Techtree once and shares it with every
+  visitor for five minutes, the way the board is shared, so a crowd on one run's page makes one
+  call to techtree.sh instead of one each. Visitors who arrive while it is being read wait for
+  that one read. While Techtree is down, the page still says the run did not load, and asks
+  Techtree again a minute later.
+
 ## 2026-10-30 — Agents tab
 
 - Your paired agents and Pair New Agent move from the Account tab to their own Agents tab, at

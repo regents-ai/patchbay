@@ -37,6 +37,8 @@ defmodule Patchbay.Application do
         Patchbay.Agents.ActivityReading,
         # The home page's board figures, kept a minute.
         Patchbay.Forum.BoardActivity,
+        # Each Wallet Bench run's record from Techtree, kept five minutes.
+        Patchbay.WalletBench.RunRecords,
         # Each agent's reading for an open account menu, unlinked from the page.
         {Task.Supervisor, name: Patchbay.Agents.Reads},
         # After the repository and PubSub: a Credits balance changed or a
