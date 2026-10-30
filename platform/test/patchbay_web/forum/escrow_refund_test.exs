@@ -17,6 +17,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PriorityRefund
+  alias Patchbay.Forum.RefundRelayRecord
   alias Patchbay.Identity
   alias PatchbayWeb.Plugs.CurrentProfile
 
@@ -138,13 +139,41 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       on_exit(fn -> Application.put_env(:patchbay, :escrow, old_escrow) end)
     end
 
-    test "says it went through when the post is then too busy to read", %{
+    test "says the money went back, with its transaction, and writes it down after", %{
       conn: conn,
       tool: tool
     } do
       asker = profile("aaa")
       report = credited(tool, asker)
-      hold_the_connection_once_the_refund_is_written()
+
+      page =
+        conn |> signed_in(asker) |> post("/posts/#{report.id}/refund", %{}) |> html_response(200)
+
+      assert page =~ "The asker took this money back: 90% went back to their wallet"
+      assert page =~ ~s(href="https://basescan.org/tx/#{@refund_tx}")
+      refute page =~ "could not be taken back"
+
+      # Base accepting it is the refund; writing it down is the job's.
+      assert_enqueued(
+        worker: RefundRelayRecord,
+        args: %{report_id: report.id, tx_hash: @refund_tx}
+      )
+
+      assert is_nil(Forum.get_report!(report.id).escrow_refund_tx_hash)
+
+      assert :ok =
+               perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
+
+      assert Forum.get_report!(report.id).escrow_refund_tx_hash == @refund_tx
+    end
+
+    test "says the money went back when the post is then too busy to read", %{
+      conn: conn,
+      tool: tool
+    } do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+      hold_the_connection_once_the_record_is_queued()
 
       # Asked from another process, as a visitor's request is, so the sandbox
       # drops its wait from the queue as it would a crowd's.
@@ -157,17 +186,77 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       send(holder, :release)
 
       html = html_response(refunded, 503)
-      assert html =~ "Your refund went through to Base. This page could not refresh to show it."
+
+      assert html =~
+               "Your money went back: Base accepted the refund, transaction #{@refund_tx}. " <>
+                 "This page could not refresh to show it."
+
       assert html =~ ~s(href="/posts/#{report.id}")
       assert get_resp_header(refunded, "retry-after") == ["2"]
-      assert Forum.get_report!(report.id).escrow_refund_tx_hash == @refund_tx
+
+      assert_enqueued(
+        worker: RefundRelayRecord,
+        args: %{report_id: report.id, tx_hash: @refund_tx}
+      )
+    end
+
+    test "an agent's page session is told the refund was asked, with its transaction", %{
+      conn: conn,
+      tool: tool
+    } do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+
+      answer =
+        conn
+        |> signed_in(asker)
+        |> post(~p"/forum/reports/#{report.id}/refund")
+        |> json_response(200)
+
+      assert answer["asked"] == true
+      assert answer["refund_tx_hash"] == @refund_tx
+
+      assert_enqueued(
+        worker: RefundRelayRecord,
+        args: %{report_id: report.id, tx_hash: @refund_tx}
+      )
+    end
+
+    test "a record the database is too busy for is tried again", %{tool: tool} do
+      report = credited(tool, profile("aaa"))
+      test = self()
+
+      holder =
+        spawn(fn ->
+          Patchbay.Repo.transaction(
+            fn ->
+              send(test, :held)
+              receive do: (:release -> :ok)
+            end,
+            timeout: :infinity
+          )
+        end)
+
+      assert_receive :held
+
+      # Asked from another process, as the queue's own runner is, so the
+      # sandbox drops its wait as it would under load.
+      answer =
+        fn -> perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx}) end
+        |> Task.async()
+        |> Task.await(30_000)
+
+      send(holder, :release)
+
+      assert {:error, _busy} = answer
+      assert is_nil(Forum.get_report!(report.id).escrow_refund_tx_hash)
     end
   end
 
-  # Once the refund Base took is written down, another process takes the
-  # test's one database connection, so the post's next read waits in the
-  # queue until the sandbox drops it.
-  defp hold_the_connection_once_the_refund_is_written do
+  # Once the refund Base took is queued to be written down, another process
+  # takes the test's one database connection, so the post's next read waits in
+  # the queue until the sandbox drops it.
+  defp hold_the_connection_once_the_record_is_queued do
     test = self()
     id = {__MODULE__, make_ref()}
 
@@ -175,7 +264,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       id,
       [:patchbay, :repo, :query],
       fn _event, _measurements, %{query: query}, _config ->
-        if refund_written?(query) and is_nil(Process.get(id)) do
+        if record_queued?(query) and is_nil(Process.get(id)) do
           holder = spawn(&hold_until_released/0)
           Process.put(id, holder)
           send(test, {:holder, holder})
@@ -192,11 +281,8 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     Patchbay.Repo.transaction(fn -> receive do: (:release -> :ok) end, timeout: :infinity)
   end
 
-  # The write that sets the refund's transaction, not one that only returns it.
-  defp refund_written?("UPDATE " <> update),
-    do: update |> String.split(" RETURNING ") |> hd() |> String.contains?("escrow_refund_tx_hash")
-
-  defp refund_written?(_query), do: false
+  defp record_queued?(~s(INSERT INTO "public"."oban_jobs") <> _job), do: true
+  defp record_queued?(_query), do: false
 
   defp base_node do
     server =
