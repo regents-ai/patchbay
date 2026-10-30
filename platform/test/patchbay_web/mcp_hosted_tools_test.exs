@@ -26,6 +26,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
 
   setup do
     SignedAgent.stub_siwa()
+    SignedAgent.stub_wallet_author()
     %{asker: SignedAgent.pair!(), helper: SignedAgent.pair!()}
   end
 
@@ -178,6 +179,17 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       {"request_free_fix", %{"args" => free_fix()},
        {:http, :refusal, :post, "/api/agent/assists", %{"args" => free_fix()}}},
       {"get_assist", %{"run_id" => run}, {:http, :answer, :get, "/api/agent/assists/#{run}"}},
+      # Payments are not set up in tests, so new terms are refused alike at
+      # either door; the paid journey is in WalletJourneyTest.
+      {"post_priority_report", %{"kind" => "special_post", "args" => paid_report()},
+       {:http, :refusal, :post, "/api/agent/payment_intents",
+        %{"kind" => "special_post", "args" => paid_report()}}},
+      {"request_assist", %{"kind" => "jev_assist", "args" => free_fix()},
+       {:http, :refusal, :post, "/api/agent/payment_intents",
+        %{"kind" => "jev_assist", "args" => free_fix()}}},
+      {"execute_payment", %{"payment_intent_id" => missing}, {:refused, "not_found"}},
+      {"get_payment_status", %{"payment_intent_id" => missing},
+       {:http, :refusal, :get, "/api/agent/payment_intents/#{missing}"}},
       {"find_known_fixes", %{"site" => "patchbay.help"},
        {:http, :answer, :get, "/known-fixes?site=patchbay.help"}},
       {"get_known_fix", %{"fix_id" => known_fix()},
@@ -241,6 +253,14 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
 
   defp credits_help,
     do: %{"title" => "Credits went missing", "body" => "A top-up shows on Base but not here."}
+
+  defp paid_report,
+    do: %{
+      "origin" => "https://quiet.example.net/bookings",
+      "tool_name" => "amend_reservation",
+      "verdict" => "verified_failure",
+      "amount_usdc" => "1.00"
+    }
 
   defp known_fix, do: hd(Patchbay.Assist.KnownFixes.all()).id
 

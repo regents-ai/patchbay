@@ -19,8 +19,10 @@ defmodule PatchbayWeb.MCPPropertyTest do
   @methods ~w(initialize server/discover ping events/list events/subscribe events/unsubscribe
               resources/list resources/read tools/list tools/call notifications/initialized)
 
+  # The paying tool verifies a wallet author, as production is set up to.
   setup do
     SignedAgent.stub_siwa()
+    SignedAgent.stub_wallet_author()
     %{agent: SignedAgent.pair!()}
   end
 

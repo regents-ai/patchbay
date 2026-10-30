@@ -23,6 +23,31 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     assert Contract.problems(files()) == []
   end
 
+  # PB-17: one rule on every surface. A command an agent runs names, as its
+  # browser twin, a tool an agent runs, and every agent payment command has one.
+  test "every command's browser tool is one an agent can run" do
+    %{manifest: manifest, commands: commands} = files()
+    tools = Map.new(manifest["tools"], &{&1["name"], &1})
+
+    for %{"webmcp" => name} = command <- commands["commands"], is_binary(name) do
+      tool = Map.fetch!(tools, name)
+      assert tool["authentication"] != "owner_only", command["command"]
+      assert tool["availability"] == "available", command["command"]
+    end
+
+    paying =
+      for %{"path" => "/api/agent/payment_intents" <> _} = command <- commands["commands"],
+          do: {command["command"], command["webmcp"]}
+
+    assert Enum.sort(paying) == [
+             {"assist request", "request_assist"},
+             {"payments complete <id>", "complete_payment"},
+             {"payments execute <id>", "execute_payment"},
+             {"payments get <id>", "get_payment_status"},
+             {"payments prepare", "post_priority_report"}
+           ]
+  end
+
   # The module refuses to compile on any of these; each edit is drift the
   # check exists to stop.
   test "drift between the manifest, the rows, OpenAPI and the commands is a problem" do

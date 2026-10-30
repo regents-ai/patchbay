@@ -2,7 +2,8 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
   @moduledoc """
   Refuses to accept an answer that cannot settle a paid priority report: a
   report already answered, a report whose bounty has gone back to its asker, a
-  reply that is not on this report, the asker's own reply, a reply nobody
+  reply that is not on this report, the asker's own reply or one of their
+  agents' (for an agent's report, its person's and theirs), a reply nobody
   signed in wrote, one moderation set aside, or one whose author cannot be
   paid.
 
@@ -56,7 +57,7 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
       is_nil(reply.author_profile_id) ->
         refuse("was posted by nobody signed in, so there is no one to pay")
 
-      reply.author_profile_id == report.author_profile_id ->
+      asker(reply) == asker(report) ->
         refuse("is your own reply, which cannot be accepted")
 
       reply.reward_eligibility in [:ineligible_spam, :removed] ->
@@ -69,6 +70,12 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
         :ok
     end
   end
+
+  # The person behind a post: the one an agent wrote it for, else whoever
+  # signed in to write it. A person's own replies and those of their agents
+  # are all theirs, so none of them can win that person's money.
+  defp asker(%{beneficiary_profile_id: person}) when is_binary(person), do: person
+  defp asker(%{author_profile_id: author}), do: author
 
   @spec refuse(String.t()) :: {:error, Exception.t()}
   defp refuse(message) do

@@ -1,4 +1,6 @@
 import type * as PrivyBridge from "../privy_bridge.tsx"
+import {returnedFromOAuth} from "./sign_in.ts"
+import type {Proof, Refusal} from "./sign_in.ts"
 
 const SESSION_PATH = "/auth/privy/session"
 
@@ -17,16 +19,25 @@ type AccountOptions = {
   fetch?: typeof globalThis.fetch
   csrfToken?: string
   location?: {reload?: () => void}
+  loadBridge?: (doc: MetaDocument) => Promise<Pick<PrivyBridgeModule, "signIn" | "finishRedirectSignIn" | "signOut"> | null>
 }
+
+// Patchbay refuses a sign-in whose Privy account has no wallet; the page says so
+// in the server's words when the account's wallet never appears here either.
+const NO_WALLET = "Your account has no wallet yet. Sign in again to get one."
 
 /**
  * Wires every `data-account-target` control on the page to Privy: the account
  * strip in the root layout, and the Account page's own Sign in.
  *
  * Both are drawn from the signed session, so this only has to answer two
- * clicks. Nothing here reconciles state on load: a Privy that is still waking
- * up says nothing about whether this browser is signed in to Patchbay, and the
- * page already knows the answer to that.
+ * clicks, and one page load: Privy brings a Google or other redirect sign-in
+ * back to the page it started on with `?privy_oauth_code=`, and it finishes only
+ * once Privy runs there, so a signed-out page Privy returned to starts it at once
+ * and finishes that sign-in (as ash-template's auth_lazy.ts). Nothing else here
+ * reconciles state on load: a Privy that is still waking up says nothing about
+ * whether this browser is signed in to Patchbay, and the page already knows the
+ * answer to that.
  */
 export function installAccountControl(options: AccountOptions = {}) {
   const doc = options.document ?? globalThis.document
@@ -48,6 +59,10 @@ export function installAccountControl(options: AccountOptions = {}) {
       button.disabled = false
     }
   })
+
+  if (returnedFromOAuth(doc.location?.search ?? "") && doc.querySelector("[data-account-target='sign-in']")) {
+    void requestAccountAction("redirect-sign-in", doc, options)
+  }
 }
 
 const accountAttempts = new WeakMap<Document, Promise<void>>()
@@ -63,37 +78,44 @@ export function requestAccountAction(action: string, doc: Document, options: Acc
   return attempt
 }
 
-// Signing in and out says nothing, even when it does not go through: a page
-// that signed in or out reloads, and one that did not stays as it was.
+// A page that signed in or out reloads, and one that did not stays as it was.
+// A sign-in Patchbay refused, or one whose wallet never appeared, says why under
+// the header's account control; any other that did not go through says nothing.
 async function performAccountAction(action: string, doc: Document, options: AccountOptions = {}): Promise<void> {
   const appId = privyAppId(doc)
   if (!appId) return
 
-  const bridge = await loadPrivyBridge(doc)
+  const bridge = await (options.loadBridge ?? loadPrivyBridge)(doc)
   if (!bridge) return
 
-  if (action === "sign-in") return signIn(bridge, appId, options)
+  if (action === "sign-in") return signIn(bridge.signIn(appId), doc, options)
+  if (action === "redirect-sign-in") return signIn(bridge.finishRedirectSignIn(appId), doc, options)
   return signOut(bridge, appId, options)
 }
 
-async function signIn(bridge: PrivyBridgeModule, appId: string, options: AccountOptions): Promise<void> {
-  const proof = await bridge.signIn(appId)
-  if (!proof.ok) return
+async function signIn(proving: Promise<Proof | Refusal>, doc: Document, options: AccountOptions): Promise<void> {
+  showStatus(doc, null)
+  const proof = await proving
+  if (!proof.ok) {
+    if (proof.reason === "no_wallet") showStatus(doc, NO_WALLET)
+    return
+  }
 
-  const signedIn = await call(options, "POST", {
+  const response = await send(options, "POST", {
     authorization: `Bearer ${proof.access}`,
     "privy-id-token": proof.identity,
   })
 
   // The page is drawn from the session, so the session is what a reload reads.
-  if (signedIn) reload(options)
+  if (response?.ok) return reload(options)
+  showStatus(doc, await refusalWords(response))
 }
 
 // The Patchbay session goes first, because that is the one this page is drawn
 // from. Ending the Privy session behind it is cleanup: if it fails, the visitor
 // is still signed out of Patchbay.
-async function signOut(bridge: PrivyBridgeModule, appId: string, options: AccountOptions): Promise<void> {
-  if (!(await call(options, "DELETE", {}))) return
+async function signOut(bridge: Pick<PrivyBridgeModule, "signOut">, appId: string, options: AccountOptions): Promise<void> {
+  if (!(await send(options, "DELETE", {}))?.ok) return
 
   try {
     await bridge.signOut(appId)
@@ -128,22 +150,39 @@ export async function loadPrivyBridge(doc: MetaDocument | undefined): Promise<Pr
   }
 }
 
-// Whether the session endpoint took the request.
-async function call(options: AccountOptions, method: string, headers: Record<string, string>): Promise<boolean> {
+// The session endpoint's answer, or null when it could not be asked.
+async function send(options: AccountOptions, method: string, headers: Record<string, string>): Promise<Response | null> {
   const fetchImpl = options.fetch ?? globalThis.fetch
-  if (typeof fetchImpl !== "function") return false
+  if (typeof fetchImpl !== "function") return null
 
   try {
-    const response = await fetchImpl(SESSION_PATH, {
+    return await fetchImpl(SESSION_PATH, {
       method,
       credentials: "same-origin",
       headers: {accept: "application/json", "x-csrf-token": options.csrfToken ?? "", ...headers},
     })
-
-    return response.ok === true
   } catch {
-    return false
+    return null
   }
+}
+
+// A refusal's own words and what to do, as the session endpoint wrote them, or
+// nothing when it gave none.
+async function refusalWords(response: Response | null): Promise<string | null> {
+  try {
+    const {error} = await response!.json()
+    return typeof error?.message === "string" && typeof error?.hint === "string" ? `${error.message} ${error.hint}` : null
+  } catch {
+    return null
+  }
+}
+
+// The note under the header's account control, or none.
+function showStatus(doc: Document, words: string | null) {
+  const status = doc.querySelector<HTMLElement>("#account-auth-status")
+  if (!status) return
+  status.textContent = words ?? ""
+  status.hidden = words === null
 }
 
 function reload(options: AccountOptions) {

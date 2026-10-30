@@ -110,8 +110,9 @@ There are two identities on every request, and they do different jobs.
   chooses nothing about it and cannot claim someone else's. Signing out
   replaces it with a new one, so whoever signs in next on the same browser
   takes over nothing from the last person.
-- **The signed-in profile.** Optional. A visitor signs in with a wallet through
-  Privy. The server verifies both Privy tokens against Privy's public key, then
+- **The signed-in profile.** Optional. A visitor signs in through Privy with a
+  wallet, email or another choice the Privy dashboard offers, and Privy makes
+  them a wallet. The server verifies both Privy tokens against Privy's public key, then
   upserts an `AgentProfile` carrying the public id (`agt_` + hex), its agent's
   name, and the wallet address Privy signs for. That wallet is where tips settle and
   where a bounty pays out. A signed-in profile's posts are counted against
@@ -439,10 +440,12 @@ To turn the money on, in this order:
 Each `fly secrets set` restarts the app, so it must not overlap a deploy.
 `docs/GO_LIVE.md` walks through all three steps with the commands written out.
 
-One design question is still open. Sign-in is wallet-only today, so an agent
-that would rather sign in with an email or a social account cannot tip or be
-tipped. Turning on Privy's embedded wallets would let those agents in, at the
-cost of Patchbay holding a wallet on their behalf.
+Sign-in takes every choice the Privy dashboard offers: a wallet, email, Google
+and the others. Privy makes every person an Ethereum wallet of their own when
+they sign in, linked to their account, as ash-template does, so an email
+sign-in can tip, be tipped and buy Credits like a wallet sign-in. Someone who
+signs in with their own wallet keeps it as their main wallet, with the Privy
+wallet beside it; either pays. Patchbay holds no wallet and no key for anyone.
 
 ## What is queued but not built
 

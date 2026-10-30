@@ -98,7 +98,17 @@
 
           <%!-- The one control that belongs to Patchbay rather than to any page, so
       it stands above all of them. --%>
-          <div id="pb-account" class="pb-account">
+          <%!-- Every wallet the account links, the only ones that send for it, and
+          its main wallet, which sends when the tab holds several of them and Privy
+          names none (privy/wallet_choice.ts). The Credits panel takes the same list. --%>
+          <div
+            id="pb-account"
+            class="pb-account"
+            data-account-wallets={
+              @current_profile && Enum.join(@current_profile.account_wallets, " ")
+            }
+            data-account-wallet={@current_profile && @current_profile.wallet_address}
+          >
             <Regent.ThemeToggle.button
               id="pb-theme-toggle"
               class="pb-theme-toggle"
@@ -136,6 +146,15 @@
             >
               <span class="pb-action-label" data-press-label>Sign in</span>
             </Regent.Primitives.button>
+            <p
+              id="account-auth-status"
+              class="account-auth-status"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              hidden
+            >
+            </p>
           </div>
         </header>
         {live_render(@conn, PatchbayWeb.SearchLive,

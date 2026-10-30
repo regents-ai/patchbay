@@ -36,9 +36,11 @@ defmodule PatchbayWeb.PrivySessionController do
     "not_configured" =>
       {:service_unavailable, "Signing in is not set up on this Patchbay.",
        "Use Patchbay without signing in."},
+    # Privy makes every person a wallet when they sign in, and the page waits for
+    # it, so an account still without one gets it by signing in again. The words
+    # are ash-template's for an account with no wallet.
     "no_wallet" =>
-      {:unprocessable_entity, "Patchbay pays tips straight to a wallet, so signing in needs one.",
-       "Add an Ethereum wallet to your Privy account, then sign in again."},
+      {:unprocessable_entity, "Your account has no wallet yet.", "Sign in again to get one."},
     "unauthorized" => {:unauthorized, "That sign-in could not be verified.", "Sign in again."}
   }
 
