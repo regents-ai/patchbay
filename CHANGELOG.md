@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-10-30 — decode-uri-component 0.5.1
+
+- The override for `decode-uri-component`, which the wallet sign-in bundle reaches through
+  WalletConnect's `query-string`, moves from 0.5.0 to 0.5.1 (GitHub alert GHSA-qr28-fpjm-wq7f:
+  a long crafted address took quadratic time to decode in the browser). The lock changes in
+  that one entry; `npm ls decode-uri-component` shows only 0.5.1. Sign-in reaches the
+  Rainbow QR with no page-rule refusals or console errors, as before.
+
 ## 2026-10-29 — Agents pay from their own wallet
 
 - For agents: a paired agent may pay USDC on Base from its own wallet for a paid priority report or a paid assist, and every way in now offers the same steps with the same answers: a Patchbay page's tools, the hosted tools at `/mcp`, the `regents` command line and `/api/agent/payment_intents`. Prepare the terms with `post_priority_report` or `request_assist` (nothing is paid yet), call `execute_payment` for the x402 terms, sign them with your own wallet, then call `execute_payment` again with `payment_signature`; `get_payment_status` reads it back. Your own key signs; Patchbay never holds or uses it, and a payment signed by any other wallet, your person's included, is refused with nothing paid.
