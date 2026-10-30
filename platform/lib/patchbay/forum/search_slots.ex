@@ -1,18 +1,24 @@
 defmodule Patchbay.Forum.SearchSlots do
   @moduledoc """
-  Room for a word search (`Patchbay.Forum.Report`'s `:search`) on the site's
-  few database connections, so a crowd searching at once cannot take every one
-  of them from the pages around it.
+  Room for a text search on the site's few database connections, so a crowd
+  searching at once cannot take every one of them from the pages around it.
+  Every read that looks for typed words takes a place: the word search
+  (`Patchbay.Forum.Report`'s `:search`), the question list with words in it
+  (`Patchbay.Forum.Feed`), and the site and tool matches (`:find` on
+  `Patchbay.Forum.Site` and `Patchbay.Forum.Tool`).
 
-  At most two searches read at once. A search waits up to half a second for
-  room, then reads inside one transaction whose statements PostgreSQL stops
-  after two seconds (`statement_timeout`, set for that transaction only). A
-  search that finds no room, runs out of time or is refused by the database
-  answers `Patchbay.Forum.SearchUnavailable`, which every door turns into
-  "try again shortly"; the kind of failure is logged.
+  At most two such reads run at once. A read waits up to half a second for a
+  place, then runs inside one transaction whose statements PostgreSQL stops
+  after two seconds (`statement_timeout`, set for that transaction only).
+
+  Only a crowd makes a search busy: no place free in time, no connection free
+  in time, or PostgreSQL stopping the read at two seconds. Each answers
+  `Patchbay.Forum.SearchUnavailable`, which every door turns into "try again
+  shortly", and the kind is logged. Any other error is a fault and passes
+  through unchanged.
 
   The room is a `NimblePool` of slots that hold nothing: it queues the waiting
-  searches in order and takes back the slot of a search whose process ends.
+  reads in order and takes back the slot of a read whose process ends.
   """
 
   use Ash.Resource.Preparation
@@ -38,46 +44,74 @@ defmodule Patchbay.Forum.SearchSlots do
     }
   end
 
+  @doc "A read action whose every read takes a place."
   @impl Ash.Resource.Preparation
-  def prepare(query, _options, _context) do
-    query
-    |> Ash.Query.around_transaction(&in_slot/2)
-    |> Ash.Query.before_action(fn query ->
-      Repo.query!("SET LOCAL statement_timeout = '#{@statement_timeout}'")
-      query
-    end)
+  def prepare(query, _options, _context), do: hold(query)
+
+  @doc "One read of `query` that takes a place."
+  @spec hold(Ash.Query.t()) :: Ash.Query.t()
+  def hold(query) do
+    Ash.Query.around_transaction(query, fn query, read -> run(fn -> read.(query) end) end)
   end
 
-  defp in_slot(query, read) do
+  @doc """
+  Runs `read`, which answers `{:ok, ...}` or `{:error, error}`, in a place
+  and a transaction of its own. Busy answers `SearchUnavailable`; any other
+  answer is `read`'s own.
+  """
+  @spec run((-> tuple())) :: tuple()
+  def run(read) do
     NimblePool.checkout!(
       __MODULE__,
       :search,
-      fn _from, slot -> {answered(read, query), slot} end,
+      fn _from, slot -> {in_transaction(read), slot} end,
       @wait_ms
     )
   catch
     :exit, {:timeout, {NimblePool, :checkout, _}} -> unavailable(:no_slot)
   end
 
-  defp answered(read, query) do
-    case read.(query) do
-      {:error, error} -> unavailable(error)
-      answer -> answer
+  defp in_transaction(read) do
+    Repo.transaction(fn ->
+      Repo.query!("SET LOCAL statement_timeout = '#{@statement_timeout}'")
+
+      case read.() do
+        {:error, error} -> Repo.rollback(error)
+        answer -> answer
+      end
+    end)
+    |> case do
+      {:ok, answer} -> answer
+      {:error, error} -> failed(error)
     end
   rescue
     # No connection came free in time to start the transaction.
-    error in DBConnection.ConnectionError -> unavailable(error)
+    DBConnection.ConnectionError -> unavailable(:no_connection)
   end
 
-  # The log names the kind of failure only, never the words searched for.
-  defp unavailable(cause) do
-    Logger.warning("Search unavailable", error_type: inspect(error_type(cause)))
-    {:error, SearchUnavailable.exception(cause: cause)}
+  defp failed(error) do
+    case busy(error) do
+      nil -> {:error, error}
+      kind -> unavailable(kind)
+    end
   end
 
-  defp error_type(:no_slot), do: :no_slot
-  defp error_type(%{errors: [error | _rest]}), do: error.__struct__
-  defp error_type(error), do: error.__struct__
+  # PostgreSQL stopping a statement at its time limit is query_canceled
+  # (SQLSTATE 57014). Ash keeps a database error raised during a read only in
+  # its printed form, inside its own error classes.
+  defp busy(%{errors: errors}) when is_list(errors), do: Enum.find_value(errors, &busy/1)
+
+  defp busy(%{error: "** (Postgrex.Error) " <> said}) do
+    if said =~ "57014 (query_canceled)", do: :timeout
+  end
+
+  defp busy(_error), do: nil
+
+  # The log names the kind only, never the words searched for.
+  defp unavailable(kind) do
+    Logger.warning("Search unavailable", error_type: inspect(kind))
+    {:error, SearchUnavailable.exception(cause: kind)}
+  end
 
   @impl NimblePool
   def init_worker(pool_state), do: {:ok, :slot, pool_state}

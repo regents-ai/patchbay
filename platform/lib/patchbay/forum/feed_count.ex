@@ -2,9 +2,11 @@ defmodule Patchbay.Forum.FeedCount do
   @moduledoc """
   How many threads a question list (`Patchbay.Forum.Feed`) holds across all
   its pages. A count is kept on this machine for a minute under the list's
-  filters, and for the Following list under the follows it was counted with,
-  and shared by every visitor reading that list, so a busy home page counts
-  its threads at most once a minute. A failed count is not kept.
+  filters but its order, which never changes the count, and for the Following
+  list under the follows it was counted with, and shared by every visitor
+  reading that list, so a busy home page counts its threads at most once a
+  minute. A failed count is not kept. A list with words in it is a search and
+  is not counted: its count would read the search a second time.
   """
   use Nebulex.Cache, otp_app: :patchbay, adapter: Nebulex.Adapters.Local
 
@@ -15,7 +17,7 @@ defmodule Patchbay.Forum.FeedCount do
   @doc "The list's count as last read, read again when the kept count is more than a minute old."
   @spec count(map(), list()) :: {:ok, non_neg_integer()} | {:error, term()}
   def count(filters, subscriptions) do
-    key = {filters, followed(filters, subscriptions)}
+    key = {Map.delete(filters, :sort), followed(filters, subscriptions)}
 
     case get!(key) do
       nil -> count_and_keep(key, filters, subscriptions)

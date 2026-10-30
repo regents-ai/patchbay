@@ -243,6 +243,7 @@ defmodule Patchbay.Forum.Site do
       )
 
       prepare(build(sort: [report_count: :desc, featured_rank: :asc, origin: :asc], limit: 6))
+      prepare(Patchbay.Forum.SearchSlots)
     end
 
     read :directory do

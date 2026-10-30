@@ -90,7 +90,7 @@
           matches={@matches}
         />
         <Regent.Primitives.notice
-          :if={@filters.q != "" and @matches == :unavailable}
+          :if={@filters.q != "" and @matches == :unavailable and @reports != :busy}
           tone="warning"
           class="pb-section-unavailable"
         >
@@ -134,8 +134,16 @@
           Nothing you typed on this page is lost.
           <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a>
         </Regent.Primitives.notice>
+        <Regent.Primitives.notice
+          :if={@reports == :busy}
+          tone="warning"
+          class="pb-section-unavailable pb-discussions-unavailable"
+        >
+          <strong>Search is busy right now.</strong>
+          <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a> in a moment.
+        </Regent.Primitives.notice>
         <.post_list
-          :if={@reports != :unavailable}
+          :if={@reports not in [:unavailable, :busy]}
           posts={@reports}
           earned_tips={%{}}
           empty={if @filters.q == "", do: "No questions here yet", else: "No matching questions"}

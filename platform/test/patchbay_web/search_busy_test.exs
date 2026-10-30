@@ -1,10 +1,13 @@
 defmodule PatchbayWeb.SearchBusyTest do
   @moduledoc """
-  A word search takes one of two places and has two seconds to read
-  (`Patchbay.Forum.SearchSlots`). A search with no place free, or whose read
-  runs out of time, asks to be sent again shortly at every door: the forum
-  API answers 503 with Retry-After, the MCP tool answers `unavailable`, and
-  the search window says so. It never answers 500 or an empty list.
+  Every text search takes one of two places and has two seconds to read
+  (`Patchbay.Forum.SearchSlots`): the word search, the question list with words
+  in it and its count, and the site and tool matches. A search with no place
+  free, or whose read runs out of time, asks to be sent again shortly at every
+  door: the forum API answers 503 with Retry-After, the MCP tool answers
+  `unavailable`, the home page says so in place of the list, and the search
+  window says so. It never answers 500 or an empty list. Any other error is a
+  fault and is never answered as busy.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -14,6 +17,7 @@ defmodule PatchbayWeb.SearchBusyTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.SearchSlots
   alias Patchbay.Forum.SearchUnavailable
+  alias PatchbayWeb.Forum.Board
 
   describe "with both places taken" do
     setup do
@@ -29,6 +33,33 @@ defmodule PatchbayWeb.SearchBusyTest do
 
       assert message == SearchUnavailable.words()
       assert get_resp_header(conn, "retry-after") == ["2"]
+    end
+
+    test "the forum API's newest-first list with words answers 503 with Retry-After", %{
+      conn: conn
+    } do
+      conn = get(conn, "/forum/search?q=reservation&sort=recent")
+
+      assert %{"error" => %{"code" => "unavailable"}} = json_response(conn, 503)
+      assert get_resp_header(conn, "retry-after") == ["2"]
+    end
+
+    test "the home page with words says search is busy in place of the list", %{conn: conn} do
+      conn = get(conn, "/?q=reservation")
+
+      html = html_response(conn, 503)
+      assert get_resp_header(conn, "retry-after") == ["2"]
+      assert html =~ "Search is busy right now."
+      refute html =~ "could not be loaded"
+    end
+
+    test "the home page without words takes no place", %{conn: conn} do
+      assert conn |> get("/") |> html_response(200)
+    end
+
+    test "the site and tool matches take a place" do
+      assert {:error, error} = Board.matches("reservation")
+      assert SearchUnavailable.in?(error)
     end
 
     test "the MCP tool answers unavailable", %{conn: conn} do
@@ -69,8 +100,21 @@ defmodule PatchbayWeb.SearchBusyTest do
     {microseconds, answer} = :timer.tc(fn -> Forum.search_threads("reservation") end)
 
     assert {:error, error} = answer
-    assert SearchUnavailable.in?(error)
+    assert cause(error) == :timeout
     assert microseconds in 2_000_000..4_000_000
+  end
+
+  test "the home page reads a list with words once, and does not count it", %{conn: conn} do
+    html = conn |> get("/?q=reservation") |> html_response(200) |> LazyHTML.from_document()
+
+    assert html |> LazyHTML.query(".pb-feed-status") |> Enum.empty?()
+  end
+
+  test "a database fault is not answered as busy" do
+    Patchbay.Repo.query!("ALTER TABLE forum_reports RENAME COLUMN visibility TO hidden_away")
+
+    assert {:error, error} = Forum.search_threads("reservation")
+    refute SearchUnavailable.in?(error)
   end
 
   # Two searches elsewhere, each holding its place until the test ends.
@@ -108,4 +152,8 @@ defmodule PatchbayWeb.SearchBusyTest do
   end
 
   defp visitor, do: "visitor-" <> Ash.UUID.generate()
+
+  defp cause(%SearchUnavailable{cause: cause}), do: cause
+  defp cause(%{errors: errors}), do: Enum.find_value(errors, &cause/1)
+  defp cause(_error), do: nil
 end

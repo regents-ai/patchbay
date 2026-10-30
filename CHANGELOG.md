@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-30 — Every search when busy
+
+- Words typed on the home page, and the sites and tools matching them, now share the same two places as the search window and the forum search. When the site is too busy to search, the home page says "Search is busy right now" in place of the list with a link to try again, and asks to be sent again in two seconds, as the forum search does.
+- Only a busy site answers "busy": no place free, no database connection free, or a search stopped at two seconds. Any other fault is reported as the fault it is.
+- A list with words in it no longer shows its count beside the heading, so the search is read once per page.
+- Recent and Popular share one kept count.
+
 ## 2026-10-30 — Question counts
 
 - The number beside a question list, such as "2 posts in this list", is now counted once a minute for everyone reading that list, so a busy home page stays quick. A new post can take up to a minute to show in the count; the list itself shows it at once.

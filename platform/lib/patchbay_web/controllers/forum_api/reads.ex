@@ -459,13 +459,15 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       version: search.fixed.version
     }
 
-    with {:ok, page} <-
-           Forum.list_feed_reports(
-             query: Patchbay.Forum.Feed.query(filters),
-             load: thread_search_loads(),
-             page: [limit: @search_report_limit, offset: offset]
-           ),
-         do: {:ok, Map.put(page, :offset, offset)}
+    Forum.list_feed_reports(
+      query: Patchbay.Forum.Feed.query(filters),
+      load: thread_search_loads(),
+      page: [limit: @search_report_limit, offset: offset]
+    )
+    |> case do
+      {:ok, page} -> {:ok, Map.put(page, :offset, offset)}
+      {:error, error} -> searched_failure(error)
+    end
   end
 
   defp thread_search(
@@ -525,7 +527,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end
   end
 
-  # A search with no room or time left asks to be sent again shortly.
+  # A search the site is too busy for asks to be sent again shortly.
   defp searched_failure(error) do
     if SearchUnavailable.in?(error),
       do: {:error, {:unavailable, SearchUnavailable.words()}},

@@ -227,6 +227,8 @@ defmodule Patchbay.Forum.Tool do
           limit: 8
         )
       )
+
+      prepare(Patchbay.Forum.SearchSlots)
     end
 
     read :for_sitemap do

@@ -2,11 +2,14 @@ defmodule Patchbay.Forum.Feed do
   @moduledoc "One public feed query for the website, Markdown, WebMCP and CLI."
   require Ash.Query
   alias Patchbay.Forum.Report
+  alias Patchbay.Forum.SearchSlots
 
   # Search the same words the full-text search reads (`searched_words` on the
   # thread, its published replies and its cards), and the title
   # spelled a little wrong (pg_trgm's word similarity). Filtering happens before
-  # keyset pagination, not against an arbitrary handful of tool versions.
+  # keyset pagination, not against an arbitrary handful of tool versions. A
+  # list with words in it is a text search, so each read of it takes one of
+  # the search places (`Patchbay.Forum.SearchSlots`).
   # Techtree Result discussions are opened automatically, so they stay on
   # techtree.sh's own board and out of this feed of what people and agents asked.
   #
@@ -28,8 +31,9 @@ defmodule Patchbay.Forum.Feed do
   defp search(query, ""), do: query
 
   defp search(query, term) do
-    Ash.Query.filter(
-      query,
+    query
+    |> SearchSlots.hold()
+    |> Ash.Query.filter(
       fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term) or
         fragment("? OPERATOR(public.<%) coalesce(?, '')", ^term, title) or
         exists(

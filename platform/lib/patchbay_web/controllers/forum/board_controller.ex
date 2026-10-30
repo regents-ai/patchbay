@@ -28,6 +28,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.PostSummary
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
+  alias Patchbay.Forum.SearchUnavailable
   alias Patchbay.Forum.SiteDirectory
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Incidents
@@ -119,6 +120,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   # it would have been; the navigation and the form with what was typed still
   # show. Only the questions are the page itself, so only their failure is a
   # 503, and that includes failing to read whether a named site is on record.
+  # A search the site is too busy for says so instead, and asks to be sent
+  # again shortly.
   # A list narrowed to a site Patchbay has no record of is refused.
   defp render_home(conn, forum_params, hero) do
     case Discussions.filters(forum_params) do
@@ -166,7 +169,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         found_nothing? = filters.q != "" and reports == [] and matches == %{sites: [], tools: []}
 
         conn
-        |> put_status(if reports == :unavailable, do: :service_unavailable, else: :ok)
+        |> listed(reports)
         |> merge_assigns(PatchbayWeb.PublicDocuments.page("/"))
         |> render(:home,
           filters: filters,
@@ -185,7 +188,10 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # How many threads the list holds across its pages, beside its heading.
+  # How many threads the list holds across its pages, beside its heading. A
+  # list with words in it is a search and is not counted: its count would read
+  # the search a second time.
+  defp post_count(%{q: q}, _following) when q != "", do: nil
   defp post_count(%{scope: "following"}, :unavailable), do: :unavailable
 
   defp post_count(filters, following) do
@@ -216,9 +222,28 @@ defmodule PatchbayWeb.Forum.BoardController do
     case Discussions.page(filters, subscriptions, after_token) do
       {:ok, reports, next_page} -> {reports, next_page}
       {:error, refused} when refused in [:invalid_cursor, :unknown_site] -> {:error, refused}
-      {:error, failure} -> {section({:error, failure}, "Discussions"), nil}
+      {:error, failure} -> {unlisted(failure), nil}
     end
   end
+
+  # A search the site is too busy for says so in place of the list, apart from
+  # a list that could not be read for any other reason.
+  defp unlisted(failure) do
+    if SearchUnavailable.in?(failure),
+      do: :busy,
+      else: section({:error, failure}, "Discussions")
+  end
+
+  # Only the questions are the page itself. A busy search asks to be sent
+  # again shortly.
+  defp listed(conn, :busy) do
+    conn
+    |> put_status(:service_unavailable)
+    |> put_resp_header("retry-after", SearchUnavailable.retry_after())
+  end
+
+  defp listed(conn, :unavailable), do: put_status(conn, :service_unavailable)
+  defp listed(conn, _reports), do: put_status(conn, :ok)
 
   defp section({:ok, value}, _name), do: value
 

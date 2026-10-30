@@ -1,8 +1,8 @@
 defmodule Patchbay.Forum.FeedCountTest do
   @moduledoc """
   A question list's count is read once and kept a minute for every visitor
-  reading that list; another list, or the Following list with other follows,
-  is counted on its own.
+  reading that list in either order; another list, or the Following list with
+  other follows, is counted on its own.
   """
 
   use Patchbay.DataCase, async: true
@@ -14,6 +14,7 @@ defmodule Patchbay.Forum.FeedCountTest do
     site = Forum.register_site!("counted.example")
     ask(site, "The first question")
     {:ok, newest} = Discussions.filters(%{})
+    {:ok, popular} = Discussions.filters(%{"sort" => "popular"})
     {:ok, on_site} = Discussions.filters(%{"site" => site.origin})
 
     assert Discussions.count(newest) == {:ok, 1}
@@ -21,6 +22,7 @@ defmodule Patchbay.Forum.FeedCountTest do
     ask(site, "The second question")
 
     assert Discussions.count(newest) == {:ok, 1}
+    assert Discussions.count(popular) == {:ok, 1}
     assert Discussions.count(on_site) == {:ok, 2}
   end
 

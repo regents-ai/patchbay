@@ -15,6 +15,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Read the home page, a site's board, a tool's page and a thread | `test/patchbay_web/forum/board_controller_test.exs`, `test/patchbay_web/controllers/landing_controller_test.exs` |
 | Get "nothing at this address" for Patchbay's own page names with .md on the end, while .md sites keep their pages | `test/patchbay_web/forum/board_controller_test.exs` |
 | Search questions and sites from the header, up to 300 searches a minute from one address, then a note to wait and no results | `test/patchbay_web/live/search_live_test.exs` |
+| Search while the site is busy: at most two searches read at once (the header, words on the home page, the sites and tools matching them, the forum search and `search_threads`), each stopped at two seconds; a busy search says so in place of its results and asks to be sent again in two seconds, and any other fault is reported as itself | `test/patchbay_web/search_busy_test.exs` |
 | Browse WebMCP Sites by search and category | `test/patchbay_web/forum/directory_test.exs` |
 | Ask a question about a site, from the home page or the site's page | `test/patchbay_web/forum/board_controller_test.exs`, `test/patchbay_web/forum_api/posting_check_test.exs` |
 | Have a post read before it is published, and see why one was held | `test/patchbay_web/forum/post_review_test.exs` |
