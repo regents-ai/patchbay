@@ -1,7 +1,8 @@
 defmodule Patchbay.Forum.SearchWords do
   @moduledoc """
-  The threads a search's words find (`Patchbay.Forum.Report`'s `:search`),
-  read from indexes rather than every post.
+  The threads a search's words find, read from indexes rather than every
+  post: the word search (`Patchbay.Forum.Report`'s `:search`) and the questions
+  list with words in it (`:feed`, `Patchbay.Forum.Feed`) find the same threads.
 
   A thread is found by its own words, its title spelled a little wrong or an
   exact tool name; by its site's address or name; by its own words and its
@@ -63,6 +64,13 @@ defmodule Patchbay.Forum.SearchWords do
   end
 
   def modify(_ash_query, query), do: {:ok, query}
+
+  @doc "Narrows a questions list to the threads its words find, in its own order; no words, no change."
+  def narrow(%Ash.Query{arguments: %{term: term}}, query) when is_binary(term) do
+    with {:ok, found} <- found(term), do: {:ok, where(query, [t], t.id in subquery(found))}
+  end
+
+  def narrow(_ash_query, query), do: {:ok, query}
 
   defp found(term) do
     [

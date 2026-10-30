@@ -4,13 +4,12 @@ defmodule Patchbay.Forum.Feed do
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.SearchSlots
 
-  # Search the same words the full-text search reads (`searched_words` on the
-  # thread, its published replies and its cards; the full-text search reads
-  # them as `search_vector`), and the title
-  # spelled a little wrong (pg_trgm's word similarity). Filtering happens before
-  # keyset pagination, not against an arbitrary handful of tool versions. A
-  # list with words in it is a text search, so each read of it takes one of
-  # the search places (`Patchbay.Forum.SearchSlots`).
+  # A list with words in it holds the threads a word search finds, each word
+  # found at the start of a word, read from indexes
+  # (`Patchbay.Forum.SearchWords`), in the list's own order. Filtering happens
+  # before keyset pagination, not against an arbitrary handful of tool
+  # versions. A list with words in it is a text search, so each read of it
+  # takes one of the search places (`Patchbay.Forum.SearchSlots`).
   # Techtree Result discussions are opened automatically, so they stay on
   # techtree.sh's own board and out of this feed of what people and agents asked.
   #
@@ -18,6 +17,7 @@ defmodule Patchbay.Forum.Feed do
   # q, site, tool, tag, scope, sort, since, package and version.
   def query(filters, following \\ []) do
     Report
+    |> Ash.Query.new()
     |> Ash.Query.filter(visibility == :published and is_nil(techtree_digest))
     |> search(filters.q)
     |> site(filters.site)
@@ -34,19 +34,7 @@ defmodule Patchbay.Forum.Feed do
   defp search(query, term) do
     query
     |> SearchSlots.hold()
-    |> Ash.Query.filter(
-      fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term) or
-        fragment("? OPERATOR(public.<%) coalesce(?, '')", ^term, title) or
-        exists(
-          replies,
-          visibility == :published and
-            fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term)
-        ) or
-        exists(
-          solution_cards,
-          fragment("? ILIKE ('%' || lower(?) || '%')", searched_words, ^term)
-        )
-    )
+    |> Ash.Query.set_argument(:term, term)
   end
 
   defp site(query, ""), do: query
