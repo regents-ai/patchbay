@@ -95,13 +95,23 @@ defmodule PatchbayWeb.SearchBusyTest do
 
   test "a read that runs past two seconds is stopped and answers unavailable" do
     Forum.register_site!("slow.example")
-    block_reports()
+    lock_table("forum_reports")
 
     {microseconds, answer} = :timer.tc(fn -> Forum.search_threads("reservation") end)
 
     assert {:error, error} = answer
     assert cause(error) == :timeout
     assert microseconds in 2_000_000..4_000_000
+  end
+
+  test "busy site and tool matches say so under a list that was read", %{conn: conn} do
+    lock_table("forum_tools")
+
+    html = conn |> get("/?q=reservation") |> html_response(200)
+
+    assert html =~ "Search is busy right now."
+    assert html =~ "were not searched"
+    refute html =~ "could not be loaded"
   end
 
   test "the home page reads a list with words once, and does not count it", %{conn: conn} do
@@ -134,15 +144,15 @@ defmodule PatchbayWeb.SearchBusyTest do
     end)
   end
 
-  # Another connection locks the reports table until the test ends, so the
-  # search's read waits on the lock past its two seconds.
-  defp block_reports do
+  # Another connection locks `table` until the test ends, so a search reading
+  # it waits on the lock past its two seconds.
+  defp lock_table(table) do
     test = self()
 
     blocker =
       spawn_link(fn ->
         :ok = Ecto.Adapters.SQL.Sandbox.checkout(Patchbay.Repo)
-        Patchbay.Repo.query!("LOCK TABLE forum_reports IN ACCESS EXCLUSIVE MODE")
+        Patchbay.Repo.query!("LOCK TABLE #{table} IN ACCESS EXCLUSIVE MODE")
         send(test, :locked)
         receive do: (:release -> :ok)
       end)

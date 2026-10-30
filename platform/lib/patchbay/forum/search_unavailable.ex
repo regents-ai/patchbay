@@ -15,10 +15,6 @@ defmodule Patchbay.Forum.SearchUnavailable do
   @spec words() :: String.t()
   def words, do: "Search is busy right now. Nothing was searched."
 
-  @doc "Seconds to wait before searching again, as a Retry-After header says it."
-  @spec retry_after() :: String.t()
-  def retry_after, do: "2"
-
   @doc "Whether an error from a search is this one."
   @spec in?(term()) :: boolean()
   def in?(%__MODULE__{}), do: true

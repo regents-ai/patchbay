@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" data-brand="patchbay" data-theme={theme(@conn)}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Busy · Patchbay</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="stylesheet" href={~p"/assets/js/app.css"} />
+    <script defer src={~p"/assets/js/theme.js"}>
+    </script>
+  </head>
+  <body>
+    <Regent.Structure.frame>
+      <Regent.Structure.row rail={false}>
+        <main class="pb-error">
+          <Regent.Structure.panel class="pb-error-inner">
+            <p class="pb-kicker">Patchbay · 503</p>
+            <h1>Patchbay is too busy to open this page right now.</h1>
+            <p class="pb-error-lede">Wait a moment, then open it again.</p>
+            <a class="pb-cta rg-button rg-button--primary" href=""><span class="rg-button__label">Try again</span></a>
+            <a href="/">Back to questions</a>
+            <Regent.ThemeToggle.button
+              id="pb-error-theme-toggle"
+              data-pb-theme-toggle
+            />
+          </Regent.Structure.panel>
+        </main>
+      </Regent.Structure.row>
+    </Regent.Structure.frame>
+  </body>
+</html>

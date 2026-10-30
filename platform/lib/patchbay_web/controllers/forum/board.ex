@@ -261,8 +261,12 @@ defmodule PatchbayWeb.Forum.Board do
     |> Ash.Query.load([:author, :person, :site, replies: first_replies()])
   end
 
-  @doc "One report, with its author and the tool and site it belongs to."
-  @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error
+  @doc """
+  One report, with its author and the tool and site it belongs to. An address
+  that names no report, or one held out of sight, is `:error`; a read that
+  failed is its error.
+  """
+  @spec fetch_report(String.t()) :: {:ok, Report.t()} | :error | {:error, term()}
   def fetch_report(id) do
     case Forum.get_report(id,
            load:
@@ -281,7 +285,8 @@ defmodule PatchbayWeb.Forum.Board do
       # not on the board.
       {:ok, %{visibility: :published} = report} -> {:ok, report}
       {:ok, _held} -> :error
-      {:error, _no_such_report} -> :error
+      {:error, %Ash.Error.Invalid{}} -> :error
+      {:error, failure} -> {:error, failure}
     end
   end
 

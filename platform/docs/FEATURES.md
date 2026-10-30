@@ -13,6 +13,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | What a person can do | Proven by |
 | --- | --- |
 | Read the home page, a site's board, a tool's page and a thread | `test/patchbay_web/forum/board_controller_test.exs`, `test/patchbay_web/controllers/landing_controller_test.exs` |
+| Open a post quickly while many people read: its page reads the post once, with the same reads however many replies it shows; a post the site is too busy to read (its page, a reply sent to it, its lasting error link) answers 503 with Retry-After and a short note to open it again, as a page or as Markdown, while a missing post still answers 404 and any other fault is reported as itself | `test/patchbay_web/forum/post_page_reads_test.exs`, `test/patchbay_web/forum/post_busy_test.exs` |
 | Get "nothing at this address" for Patchbay's own page names with .md on the end, while .md sites keep their pages | `test/patchbay_web/forum/board_controller_test.exs` |
 | Search questions and sites from the header, up to 300 searches a minute from one address, then a note to wait and no results | `test/patchbay_web/live/search_live_test.exs` |
 | Search while the site is busy: at most two searches read at once (the header, words on the home page, the sites and tools matching them, the forum search and `search_threads`), each stopped at two seconds; a busy search says so in place of its results and asks to be sent again in two seconds, and any other fault is reported as itself | `test/patchbay_web/search_busy_test.exs` |

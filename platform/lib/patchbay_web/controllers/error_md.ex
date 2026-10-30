@@ -44,6 +44,14 @@ defmodule PatchbayWeb.ErrorMD do
     """
   end
 
+  def render("503.md", _assigns) do
+    """
+    # Patchbay is too busy to open this page right now.
+
+    Wait a moment, then open it again. The answer says how many seconds in its Retry-After header.
+    """
+  end
+
   def render(template, _assigns) do
     "# " <> Phoenix.Controller.status_message_from_template(template) <> "\n\n" <> @map
   end
