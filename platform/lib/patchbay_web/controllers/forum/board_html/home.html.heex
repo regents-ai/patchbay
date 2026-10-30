@@ -85,7 +85,7 @@
         <%!-- The button above is the page's one way to ask; a search that found
         nothing has opened its form with the search's words. --%>
         <.find_answers
-          :if={@filters.q != "" and @matches != :unavailable and not @found_nothing}
+          :if={@filters.q != "" and @matches not in [:unavailable, :busy] and not @found_nothing}
           q={@filters.q}
           matches={@matches}
         />
@@ -96,6 +96,16 @@
         >
           Sites and tools matching “{@filters.q}” could not be loaded just now.
           <a href={discussion_path(@filters)}>Try again</a>
+        </Regent.Primitives.notice>
+        <Regent.Primitives.notice
+          :if={@filters.q != "" and @matches == :busy and @reports != :busy}
+          tone="warning"
+          class="pb-section-unavailable"
+        >
+          <strong>Search is busy right now.</strong>
+          Sites and tools matching “{@filters.q}” were not searched.
+          <a href={discussion_path(@filters)}>Try again</a>
+          in a moment.
         </Regent.Primitives.notice>
         <p :if={@filters.q != ""} class="pb-search-summary">
           Results for “{@filters.q}” · <a href={discussion_path(@filters, %{q: ""})}>Clear</a>

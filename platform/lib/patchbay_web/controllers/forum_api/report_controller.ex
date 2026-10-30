@@ -25,11 +25,11 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   require Logger
 
+  alias Patchbay.DatabaseBusy
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostingCheck
-  alias Patchbay.Forum.SearchUnavailable
   alias Patchbay.Offers.Disclosure
   alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
@@ -199,7 +199,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
       {:error, {:unavailable, _words} = failure} ->
         conn
-        |> put_resp_header("retry-after", SearchUnavailable.retry_after())
+        |> put_resp_header("retry-after", DatabaseBusy.retry_after())
         |> send_failure(failure)
 
       {:error, failure} ->

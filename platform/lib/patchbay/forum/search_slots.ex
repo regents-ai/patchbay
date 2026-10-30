@@ -17,6 +17,10 @@ defmodule Patchbay.Forum.SearchSlots do
   shortly", and the kind is logged. Any other error is a fault and passes
   through unchanged.
 
+  A read that takes a place must not run inside another transaction: its
+  time limit would hold for the outer transaction too, and a busy read would
+  roll the outer one back. No caller does so.
+
   The room is a `NimblePool` of slots that hold nothing: it queues the waiting
   reads in order and takes back the slot of a read whose process ends.
   """
@@ -27,6 +31,7 @@ defmodule Patchbay.Forum.SearchSlots do
 
   require Logger
 
+  alias Patchbay.DatabaseBusy
   alias Patchbay.Forum.SearchUnavailable
   alias Patchbay.Repo
 
@@ -90,22 +95,11 @@ defmodule Patchbay.Forum.SearchSlots do
   end
 
   defp failed(error) do
-    case busy(error) do
+    case DatabaseBusy.kind(error) do
       nil -> {:error, error}
       kind -> unavailable(kind)
     end
   end
-
-  # PostgreSQL stopping a statement at its time limit is query_canceled
-  # (SQLSTATE 57014). Ash keeps a database error raised during a read only in
-  # its printed form, inside its own error classes.
-  defp busy(%{errors: errors}) when is_list(errors), do: Enum.find_value(errors, &busy/1)
-
-  defp busy(%{error: "** (Postgrex.Error) " <> said}) do
-    if said =~ "57014 (query_canceled)", do: :timeout
-  end
-
-  defp busy(_error), do: nil
 
   # The log names the kind only, never the words searched for.
   defp unavailable(kind) do

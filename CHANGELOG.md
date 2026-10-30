@@ -8,6 +8,12 @@
   that one read. While Techtree is down, the page still says the run did not load, and asks
   Techtree again a minute later.
 
+## 2026-10-30 — Busy post pages
+
+- A post the site is too busy to read now says "Patchbay is too busy to open this page right now. Wait a moment, then open it again." instead of saying the post does not exist. The same goes for a reply sent to it and for a lasting error link that names it. A post that really is not there still says so.
+- When the words on the home page found questions but the matching sites and tools could not be searched in time, that part now says search is busy, with a link to try again, instead of saying it could not be loaded.
+- For agents: a busy post page answers 503 with `Retry-After: 2`, as a page or as Markdown.
+
 ## 2026-10-30 — Post pages read once
 
 - A post's page now reads the post once instead of twice, so it opens with 24 database reads instead of 36 and stays quick when many people are reading. More replies on the page add no reads. A reader's own first view of a post is counted from their next visit.

@@ -20,6 +20,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   require Ash.Query
   require Logger
 
+  alias Patchbay.DatabaseBusy
   alias Patchbay.Forum
   alias Patchbay.Forum.BoardActivity
   alias Patchbay.Forum.Origin
@@ -32,9 +33,11 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.SiteDirectory
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Incidents
+  alias PatchbayWeb.BusyPage
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.AgentPages
   alias PatchbayWeb.Forum.Board
+  alias PatchbayWeb.Forum.BusyError
   alias PatchbayWeb.Forum.Discussions
   alias PatchbayWeb.Forum.FixCheck
   alias PatchbayWeb.Forum.Hero
@@ -49,6 +52,14 @@ defmodule PatchbayWeb.Forum.BoardController do
   @not_posted "That reply could not be posted."
   @thread_not_posted "That post could not be published. Try again in a moment."
   @agent_page_posts 8
+
+  # A post the database is too busy to read asks to be opened again shortly,
+  # from whichever page or form named it.
+  def action(conn, options) do
+    super(conn, options)
+  rescue
+    busy in BusyError -> BusyPage.respond(conn, busy.cause)
+  end
 
   @doc """
   The home page. A link can open its form with the site, a tool, what to
@@ -165,7 +176,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         unknown_site(conn)
 
       {reports, next_page} ->
-        matches = section(Board.matches(filters.q), "Search matches")
+        matches = searched(Board.matches(filters.q), "Search matches")
         found_nothing? = filters.q != "" and reports == [] and matches == %{sites: [], tools: []}
 
         conn
@@ -222,16 +233,18 @@ defmodule PatchbayWeb.Forum.BoardController do
     case Discussions.page(filters, subscriptions, after_token) do
       {:ok, reports, next_page} -> {reports, next_page}
       {:error, refused} when refused in [:invalid_cursor, :unknown_site] -> {:error, refused}
-      {:error, failure} -> {unlisted(failure), nil}
+      {:error, failure} -> {searched({:error, failure}, "Discussions"), nil}
     end
   end
 
-  # A search the site is too busy for says so in place of the list, apart from
-  # a list that could not be read for any other reason.
-  defp unlisted(failure) do
+  # A search the site is too busy for says so in its place, apart from a read
+  # that failed for any other reason.
+  defp searched({:ok, value}, _name), do: value
+
+  defp searched({:error, failure}, name) do
     if SearchUnavailable.in?(failure),
       do: :busy,
-      else: section({:error, failure}, "Discussions")
+      else: section({:error, failure}, name)
   end
 
   # Only the questions are the page itself. A busy search asks to be sent
@@ -239,7 +252,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp listed(conn, :busy) do
     conn
     |> put_status(:service_unavailable)
-    |> put_resp_header("retry-after", SearchUnavailable.retry_after())
+    |> put_resp_header("retry-after", DatabaseBusy.retry_after())
   end
 
   defp listed(conn, :unavailable), do: put_status(conn, :service_unavailable)
@@ -1373,6 +1386,14 @@ defmodule PatchbayWeb.Forum.BoardController do
     case Board.fetch_report(id) do
       {:ok, report} -> report
       :error -> raise NotFoundError
+      {:error, failure} -> raise unreadable(failure)
+    end
+  end
+
+  defp unreadable(failure) do
+    case DatabaseBusy.kind(failure) do
+      nil -> failure
+      kind -> BusyError.exception(cause: kind)
     end
   end
 

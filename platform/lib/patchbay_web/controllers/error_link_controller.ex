@@ -14,7 +14,9 @@ defmodule PatchbayWeb.ErrorLinkController do
 
   use PatchbayWeb, :controller
 
+  alias Patchbay.DatabaseBusy
   alias Patchbay.Forum.PostAddress
+  alias PatchbayWeb.BusyPage
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.NotFoundError
 
@@ -35,6 +37,12 @@ defmodule PatchbayWeb.ErrorLinkController do
         conn
         |> put_status(:not_found)
         |> render(:unknown, [code: code] ++ PatchbayWeb.PublicDocuments.page(:unknown_error))
+
+      {:error, failure} ->
+        case DatabaseBusy.kind(failure) do
+          nil -> raise failure
+          kind -> BusyPage.respond(conn, kind)
+        end
     end
   end
 end
