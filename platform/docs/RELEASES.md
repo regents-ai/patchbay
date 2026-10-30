@@ -4,6 +4,29 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v318, 30 Oct 2026
+
+- Commit: 4244bec8598364a654bbb8e4d5241be41b7f2fb4 (image `4244bec`), on main after v317. Machine replaced blue-green, one machine in iad.
+- Never-checked sites get checked (PB-67, 5673c3ca): an Oban cron job asks, every ten minutes, for checks of the next five listed sites no check has been asked for, through the existing `:request` action; about 720 a day, so each of the 4,006 listed sites is read within about a week. HiddenSites logs a refused reading as refused, not as a failed read (4244bec8). Gate APPROVED 19:49Z with three LOWs (sweep queue, /sites wording, FEATURES row), fixed forward.
+- Checks: gate make check at 4244bec8: ExUnit 957/957, 325 walk steps passed (Chromium; WebKit not run).
+- Live (22:08Z): /capabilities.json 4244bec8; /webmcp/health ok with migrations current; headless Chromium at 390 and 1280 on home and /sites: 200, no page errors, no sideways scroll, the sweep note served on /sites.
+- Migrations: none. Rollback: v317, image `0e180cb`.
+
+## v317, 30 Oct 2026
+
+- Commit: 0e180cb7d28014a4a2338ff9a7e06eb593fa5510 (image `0e180cb`), on main after v316, released 19:47Z by the previous chief session.
+- The Sites list leaves out sites a check found no tools on (PB-65, aabcecb8); every listing takes the hidden sites from one shared reading (0e180cb7). A hidden site's own page stays open.
+- Migrations: none. Rollback: v316, image `bce1216`.
+
+## v316, 30 Oct 2026
+
+- Commit: bce1216bae623b55fbb4432038d37559498e5735 (image `bce1216`), on main after v315, live 17:49Z in iad on Sean's 89 a.
+- Letter 89's search indexes plus PB-54, one search everywhere: every search place reads its own expression index, typed words match word beginnings, and the questions list with words in it keeps the threads the word search finds. openapi 14.6.0.
+- Checks: make check at bce1216b: ExUnit 947 passed; walk 324 passed. Pre-check through the live app on v315: no unusable index; `require_usable_indexes!` in the release command as the second guard.
+- Live: 57 WebMCP page tools; get_thread as a page tool and at hosted /mcp; site, post and home search 200; search API 54 to 143 ms.
+- Known fault found after release: `/forum/search` sorted recent leaves out threads (PB-69), fixed forward.
+- Migrations: the letter 89 search indexes, run in the release command. Rollback: v315, image `dd881f9`.
+
 ## Machine move, 30 Oct 2026 (no new release)
 
 - v315 (image `dd881f9`) moved from ewr to iad on Sean's 93 a (17:06:02Z; his 1a at 16:41:58Z in "Fix Fly Sentinel error emails"), next to the shared Postgres clusters. Machine 81540dc9d0ed28 (ewr) cloned to 815699a9217428 (iad), checked healthy, then stopped and destroyed. `platform/fly.toml` primary_region is now iad, so later releases deploy there.
