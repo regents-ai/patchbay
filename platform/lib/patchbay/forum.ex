@@ -101,7 +101,6 @@ defmodule Patchbay.Forum do
       define(:accept_reply, action: :accept_reply, args: [:reply_id])
       define(:record_escrow_release, action: :record_escrow_release)
       define(:request_refund, action: :request_refund)
-      define(:record_refund_relay, action: :record_refund_relay)
       define(:record_escrow_refund, action: :record_escrow_refund)
       define(:record_escrow_revenue_pushed, action: :record_escrow_revenue_pushed)
     end

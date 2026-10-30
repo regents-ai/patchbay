@@ -2214,11 +2214,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp escrow_standing_said(%{escrow_status: :refunded}),
     do: "This bounty was taken off the board, and 90% of it went back to the asker."
 
-  # Base accepted the asker's refund, which is the money going back; the board
-  # writes the refund itself when the watch sees it.
+  # The answer to a refund press, holding the transaction Base accepted. What
+  # became of it is written once its receipt is in (`RefundRelayRecord`): the
+  # refund, or a refusal, which keeps no transaction.
   defp escrow_standing_said(%{escrow_status: status, escrow_refund_tx_hash: hash})
-       when status in [:credited, :credit_submitted] and is_binary(hash),
-       do: "The asker took this money back: 90% went back to their wallet, 10% to REGENT staking."
+       when status in [:credited, :credit_submitted, :refund_failed] and is_binary(hash),
+       do:
+         "Refund sent to Base. Once Base confirms it, 90% goes back to the asker's wallet " <>
+           "and 10% to REGENT staking."
 
   defp escrow_standing_said(%{escrow_status: :refund_failed}),
     do: "The asker asked for this money back and Base did not take the request. It is still held."

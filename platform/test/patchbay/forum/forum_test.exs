@@ -314,7 +314,6 @@ defmodule Patchbay.ForumTest do
                  {:accept_reply, :update},
                  {:record_escrow_release, :update},
                  {:request_refund, :update},
-                 {:record_refund_relay, :update},
                  {:record_escrow_refund, :update},
                  {:push_escrow_revenue, :update},
                  {:record_escrow_revenue_pushed, :update},

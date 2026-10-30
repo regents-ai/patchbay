@@ -10,8 +10,9 @@ defmodule Patchbay.Forum.PriorityRefund do
   back is never the cheaper way out of it.
 
   Patchbay's part is only a relay for the asker's convenience, and it pays the
-  gas, which is why it relays for the asker alone. Once Base accepts the
-  transaction, the refund has happened. Nothing here decides whether
+  gas, which is why it relays for the asker alone. Base accepting the
+  transaction is the refund being sent; it has happened when the transaction's
+  receipt says it succeeded (`Patchbay.Forum.RefundRelayRecord`). Nothing here decides whether
   the money can move. Every press reaches the chain, including a press before
   the thirty days and a second press while an earlier one is in flight, and
   what the chain says is written down. A press the chain refuses costs gas and
@@ -40,7 +41,8 @@ defmodule Patchbay.Forum.PriorityRefund do
   @doc """
   Records a refund that has already happened on Base, whoever made it.
 
-  This is how a refund Patchbay never relayed reaches the board.
+  This is how a refund Patchbay never relayed reaches the board, and how one it
+  relayed does once its receipt says it succeeded.
   """
   @spec record(Report.t(), String.t()) :: {:ok, Report.t()} | {:error, term()}
   def record(report, tx_hash) do
@@ -75,11 +77,10 @@ defmodule Patchbay.Forum.PriorityRefund do
   def missing?(_error), do: false
 
   # The money goes back to the payer the contract already recorded, so nothing
-  # here says where it goes. Base accepting the transaction is the refund
-  # happening, so the answer says so whatever the database can write now: the
-  # transaction is written down by a job (`RefundRelayRecord`), tried again
-  # until it is. The watch still writes the refund itself when it sees the
-  # money go back.
+  # here says where it goes. The answer carries the transaction Base accepted,
+  # whatever the database can write now; what became of it is written by a job
+  # once its receipt is in (`RefundRelayRecord`). The watch still writes the
+  # refund itself when it sees the money go back.
   defp send_back(asked) do
     case Escrow.refund(asked.id) do
       {:ok, tx_hash} ->
@@ -91,8 +92,8 @@ defmodule Patchbay.Forum.PriorityRefund do
     end
   end
 
-  # A database too busy to take even the job loses only the job: the refund
-  # has happened, and the watch writes it down when it sees the money go back.
+  # A database too busy to take even the job loses only the job: the watch
+  # writes the refund down when it sees the money go back.
   defp queue_record(asked, tx_hash) do
     case Oban.insert(RefundRelayRecord.new_record(asked.id, tx_hash)) do
       {:ok, _job} ->
@@ -105,12 +106,21 @@ defmodule Patchbay.Forum.PriorityRefund do
     end
   end
 
-  # A press Base refused while it has not yet confirmed the bounty is held
-  # changes nothing on the record: the bounty is still waiting on Base, and
-  # writing the refusal over that would lose the confirmation when it comes.
-  defp refused(%Report{escrow_status: :credit_submitted} = asked), do: {:ok, asked}
+  @doc """
+  Records that Base refused a refund: when the transaction was handed over, or
+  in its receipt afterwards.
 
-  defp refused(asked) do
+  A refusal changes nothing on a bounty Base has not yet confirmed is held: it
+  is still waiting on Base, and writing the refusal over that would lose the
+  confirmation when it comes. Nor on one already refunded: a second press
+  refused because the first took the money back leaves the refund standing.
+  """
+  @spec refused(Report.t()) :: {:ok, Report.t()} | {:error, term()}
+  def refused(%Report{escrow_status: status} = asked)
+      when status in [:credit_submitted, :refunded],
+      do: {:ok, asked}
+
+  def refused(asked) do
     # Nothing over HTTP may write what the escrow said, so this is written
     # deliberately without an actor.
     Forum.record_escrow_refund(

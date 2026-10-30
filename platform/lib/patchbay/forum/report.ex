@@ -1217,16 +1217,6 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:refund_requested_at, &DateTime.utc_now/0))
     end
 
-    update :record_refund_relay do
-      description("""
-      The transaction Patchbay sent to Base asking for a refund. Sending it is
-      not the money moving: whether it moved is what the chain says, and that
-      is heard by watching, not by having asked.
-      """)
-
-      accept([:escrow_refund_tx_hash])
-    end
-
     update :record_escrow_refund do
       description("""
       What the escrow said about a refund. It is written from Patchbay's own

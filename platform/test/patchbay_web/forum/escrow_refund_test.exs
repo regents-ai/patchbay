@@ -24,7 +24,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   @contract String.duplicate("e", 64)
   @arguments String.duplicate("f", 64)
   @refund_tx "0x" <> String.duplicate("f", 64)
-  # What the synthetic Base node answers: every transaction is taken.
+  # What the synthetic Base node answers besides sending and receipts.
   @base_node %{
     "eth_chainId" => "0x7a69",
     "eth_getTransactionCount" => "0x0",
@@ -36,8 +36,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       baseFeePerGas: ["0x1", "0x1"],
       gasUsedRatio: [0.5],
       reward: [["0x1"]]
-    },
-    "eth_sendRawTransaction" => @refund_tx
+    }
   }
 
   setup do
@@ -128,46 +127,81 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   describe "a refund Base takes" do
     setup do
       old_escrow = Application.get_env(:patchbay, :escrow)
+      node = start_supervised!({Agent, fn -> %{send: {:ok, @refund_tx}, receipts: %{}} end})
 
       # Synthetic operator key, generated for this run. It never reaches a real chain.
       Application.put_env(:patchbay, :escrow,
         contract_address: "0x" <> String.duplicate("c", 40),
         operator_private_key: Base.encode16(:crypto.strong_rand_bytes(32), case: :lower),
-        rpc_url: base_node()
+        rpc_url: base_node(node)
       )
 
       on_exit(fn -> Application.put_env(:patchbay, :escrow, old_escrow) end)
+      %{node: node}
     end
 
-    test "says the money went back, with its transaction, and writes it down after", %{
-      conn: conn,
-      tool: tool
-    } do
+    test "says the refund was sent, with its transaction, and writes the refund once Base confirms it",
+         %{conn: conn, tool: tool, node: node} do
       asker = profile("aaa")
       report = credited(tool, asker)
 
       page =
         conn |> signed_in(asker) |> post("/posts/#{report.id}/refund", %{}) |> html_response(200)
 
-      assert page =~ "The asker took this money back: 90% went back to their wallet"
+      assert page =~ "Refund sent to Base."
       assert page =~ ~s(href="https://basescan.org/tx/#{@refund_tx}")
       refute page =~ "could not be taken back"
+      refute page =~ "went back to the asker"
 
-      # Base accepting it is the refund; writing it down is the job's.
       assert_enqueued(
         worker: RefundRelayRecord,
         args: %{report_id: report.id, tx_hash: @refund_tx}
       )
 
-      assert is_nil(Forum.get_report!(report.id).escrow_refund_tx_hash)
+      # Not in a block yet: asked again shortly, and nothing written.
+      assert {:snooze, 15} =
+               perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
+
+      assert Forum.get_report!(report.id).escrow_status == :credited
+
+      mined(node, @refund_tx, "0x1")
 
       assert :ok =
                perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
 
-      assert Forum.get_report!(report.id).escrow_refund_tx_hash == @refund_tx
+      refunded = Forum.get_report!(report.id)
+      assert refunded.escrow_status == :refunded
+      assert refunded.escrow_refund_tx_hash == @refund_tx
+
+      page = build_conn() |> get(PostAddress.path(refunded)) |> html_response(200)
+      assert page =~ "90% of it went back to the asker"
+      assert page =~ ~s(href="https://basescan.org/tx/#{@refund_tx}")
     end
 
-    test "says the money went back when the post is then too busy to read", %{
+    test "a refund the contract refused in its block is written as refused", %{
+      conn: conn,
+      tool: tool,
+      node: node
+    } do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+      conn |> signed_in(asker) |> post("/posts/#{report.id}/refund", %{}) |> html_response(200)
+
+      mined(node, @refund_tx, "0x0")
+
+      assert :ok =
+               perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
+
+      refused = Forum.get_report!(report.id)
+      assert refused.escrow_status == :refund_failed
+      assert is_nil(refused.escrow_refund_tx_hash)
+
+      page = build_conn() |> get(PostAddress.path(refused)) |> html_response(200)
+      assert page =~ "Base did not take the request"
+      refute page =~ "basescan.org/tx/"
+    end
+
+    test "says the refund was sent when the post is then too busy to read", %{
       conn: conn,
       tool: tool
     } do
@@ -188,9 +222,10 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       html = html_response(refunded, 503)
 
       assert html =~
-               "Your money went back: Base accepted the refund, transaction #{@refund_tx}. " <>
+               "Refund sent to Base, transaction #{@refund_tx}. " <>
                  "This page could not refresh to show it."
 
+      refute html =~ "went back"
       assert html =~ ~s(href="/posts/#{report.id}")
       assert get_resp_header(refunded, "retry-after") == ["2"]
 
@@ -222,8 +257,78 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       )
     end
 
-    test "a record the database is too busy for is tried again", %{tool: tool} do
+    test "each accepted press writes down its own transaction", %{tool: tool, node: node} do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+      first = "0x" <> String.duplicate("a", 64)
+      second = "0x" <> String.duplicate("b", 64)
+
+      sends(node, {:ok, first})
+      assert {:ok, _sent} = PriorityRefund.run(report.id, asker)
+      sends(node, {:ok, second})
+      assert {:ok, _sent} = PriorityRefund.run(report.id, asker)
+
+      assert_enqueued(worker: RefundRelayRecord, args: %{report_id: report.id, tx_hash: first})
+      assert_enqueued(worker: RefundRelayRecord, args: %{report_id: report.id, tx_hash: second})
+
+      # The first took the money back, so the contract refused the second.
+      mined(node, first, "0x1")
+      mined(node, second, "0x0")
+
+      assert :ok = perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: first})
+      assert :ok = perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: second})
+
+      refunded = Forum.get_report!(report.id)
+      assert refunded.escrow_status == :refunded
+      assert refunded.escrow_refund_tx_hash == first
+    end
+
+    test "an accepted press, then one Base refuses, ends as the receipt says", %{
+      tool: tool,
+      node: node
+    } do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+
+      assert {:ok, _sent} = PriorityRefund.run(report.id, asker)
+      sends(node, :refused)
+      assert {:ok, refused} = PriorityRefund.run(report.id, asker)
+      assert refused.escrow_status == :refund_failed
+
+      mined(node, @refund_tx, "0x1")
+
+      assert :ok =
+               perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
+
+      refunded = Forum.get_report!(report.id)
+      assert refunded.escrow_status == :refunded
+      assert refunded.escrow_refund_tx_hash == @refund_tx
+
+      page = build_conn() |> get(PostAddress.path(refunded)) |> html_response(200)
+      assert page =~ "90% of it went back to the asker"
+      refute page =~ "did not take the request"
+    end
+
+    test "a transaction still not in a block an hour after it was sent is given up on", %{
+      tool: tool
+    } do
       report = credited(tool, profile("aaa"))
+
+      sent_long_ago = %Oban.Job{
+        args: %{"report_id" => report.id, "tx_hash" => @refund_tx},
+        inserted_at: DateTime.add(DateTime.utc_now(), -3_601)
+      }
+
+      assert {:cancel, :not_landed} = RefundRelayRecord.perform(sent_long_ago)
+
+      untouched = Forum.get_report!(report.id)
+      assert untouched.escrow_status == :credited
+      assert is_nil(untouched.escrow_refund_tx_hash)
+    end
+
+    test "a record the database is too busy for is tried again", %{tool: tool, node: node} do
+      report = credited(tool, profile("aaa"))
+      mined(node, @refund_tx, "0x1")
       test = self()
 
       holder =
@@ -249,7 +354,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       send(holder, :release)
 
       assert {:error, _busy} = answer
-      assert is_nil(Forum.get_report!(report.id).escrow_refund_tx_hash)
+      assert Forum.get_report!(report.id).escrow_status == :credited
     end
   end
 
@@ -284,7 +389,14 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   defp record_queued?(~s(INSERT INTO "public"."oban_jobs") <> _job), do: true
   defp record_queued?(_query), do: false
 
-  defp base_node do
+  # What the synthetic Base node answers to sending the refund, and the
+  # receipts of the transactions it has put in a block.
+  defp sends(node, answer), do: Agent.update(node, &%{&1 | send: answer})
+
+  defp mined(node, tx_hash, status),
+    do: Agent.update(node, &put_in(&1, [:receipts, tx_hash], status))
+
+  defp base_node(node) do
     server =
       start_supervised!(
         {Bandit,
@@ -293,7 +405,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
            conn
            |> Plug.Conn.put_resp_content_type("application/json")
-           |> Plug.Conn.send_resp(200, raw |> Jason.decode!() |> rpc() |> Jason.encode!())
+           |> Plug.Conn.send_resp(200, raw |> Jason.decode!() |> rpc(node) |> Jason.encode!())
          end,
          ip: {127, 0, 0, 1},
          port: 0}
@@ -303,9 +415,29 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     "http://127.0.0.1:#{port}"
   end
 
-  defp rpc(requests) when is_list(requests), do: Enum.map(requests, &rpc/1)
+  defp rpc(requests, node) when is_list(requests), do: Enum.map(requests, &rpc(&1, node))
 
-  defp rpc(%{"id" => id, "method" => method}),
+  defp rpc(%{"id" => id, "method" => "eth_sendRawTransaction"}, node) do
+    case Agent.get(node, & &1.send) do
+      {:ok, tx_hash} ->
+        %{jsonrpc: "2.0", id: id, result: tx_hash}
+
+      :refused ->
+        %{jsonrpc: "2.0", id: id, error: %{code: -32_000, message: "execution reverted"}}
+    end
+  end
+
+  defp rpc(%{"id" => id, "method" => "eth_getTransactionReceipt", "params" => [tx_hash]}, node) do
+    receipt =
+      case Agent.get(node, & &1.receipts[tx_hash]) do
+        nil -> nil
+        status -> %{"transactionHash" => tx_hash, "status" => status}
+      end
+
+    %{jsonrpc: "2.0", id: id, result: receipt}
+  end
+
+  defp rpc(%{"id" => id, "method" => method}, _node),
     do: %{jsonrpc: "2.0", id: id, result: Map.fetch!(@base_node, method)}
 
   describe "what the board decides" do
