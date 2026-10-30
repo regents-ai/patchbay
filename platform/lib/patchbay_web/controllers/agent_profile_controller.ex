@@ -22,17 +22,18 @@ defmodule PatchbayWeb.AgentProfileController do
            load: [:bounties_posted, :answers_accepted, :same_person_profiles]
          ) do
       {:ok, profile} ->
-        {:ok, tips} = Payments.tip_record(profile.id)
-
         render(conn, :show,
           page_title: AgentProfile.own_name(profile),
           page_description: description(profile, conn.assigns.site_edition),
           profile: profile,
-          tips: tips
+          tips: Payments.tip_record!(profile.id)
         )
 
-      {:error, _unknown} ->
+      {:error, %Ash.Error.Invalid{}} ->
         raise NotFoundError
+
+      {:error, error} ->
+        raise error
     end
   end
 

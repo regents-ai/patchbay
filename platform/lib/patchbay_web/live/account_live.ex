@@ -111,20 +111,17 @@ defmodule PatchbayWeb.AccountLive do
   defp open_tab(socket, :profile, _params) do
     me = socket.assigns.current_profile
 
-    {:ok, profile} =
-      Identity.get_profile_by_public_id(me.public_id,
+    profile =
+      Identity.get_profile_by_public_id!(me.public_id,
         load: [:bounties_posted, :answers_accepted, :same_person_profiles]
       )
-
-    {:ok, tips} = Payments.tip_record(profile.id)
-    {:ok, jev_runs} = Assist.list_runs_asked_by(profile.id, actor: me)
 
     socket
     |> assign(PatchbayWeb.PublicDocuments.page("/account/profile"))
     |> assign(
       profile: profile,
-      tips: tips,
-      jev_runs: jev_runs,
+      tips: Payments.tip_record!(profile.id),
+      jev_runs: Assist.list_runs_asked_by!(profile.id, actor: me),
       payments_enabled?: Board.payments_enabled?(),
       problem: nil
     )

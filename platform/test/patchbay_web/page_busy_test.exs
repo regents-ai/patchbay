@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.PageBusyTest do
   # A read the database is too busy to answer, wherever it is made, asks to be
   # opened again shortly: a site's page, its Markdown and its live panels, a
-  # post's page, the solved feed and the forum API answer 503 with Retry-After
-  # 2, as a page, as Markdown or as the JSON refusal `busy`. A busy read is
+  # post's page, an agent's profile, the solved feed and the forum API answer
+  # 503 with Retry-After 2, as a page, as Markdown or as the JSON refusal
+  # `busy`, and a hosted tool answers the refusal `busy`. A busy read is
   # never taken for a site the board does not have. Each read below waits on a
   # table another connection has locked until PostgreSQL stops it at its time
   # limit, or waits for a connection while every one is taken. A read that
@@ -216,6 +217,55 @@ defmodule PatchbayWeb.PageBusyTest do
     end
   end
 
+  describe "an agent's profile" do
+    setup do
+      profile =
+        Patchbay.Identity.upsert_from_privy!(%{
+          privy_user_id: "did:privy:busy-profile",
+          wallet_address: "0x" <> String.duplicate("b", 40)
+        })
+
+      %{path: "/agents/#{profile.public_id}", profile: profile}
+    end
+
+    test "is busy, never unknown, when no connection comes free",
+         %{conn: conn, path: path} = context do
+      [page, json, tool] =
+        while_the_connection_is_held([
+          fn -> get(conn, path) end,
+          fn -> get(conn, "/api" <> path) end,
+          fn -> busy_tool?(conn, context.profile) end
+        ])
+
+      assert_busy_page(page, path)
+      assert_busy_json(json)
+      assert tool
+    end
+
+    test "is busy when its tips cannot be read", %{conn: conn, path: path} do
+      lock_table("regent_payments.payment_receipts")
+
+      assert_busy_page(get(conn, path), path)
+      assert_busy_json(get(conn, "/api" <> path))
+    end
+
+    test "is a fault when its tips fail for another reason", %{conn: conn, path: path} do
+      Patchbay.Repo.query!(
+        "ALTER TABLE regent_payments.payment_receipts RENAME COLUMN amount_atomic TO hidden_away"
+      )
+
+      assert_error_sent 500, fn -> get(conn, path) end
+      assert_error_sent 500, fn -> get(conn, "/api" <> path) end
+    end
+
+    test "an unknown one is still not found", %{conn: conn} do
+      assert_error_sent 404, fn -> get(conn, "/agents/nobody-here") end
+
+      assert json_response(get(conn, "/api/agents/nobody-here"), 404)["error"]["code"] ==
+               "not_found"
+    end
+  end
+
   describe "the saved faults" do
     test "leave out a read stopped at its time limit" do
       lock_table("site_checks")
@@ -260,6 +310,33 @@ defmodule PatchbayWeb.PageBusyTest do
            |> LazyHTML.from_document()
            |> LazyHTML.query("a.pb-cta")
            |> LazyHTML.attribute("href") == [try_again]
+  end
+
+  defp assert_busy_json(answer) do
+    assert json_response(answer, 503)["error"]["code"] == "busy"
+    assert get_resp_header(answer, "retry-after") == ["2"]
+  end
+
+  # The hosted get_agent_profile answers as a tool: a result that is the
+  # refusal `busy`, not the address failing.
+  defp busy_tool?(conn, profile) do
+    call = %{
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: %{
+        "name" => "get_agent_profile",
+        "arguments" => %{"profile_id" => profile.public_id}
+      }
+    }
+
+    %{"result" => %{"isError" => true, "content" => [%{"text" => text}]}} =
+      conn
+      |> put_req_header("content-type", "application/json")
+      |> post("/mcp", Jason.encode!(call))
+      |> json_response(200)
+
+    Jason.decode!(text)["error"]["code"] == "busy"
   end
 
   # Another connection locks `table` until the test ends, and this test's

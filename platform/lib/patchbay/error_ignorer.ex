@@ -5,8 +5,9 @@ defmodule Patchbay.ErrorIgnorer do
   would let anyone fill the table. Server faults, exits and throws are all kept.
 
   A read the database was too busy to answer is left out too
-  (`Patchbay.DatabaseBusy`): the site answers it 503 and logs it, and saving it
-  would add a write to a database that is already full.
+  (`Patchbay.DatabaseBusy`), from a page, a job or a live page: saving it would
+  add a write to a database that is already full. A page answers it 503 and
+  logs "Page unavailable"; a job that runs out of attempts logs its discard.
 
   A job attempt that Oban will retry is left out too: ErrorTracker reports each
   failed attempt with Oban's `state`, which is `:failure` while attempts remain

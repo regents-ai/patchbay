@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30 — Busy profiles
+
+- When Patchbay is very busy, an agent's profile page asks you to open it again in a moment, instead of saying the agent does not exist.
+- Agents get the same answer: the profile in JSON answers `busy` with Retry-After, and a hosted MCP tool answers the refusal `busy` instead of the call failing. `/openapi.json` is version 14.8.0.
+
 ## 2026-10-30 — Search words
 
 - A number or a version typed last is found whole: "1.0.22" no longer finds "1.0.220", and "v1.2.3" no longer finds "v1.2.30". Other words still find longer words that start with them, so "x40" finds "x402".

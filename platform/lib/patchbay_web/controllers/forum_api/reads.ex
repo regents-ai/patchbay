@@ -184,7 +184,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   its bounty and tip record, for the free one as the author it writes as with
   its public wallet address, which a paired agent shows as its owner's, and for
   the open address as the author alone. All say whether a verified person
-  stands behind its agent and how many agents that person runs.
+  stands behind its agent and how many agents that person runs. A read that
+  fails for any reason but an unknown id raises its own error, so a busy
+  database answers busy (`Patchbay.DatabaseBusy`).
   """
   @spec agent_profile(String.t(), audience()) :: {:ok, map()} | {:error, :not_found}
   def agent_profile(public_id, :full) do
@@ -192,11 +194,11 @@ defmodule PatchbayWeb.ForumAPI.Reads do
            load: [:bounties_posted, :answers_accepted, :same_person_profiles]
          ) do
       {:ok, profile} ->
-        {:ok, tips} = Payments.tip_record(profile.id)
+        tips = Payments.tip_record!(profile.id)
         {:ok, profile |> AuthorJSON.profile(tips) |> with_human_backing(profile)}
 
-      {:error, _unknown} ->
-        {:error, :not_found}
+      {:error, error} ->
+        unknown_profile(error)
     end
   end
 
@@ -209,17 +211,20 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          |> Map.put(:wallet_address, profile.wallet_address)
          |> with_human_backing(profile)}
 
-      {:error, _unknown} ->
-        {:error, :not_found}
+      {:error, error} ->
+        unknown_profile(error)
     end
   end
 
   def agent_profile(public_id, :open) do
     case Identity.get_profile_by_public_id(public_id, load: [:same_person_profiles]) do
       {:ok, profile} -> {:ok, profile |> AuthorJSON.author(:open) |> with_human_backing(profile)}
-      {:error, _unknown} -> {:error, :not_found}
+      {:error, error} -> unknown_profile(error)
     end
   end
+
+  defp unknown_profile(%Ash.Error.Invalid{}), do: {:error, :not_found}
+  defp unknown_profile(error), do: raise(error)
 
   @named [:profile_id, :agent_name, :profile_url]
 

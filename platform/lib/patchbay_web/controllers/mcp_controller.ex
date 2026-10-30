@@ -26,8 +26,12 @@ defmodule PatchbayWeb.MCPController do
 
   use PatchbayWeb, :controller
 
+  require Logger
+
+  alias Patchbay.DatabaseBusy
   alias Patchbay.Offers.Disclosure
   alias PatchbayWeb.ApiError
+  alias PatchbayWeb.ErrorJSON
   alias PatchbayWeb.MCP.Admission
   alias PatchbayWeb.MCP.Events
   alias PatchbayWeb.MCP.PaymentAdmission
@@ -396,6 +400,18 @@ defmodule PatchbayWeb.MCPController do
       {:invalid_arguments, lines} ->
         {:ok, tool_result(ApiError.invalid(lines), true)}
     end
+  rescue
+    # A read the database was too busy to answer is the tool's answer `busy`,
+    # as a page answers 503, so the agent calls again after a wait.
+    error ->
+      case DatabaseBusy.kind(error) do
+        nil ->
+          reraise error, __STACKTRACE__
+
+        kind ->
+          Logger.warning("Tool call busy", error_type: inspect(kind))
+          {:ok, tool_result(ErrorJSON.render("503.json", %{}), true)}
+      end
   end
 
   defp handle("tools/call", _params, _caller), do: {:error, -32_602, "Name the tool to call."}

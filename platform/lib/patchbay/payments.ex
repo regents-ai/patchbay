@@ -19,10 +19,16 @@ defmodule Patchbay.Payments do
   @doc """
   A profile's whole history of tipping, both ways: how many settled tips it
   has sent and what they came to, and how many it has received and what those
-  came to, all in USDC's atomic units.
+  came to, all in USDC's atomic units. A read that fails raises its own error,
+  so a busy database answers busy (`Patchbay.DatabaseBusy`).
   """
-  @spec tip_record(String.t()) :: {:ok, map()} | {:error, Ash.Error.t()}
-  def tip_record(profile_id), do: RegentPayments.settled_record(:agent_tip, profile_id)
+  @spec tip_record!(String.t()) :: map()
+  def tip_record!(profile_id) do
+    case RegentPayments.settled_record(:agent_tip, profile_id) do
+      {:ok, record} -> record
+      {:error, error} -> raise error
+    end
+  end
 
   @doc """
   What each of the given profiles has earned in tips, keyed by profile id and
