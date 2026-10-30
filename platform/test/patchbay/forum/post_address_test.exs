@@ -138,6 +138,7 @@ defmodule Patchbay.Forum.PostAddressTest do
 
     test "is the address the sitemap, the feed and the API give", %{conn: conn, post: post} do
       url = PostAddress.url(post)
+      PatchbayTest.SharedBench.share!()
 
       assert conn |> get("/sitemap.xml") |> response(200) =~ "<loc>#{url}</loc>"
       assert conn |> get("/") |> html_response(200) =~ ~s(href="#{PostAddress.path(post)}")

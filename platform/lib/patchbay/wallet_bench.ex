@@ -5,8 +5,8 @@ defmodule Patchbay.WalletBench do
   Techtree runs the bench and publishes what it found as read-only views in
   its own schema of the shared database. Patchbay reads them in full once a
   minute and shares that reading with every visitor of the board and of How
-  the bench works (`Patchbay.WalletBench.Board`); a pair's page reads its own
-  runs when it is opened. Patchbay keeps no names, rules or wording of its
+  the bench works and of each pair's page (`Patchbay.WalletBench.Board`).
+  Patchbay keeps no names, rules or wording of its
   own: every agent and wallet name, outcome meaning and note comes from the
   views.
   """
@@ -16,18 +16,14 @@ defmodule Patchbay.WalletBench do
   resources do
     resource Patchbay.WalletBench.Result do
       define(:list_results, action: :read)
-      define(:list_results_without_steps, action: :without_steps)
-      define(:pair_results, action: :for_pair, args: [:harness_id, :wallet_id])
     end
 
     resource Patchbay.WalletBench.SetSummary do
       define(:list_sets, action: :read)
-      define(:pair_sets, action: :for_pair, args: [:harness_id, :wallet_id])
     end
 
     resource Patchbay.WalletBench.Check do
       define(:list_checks, action: :read)
-      define(:pair_checks, action: :for_pair, args: [:harness_id, :wallet_id])
     end
 
     resource Patchbay.WalletBench.Fixed do

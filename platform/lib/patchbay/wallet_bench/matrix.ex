@@ -38,7 +38,8 @@ defmodule Patchbay.WalletBench.Matrix do
     Result,
     RosterEntry,
     Sets,
-    SetSummary
+    SetSummary,
+    Turn
   }
 
   @grids ["install", "wallet", "refund", "paid_call", "patchbay"]
@@ -90,9 +91,9 @@ defmodule Patchbay.WalletBench.Matrix do
         }
 
   @doc """
-  Every row the board and How the bench works are built from, read now from
-  Techtree's views as plain maps: each resource's attributes, and of the runs
-  everything but their steps, which the board never shows. `criteria` is each
+  Every row the board, How the bench works and each pair's page are built
+  from, read now from Techtree's views as plain maps: each resource's
+  attributes, and each run's steps as the maps of theirs. `criteria` is each
   grid's checks once (`criteria/2`), worked out here because it takes every
   check and every run. One read a minute shares them with every visitor
   (`Patchbay.WalletBench.Board`).
@@ -102,11 +103,15 @@ defmodule Patchbay.WalletBench.Matrix do
     with {:ok, roster} <- WalletBench.list_roster(),
          {:ok, notes} <- WalletBench.list_notes(),
          {:ok, fixed} <- WalletBench.list_fixed(),
-         {:ok, results} <- WalletBench.list_results_without_steps(),
+         {:ok, results} <- WalletBench.list_results(),
          {:ok, summaries} <- WalletBench.list_sets(),
          {:ok, checks} <- WalletBench.list_checks(),
          {:ok, extra_notes} <- WalletBench.list_extra_notes() do
-      results = plain(results, Result, [:turns])
+      results =
+        results
+        |> plain(Result)
+        |> Enum.map(&Map.update!(&1, :turns, fn turns -> plain(turns, Turn) end))
+
       checks = plain(checks, Check)
 
       {:ok,
@@ -125,10 +130,8 @@ defmodule Patchbay.WalletBench.Matrix do
 
   # A row as the map of its attributes, which a shared reading holds where it
   # refuses a record.
-  defp plain(records, resource, left_out \\ []) do
-    fields =
-      Ash.Resource.Info.attribute_names(resource) |> MapSet.to_list() |> Kernel.--(left_out)
-
+  defp plain(records, resource) do
+    fields = resource |> Ash.Resource.Info.attribute_names() |> MapSet.to_list()
     Enum.map(records, &Map.take(&1, fields))
   end
 

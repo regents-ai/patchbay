@@ -23,9 +23,11 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
   # a search past the schema's length is shortened there, not refused.
   @shortened [{"read_site_directory", "q"}, {"read_site_directory", "category"}]
 
+  # The bench tools' doors read the Wallet Bench as the minute's pass shares it.
   setup do
     SignedAgent.stub_siwa()
     SignedAgent.stub_wallet_author()
+    PatchbayTest.SharedBench.share!()
     %{agent: SignedAgent.pair!()}
   end
 

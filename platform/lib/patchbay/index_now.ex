@@ -34,15 +34,20 @@ defmodule Patchbay.IndexNow do
   def perform(%Oban.Job{args: %{"urls" => urls}}), do: deliver(key(), urls)
 
   # The hourly job: queue the sitemap once for each release, which is when the
-  # fixed pages change.
+  # fixed pages change. While the sitemap answers 503 it waits a minute and
+  # tries again, so the release's one submission lists every page.
   def perform(%Oban.Job{args: %{}}) do
-    if key() do
-      %{"urls" => SitemapController.urls(), "released" => SitemapController.released_at()}
+    with key when is_binary(key) <- key(),
+         {:ok, urls} <- SitemapController.urls() do
+      %{"urls" => urls, "released" => SitemapController.released_at()}
       |> new(unique: [period: :infinity, keys: [:released], states: :all])
       |> Oban.insert!()
-    end
 
-    :ok
+      :ok
+    else
+      nil -> :ok
+      :unread -> {:snooze, 60}
+    end
   end
 
   defp deliver(nil, _urls), do: {:cancel, "no IndexNow key is set"}

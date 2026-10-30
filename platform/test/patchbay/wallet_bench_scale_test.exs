@@ -1,13 +1,14 @@
 defmodule Patchbay.WalletBench.ScaleTest do
   @moduledoc """
   The minute's read of the whole bench (`Patchbay.WalletBench.Board`) must
-  stay quick at production's size and beyond, read through views shaped as
-  Techtree's (`Patchbay.TechtreeBenchViews`), and a visit to the board must
-  then read nothing from those views. Release v284 named each check by its
-  newest run with a lookup into the runs view for every check: on
-  production's bench the page timed out after 15 seconds and held database
-  connections, and on this bench each page took four to five seconds. Before
-  the bench was shared, every visit read the views: about 400 ms of database time.
+  stay cheap at production's size and beyond, read through views shaped as
+  Techtree's (`Patchbay.TechtreeBenchViews`), and a visit to the board, a
+  pair's page or the sitemap must then read nothing from those views.
+  Release v284 named each check by its newest run with a lookup into the runs
+  view for every check: on production's bench the page timed out after 15
+  seconds and held database connections, and on this bench each page took
+  four to five seconds. Before the bench was shared, every visit read the
+  views: about 400 ms of database time.
   """
 
   # Techtree's views replace two shared tables until the test ends, and the
@@ -23,10 +24,16 @@ defmodule Patchbay.WalletBench.ScaleTest do
   # 10 wallets.
   @attempts 2_000
 
-  # Generous, so a busy machine never fails it: the read takes about 400 ms
-  # here, and a visit to the board about 20 ms with a filter.
-  @bound_microseconds 1_000_000
-  @visit_microseconds 250_000
+  # What the read and each visit may cost in the BEAM's own count of work
+  # (reductions, across every process), which stays the same however busy
+  # the machine is. Time did not: the read took about 400 ms on a quiet
+  # machine and up to 1.4 s with other checks running beside it. The read
+  # costs about 48 million and the costliest visit, a filtered board, about
+  # 1.6 million; a visit that read the bench itself would cost about as much
+  # as the read. The database's part is bounded by the read sending one query
+  # to each of the seven views and nothing for each row.
+  @read_reductions 100_000_000
+  @visit_reductions 4_000_000
 
   setup do
     Patchbay.TechtreeBenchViews.install!(Repo, @attempts)
@@ -55,7 +62,7 @@ defmodule Patchbay.WalletBench.ScaleTest do
     :ok
   end
 
-  test "the minute's read takes well inside a second on a production-sized bench, and a visit reads no view",
+  test "the minute's read stays cheap on a production-sized bench, and a visit reads no view",
        %{conn: conn} do
     assert %{rows: [[5_000, 33_000]]} =
              Repo.query!("""
@@ -64,8 +71,11 @@ defmodule Patchbay.WalletBench.ScaleTest do
              """)
 
     on_exit(&PatchbayTest.SharedBench.forget/0)
-    {read_us, :ok} = :timer.tc(&Board.refresh/0)
-    assert read_us < @bound_microseconds, "the read took #{div(read_us, 1000)} ms"
+    Req.Test.stub(Patchbay.WalletBench.PublicRun, &Plug.Conn.send_resp(&1, 404, ""))
+
+    {read, {:ok, views}} = work(fn -> PatchbayTest.SharedBench.views_read(&Board.refresh/0) end)
+    assert read < @read_reductions, "the read cost #{read} reductions"
+    assert length(views) == 7, "the read sent #{length(views)} queries to the views"
 
     {:ok, matrix, _read} = Board.board(%{}, Matrix.grids())
     {:ok, key, _read} = Board.method()
@@ -76,13 +86,20 @@ defmodule Patchbay.WalletBench.ScaleTest do
 
     [%{id: model} | _] = matrix.options["model"]
 
-    for path <- ["/wallet-bench", "/wallet-bench?test=wallet&model=#{model}", "/api/wallet-bench"] do
-      {visit_us, {conn, views}} =
-        :timer.tc(fn -> PatchbayTest.SharedBench.views_read(fn -> get(conn, path) end) end)
+    for path <- [
+          "/wallet-bench",
+          "/wallet-bench?test=wallet&model=#{model}",
+          "/api/wallet-bench",
+          "/wallet-bench/H1/W1",
+          "/api/wallet-bench/H1/W1?test=wallet&model=#{model}",
+          "/sitemap.xml"
+        ] do
+      {visit, {conn, views}} =
+        work(fn -> PatchbayTest.SharedBench.views_read(fn -> get(conn, path) end) end)
 
-      assert conn.status == 200
+      assert conn.status == 200, path
       assert views == [], "#{path} read #{inspect(views)}"
-      assert visit_us < @visit_microseconds, "#{path} took #{div(visit_us, 1000)} ms"
+      assert visit < @visit_reductions, "#{path} cost #{visit} reductions"
     end
 
     # Every run here has the one model, so filtering by it leaves each
@@ -94,5 +111,14 @@ defmodule Patchbay.WalletBench.ScaleTest do
       assert {:ok, %{grids: [filtered]}, _read} = Board.board(filters, [grid.grid])
       assert filtered == grid
     end
+  end
+
+  # The work `fun` does, counted by the BEAM in reductions across every
+  # process, with its result.
+  defp work(fun) do
+    :erlang.statistics(:exact_reductions)
+    result = fun.()
+    {_total, done} = :erlang.statistics(:exact_reductions)
+    {done, result}
   end
 end

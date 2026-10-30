@@ -24,19 +24,6 @@ defmodule Patchbay.WalletBench.Result do
 
   actions do
     defaults([:read])
-
-    read :for_pair do
-      description("Every run of one agent and wallet pair, in order.")
-      argument(:harness_id, :string, allow_nil?: false)
-      argument(:wallet_id, :string, allow_nil?: false)
-      filter(expr(harness_id == ^arg(:harness_id) and wallet_id == ^arg(:wallet_id)))
-      prepare(build(sort: [grid: :asc, run: :asc]))
-    end
-
-    read :without_steps do
-      description("Every run without its steps, for the board, which shows none.")
-      prepare(build(deselect: [:turns]))
-    end
   end
 
   policies do

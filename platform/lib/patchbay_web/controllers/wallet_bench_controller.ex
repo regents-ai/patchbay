@@ -3,18 +3,17 @@ defmodule PatchbayWeb.WalletBenchController do
   The Agent Wallet Bench board, `/wallet-bench`, one test at a time
   (`?test=wallet`; the first test when none is named), how the bench works,
   `/wallet-bench/how-it-works`, and one pair's runs,
-  `/wallet-bench/<agent>/<wallet>`. The board and How the bench works show
-  the bench as it was read within the last minute, shared with every visitor
+  `/wallet-bench/<agent>/<wallet>`. All three show the bench as it was read
+  within the last minute, shared with every visitor
   (`Patchbay.WalletBench.Board`), so a finished run shows within a minute and
-  a visit reads nothing from Techtree. Until the bench has been read once
-  since the site started, both answer 503 and say to try again in a minute;
-  while four filtered boards are being built, a fifth answers 503 busy.
-  A pair's page reads that pair's runs when it is opened.
+  a visit reads nothing from Techtree's views. Until the bench has been read
+  once since the site started, each answers 503 and says to try again in a
+  minute; while four filtered boards are being built, a fifth answers 503
+  busy.
   """
 
   use PatchbayWeb, :controller
 
-  alias Patchbay.WalletBench
   alias Patchbay.WalletBench.Board
   alias Patchbay.WalletBench.ExtraNotes
   alias Patchbay.WalletBench.Matrix
@@ -111,8 +110,14 @@ defmodule PatchbayWeb.WalletBenchController do
   query: the `read_wallet_bench_pair` tool.
   """
   @spec read_wallet_bench_pair(map()) :: {atom(), map()}
-  def read_wallet_bench_pair(params),
-    do: read(fn -> {:ok, WalletBenchJSON.show(Map.new(pair(params)))} end)
+  def read_wallet_bench_pair(params) do
+    read(fn ->
+      case pair(params) do
+        {:ok, assigns} -> {:ok, WalletBenchJSON.show(Map.new(assigns))}
+        :unread -> {:service_unavailable, refusal(:unread)}
+      end
+    end)
+  end
 
   # A bench address that names nothing raises NotFoundError, which the HTTP
   # door answers with the site's 404 body; a tool answers with the same.
@@ -136,25 +141,34 @@ defmodule PatchbayWeb.WalletBenchController do
     end
   end
 
-  def show(conn, params), do: render(conn, :show, pair(params))
+  def show(conn, params) do
+    case pair(params) do
+      {:ok, assigns} -> render(conn, :show, assigns)
+      :unread -> unavailable(conn, :unread)
+    end
+  end
 
-  # One pair's runs, as the page and its JSON show them.
+  # One pair's runs, as the page and its JSON show them, from the bench as
+  # last read.
   defp pair(%{"harness_id" => harness_id, "wallet_id" => wallet_id} = params) do
     context = bench_context(params)
+
+    with {:ok, pages, _read} <- Board.pages(),
+         {harness, wallet} = pair!(pages.roster, harness_id, wallet_id),
+         {:ok, held, _read} <- Board.pair(harness.id, wallet.id) do
+      {:ok, shown(pages, held, {harness, wallet}, context, params)}
+    end
+  end
+
+  defp shown(pages, held, {harness, wallet}, context, params) do
+    %{notes: notes, fixed: fixed, extra_notes: extra_notes} = pages
+    %{summaries: summaries, checks: checks} = held
+    %{id: harness_id} = harness
+    %{id: wallet_id} = wallet
     test = context["test"]
-    {harness, wallet} = pair!(harness_id, wallet_id)
-
-    {:ok, notes} = WalletBench.list_notes()
-    {:ok, fixed} = WalletBench.list_fixed()
-    {:ok, results} = WalletBench.pair_results(harness_id, wallet_id)
-
     filters = Map.take(context, Sets.filters())
-    validate_pair_filters!(filters)
-
-    {:ok, summaries} = WalletBench.pair_sets(harness_id, wallet_id)
-    {:ok, checks} = WalletBench.pair_checks(harness_id, wallet_id)
-    {:ok, extra_notes} = WalletBench.list_extra_notes()
-    results = Sets.filter(results, filters)
+    validate_pair_filters!(filters, pages.options)
+    results = Sets.filter(held.results, filters)
     sets = Sets.build(results, summaries)
     selection = Map.take(params, ~w(set baseline compare))
     validate_selection!(selection, sets)
@@ -254,16 +268,13 @@ defmodule PatchbayWeb.WalletBenchController do
 
   defp selected_run!(_results, _test, _id), do: raise(NotFoundError)
 
-  # A pair with no runs may still carry a matrix option recorded by another pair.
-  defp validate_pair_filters!(filters) do
-    if Enum.any?(filters, fn {_key, selected} -> selected != "" end) do
-      {:ok, recorded} = WalletBench.list_results(query: [select: [:set_versions]])
-      unless Sets.valid_filters?(filters, Sets.options(recorded)), do: raise(NotFoundError)
-    end
+  # A pair with no runs may still carry a matrix option recorded by another
+  # pair: `options` holds every pair's.
+  defp validate_pair_filters!(filters, options) do
+    unless Sets.valid_filters?(filters, options), do: raise(NotFoundError)
   end
 
-  defp pair!(harness_id, wallet_id) do
-    {:ok, roster} = WalletBench.list_roster()
+  defp pair!(roster, harness_id, wallet_id) do
     harness = Enum.find(roster, &(&1.kind == "harness" and &1.id == harness_id))
     wallet = Enum.find(roster, &(&1.kind == "wallet" and &1.id == wallet_id))
     unless harness && wallet, do: raise(NotFoundError)

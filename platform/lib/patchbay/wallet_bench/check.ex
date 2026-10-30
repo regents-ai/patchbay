@@ -21,14 +21,6 @@ defmodule Patchbay.WalletBench.Check do
 
   actions do
     defaults([:read])
-
-    read :for_pair do
-      description("Every check behind one agent and wallet pair's runs, in order.")
-      argument(:harness_id, :string, allow_nil?: false)
-      argument(:wallet_id, :string, allow_nil?: false)
-      filter(expr(harness_id == ^arg(:harness_id) and wallet_id == ^arg(:wallet_id)))
-      prepare(build(sort: [grid: :asc, run: :asc, criterion_id: :asc]))
-    end
   end
 
   policies do

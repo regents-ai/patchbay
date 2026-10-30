@@ -6,7 +6,8 @@ defmodule PatchbayWeb.IncidentControllerTest do
   tests (`test/support/incidents`).
   """
 
-  use PatchbayWeb.ConnCase, async: true
+  # The sitemap reads the shared Wallet Bench, one reading for the whole run.
+  use PatchbayWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
@@ -156,6 +157,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
   end
 
   test "the sitemap lists the incidents and each one's page", %{conn: conn} do
+    PatchbayTest.SharedBench.share!()
     xml = conn |> get(~p"/sitemap.xml") |> response(200)
 
     for path <-

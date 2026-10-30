@@ -1,10 +1,11 @@
 defmodule PatchbayWeb.WalletBenchBoardTest do
   @moduledoc """
   The Wallet Bench read once a minute and shared with every visitor
-  (`Patchbay.WalletBench.Board`): a visit reads nothing from Techtree's views,
-  filters apply to the shared rows in memory, a failed read keeps the last
-  board on show and says so, and a site that has not read the bench yet
-  answers 503 instead of failing.
+  (`Patchbay.WalletBench.Board`): a visit to the board, a pair's page or the
+  sitemap reads nothing from Techtree's views, filters apply to the shared
+  rows in memory, a pair that leaves the roster is forgotten, a failed read
+  keeps the last board on show and says so, and a site that has not read the
+  bench yet answers 503 instead of failing.
   """
 
   # One shared reading for the whole run, and a producer started here.
@@ -21,6 +22,8 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
   setup do
     SharedBench.forget()
     on_exit(&SharedBench.forget/0)
+    # Techtree has no public record of these runs: a pair's page shows them without one.
+    Req.Test.stub(Patchbay.WalletBench.PublicRun, &Plug.Conn.send_resp(&1, 404, ""))
 
     Repo.query!("""
     INSERT INTO techtree_app.wallet_bench_roster (kind, id, name)
@@ -47,7 +50,7 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
         (attempt_id, grid, harness_id, wallet_id, run, outcome, decided_by, turns, run_url,
          set_versions, set_id, finished_at)
       VALUES ($1, 'install', 'H1', $2, 1, $3, 'T1a', '[]', 'https://techtree.sh/run',
-              jsonb_build_object('model', $4::text), $5, $6)
+              jsonb_build_object('model', $4::text, 'wallet', '1.0.0'), $5, $6)
       """,
       [Ecto.UUID.dump!(Ecto.UUID.generate()), wallet, outcome, model, set_id, finished_at]
     )
@@ -73,7 +76,10 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
           "/wallet-bench?test=install",
           "/wallet-bench?test=install&model=#{model_b}",
           "/api/wallet-bench?model=#{model_b}",
-          "/wallet-bench/how-it-works"
+          "/wallet-bench/how-it-works",
+          "/wallet-bench/H1/W1?test=install",
+          "/api/wallet-bench/H1/W2?model=#{model_b}",
+          "/sitemap.xml"
         ] do
       {conn, views} = SharedBench.views_read(fn -> get(conn, path) end)
       assert conn.status == 200, path
@@ -118,6 +124,42 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     assert_error_sent 404, fn -> get(conn, "/wallet-bench?model=#{Sets.token("model-z")}") end
   end
 
+  test "a pair's page shows its runs and their steps from the shared reading, and a pair that leaves the roster is forgotten",
+       %{conn: conn} do
+    Repo.query!("""
+    UPDATE techtree_app.wallet_bench_results
+    SET turns = '[{"turn": "T1a", "name": "First install", "outcome": "PASS"}]'
+    WHERE wallet_id = 'W1'
+    """)
+
+    SharedBench.share!()
+
+    pair = conn |> get("/api/wallet-bench/H1/W1?test=install") |> json_response(200)
+
+    assert [%{"outcome" => "PASS", "turns" => [%{"turn" => "T1a", "name" => "First install"}]}] =
+             pair["runs"]
+
+    # A recorded version only another pair has run is still a filter this
+    # pair's page accepts; one nobody has run is not found.
+    assert conn
+           |> get("/api/wallet-bench/H1/W1?model=#{Sets.token("model-b")}")
+           |> json_response(200)
+
+    assert_error_sent 404, fn ->
+      get(conn, "/wallet-bench/H1/W1?model=#{Sets.token("model-z")}")
+    end
+
+    assert {:ok, _held, _read} = Board.pair("H1", "W2")
+
+    Repo.query!("DELETE FROM techtree_app.wallet_bench_roster WHERE id = 'W2'")
+    :ok = Board.refresh()
+
+    assert Board.pair("H1", "W2") == :unread
+    refute "pair:H1/W2" in Patchbay.SharedReading.ids(:wallet_bench)
+    assert_error_sent 404, fn -> get(conn, "/wallet-bench/H1/W2") end
+    assert conn |> get("/wallet-bench/H1/W1") |> html_response(200) =~ "Wallet One"
+  end
+
   test "a run that finishes shows on the next read, not before" do
     SharedBench.share!()
     {:ok, before, _read} = Board.board(%{}, ["install"])
@@ -146,6 +188,9 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     refute log =~ "Bread Crumbs"
     assert {:ok, ^board, %{at: ^at, degraded?: true}} = Board.board(%{}, ["install"])
     assert {:ok, _method, %{degraded?: true}} = Board.method()
+    assert {:ok, _pages, %{degraded?: true}} = Board.pages()
+    assert {:ok, _pair, %{degraded?: true}} = Board.pair("H1", "W2")
+    assert conn |> get("/wallet-bench/H1/W2") |> html_response(200) =~ "Wallet Two"
 
     page = conn |> get("/wallet-bench?test=install") |> html_response(200)
     assert page =~ "The latest read got no answer, so these are the last results it gave."
@@ -273,6 +318,23 @@ defmodule PatchbayWeb.WalletBenchBoardTest do
     assert {:service_unavailable, %{"error" => %{"code" => "not_ready"}}} =
              PatchbayWeb.WalletBenchController.read_wallet_bench(%{})
              |> then(fn {status, body} -> {status, Jason.decode!(Jason.encode!(body))} end)
+
+    # A pair's page, its JSON and its tool, and the sitemap, say the same.
+    assert conn |> get("/wallet-bench/H1/W1") |> html_response(503) =~ "still being read"
+    assert get_resp_header(get(conn, "/wallet-bench/H1/W1"), "retry-after") == ["60"]
+
+    assert %{"error" => %{"code" => "not_ready"}} =
+             conn |> get("/api/wallet-bench/H1/W1") |> json_response(503)
+
+    assert {:service_unavailable, %{error: %{code: "not_ready"}}} =
+             PatchbayWeb.WalletBenchController.read_wallet_bench_pair(%{
+               "harness_id" => "H1",
+               "wallet_id" => "W1"
+             })
+
+    sitemap = get(conn, "/sitemap.xml")
+    assert response(sitemap, 503) =~ "Wallet Bench results are still being read."
+    assert get_resp_header(sitemap, "retry-after") == ["60"]
 
     # The producer's first read happens inside its start, so the board is
     # there once the site begins to serve.

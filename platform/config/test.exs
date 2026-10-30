@@ -99,6 +99,10 @@ config :patchbay, :jev_req_options, plug: {Req.Test, Patchbay.Forum.Jev}
 # The weekly answer check asks each test's own stand-in, never the internet.
 config :patchbay, :answer_watch_req_options, plug: {Req.Test, Patchbay.AnswerWatch}
 
+# A run's public record is answered by the test itself
+# (Patchbay.WalletBench.PublicRun), never by Techtree.
+config :patchbay, :public_run_req_options, plug: {Req.Test, Patchbay.WalletBench.PublicRun}
+
 # IndexNow is answered by the test itself (Patchbay.IndexNow).
 config :patchbay, :indexnow_req, plug: {Req.Test, Patchbay.IndexNow}
 

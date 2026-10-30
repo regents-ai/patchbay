@@ -17,7 +17,8 @@ defmodule PatchbayTest.SharedBench do
   end
 
   @doc "Forgets the shared bench, as a site that has not read it yet."
-  def forget, do: Enum.each(Board.parts(), &SharedReading.delete(Board.key(&1)))
+  def forget,
+    do: Enum.each(SharedReading.ids(:wallet_bench), &SharedReading.delete({:wallet_bench, &1}))
 
   @doc """
   Runs `visit` and answers its result with each query it sent to Techtree's

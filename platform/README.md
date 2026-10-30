@@ -36,12 +36,16 @@ padding. A newer unsuccessful install remains visible over an older passing wall
 attempt. Model, harness, wallet and protocol filters narrow results before selection.
 Versions from different attempts never contribute dots to one displayed result.
 
-The board, `GET /api/wallet-bench` (the `read_wallet_bench` tool) and How the bench
-works never read Techtree's views on a visit. `Patchbay.WalletBench.Board` reads the
+The board, `GET /api/wallet-bench` (the `read_wallet_bench` tool), How the bench
+works, each pair's page (`GET /api/wallet-bench/:harness_id/:wallet_id`, the
+`read_wallet_bench_pair` tool) and `/sitemap.xml` never read Techtree's views on a visit. `Patchbay.WalletBench.Board` reads the
 whole bench once a minute, when the Oban schedule's `Patchbay.SharedReading.Heal`
 asks, and keeps it in `Patchbay.SharedReading` (copied from ash-template): the board
 as most visits see it, the rows a visit with filters builds its own board from in
-memory, and How the bench works. A visit with filters copies only the rows and the
+memory, How the bench works, what pair pages and the sitemap share (roster, notes,
+the filter choices and each pair's newest run) and, for each pair on the roster, its
+runs with their steps, its sets and its checks. A pair that leaves the roster is
+forgotten at the next read. A visit with filters copies only the rows and the
 checks of the test it shows, and builds only that test's grid (every grid for the
 Markdown page); a filter left at any version is no filter and gets the shared board.
 Filtered boards are built under a `Task.Supervisor` that runs four at a time (each
@@ -53,10 +57,12 @@ cancels a slow view and frees the connection. A read that fails or is cancelled 
 the last board on show, marked so the page says the latest read got no answer, and
 logs one warning. Both addresses count against each address's share of reads a minute
 (`PatchbayWeb.Plugs.ReadBudget`), as every page does. The first read
-happens as the site starts, before it serves a page; if that one fails, the board and
-How the bench works answer 503 `not_ready` ("Try again in a minute") until the next
-minute's read. `health.shared_reading.*` measures how old the reading is. A pair's
-page still reads that pair's runs when it is opened.
+happens as the site starts, before it serves a page; if that one fails, the board,
+How the bench works and pair pages answer 503 `not_ready` ("Try again in a minute"),
+and the sitemap answers 503 with `Retry-After: 60`, until the next minute's read; the
+hourly IndexNow job waits a minute instead of sending a short list.
+`health.shared_reading.*` measures how old the reading is. A pair's page still asks
+Techtree for the selected run's public record when it is opened.
 
 Pair pages use `?test=wallet&set=<64-hex-id>&run=<uuid>&check=C1`. The selected set
 must belong to that test; the run must belong to the filtered set. An optional

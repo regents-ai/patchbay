@@ -38,15 +38,29 @@ defmodule PatchbayWeb.AgentReadinessTest do
     )
   end
 
-  # One published Agent Wallet Bench run, as Techtree records it.
+  # One published Agent Wallet Bench run, as Techtree records it, in its
+  # pair's one set.
   defp bench_run!(harness_id, wallet_id, finished_at) do
+    set_id = "#{harness_id}-#{wallet_id}"
+
     Patchbay.Repo.query!(
       """
       INSERT INTO techtree_app.wallet_bench_results
         (attempt_id, grid, harness_id, wallet_id, run, turns, run_url, set_versions, set_id, finished_at)
-      VALUES ($1, 'install', $2, $3, 1, '[]', 'https://techtree.sh/runs/example', '{}', 'set-1', $4)
+      VALUES ($1, 'install', $2, $3, 1, '[]', 'https://techtree.sh/runs/example', '{}', $4, $5)
       """,
-      [Ecto.UUID.dump!(Ecto.UUID.generate()), harness_id, wallet_id, finished_at]
+      [Ecto.UUID.dump!(Ecto.UUID.generate()), harness_id, wallet_id, set_id, finished_at]
+    )
+
+    Patchbay.Repo.query!(
+      """
+      INSERT INTO techtree_app.wallet_bench_pair_summary
+        (set_id, harness_id, wallet_id, grid, current, runs, successes, caveat_runs, proof_kind,
+         last_run_at)
+      VALUES ($1, $2, $3, 'install', true, 1, 1, 0, 'judge', $4)
+      ON CONFLICT (set_id) DO NOTHING
+      """,
+      [set_id, harness_id, wallet_id, finished_at]
     )
   end
 
@@ -243,6 +257,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
       bench_run!("claude-code", "bankr", ~N[2026-10-20 12:00:00])
       bench_run!("claude-code", "bankr", ~N[2026-10-18 09:00:00])
       bench_run!("codex", "privy", ~N[2026-10-21 08:30:00])
+      PatchbayTest.SharedBench.share!()
 
       url = PatchbayWeb.Endpoint.url()
       conn = get(conn, "/sitemap.xml")

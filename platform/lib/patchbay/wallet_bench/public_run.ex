@@ -14,16 +14,19 @@ defmodule Patchbay.WalletBench.PublicRun do
   def fetch(run) do
     with {:ok, id} <- Ecto.UUID.cast(run.attempt_id),
          {:ok, %{status: 200, body: body}} when is_binary(body) <-
-           Req.get(source_url(id) <> "/results.json",
-             headers: [{"accept", "application/json"}],
-             redirect: false,
-             retry: false,
-             raw: true,
-             compressed: false,
-             connect_options: [timeout: 4_000],
-             receive_timeout: 8_000,
-             request_timeout: 12_000,
-             into: &collect/2
+           Req.get(
+             source_url(id) <> "/results.json",
+             [
+               headers: [{"accept", "application/json"}],
+               redirect: false,
+               retry: false,
+               raw: true,
+               compressed: false,
+               connect_options: [timeout: 4_000],
+               receive_timeout: 8_000,
+               request_timeout: 12_000,
+               into: &collect/2
+             ] ++ Application.get_env(:patchbay, :public_run_req_options, [])
            ),
          {:ok, report} <- Jason.decode(body),
          true <- valid?(report, run) do

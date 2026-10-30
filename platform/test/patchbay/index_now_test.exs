@@ -1,6 +1,7 @@
 defmodule Patchbay.IndexNowTest do
   # Invariants for telling search engines about public pages:
-  # - each release's sitemap is queued once, however often the hourly job runs;
+  # - each release's sitemap is queued once, however often the hourly job runs,
+  #   and not before the sitemap can list every page;
   # - a thread that changes queues its own address, and nothing is queued without a key;
   # - the list carries this site's host, key and key file, and only this site's pages;
   # - an answer that would fail again stops for good; a busy one waits;
@@ -26,11 +27,19 @@ defmodule Patchbay.IndexNowTest do
   end
 
   test "each release's pages are queued once, however often the hourly job runs" do
+    PatchbayTest.SharedBench.share!()
     for _hour <- 1..3, do: assert(:ok = perform_job(IndexNow, %{}))
 
     assert [job] = all_enqueued(worker: IndexNow)
-    assert job.args["urls"] == SitemapController.urls()
+    assert {:ok, job.args["urls"]} == SitemapController.urls()
     assert (PatchbayWeb.Endpoint.url() <> "/") in job.args["urls"]
+  end
+
+  test "before the Wallet Bench has been read, the hourly job waits a minute and queues nothing" do
+    PatchbayTest.SharedBench.forget()
+
+    assert {:snooze, 60} = perform_job(IndexNow, %{})
+    assert [] = all_enqueued(worker: IndexNow)
   end
 
   test "a new thread queues its own address" do

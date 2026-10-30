@@ -2,16 +2,24 @@ defmodule Patchbay.WalletBench.Board do
   @moduledoc """
   The Agent Wallet Bench read once a minute and shared with every visitor of
   the board (`/wallet-bench`, `GET /api/wallet-bench`, the `read_wallet_bench`
-  tool) and of How the bench works, so a visit reads nothing from Techtree's
-  views and holds no database connection. It runs on each machine that
-  serves pages and keeps its reading in `Patchbay.SharedReading` (`key/1`):
+  tool), of How the bench works, of each pair's page
+  (`/wallet-bench/<agent>/<wallet>`, its JSON and the `read_wallet_bench_pair`
+  tool) and of the sitemap, so a visit reads nothing from Techtree's views and
+  holds no database connection. It runs on each machine that serves pages and
+  keeps its reading in `Patchbay.SharedReading` (`key/1`):
 
   - `:board`, the board as a visit with no filters sees it, built once;
-  - `:rows`, the rows it was built from but the checks, and `{:checks, grid}`,
-    each grid's checks, from which a visit with filters builds the grids it
-    shows in memory (`Patchbay.WalletBench.Matrix.board/3`), copying only
-    the checks of those grids;
-  - `:method`, the checks How the bench works lists.
+  - `:rows`, the rows it was built from but the checks and the runs' steps,
+    and `{:checks, grid}`, each grid's checks, from which a visit with filters
+    builds the grids it shows in memory (`Patchbay.WalletBench.Matrix.board/3`),
+    copying only the checks of those grids;
+  - `:method`, the checks How the bench works lists;
+  - `:pages`, what every pair's page and the sitemap share: the agents and
+    wallets, Techtree's notes, fixed outcomes and extra notes, every recorded
+    version a filter may name, and each pair's newest run;
+  - `{:pair, harness_id, wallet_id}`, one for each agent and wallet on the
+    roster: the pair's runs with their steps, its sets and its checks, so a
+    visit copies only the pair it shows.
 
   This is the second shape the `elixir-stack` skill lets keep a shared reading,
   a reread on notice. Techtree sends Patchbay no notice when a run finishes, so
@@ -44,21 +52,31 @@ defmodule Patchbay.WalletBench.Board do
   alias Patchbay.Repo
   alias Patchbay.SharedReading
   alias Patchbay.WalletBench.Matrix
+  alias Patchbay.WalletBench.Sets
 
   @kind :wallet_bench
-  @whole [:board, :method, :rows]
+  @whole [:board, :method, :rows, :pages]
 
-  @type part :: :board | :rows | :method | {:checks, String.t()}
+  @type part ::
+          :board
+          | :rows
+          | :method
+          | :pages
+          | {:checks, String.t()}
+          | {:pair, String.t(), String.t()}
   @type read :: %{at: DateTime.t(), degraded?: boolean()}
 
   @doc "Where one part of the shared bench is held."
   @spec key(part()) :: SharedReading.key()
   def key({:checks, grid}) when is_binary(grid), do: {@kind, "checks:" <> grid}
+
+  def key({:pair, harness_id, wallet_id}) when is_binary(harness_id) and is_binary(wallet_id),
+    do: {@kind, "pair:" <> harness_id <> "/" <> wallet_id}
+
   def key(part) when part in @whole, do: {@kind, Atom.to_string(part)}
 
-  @doc "Every part of the shared bench: one for each test's checks."
-  @spec parts() :: [part()]
-  def parts, do: @whole ++ Enum.map(Matrix.grids(), &{:checks, &1})
+  # The parts every pass shares, whoever is on the roster.
+  defp fixed_parts, do: @whole ++ Enum.map(Matrix.grids(), &{:checks, &1})
 
   def start_link(_opts), do: GenServer.start_link(__MODULE__, nil, name: __MODULE__)
 
@@ -128,6 +146,25 @@ defmodule Patchbay.WalletBench.Board do
   @spec method() :: {:ok, map(), read()} | :unread
   def method, do: shared(:method)
 
+  @doc """
+  What every pair's page and the sitemap share, as `board/2` answers:
+  `roster`, `notes`, `fixed` and `extra_notes` as Techtree's views hold them,
+  `options`, every recorded version a filter may name
+  (`Patchbay.WalletBench.Sets.options/1`), and `newest`, each
+  `{harness_id, wallet_id}` that has run with when its newest run finished.
+  """
+  @spec pages() :: {:ok, map(), read()} | :unread
+  def pages, do: shared(:pages)
+
+  @doc """
+  One agent and wallet pair from the shared reading, as `board/2` answers:
+  its `results` with their steps, by test and then run; its `summaries`, one
+  for each set; and its `checks`, by test, run and check. Only a pair on the
+  roster (`pages/0`) is held.
+  """
+  @spec pair(String.t(), String.t()) :: {:ok, map(), read()} | :unread
+  def pair(harness_id, wallet_id), do: shared({:pair, harness_id, wallet_id})
+
   defp shared(part) do
     case SharedReading.fetch(key(part)) do
       {:ok, %{reading: nil}} -> :unread
@@ -146,7 +183,7 @@ defmodule Patchbay.WalletBench.Board do
     with {:ok, rows} <- read(),
          {:ok, parts} <- built(rows),
          :ok <- put(parts) do
-      :ok
+      forget_left(parts)
     else
       {:error, reason} = failed ->
         Logger.warning(
@@ -154,13 +191,34 @@ defmodule Patchbay.WalletBench.Board do
             "keeps its last reading: #{summary(reason)}"
         )
 
-        Enum.each(parts(), &SharedReading.degraded(key(&1)))
+        Enum.each(held(), &SharedReading.degraded/1)
         failed
     end
   end
 
-  # Each grid's checks first and the board last, so a visit that reads in
-  # between finds checks at least as new as its rows.
+  # Every key this pass marks degraded: the fixed parts, so a site that has
+  # never read the bench still counts them as unread, and each pair held.
+  defp held,
+    do:
+      Enum.uniq(
+        Enum.map(fixed_parts(), &key/1) ++ Enum.map(SharedReading.ids(@kind), &{@kind, &1})
+      )
+
+  # A pair that has left the roster is forgotten once the pages that named it
+  # have been replaced, so no visit finds it named and not held.
+  defp forget_left(parts) do
+    shared = MapSet.new(parts, fn {part, _reading} -> key(part) end)
+
+    for id <- SharedReading.ids(@kind), not MapSet.member?(shared, {@kind, id}) do
+      SharedReading.delete({@kind, id})
+    end
+
+    :ok
+  end
+
+  # Each grid's checks and each pair first and the board last, so a visit
+  # that reads in between finds checks and pairs at least as new as the rows
+  # and pages it was sent from.
   defp put(parts) do
     Enum.reduce_while(parts, :ok, fn {part, reading}, :ok ->
       case SharedReading.put(key(part), reading) do
@@ -195,16 +253,54 @@ defmodule Patchbay.WalletBench.Board do
   # summed up, are a read not taken like any other: the last board stays.
   defp built(rows) do
     by_grid = Enum.group_by(rows.checks, & &1.grid)
+    # The board and How the bench works show no steps, so they are built and
+    # shared without them.
+    board_rows =
+      Map.update!(rows, :results, fn runs -> Enum.map(runs, &Map.delete(&1, :turns)) end)
 
     {:ok,
      Enum.map(Matrix.grids(), &{{:checks, &1}, Map.get(by_grid, &1, [])}) ++
+       pairs(rows) ++
        [
-         rows: Map.delete(rows, :checks),
-         method: Matrix.method(rows),
-         board: Matrix.board(rows)
+         rows: Map.delete(board_rows, :checks),
+         pages: pages(rows),
+         method: Matrix.method(board_rows),
+         board: Matrix.board(board_rows)
        ]}
   rescue
     error -> {:error, error}
+  end
+
+  defp pages(rows) do
+    %{
+      roster: rows.roster,
+      notes: rows.notes,
+      fixed: rows.fixed,
+      extra_notes: rows.extra_notes,
+      options: Sets.options(rows.results),
+      newest:
+        rows.results
+        |> Enum.group_by(&{&1.harness_id, &1.wallet_id}, & &1.finished_at)
+        |> Map.new(fn {pair, finished} -> {pair, Enum.max(finished, DateTime)} end)
+    }
+  end
+
+  defp pairs(rows) do
+    results = Enum.group_by(rows.results, &{&1.harness_id, &1.wallet_id})
+    summaries = Enum.group_by(rows.summaries, &{&1.harness_id, &1.wallet_id})
+    checks = Enum.group_by(rows.checks, &{&1.harness_id, &1.wallet_id})
+
+    for %{kind: "harness", id: harness_id} <- rows.roster,
+        %{kind: "wallet", id: wallet_id} <- rows.roster do
+      pair = {harness_id, wallet_id}
+
+      {{:pair, harness_id, wallet_id},
+       %{
+         results: results |> Map.get(pair, []) |> Enum.sort_by(&{&1.grid, &1.run}),
+         summaries: Map.get(summaries, pair, []),
+         checks: checks |> Map.get(pair, []) |> Enum.sort_by(&{&1.grid, &1.run, &1.criterion_id})
+       }}
+    end
   end
 
   # One line in the log, whatever shape the reason has: of an error Ash wraps,

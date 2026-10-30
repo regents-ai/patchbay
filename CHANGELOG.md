@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30 — Wallet Bench pair pages
+
+- Each pair's page on the Wallet Bench, and the sitemap, now open from the results read once a minute for everyone, as the board does, so they stay quick at any number of visitors. A pair that leaves the bench drops off at the next minute's read.
+- Just after Patchbay starts, before the first read of the results, a pair's page says "Try again in a minute", and so does the sitemap.
+- For agents: `GET /api/wallet-bench/{harness_id}/{wallet_id}` and the `read_wallet_bench_pair` tool answer 503 `not_ready` before the first read, as the board does. `/openapi.json` is version 14.1.0.
+
 ## 2026-10-29 — Send times
 
 - Patchbay's health watch now counts how long a paid priority report's escrow credit has waited from when it was taken to be handed to Base, or last handed to it, so a credit sent again is only as old as its second hand-over, and an assist fee's forward from when the fee was taken. Credits already waiting when this ships count from when their report was filed, and fee forwards already under way from their last change. Nothing people see changes.

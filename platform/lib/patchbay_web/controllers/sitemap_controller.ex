@@ -5,7 +5,9 @@ defmodule PatchbayWeb.SitemapController do
   showcase is public), the blog and each article, the Agent Wallet Bench and
   each agent and wallet pair it has run, each site, each tool, and the
   published threads. Bounded, so a crawler never waits on the whole board at
-  once.
+  once. The bench's pairs come from its reading shared once a minute
+  (`Patchbay.WalletBench.Board`); until the bench has been read once since
+  the site started, the sitemap answers 503 and says to try again in a minute.
   """
 
   use PatchbayWeb, :controller
@@ -13,7 +15,7 @@ defmodule PatchbayWeb.SitemapController do
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Incidents
-  alias Patchbay.WalletBench
+  alias Patchbay.WalletBench.Board
   alias PatchbayWeb.Blog
   alias PatchbayWeb.Forum.Troubleshooting
 
@@ -26,31 +28,53 @@ defmodule PatchbayWeb.SitemapController do
   # XML locations pass through escape/1; lastmod accepts only a DateTime.
   # sobelow_skip ["XSS.SendResp"]
   def index(conn, _params) do
-    conn
-    |> put_resp_content_type("application/xml")
-    |> send_resp(200, document(entries()))
+    case entries() do
+      {:ok, entries} ->
+        conn
+        |> put_resp_content_type("application/xml")
+        |> send_resp(200, document(entries))
+
+      :unread ->
+        conn
+        |> put_resp_header("retry-after", "60")
+        |> put_resp_content_type("text/plain")
+        |> send_resp(503, "Wallet Bench results are still being read. Try again in a minute.\n")
+    end
   end
 
-  @doc "Every indexable page's address, as the sitemap lists them."
+  @doc """
+  Every indexable page's address, as the sitemap lists them, or `:unread`
+  while the sitemap answers 503.
+  """
+  @spec urls() :: {:ok, [String.t()]} | :unread
   def urls do
     base = PatchbayWeb.Endpoint.url()
-    Enum.map(entries(), fn {path, _changed} -> base <> path end)
+
+    with {:ok, entries} <- entries() do
+      {:ok, Enum.map(entries, fn {path, _changed} -> base <> path end)}
+    end
   end
 
   @doc "When this release was built, which is when its fixed pages last changed."
   def released_at, do: DateTime.to_iso8601(@released_at)
 
   defp entries do
-    sites = Forum.list_directory!(page: [limit: 200]).results
-    tools = Forum.list_tools_for_sitemap!() |> Enum.uniq_by(&{&1.site_id, &1.name})
-    threads = Forum.list_recent_reports!(load: [:site], page: [limit: @threads]).results
+    with {:ok, wallet_bench} <- wallet_bench() do
+      sites = Forum.list_directory!(page: [limit: 200]).results
+      tools = Forum.list_tools_for_sitemap!() |> Enum.uniq_by(&{&1.site_id, &1.name})
+      threads = Forum.list_recent_reports!(load: [:site], page: [limit: @threads]).results
 
-    Enum.map(static(), &{&1, @released_at}) ++
-      blog() ++
-      wallet_bench() ++
-      Enum.map(sites, &{site_path(&1), &1.updated_at}) ++
-      Enum.map(tools, &{PatchbayWeb.Forum.BoardHTML.tool_path(&1.site, &1.name), &1.last_seen_at}) ++
-      Enum.map(threads, &{PostAddress.path(&1), &1.last_activity_at})
+      {:ok,
+       Enum.map(static(), &{&1, @released_at}) ++
+         blog() ++
+         wallet_bench ++
+         Enum.map(sites, &{site_path(&1), &1.updated_at}) ++
+         Enum.map(
+           tools,
+           &{PatchbayWeb.Forum.BoardHTML.tool_path(&1.site, &1.name), &1.last_seen_at}
+         ) ++
+         Enum.map(threads, &{PostAddress.path(&1), &1.last_activity_at})}
+    end
   end
 
   # The motion lab is listed only while the showcase is public.
@@ -74,18 +98,16 @@ defmodule PatchbayWeb.SitemapController do
   # Each pair the bench has run, as of its newest run; the board, as of the
   # newest run of all.
   defp wallet_bench do
-    {:ok, results} =
-      WalletBench.list_results(query: [select: [:harness_id, :wallet_id, :finished_at]])
+    with {:ok, %{newest: newest}, _read} <- Board.pages() do
+      pairs =
+        newest
+        |> Enum.map(fn {{harness_id, wallet_id}, finished_at} ->
+          {"/wallet-bench/#{harness_id}/#{wallet_id}", finished_at}
+        end)
+        |> Enum.sort()
 
-    pairs =
-      results
-      |> Enum.group_by(&{&1.harness_id, &1.wallet_id}, & &1.finished_at)
-      |> Enum.map(fn {{harness_id, wallet_id}, finished} ->
-        {"/wallet-bench/#{harness_id}/#{wallet_id}", Enum.max(finished, DateTime)}
-      end)
-      |> Enum.sort()
-
-    [{"/wallet-bench", newest(pairs)} | pairs]
+      {:ok, [{"/wallet-bench", newest(pairs)} | pairs]}
+    end
   end
 
   # A listing with nothing in it yet last changed with the release.
