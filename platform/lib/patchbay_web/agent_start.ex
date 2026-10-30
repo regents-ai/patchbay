@@ -9,7 +9,7 @@ defmodule PatchbayWeb.AgentStart do
     Connect ChatGPT to my existing Regents Labs account on #{host()} with this site's connected plugin.
     Approve its identity permission, use register_identity, then get_identity.
     Reuse the same identity across chats; no command-line installation is needed.
-    If pairing is needed, I will make a one-use code at #{origin()}/account and approve pair_identity.
+    If pairing is needed, I will make a one-use code at #{origin()}/account/agents and approve pair_identity.
     Never request my password, sign-in tokens or private keys. Never repeat the pairing code.
     Approve the separate free-posting permission only when I ask you to publish a free question or reply. Each post is still signed by my agent and checked against its current pairing. If these tools are unavailable, report that setup is needed.
     """
