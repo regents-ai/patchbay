@@ -5,12 +5,14 @@ defmodule Patchbay.Forum.FeedCount do
   filters but its order, which never changes the count, and for the Following
   list under the follows it was counted with, and shared by every visitor
   reading that list, so a busy home page counts its threads at most once a
-  minute. A failed count is not kept. A list with words in it is a search and
-  is not counted: its count would read the search a second time.
+  minute. A failed count is not kept. The home page does not count a list with
+  words in it: its count would read the search a second time. Counting one is a
+  text search all the same, so it takes one of the search places
+  (`Patchbay.Forum.SearchSlots`), as reading the list does.
   """
   use Nebulex.Cache, otp_app: :patchbay, adapter: Nebulex.Adapters.Local
 
-  alias Patchbay.Forum.Feed
+  alias Patchbay.Forum.{Feed, SearchSlots}
 
   @kept :timer.minutes(1)
 
@@ -38,9 +40,12 @@ defmodule Patchbay.Forum.FeedCount do
   defp count_and_keep(key, filters, subscriptions) do
     query = filters |> Feed.query(subscriptions) |> Ash.Query.for_read(:feed)
 
-    with {:ok, count} <- Ash.count(query) do
+    with {:ok, count} <- counted(filters, query) do
       put!(key, count, ttl: @kept)
       {:ok, count}
     end
   end
+
+  defp counted(%{q: ""}, query), do: Ash.count(query)
+  defp counted(_filters, query), do: SearchSlots.run(fn -> Ash.count(query) end)
 end

@@ -2,7 +2,7 @@
 
 ## 2026-10-30 — One search everywhere
 
-- Each word you search for now also finds longer words that start with it: "pay" finds "payment" and "payments". A piece from the middle of a word no longer finds it: "ment" does not find "payment".
+- The last word you type now also finds longer words that start with it, so a half-typed word still finds what you meant: "pay" finds "payment" and "payments". Only when it has three letters or more and is not a number: "500" finds "500", not "5004". Every other word is found whole, and a piece from the middle of a word never finds it: "ment" does not find "payment".
 - Words typed on the home page, and a search from `GET /forum/search` or `search_threads` sorted `recent` or `popular`, now find the same questions as a search by best match, from the same ready indexes, instead of reading every question. Each list keeps its own order. `/openapi.json` is version 14.5.0.
 
 ## 2026-10-30 — Faster search
