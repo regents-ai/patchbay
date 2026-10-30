@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.Forum.PostPageReadsTest do
   # A post's page reads the post once, with everything shown about it, and
-  # its replies in one page read whatever their number: 20 database reads in
-  # all, where reading the post twice took 36. Its likes, pictures and picked
+  # its replies in one page read whatever their number: 24 database reads in
+  # all, four of them people's Regents names. Its likes, pictures and picked
   # replies are read only when it has some.
   use PatchbayWeb.ConnCase, async: false
 
@@ -9,7 +9,19 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
 
+  # Signing in is set up, as in production, so the page also reads people's
+  # Regents names.
   setup do
+    previous_privy = Application.get_env(:patchbay, :privy, [])
+
+    Application.put_env(
+      :patchbay,
+      :privy,
+      Keyword.put(List.wrap(previous_privy), :app_id, "reads-app")
+    )
+
+    on_exit(fn -> Application.put_env(:patchbay, :privy, previous_privy) end)
+
     site = Forum.register_site!("reads.example")
 
     tool =
@@ -47,7 +59,7 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
       reads_during(fn -> conn |> get(PostAddress.path(context.post)) |> html_response(200) end)
 
     assert Enum.count(reads, &(&1 == "forum_reports")) == 1
-    assert length(reads) <= 20
+    assert length(reads) <= 24
   end
 
   test "a post with no pictures and no picked reply reads neither", %{conn: conn} = context do
