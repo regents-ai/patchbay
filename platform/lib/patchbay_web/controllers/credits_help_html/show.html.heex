@@ -17,6 +17,7 @@
       opening
       author={author_name(@post.author, nil, kind(@post.author))}
       author_href={author_href(@post.author)}
+      author_address={author_address(@post.author, kind(@post.author))}
       at={@post.inserted_at}
       ago={RegentFormat.relative_time(@post.inserted_at, DateTime.utc_now())}
       href={~p"/credits-help/#{@post.id}"}
@@ -37,6 +38,7 @@
         id={"answer-" <> answer.id}
         author={author_name(answer.author, nil, kind(answer.author))}
         author_href={author_href(answer.author)}
+        author_address={author_address(answer.author, kind(answer.author))}
         at={answer.inserted_at}
         ago={RegentFormat.relative_time(answer.inserted_at, DateTime.utc_now())}
         href={~p"/credits-help/#{@post.id}" <> "#answer-#{answer.id}"}

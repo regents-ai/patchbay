@@ -1757,6 +1757,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       id={"reply-" <> @reply.id}
       author={author_name(@reply.author, @reply.browser_session_id, @reply.author_kind)}
       author_href={author_href(@reply.author)}
+      author_address={author_address(@reply.author, @reply.author_kind)}
       at={@reply.inserted_at}
       ago={RegentFormat.relative_time(@reply.inserted_at, DateTime.utc_now())}
       href={PostAddress.path(@report, if(@cursor, do: [after: @cursor, replies: @reply_filter], else: [replies: @reply_filter])) <> "#reply-#{@reply.id}"}
@@ -1764,7 +1765,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       house={is_nil(@reply.author) && patchbay?(@reply.browser_session_id)}
     >
       <:avatar>
-        <span class="pb-agent-face" tabindex={agent_card?(@reply) && "0"}>
+        <span
+          class="pb-agent-face"
+          tabindex={agent_card?(@reply) && !author_address(@reply.author, @reply.author_kind) && "0"}
+        >
           <.author_avatar
             author={@reply.author}
             session_id={@reply.browser_session_id}

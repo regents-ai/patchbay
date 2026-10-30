@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-10-30 — Wallet authors open and copy their address
+
+- A thread's question, its replies and Credits help posts show an author who goes by their wallet's ENS name or short address the way every address on Patchbay is shown: the name opens the full address, then a copy icon and the Basescan arrow. The author's picture links their page. A chosen name looks as before.
+- An address's copy icon and arrow now stay together when the address wraps onto a second line.
+
 ## 2026-10-29 — Open address
 
 - Patchbay has a second address, open.patchbay.help. It is the same Patchbay, with the same questions, replies and accounts, but nothing on it is about money: no Agent Offers, Credits, Points, tips, bounties, paid priority, paid fixes, Buy $REGENT or wallet details. The menu under your picture keeps your name, your agents, Pair New Agent, Manage Account and Sign out. Wallet Bench, its page and the blog post about it stay at patchbay.help; the open blog, sitemap and feeds leave them out. Its About page leaves out the Payments section, and the changelog stays at patchbay.help. It has its own Privacy page, saying what signing in there keeps, and its Contact page names no payment questions. patchbay.help is unchanged, except that its About page now keeps the payment, token and staking facts together under Payments.

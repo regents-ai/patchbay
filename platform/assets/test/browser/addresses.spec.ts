@@ -10,10 +10,8 @@ import {expect, signedIn, test, watch} from "./support/test"
 // Left out, each for a reason a person can read:
 // - a code block (pre), which is copied whole;
 // - the header's account chip, a button whose words open the account menu, which
-//   draws the address itself, as the Regent template does;
-// - a post's and reply's author line, which Regent.Discussion draws as words only
-//   until design-system gives it an address author.
-const outside = "pre, #pb-account-chip, .rg-discussion__author, .rg-discussion__solved-by"
+//   draws the address itself, as the Regent template does.
+const outside = "pre, #pb-account-chip"
 
 async function bareAddresses(page: Page) {
   return page.evaluate(outside => {

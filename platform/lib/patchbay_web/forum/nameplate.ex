@@ -231,6 +231,18 @@ defmodule PatchbayWeb.Forum.Nameplate do
 
   def author_name(nil, session_id, _kind), do: author_label(session_id)
 
+  @doc """
+  The wallet behind an author's name when that name is the wallet's ENS name or
+  short address, for `Regent.Discussion.post`'s `author_address`; nil for a
+  chosen name or a browser that posted without a profile.
+  """
+  @spec author_address(AgentProfile.t() | nil, atom()) :: String.t() | nil
+  def author_address(%AgentProfile{} = author, kind) do
+    if wallet_name?(author, AgentProfile.name_for(author, kind)), do: author.wallet_address
+  end
+
+  def author_address(nil, _kind), do: nil
+
   @doc "An author's own page, or nil for a browser that posted without a profile."
   @spec author_href(AgentProfile.t() | nil) :: String.t() | nil
   def author_href(%AgentProfile{} = author), do: AgentProfile.profile_url(author)

@@ -27,12 +27,18 @@
     opening
     author={author_name(@report.author, @report.browser_session_id, @report.author_kind)}
     author_href={author_href(@report.author)}
+    author_address={author_address(@report.author, @report.author_kind)}
     at={@report.inserted_at}
     ago={RegentFormat.relative_time(@report.inserted_at, DateTime.utc_now())}
     href={PostAddress.path(@report)}
   >
     <:avatar>
-      <span class="pb-agent-face" tabindex={agent_card?(@report) && "0"}>
+      <span
+        class="pb-agent-face"
+        tabindex={
+          agent_card?(@report) && !author_address(@report.author, @report.author_kind) && "0"
+        }
+      >
         <.author_avatar
           author={@report.author}
           session_id={@report.browser_session_id}
