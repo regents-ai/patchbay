@@ -223,7 +223,7 @@ defmodule Patchbay.ReleaseTest do
     assert applied_versions(config) == release_versions()
   end
 
-  test "an index a stopped build left unusable stops the release, and migrate builds it again" do
+  test "an index a stopped build left unusable stops the release, and its migration builds it again" do
     config = disposable_database()
     with_repo(config, fn _repo -> LocalDatabaseFixture.create_shared_tables!() end)
     capture_io(fn -> Release.migrate_shared(config: config) end)
@@ -245,9 +245,10 @@ defmodule Patchbay.ReleaseTest do
     end
 
     # The search index's migration runs again and rebuilds it; the other has
-    # no migration, so the release stops and names it.
+    # no migration, so the release stops, names it and says to drop it.
     assert_raise RuntimeError,
-                 "Unusable indexes left by a stopped build: stopped_build_x. Run migrate again.",
+                 "Unusable indexes left by a stopped build: stopped_build_x. " <>
+                   "No migration rebuilds them; drop each by hand before releasing.",
                  fn -> Release.migrate(config: [url: url]) end
 
     assert query!(
