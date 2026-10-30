@@ -100,6 +100,18 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     report
   end
 
+  defp released(tool, asker) do
+    # The accepted answer's payout, written the way SolutionAccept writes it.
+    {:ok, report} =
+      Forum.record_escrow_release(
+        credited(tool, asker),
+        %{escrow_status: :released, escrow_release_tx_hash: "0x" <> String.duplicate("2", 64)},
+        authorize?: false
+      )
+
+    report
+  end
+
   defp priority_ids(versions) do
     versions
     |> Forum.list_priority_reports_for_tools!()
@@ -199,6 +211,25 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       page = build_conn() |> get(PostAddress.path(refused)) |> html_response(200)
       assert page =~ "Base did not take the request"
       refute page =~ "basescan.org/tx/"
+    end
+
+    test "a refund refused in its block leaves a bounty already paid out as paid", %{
+      conn: conn,
+      tool: tool,
+      node: node
+    } do
+      asker = profile("aaa")
+      report = released(tool, asker)
+      conn |> signed_in(asker) |> post("/posts/#{report.id}/refund", %{}) |> html_response(200)
+
+      mined(node, @refund_tx, "0x0")
+
+      assert :ok =
+               perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
+
+      paid = Forum.get_report!(report.id)
+      assert paid.escrow_status == :released
+      assert paid.escrow_release_tx_hash == report.escrow_release_tx_hash
     end
 
     test "says the refund was sent when the post is then too busy to read", %{
@@ -449,6 +480,18 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert refused.escrow_status == :refund_failed
       assert is_nil(refused.escrow_refund_tx_hash)
       assert refused.refund_requested_at
+    end
+
+    test "a press on a bounty already paid out leaves it paid", %{tool: tool} do
+      asker = profile("aaa")
+      report = released(tool, asker)
+
+      # The press reaches the chain, which refuses it: the money is no longer
+      # held. The refusal is not written over the payout.
+      assert {:ok, pressed} = PriorityRefund.run(report.id, asker)
+      assert pressed.escrow_status == :released
+      assert pressed.escrow_release_tx_hash == report.escrow_release_tx_hash
+      assert pressed.refund_requested_at
     end
 
     test "a press before Base has confirmed the bounty leaves it waiting", %{tool: tool} do
