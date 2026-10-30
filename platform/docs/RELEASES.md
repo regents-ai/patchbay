@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v320, 30 Oct 2026
+
+- Commit: c55239996bce7c68ac674a5666251e6a5e6171df (image `c552399`), on main after v319. Machine replaced blue-green, one machine in iad.
+- Sign-in security update (PB-63, Sean 91 a; 6b536086 and c5523999): one zod 4.6.7 for every package, for GHSA-mrhx-c7xc-m3w5, closing Dependabot's high alert.
+- Checks: make check at d9d11a33 (same tree before the rebase onto the v319 release row): ExUnit 957/958, 325 walk steps passed and 38 skipped (Chromium), contracts 15/15. The one red, post_page_reads_test 28 > 24 (PB-70), comes from local settings in the main checkout: it passes there without them and on main's clean copy.
+- Live (22:40Z): /capabilities.json c5523999; /webmcp/health ok with migrations current; headless Chromium at 390 and 1280 on home and /sites: 200, no page errors, no sideways scroll; the Sign in button opens Privy's window with every option and no console errors. A real sign-in is Sean's.
+- Migrations: none. Rollback: v319, image `91890dc`.
+
 ## v319, 30 Oct 2026
 
 - Commit: 91890dc98c65330998df9895c3685efef458ea4b (image `91890dc`), on main after v318. Machine replaced blue-green, one machine in iad.
