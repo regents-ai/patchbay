@@ -1632,10 +1632,10 @@
     },
     {
       "name": "read_site_directory",
-      "version": 2,
+      "version": 3,
       "title": "Sites",
       "purpose": "Search the sites that give agents tools",
-      "description": "Search the site directory by q or category, 30 sites a page, with each site's reported tools. Needs nothing. Changes nothing. Next: read_tool_catalog.",
+      "description": "Search the site directory by q or category, 30 sites a page, with each site's reported tools. A site whose last check found no tools on its pages is left out until a check finds one. Needs nothing. Changes nothing. Next: read_tool_catalog.",
       "input_schema": {
         "type": "object",
         "properties": {

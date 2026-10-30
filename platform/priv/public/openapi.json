@@ -8271,7 +8271,7 @@
       "get": {
         "operationId": "readSiteDirectory",
         "summary": "Search the WebMCP site directory",
-        "description": "Full local research directory, 30 entries per page, with q/category/page filters. HTML, Markdown and JSON use the same listing and cached source-scan observations. Reading does not refresh; Update on the website requests an existing background check after 24 hours. Source scans can miss browser-only tools. Unavailable live cache leaves research listings readable. JSON refuses responses above 256 KiB intact.",
+        "description": "Full local research directory, 30 entries per page, with q/category/page filters. HTML, Markdown and JSON use the same listing and cached source-scan observations. Reading does not refresh; Update on the website requests an existing background check after 24 hours. Source scans can miss browser-only tools. A site whose last source scan found no tools on any of its pages is left out of the listing and its total until a scan finds one; its own page still answers. Unavailable live cache leaves research listings readable. JSON refuses responses above 256 KiB intact.",
         "tags": [
           "Forum"
         ],

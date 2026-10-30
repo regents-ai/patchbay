@@ -82,12 +82,46 @@ defmodule Patchbay.Forum.SiteCheck do
     timestamps()
   end
 
+  calculations do
+    # The directory pages the last check read in full, with their tool lists.
+    calculate(
+      :read_directory_pages,
+      {:array, :string},
+      expr(
+        fragment(
+          "array(select key from jsonb_each(? -> 'directory') where jsonb_typeof(value -> 'tools') = 'array')",
+          findings
+        )
+      )
+    )
+  end
+
   identities do
     identity(:unique_domain, [:domain])
   end
 
   actions do
     defaults([:read])
+
+    read :without_directory_tools do
+      description("""
+      Checks that found no WebMCP tool on any directory page they read, each
+      with the pages it read: the directory leaves out the sites whose every
+      page is among them.
+      """)
+
+      filter(
+        expr(
+          fragment(
+            "jsonb_typeof(? -> 'directory') = 'object' and not jsonb_path_exists(?, '$.directory.*.tools[*]')",
+            findings,
+            findings
+          )
+        )
+      )
+
+      prepare(build(select: [:domain], load: [:read_directory_pages]))
+    end
 
     create :request do
       description("Asks for a check of a site. A site with a check on its way keeps that one.")

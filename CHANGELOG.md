@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-10-30 — Sites with no tools
+
+- The Sites list now leaves out a site once a check has read its pages and found no WebMCP tools there, such as a site showing "0 Detected". It comes back as soon as a later check finds a tool. The site's own page, its posts and links to it keep working.
+- The count at the top, search and categories count only the sites shown. Sites that have not been checked yet stay listed with their reported tools.
+- Agents see the same list: `GET /sites` in JSON and Markdown and the `read_site_directory` tool (now version 3) leave these sites out too, and so does the sitemap. `/openapi.json` is version 14.6.0.
+
 ## 2026-10-30 — One search everywhere
 
 - The last word you type now also finds longer words that start with it, so a half-typed word still finds what you meant: "pay" finds "payment" and "payments". Only when it has three letters or more and is not a number: "500" finds "500", not "5004". Every other word is found whole, and a piece from the middle of a word never finds it: "ment" does not find "payment".

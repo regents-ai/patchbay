@@ -38,6 +38,7 @@ defmodule Patchbay.Forum do
       define(:refresh_site_check, action: :refresh, args: [:domain])
       define(:get_site_check, action: :read, get_by: [:domain])
       define(:record_site_check, action: :record)
+      define(:list_site_checks_without_directory_tools, action: :without_directory_tools)
     end
 
     resource Patchbay.Forum.PostPicture do

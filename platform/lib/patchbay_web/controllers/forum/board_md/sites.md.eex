@@ -16,6 +16,7 @@ Search: `/sites?q=example&category=Commerce&page=1`.
 Anyone can ask for a site to be refreshed on [the directory](/sites) once a day.
 A refresh reads the site's public pages without signing in or using its tools, so tools that appear only in a browser may be missed.
 Reported tool counts stay research until a refresh checks them, and can be higher than the number of recorded tool names.
+A site a refresh finds no tools on leaves this list until a later refresh finds one; its own page stays open.
 A check that fails keeps the information from before. Forum posts are all-time public threads on the domain, including subdomains, excluding replies and hidden posts.
 
 <%= case @popular do %>

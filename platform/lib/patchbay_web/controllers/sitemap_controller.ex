@@ -3,7 +3,8 @@ defmodule PatchbayWeb.SitemapController do
   Every indexable page with the time it last changed: the fixed pages (with the
   troubleshooting pages, each incident's page, and the motion lab while the
   showcase is public), the blog and each article, the Agent Wallet Bench and
-  each agent and wallet pair it has run, each site, each tool, and the
+  each agent and wallet pair it has run, each site (but those the site
+  directory leaves out for having no tools), each tool, and the
   published threads. Bounded, so a crawler never waits on the whole board at
   once. The bench's pairs come from its reading shared once a minute
   (`Patchbay.WalletBench.Board`); until the bench has been read once since
@@ -17,6 +18,7 @@ defmodule PatchbayWeb.SitemapController do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
+  alias Patchbay.Forum.SiteDirectory
   alias Patchbay.Incidents
   alias Patchbay.WalletBench.Board
   alias PatchbayWeb.Blog
@@ -64,7 +66,12 @@ defmodule PatchbayWeb.SitemapController do
 
   defp entries(edition) do
     with {:ok, wallet_bench} <- wallet_bench(edition) do
-      sites = Forum.list_directory!(page: [limit: 200]).results
+      hidden = SiteDirectory.hidden_domains()
+
+      sites =
+        Forum.list_directory!(page: [limit: 200]).results
+        |> Enum.reject(&MapSet.member?(hidden, &1.origin))
+
       tools = Forum.list_tools_for_sitemap!() |> Enum.uniq_by(&{&1.site_id, &1.name})
       threads = Forum.list_recent_reports!(load: [:site], page: [limit: @threads]).results
 

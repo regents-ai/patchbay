@@ -3,6 +3,7 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   require Ash.Query
 
+  alias Patchbay.Forum
   alias Patchbay.Forum.{Origin, Site, SiteCheck}
 
   @external_resource "priv/data/site_directory.json"
@@ -29,7 +30,33 @@ defmodule Patchbay.Forum.SiteDirectory do
   @doc "One page of the listing with its checks and forum counts, or why `params` names no page."
   @spec page(map()) :: {:ok, map()} | {:error, {:invalid, [String.t()]}}
   def page(params) do
-    with {:ok, selected} <- select(params), do: {:ok, read(selected)}
+    with {:ok, number} <- page_number(params["page"]),
+         do: {:ok, params |> select(number, hidden_hosts()) |> read()}
+  end
+
+  @doc """
+  The listed hosts whose last finished check read every one of their pages
+  and found no WebMCP tool. Every listing leaves them out, and its totals do
+  not count them, until a check finds a tool; their own pages stay open.
+  """
+  @spec hidden_hosts() :: MapSet.t(String.t())
+  def hidden_hosts do
+    for check <- Forum.list_site_checks_without_directory_tools!(),
+        seed <- Map.get(@by_domain, check.domain, []),
+        Enum.all?(entry_pages(seed), &(&1 in check.read_directory_pages)),
+        into: MapSet.new(),
+        do: seed["host"]
+  end
+
+  @doc "The domains every listed host of which is hidden (`hidden_hosts/0`)."
+  @spec hidden_domains() :: MapSet.t(String.t())
+  def hidden_domains do
+    hidden = hidden_hosts()
+
+    for {domain, seeds} <- @by_domain,
+        Enum.all?(seeds, &MapSet.member?(hidden, &1["host"])),
+        into: MapSet.new(),
+        do: domain
   end
 
   defp read(selected) do
@@ -67,12 +94,8 @@ defmodule Patchbay.Forum.SiteDirectory do
   defp attach_forum(entry, site),
     do: %{entry | forum_posts: site.report_count, logo_path: site.logo_path || entry.logo_path}
 
-  @doc "Filter and paginate the saved public listing without a database read."
-  def select(params) do
-    with {:ok, number} <- page_number(params["page"]), do: {:ok, select(params, number)}
-  end
-
-  defp select(params, number) do
+  # Filter and paginate the saved public listing, leaving out the hidden hosts.
+  defp select(params, number, hidden) do
     q = text(params["q"], 100)
     category = text(params["category"], 80)
     words = q |> String.downcase() |> String.split()
@@ -81,7 +104,8 @@ defmodule Patchbay.Forum.SiteDirectory do
       Enum.filter(@entries, fn entry ->
         haystack = String.downcase(entry["name"] <> " " <> entry["host"])
 
-        (category == "" or entry["category"] == category) and
+        not MapSet.member?(hidden, entry["host"]) and
+          (category == "" or entry["category"] == category) and
           Enum.all?(words, &String.contains?(haystack, &1))
       end)
 
