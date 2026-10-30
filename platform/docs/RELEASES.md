@@ -4,6 +4,12 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## Machine move, 30 Oct 2026 (no new release)
+
+- v315 (image `dd881f9`) moved from ewr to iad on Sean's 93 a (17:06:02Z; his 1a at 16:41:58Z in "Fix Fly Sentinel error emails"), next to the shared Postgres clusters. Machine 81540dc9d0ed28 (ewr) cloned to 815699a9217428 (iad), checked healthy, then stopped and destroyed. `platform/fly.toml` primary_region is now iad, so later releases deploy there.
+- Why: Patchbay was the one site outside iad and had the most network stalls to the database (29 Oct 13:33Z, 14:04Z, 17:22Z, 18:05Z; 30 Oct 06:08Z).
+- Rollback: `fly machine clone 815699a9217428 --region ewr`, then remove the iad machine and set primary_region back.
+
 ## v314, 30 Oct 2026
 
 - Commit: cbd83896a18ac8ac57bb9e3577090d15c639beb5 (image `cbd8389`), on main after v313. Machine replaced blue-green, one machine (2870d1dc706e58).

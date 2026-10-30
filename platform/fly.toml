@@ -4,7 +4,8 @@
 # PHX_HOST to the matching hostname. Deployment steps are in docs/DEPLOY.md.
 
 app = "patchbay-regents"
-primary_region = "ewr"
+# Virginia, next to the shared Postgres clusters every Regent site uses (Sean, 30 Oct 93 a).
+primary_region = "iad"
 
 # Give open LiveView sessions time to finish instead of cutting them off the
 # moment a replacement machine is ready.
