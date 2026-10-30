@@ -56,6 +56,31 @@ defmodule PatchbayWeb.PageReadsTest do
            }
   end
 
+  # Drawn with the page, the refresh panel takes the page's own site, so the
+  # page reads whether it may be refreshed: a site pictured an hour ago says
+  # when it can be refreshed again, with the button off.
+  test "the refresh panel of a site pictured within the day says when it can be again", %{
+    conn: conn,
+    site: site
+  } do
+    find_tools(["checkout"])
+
+    Patchbay.Repo.query!("UPDATE forum_sites SET screenshot_captured_at = $1 WHERE id = $2", [
+      DateTime.add(DateTime.utc_now(), -3600, :second),
+      Ecto.UUID.dump!(site.id)
+    ])
+
+    panel =
+      conn
+      |> get("/reads.example")
+      |> html_response(200)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query(".pb-site-refresh")
+
+    assert LazyHTML.text(panel) =~ ~r/Refreshed .+ · again in 23 hours/
+    assert panel |> LazyHTML.query("button[disabled]") |> Enum.count() == 1
+  end
+
   test "the check panel shows each tool once when its one page is the whole list", %{
     conn: conn
   } do

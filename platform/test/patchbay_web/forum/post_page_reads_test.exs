@@ -61,6 +61,7 @@ defmodule PatchbayWeb.Forum.PostPageReadsTest do
     with_picked = reads_during(fn -> conn |> get(path) |> html_response(200) end)
 
     assert replies_read(with_picked) == replies_read(reads) + 1
+    assert Enum.count(with_picked, &(&1 == "forum_reports")) == 1
   end
 
   test "more replies on the page add no reads", %{conn: conn} = context do
