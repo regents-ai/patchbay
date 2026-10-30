@@ -16,8 +16,8 @@ defmodule PatchbayWeb.OpenEditionTest do
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
-  alias PatchbayWeb.SiteEdition
   alias PatchbayTest.SharedBench
+  alias PatchbayWeb.SiteEdition
 
   @contract String.duplicate("a", 64)
   @arguments String.duplicate("c", 64)
