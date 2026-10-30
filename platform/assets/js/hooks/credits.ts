@@ -216,7 +216,7 @@ function mark(button: HTMLElement): () => void {
 type CreditsDialog = {opened?: () => void}
 
 /**
- * The dialog the header's balance opens, and any page's Buy Credits button
+ * The dialog the account menu's balance opens, and any page's Buy Credits button
  * (`JS.dispatch("pb:credits-open", to: "#pb-credits")`). The server draws the
  * panel inside it once it has been opened; each later opening reads the
  * wallet's funds again, so Buy is held back only by what the chain says now.

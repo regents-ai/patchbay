@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.HeaderAccountLiveTest do
   @moduledoc """
-  The header's Credits balance and account menu when the sign-in they were drawn
+  The account menu and its Credits balance when the sign-in they were drawn
   with has run out: they show nothing and leave the page around them where it
   is, instead of failing to join and reloading the page.
   """
@@ -22,10 +22,10 @@ defmodule PatchbayWeb.HeaderAccountLiveTest do
 
     {:ok, view, html} = live_isolated(conn, PatchbayWeb.HeaderAccountLive, session: lapsed)
 
-    refute html =~ "pb-credits-balance"
+    refute html =~ "account-menu-credits"
     send(view.pid, :credits_changed)
     send(view.pid, :agents_changed)
-    refute has_element?(view, "#pb-credits-balance")
+    refute has_element?(view, "#account-menu-credits")
     refute has_element?(view, "#account-menu")
   end
 end

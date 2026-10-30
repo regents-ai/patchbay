@@ -900,11 +900,6 @@ body { container: pb-page / inline-size; }
   .pb-masthead .pb-ask-button.rg-button, .pb-account-button.rg-button { gap: 0; padding-inline: 12px; white-space: nowrap; }
   .pb-masthead .pb-ask-button.rg-button::after, .pb-account-button.rg-button::after { display: none; }
 }
-/* Below 768px, as in the Regent template, the balance keeps its figure and leaves
-   the word "Credits" out. */
-@container pb-page (max-width: 767px) {
-  .pb-credits-balance .pb-credits-unit { display: none; }
-}
 /* On a phone the header is the Regent template's: 56px tall, the template's side
    padding, and the places to go and Ask in the Menu. The theme switch is left off
    phones (Sean, 16 Oct). */
@@ -913,12 +908,6 @@ body { container: pb-page / inline-size; }
   .pb-masthead { min-height: 3.5rem; padding: 6px var(--space-2); }
   .pb-masthead .pb-site-nav, .pb-masthead .pb-ask-button, .pb-masthead .pb-theme-toggle { display: none; }
   .pb-menu-button { display: inline-flex; }
-}
-/* Narrower than 22.5rem the header has no room for the balance: the account menu
-   shows it instead, as its balance row, which opens the same dialog. The menu's
-   own rule (Regent.Account.menu) is this same media query. */
-@media (max-width: 22.49rem) {
-  .pb-credits-balance { display: none; }
 }
 @container pb-page (max-width: 374px) {
   .pb-account-button.rg-button { padding-inline: 8px; }

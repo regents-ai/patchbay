@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-30 — Credits in the account menu
+
+- Your Credits balance has moved from the top of the page into the account menu, under your name and wallet, at every screen size. Press it there to open Buy Credits, as before. open.patchbay.help still shows no Credits.
+
 ## 2026-10-30 — Security update
 
 - Sign-in now uses a newer version of a part that checks the data it receives, closing a known weakness where very large data could make a browser run out of memory. Signing in looks and works the same.

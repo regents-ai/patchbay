@@ -33,7 +33,7 @@ export function installAccountMenu() {
     const target = event.target instanceof Element ? event.target : null
     if (!target) return
 
-    // The menu's balance row opens the header's Buy Credits dialog. The menu closes
+    // The menu's balance row opens the Buy Credits dialog. The menu closes
     // first, so focus goes back to the account button and returns there when the
     // dialog closes.
     const creditsOpener = target.closest<HTMLElement>("[data-credits-open]")

@@ -176,27 +176,32 @@ test("Pair New Agent in the menu lands on the Agents page's pairing box", async 
   await problems.expect()
 })
 
-// Narrower than 22.5rem the header has no room for the balance, so the account menu
-// shows it, in the header's words, and the row opens the same Buy Credits dialog.
-test("on the narrowest phones the balance is in the account menu and opens Buy Credits", async ({page, isMobile}) => {
-  test.skip(!isMobile, "only the narrowest phones move the balance")
+// The Credits balance is the account menu's own row at every width, under the
+// wallet (PB-66); the header keeps only the logo and the account button. Walked on
+// the desktop at 1280 and the touch phones at 390 and 320.
+test("the account menu shows the balance and opens Buy Credits", async ({page, viewport}) => {
   const problems = watch(page)
-  await page.setViewportSize({width: 320, height: 900})
   await page.goto("/about")
   await ready(page)
-  await expect(page.locator("#pb-credits-balance")).toBeHidden()
+  await expect(page.locator("header.pb-masthead")).not.toContainText("Credits", {useInnerText: true})
   await openMenu(page)
 
   const row = page.locator("#account-menu-credits")
   await expect(row).toBeVisible()
-  // The header's words: its balance's name once read, as "0 Credits".
-  await expect(page.locator("#pb-credits-balance")).toHaveAttribute("aria-label", /^\S+ Credits$/)
-  const words = (await page.locator("#pb-credits-balance").getAttribute("aria-label"))!
-  expect(words).toMatch(/^\S+ Credits$/)
+  // Its name once read, as "0 Credits", is what it shows.
+  await expect(row).toHaveAttribute("aria-label", /^\S+ Credits$/)
+  const words = (await row.getAttribute("aria-label"))!
   await expect(row).toHaveText(words)
   await expect(row).toHaveAccessibleName(words)
   expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44)
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+
+  // Straight under the picture, name and wallet, above the agents.
+  const who = (await menu(page).locator(".rg-account-menu__who").boundingBox())!
+  const agents = (await page.locator("#account-menu-agents").boundingBox())!
+  const box = (await row.boundingBox())!
+  expect(box.y).toBeGreaterThanOrEqual(who.y + who.height - 1)
+  expect(box.y + box.height).toBeLessThanOrEqual(agents.y + 1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport!.width)
 
   await row.click()
   await expect(menu(page)).toBeHidden()
@@ -207,36 +212,15 @@ test("on the narrowest phones the balance is in the account menu and opens Buy C
   await problems.expect()
 })
 
-test("wider than the narrowest phones the balance stays in the header, not the menu", async ({page, isMobile}) => {
-  const problems = watch(page)
-  const width = isMobile ? 390 : 1280
-  await page.setViewportSize({width, height: 900})
-  await page.goto("/about")
-  await ready(page)
-  const balance = page.locator("#pb-credits-balance")
-  await expect(balance).toBeVisible()
-  // A phone's header keeps the figure and leaves the word out.
-  await expect(balance.locator(".pb-credits-unit")).toBeVisible({visible: !isMobile})
-  await openMenu(page)
-  await expect(page.locator("#account-menu-credits")).toBeHidden()
-  await page.keyboard.press("Escape")
-  await balance.click()
-  await expect(page.getByRole("dialog", {name: "Buy Credits"})).toBeVisible()
-  await problems.expect()
-})
-
-// Found in review on 29 Oct: the header left the word "Credits" out below 900px,
-// where the Regent template leaves it out only below 768px. From 768px the balance
-// keeps its word, and the header still fits on one line.
-test("from 768px the header's balance keeps the word Credits, and the header fits", async ({page, isMobile}) => {
+// Every control in the header stays inside it, on one line, at the widths a desktop
+// reaches.
+test("the header fits on one line from 767px", async ({page, isMobile}) => {
   test.skip(isMobile, "widths a desktop reaches")
   const problems = watch(page)
-  for (const [width, word] of [[767, false], [768, true], [899, true], [1099, true]] as const) {
+  for (const width of [767, 768, 899, 1099]) {
     await page.setViewportSize({width, height: 900})
     await page.goto("/about")
     await ready(page)
-    const balance = page.locator("#pb-credits-balance")
-    await expect(balance.locator(".pb-credits-unit")).toBeVisible({visible: word})
     const header = (await page.locator("header.pb-masthead").boundingBox())!
     for (const control of await page.locator("header.pb-masthead").locator("a:visible, button:visible").all()) {
       const box = (await control.boundingBox())!
