@@ -47,7 +47,11 @@ defmodule PatchbayWeb.PageReadsTest do
            }
   end
 
+  # The check is asked for here, not by the visit: a visitor's share of checks
+  # (20 in 10 minutes) outlives each test, and a visit past it leaves the site
+  # with no check pending, when the panel also asks whether a picture is queued.
   test "the refresh panel reads the site and its check", %{conn: conn} do
+    Forum.request_site_check!("reads.example")
     page = conn |> get("/reads.example") |> html_response(200)
 
     assert reads_on_join(conn, page, PatchbayWeb.SiteRefreshLive) == %{
