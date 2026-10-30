@@ -13,7 +13,12 @@ config :patchbay, Patchbay.Repo,
   database: "patchbay#{System.get_env("MIX_TEST_PARTITION")}_test",
   pool: Ecto.Adapters.SQL.Sandbox,
   # Keep parallel worktrees within the local PostgreSQL connection budget.
-  pool_size: 8
+  pool_size: 8,
+  # A test waits patiently for its connection on a loaded machine instead of
+  # failing after a few seconds; a real deadlock still fails.
+  queue_target: 2_000,
+  queue_interval: 10_000,
+  ownership_timeout: 60_000
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

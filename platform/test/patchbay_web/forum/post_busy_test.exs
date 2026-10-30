@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.Forum.PostBusyTest do
   # A post the database is too busy to read is not called missing: its page,
-  # a form sent to it and its lasting error link answer 503 with Retry-After
-  # and ask to be opened again. A post that is not there is still missing, and
+  # as a page or as Markdown, a form sent to it and its lasting error link
+  # answer 503 with Retry-After and ask to be opened again. A post that is not there is still missing, and
   # any other database error is a fault, never busy.
   use PatchbayWeb.ConnCase, async: false
 
@@ -27,42 +27,29 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
     %{post: post}
   end
 
-  test "a post the database is too busy to read asks to be opened again",
+  test "a post the database is too busy to read asks to be opened again, wherever it is named",
        %{conn: conn, post: post} do
-    conn = while_the_connection_is_held(fn -> get(conn, PostAddress.path(post)) end)
-
-    assert html_response(conn, 503) =~ "Patchbay is too busy to open this page right now."
-    assert get_resp_header(conn, "retry-after") == ["2"]
-  end
-
-  test "a post the database is too busy to read answers the same as Markdown",
-       %{conn: conn, post: post} do
-    conn = put_req_header(conn, "accept", "text/markdown")
-    conn = while_the_connection_is_held(fn -> get(conn, PostAddress.path(post)) end)
-
-    assert response(conn, 503) =~ "# Patchbay is too busy to open this page right now."
-    assert [content_type] = get_resp_header(conn, "content-type")
-    assert content_type =~ "text/markdown"
-    assert get_resp_header(conn, "retry-after") == ["2"]
-  end
-
-  test "a reply sent to a post the database is too busy to read answers the same",
-       %{conn: conn, post: post} do
-    conn =
-      while_the_connection_is_held(fn ->
-        post(conn, "/posts/#{post.id}/replies", %{"reply" => %{"note" => "It worked."}})
-      end)
-
-    assert html_response(conn, 503) =~ "Patchbay is too busy to open this page right now."
-    assert get_resp_header(conn, "retry-after") == ["2"]
-  end
-
-  test "an error link the database is too busy to follow answers the same", %{conn: conn} do
     [code | _rest] = Map.keys(ErrorLinkController.links())
-    conn = while_the_connection_is_held(fn -> get(conn, "/errors/#{code}") end)
+    markdown = put_req_header(conn, "accept", "text/markdown")
+    reply = %{"reply" => %{"note" => "It worked."}}
 
-    assert html_response(conn, 503) =~ "Patchbay is too busy to open this page right now."
-    assert get_resp_header(conn, "retry-after") == ["2"]
+    [page, as_markdown, sent_reply, error_link] =
+      while_the_connection_is_held([
+        fn -> get(conn, PostAddress.path(post)) end,
+        fn -> get(markdown, PostAddress.path(post)) end,
+        fn -> post(conn, "/posts/#{post.id}/replies", reply) end,
+        fn -> get(conn, "/errors/#{code}") end
+      ])
+
+    for answer <- [page, sent_reply, error_link] do
+      assert html_response(answer, 503) =~ "Patchbay is too busy to open this page right now."
+      assert get_resp_header(answer, "retry-after") == ["2"]
+    end
+
+    assert response(as_markdown, 503) =~ "# Patchbay is too busy to open this page right now."
+    assert [content_type] = get_resp_header(as_markdown, "content-type")
+    assert content_type =~ "text/markdown"
+    assert get_resp_header(as_markdown, "retry-after") == ["2"]
   end
 
   test "a post that is not there is still missing", %{conn: conn} do
@@ -75,10 +62,11 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
     assert_error_sent 500, fn -> get(conn, PostAddress.path(post)) end
   end
 
-  # Another process holds the test's one database connection while `request`
-  # runs, so every read the page makes waits and is dropped from the queue, as
-  # when a crowd has every connection.
-  defp while_the_connection_is_held(request) do
+  # Another process holds the test's one database connection while `requests`
+  # run together, so every read they make waits in the queue until the sandbox
+  # drops it, as when a crowd has every connection. One hold serves them all,
+  # since the queue is only cleared every ten seconds.
+  defp while_the_connection_is_held(requests) do
     test = self()
 
     {holder, held} =
@@ -90,9 +78,9 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
       end)
 
     assert_receive :holding
-    answer = request.()
+    answers = requests |> Enum.map(&Task.async/1) |> Task.await_many(30_000)
     send(holder, :release)
     assert_receive {:DOWN, ^held, :process, ^holder, :normal}
-    answer
+    answers
   end
 end
