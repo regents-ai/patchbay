@@ -16,7 +16,8 @@ defmodule Patchbay.Escrow do
   and handed to the chain. It comes back with the transaction hash the moment
   the chain has taken it; nothing waits for the receipt, so a caller records
   the hash and moves on. What a call needs to have landed first, such as the
-  payment a credit records, is waited for with `await_landed/1`. The three values it needs, the contract address, the
+  payment a credit records, is waited for with `await_landed/1`, and what
+  became of a transaction once it landed is read with `outcome/1`. The three values it needs, the contract address, the
   operator key and the RPC endpoint, are read from `config :patchbay, :escrow`
   and nowhere else. Nothing here ever writes the key anywhere: not into a
   log, not into an error, not into a result.
@@ -87,6 +88,26 @@ defmodule Patchbay.Escrow do
         await_landed(tx_hash, rpc_url, tries - 1)
     end
   end
+
+  @doc """
+  What became of the transaction `tx_hash` once Base put it in a block: it
+  did what it asked (`:succeeded`) or the contract refused it (`:reverted`).
+  A transaction not in a block yet is `{:error, :not_landed}`.
+  """
+  @spec outcome(String.t()) :: {:ok, :succeeded | :reverted} | {:error, term()}
+  def outcome(tx_hash) do
+    with {:ok, operator} <- operator() do
+      tx_hash
+      |> Ethers.get_transaction_receipt(rpc_opts: [url: operator.rpc_url])
+      |> read_outcome()
+    end
+  end
+
+  defp read_outcome({:ok, %{"status" => "0x1"}}), do: {:ok, :succeeded}
+  defp read_outcome({:ok, %{"status" => "0x0"}}), do: {:ok, :reverted}
+  defp read_outcome({:ok, _unreadable}), do: {:error, :unreadable_receipt}
+  defp read_outcome({:error, :transaction_receipt_not_found}), do: {:error, :not_landed}
+  defp read_outcome({:error, reason}), do: {:error, reason}
 
   @doc """
   Pays the money held against the report out to `winner_address`, and returns
