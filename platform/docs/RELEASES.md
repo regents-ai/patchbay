@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v322, 30 Oct 2026
+
+- Commit: a4927af3e128889a275145157f4bff6202c6efd7 (image `a4927af`), on main after v321. Machine replaced blue-green, one machine in iad.
+- Faster pages (PB-59): a site page reads the site and its latest check once and its tool list and Refresh panels draw from those reads; a post page reads its likes, pictures and chosen answer only when it has them. PB-70: the post page read-count test runs with a Privy app id as production does (four Regents-name reads), budget 24. Review fixes: a test that a post shows its own likes apart from its replies', and a plain changelog entry.
+- Checks: make check at b9ad3263 (same tree before the rebase onto the v321 release row): ExUnit 968/968, 323 walk steps passed and 37 skipped (Chromium), contracts 15/15. Review: nothing blocking.
+- Live (22:55Z): /capabilities.json a4927af3; /webmcp/health ok with migrations current; headless Chromium at 390 and 1280 on home and /sites: 200, no page errors, no sideways scroll; a post page and the openai.com site page 200 in about 0.15 s, the site page showing its 6 tools, the post's Markdown showing its likes line.
+- Migrations: none. Rollback: v321, image `33b64f9`.
+
 ## v321, 30 Oct 2026
 
 - Commit: 33b64f955cff6ce041ec0f9a2aa9aae949011f38 (image `33b64f9`), on main after v320. Machine replaced blue-green, one machine in iad.
