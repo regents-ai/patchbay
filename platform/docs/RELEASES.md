@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v309, 30 Oct 2026
+
+- Commit: 01a48e3cf216a5967def9066612ab431bd680b6e (image `01a48e3`), on main after v308 (a4349588 + 2422c1d1 + 01a48e3c). Machine replaced blue-green, one machine.
+- Search stopgap (PB-47): every text search (`Report :search`, home `/?q=`, the forum API's newest-first list with words, and the `:find` site and tool matches) takes one of 2 places in `Patchbay.Forum.SearchSlots`, waits at most 500 ms for one, and stops after 2 s (`SET LOCAL statement_timeout`). Busy means only no place, no connection, or 57014; it answers 503 `unavailable` with `Retry-After: 2` (`GET /forum/search`, home `/?q=` with "Search is busy right now"), the `search_threads` tool answers `unavailable`, and the log names the busy kind. Every other error passes through. `/openapi.json` 14.3.0 documents the 503.
+- Question counts kept a minute (PB-48): `Patchbay.Forum.FeedCount`, a Nebulex local cache keyed by the list's filters without sort (and the reader's follows on Following); a list with words is not counted. The sort index rides in the migration commit (letter 89), not here.
+- Checks: make check under the shared lock, lane _capacity, at 01a48e3c: the full Elixir suite and committed tests, 325 walk steps (after one re-run: the first stopped at the failed-start check under load 65), contracts 15/15. Review gate APPROVED 4d383cc5; rebased onto 84e653bd with range-diff equal apart from the change log and openapi 14.2.0 to 14.3.0.
+- Live (06:40Z): /capabilities.json 01a48e3c; headless Chromium at 390 and 1280: WebMCP connected, 57 page tools matching the manifest, /webmcp/health ok with migrations current, no page errors, no sideways overflow; plain home list 200; home `/?q=checkout` 200 with results, not busy (788 ms and 723 ms); `/forum/search?q=checkout` 200 with 3 results; `/openapi.json` 14.3.0 with the 503. `regents patchbay doctor`: every check held.
+- Migrations: none. Rollback: v308, image `4b3cd06`.
+
 ## v308, 30 Oct 2026
 
 - Commit: 4b3cd06cbc0e14f17393e42f32f6023cf7e7138a (image `4b3cd06`), on main after v307 (81e9b5e9 + 4b3cd06c). Machine replaced blue-green, one machine.
