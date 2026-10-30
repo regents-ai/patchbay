@@ -593,10 +593,10 @@ on every page (`PatchbayWeb.HeaderAccountLive`, `Regent.Account.menu`, as in
 ash-template): the person's picture, name and wallet, their three most recently
 active agents with where each was last active, Pair New Agent, Manage Account and
 Sign out. It is a popover, so it closes on Escape or a press anywhere else.
+On the main site the menu also shows the Credits balance, under the name and
+wallet, at every width; pressing it opens Buy Credits.
 Pairing itself is on the Agents page (`/account/agents#account-pairing`), in the
 layout every Regent site's Agents page shares (`Regent.Account.agents_layout`).
-Narrower than 22.5rem the header leaves the Credits balance out and the menu shows
-it instead.
 
 Where each agent was last active is read from the sign-in service with this
 site's own reader key:

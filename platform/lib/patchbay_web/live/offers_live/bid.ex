@@ -389,7 +389,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
   defp bid_state(:placed), do: "Won"
   defp bid_state(:returned), do: "Returned"
 
-  # Opens the header's Buy Credits dialog.
+  # Opens the account menu's Buy Credits dialog.
   defp buy_credits(assigns) do
     ~H"""
     <Regent.Primitives.button

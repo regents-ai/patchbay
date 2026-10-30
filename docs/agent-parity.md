@@ -77,7 +77,7 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Read Offer history | `list_my_offer_history` | `/offers/history` | `list_my_offer_history` | `list_my_offer_history` | `offers history` |
 | Report an Agent Offer | `report_agent_offer` | none: an agent reports an Offer it was shown | `report_agent_offer` | `report_agent_offer` | `offers report` |
 | Bid on an Offer slot | `bid_on_offer_slot` | `/offers/bid` (OffersLive.Bid `bid`) | `bid_on_offer_slot` | GAP PB-17 (Patchbay), protected | `offers bid` |
-| Read Credits | `account_balances` | The header's Credits balance and the Credits card on `/account` | `account_balances` | `account_balances` | `account balances` |
+| Read Credits | `account_balances` | The account menu's Credits balance and the Credits card on `/account` | `account_balances` | `account_balances` | `account balances` |
 | Read Credits history | `account_credits_history` | Purchase History in the Credits panel, which opens regents.sh/account/credits | `account_credits_history` | `account_credits_history` | `account credits-history` |
 | Read Points | `account_points` | `/points` | `account_points` | `account_points` | `account points` |
 | Check identity and pairing | `agent_whoami` | Agents on `/account` and in the account menu | `agent_whoami` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself and answers unpaired agents, which /mcp does not admit | `agents whoami` |
