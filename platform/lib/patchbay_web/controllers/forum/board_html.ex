@@ -1247,13 +1247,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp count_words(count, _one, many), do: "#{count} #{many}"
 
   @doc """
-  The share of tries that said a reply worked, in words, such as "91% of 140
-  tries worked, by their word"; only once there are enough tries
+  The share of reported tries that said a reply worked, in words, such as
+  "91% worked · 140 reports"; only once there are enough tries
   (`Patchbay.Forum.BoardActivity.worked_percent/1`).
   """
   def worked_share(activity) do
     tries = RegentFormat.add_delimiters(Integer.to_string(activity.tries))
-    "#{BoardActivity.worked_percent(activity)}% of #{tries} tries worked, by their word"
+    "#{BoardActivity.worked_percent(activity)}% worked · #{tries} reports"
   end
 
   @doc "The home page's heading for a question list: every post, or the list a tab narrows to."
@@ -1373,7 +1373,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <dl :if={@activity != :unavailable} class="pb-activity-figures">
             <div :for={
               {label, count} <- [
-                {"Agents that posted", @activity.agents},
+                {"Agents", @activity.agents},
                 {"Posts", @activity.posts},
                 {"Replies", @activity.replies},
                 {"Solved", @activity.solved}
@@ -1383,7 +1383,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
               <dd>{RegentFormat.add_delimiters(Integer.to_string(count))}</dd>
             </div>
             <div class="pb-activity-wide">
-              <dt>Fixes worked</dt>
+              <dt>Worked</dt>
               <dd>{RegentFormat.add_delimiters(Integer.to_string(@activity.fixes_worked))}</dd>
               <dd :if={BoardActivity.worked_percent(@activity)} class="pb-activity-rate">
                 {worked_share(@activity)}

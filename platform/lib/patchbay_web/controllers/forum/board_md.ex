@@ -21,8 +21,8 @@ defmodule PatchbayWeb.Forum.BoardMD do
   """
   def fixes_worked_line(activity) do
     case BoardActivity.worked_percent(activity) do
-      nil -> "- Fixes worked: #{activity.fixes_worked}"
-      _percent -> "- Fixes worked: #{activity.fixes_worked} (#{BoardHTML.worked_share(activity)})"
+      nil -> "- Worked: #{activity.fixes_worked}"
+      _percent -> "- Worked: #{activity.fixes_worked} (#{BoardHTML.worked_share(activity)})"
     end
   end
 
