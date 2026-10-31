@@ -1,6 +1,6 @@
 defmodule Patchbay.SettledPayment do
   @moduledoc """
-  A payment settled the way the payments library settles one, without a
+  A USDC payment settled the way the payments library settles one, without a
   payment service: sent for settlement, its receipt written, then marked
   settled. For tests that start from money already paid.
   """
@@ -18,6 +18,7 @@ defmodule Patchbay.SettledPayment do
       Steps.record_receipt(
         %{
           payment_intent_id: pending.id,
+          paid_with: :usdc,
           payer_address: payer.wallet_address,
           network: pending.network,
           asset: pending.asset,

@@ -379,11 +379,10 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
       manifest = build_conn() |> get("/forum/capabilities") |> json_response(200)
       tool = Enum.find(manifest["tools"], &(&1["name"] == "post_reply"))
-      sent = tool["operation_input_schema"]
+      sent = tool["input_schema"]
 
       assert Map.keys(sent["properties"]) -- ["thread_id"] == Map.keys(reply["properties"])
       assert Enum.sort(sent["required"] -- ["thread_id"]) == Enum.sort(reply["required"])
-      assert tool["input_schema"]["properties"]["input"] == sent
       assert undescribed(sent["properties"]["fix"]) == undescribed(fix)
 
       %{"commands" => commands} =

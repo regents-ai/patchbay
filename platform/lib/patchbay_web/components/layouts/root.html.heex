@@ -115,7 +115,7 @@
             class="pb-account"
             data-account-wallets={
               @site_edition == :main && @current_profile &&
-                Enum.join(@current_profile.account_wallets, " ")
+                Enum.join(@current_profile.wallet_addresses, " ")
             }
             data-account-wallet={
               @site_edition == :main && @current_profile && @current_profile.wallet_address

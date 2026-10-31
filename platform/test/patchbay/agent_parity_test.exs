@@ -81,21 +81,15 @@ defmodule Patchbay.AgentParityTest do
         cell = Map.fetch!(row, column)
         where = "#{row["Action"]} (#{column})"
 
-        cond do
-          String.starts_with?(cell, "GAP") ->
-            assert cell =~ @gap, "#{where}: a gap names its PB ticket and its lane"
+        if String.starts_with?(cell, "GAP") do
+          assert cell =~ @gap, "#{where}: a gap names its PB ticket and its lane"
 
-            assert offered[column] == [],
-                   "#{where} is a gap, yet offers #{inspect(offered[column])}"
-
-          String.starts_with?(cell, "n/a:") ->
-            assert tools == ["prepare_agent_request"],
-                   "#{where}: n/a is for prepare_agent_request only"
-
-          true ->
-            names = names(cell)
-            assert names != [], "#{where} names nothing and is not a gap"
-            assert names -- allowed[column] == [], "#{where} names what is not this row's there"
+          assert offered[column] == [],
+                 "#{where} is a gap, yet offers #{inspect(offered[column])}"
+        else
+          names = names(cell)
+          assert names != [], "#{where} names nothing and is not a gap"
+          assert names -- allowed[column] == [], "#{where} names what is not this row's there"
         end
       end
     end

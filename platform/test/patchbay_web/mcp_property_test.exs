@@ -109,7 +109,7 @@ defmodule PatchbayWeb.MCPPropertyTest do
 
   defp params(_method), do: one_of([arguments(), json()])
 
-  defp schema(tool), do: tool.operation_input_schema || tool.input_schema
+  defp schema(tool), do: tool.input_schema
 
   defp fields(nil), do: arguments()
 
@@ -141,7 +141,7 @@ defmodule PatchbayWeb.MCPPropertyTest do
   defp arguments do
     fields =
       Capabilities.hosted()
-      |> Enum.flat_map(&Map.keys((&1.operation_input_schema || &1.input_schema)["properties"]))
+      |> Enum.flat_map(&Map.keys(&1.input_schema["properties"]))
       |> Enum.concat(~w(name arguments delivery uri protocolVersion cursor ttlMs))
       |> Enum.uniq()
 

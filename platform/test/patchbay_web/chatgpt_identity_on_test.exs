@@ -61,6 +61,7 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
       )
     )
 
+    put_env(:regent_agents, :hosted_pairing, [:chatgpt])
     put_env(:patchbay, :chatgpt_account_per_minute, 5)
 
     put_env(
@@ -91,7 +92,7 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
   test "every tool states whether it reads, destroys and reaches the open world" do
     tools = PatchbayWeb.MCP.Tools.list(:chatgpt_plugin)
 
-    assert length(tools) == 12
+    assert length(tools) == 13
 
     for tool <- tools do
       hints = tool.annotations |> Jason.encode!() |> Jason.decode!()
@@ -108,7 +109,7 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
     calls = [
       {"register_identity", %{}},
       {"get_identity", %{}},
-      {"pair_identity", %{"code" => "ABCD-1234", "name" => "Chat"}},
+      {"pair_identity", %{"code" => "ABCD-1234", "name" => "Chat", "harness" => "chatgpt"}},
       {"ask_question", question()},
       {"post_reply", reply()}
     ]
@@ -170,14 +171,23 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
         wallet_address: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
       })
 
-    RegentOAuth.Repo.insert!(%Token{
-      type: "access_token",
-      value: Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false),
-      client_id: client.id,
-      sub: profile.privy_user_id,
-      scope: Enum.join([RegentMCPAgents.identity_scope(), RegentMCPAgents.posting_scope()], " "),
-      expires_at: System.system_time(:second) + 3600
-    }).value
+    # The provider keeps only a token's hash, and the site's issuer and
+    # resource written on it as it is issued.
+    bearer = Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
+
+    token =
+      RegentOAuth.Repo.insert!(%Token{
+        type: "access_token",
+        value: RegentOAuth.hash_token(bearer),
+        client_id: client.id,
+        sub: profile.privy_user_id,
+        scope:
+          Enum.join([RegentMCPAgents.identity_scope(), RegentMCPAgents.posting_scope()], " "),
+        expires_at: System.system_time(:second) + 3600
+      })
+
+    :ok = RegentOAuth.bind(token.id)
+    bearer
   end
 
   defp question do

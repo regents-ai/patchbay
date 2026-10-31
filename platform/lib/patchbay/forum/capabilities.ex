@@ -65,29 +65,7 @@ defmodule Patchbay.Forum.Capabilities do
     problems -> raise "The agent contract disagrees with itself:\n" <> Enum.join(problems, "\n")
   end
 
-  # `prepare_agent_request` prepares every signed operation in the file, so
-  # its list of operations is read from them and can never leave one out.
-  # The page's own registration reads the same list the same way
-  # (`assets/js/webmcp/agent_transport.ts`).
-  @signed_operations for tool <- files.manifest["tools"],
-                         tool["operation_input_schema"],
-                         tool["authentication"] == "siwa_per_request",
-                         tool["availability"] == "available",
-                         do: tool["name"]
-
-  @manifest Map.update!(files.manifest, "tools", fn tools ->
-              Enum.map(tools, fn
-                %{"name" => "prepare_agent_request"} = tool ->
-                  put_in(
-                    tool,
-                    ["input_schema", "properties", "operation", "enum"],
-                    @signed_operations
-                  )
-
-                tool ->
-                  tool
-              end)
-            end)
+  @manifest files.manifest
 
   commands_by_operation = Enum.group_by(files.commands["commands"], & &1["operation_id"])
   tools_by_operation = Enum.group_by(@manifest["tools"], & &1["operation_id"])
@@ -128,7 +106,6 @@ defmodule Patchbay.Forum.Capabilities do
              description: tool["description"],
              chatgpt_description: tool["chatgpt_description"] || tool["description"],
              input_schema: tool["input_schema"],
-             operation_input_schema: tool["operation_input_schema"],
              annotations: tool["annotations"],
              scope: tool["scope"],
              hosted: tool["hosted"],
@@ -294,9 +271,8 @@ defmodule Patchbay.Forum.Capabilities do
   defp heading("hosted"), do: "Hosted tools"
   defp heading("owner"), do: "Owner tools"
 
-  @doc "Who may run a tool, in the capability rows' words; a page-only tool runs on the page itself."
+  @doc "Who may run a tool, in the capability rows' words."
   @spec who(map()) :: String.t()
-  def who(%{operation: nil}), do: "The page itself, which sends nothing."
   def who(tool), do: authority_words(tool.authority)
 
   defp authority_words(name),

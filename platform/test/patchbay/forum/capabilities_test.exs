@@ -91,12 +91,6 @@ defmodule Patchbay.Forum.CapabilitiesTest do
         [:manifest, "tools", Access.at(tool.(files, "tip_agent"))],
         &Map.merge(&1, %{"hosted" => true, "scope" => "site"})
       ),
-      # A page-only tool, which has no operation, listed at /mcp.
-      put_in(
-        files,
-        [:manifest, "tools", Access.at(tool.(files, "prepare_agent_request")), "hosted"],
-        true
-      ),
       update_in(
         files,
         [:openapi, "paths"],
@@ -145,7 +139,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     for tool <- PatchbayWeb.MCP.Tools.list(:native_mcp) do
       assert is_binary(purposes[tool.name]) and purposes[tool.name] != "", tool.name
       assert tool.description =~ Map.fetch!(needs, requires[tool.name]), tool.name
-      refute tool.description =~ "prepare_agent_request", tool.name
+      refute tool.description =~ "regents browser", tool.name
     end
   end
 
@@ -204,8 +198,8 @@ defmodule Patchbay.Forum.CapabilitiesTest do
 
       assert String.ends_with?(
                tool["description"],
-               "Signed: on a page, prepare it with prepare_agent_request, sign that request with " <>
-                 "your own key, then pass input, request and proof; #{surfaces}, sign the request you send."
+               "Signed: on a page, open it through regents browser, which signs it with your own " <>
+                 "key; #{surfaces}, sign the request you send."
              ),
              tool["name"]
     end

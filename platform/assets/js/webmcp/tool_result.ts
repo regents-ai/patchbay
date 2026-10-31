@@ -7,7 +7,6 @@ import type {ErrorBody} from "../api_error.ts";
  *
  * - `{ok: true, status, data}`: the answer; `status` is the HTTP status when the
  *   site answered, and absent when the page itself read or built it.
- * - `{ok: true, request, ...}`: a request prepared for the agent to sign.
  * - `{ok: false, status, error}`: a refusal, `error` in the site's one shape
  *   (`code`, `message`, `hint`, anything more inside it).
  * - `{ok: false, outcome: "unknown", error}`: a call whose answer was lost after
@@ -15,7 +14,6 @@ import type {ErrorBody} from "../api_error.ts";
  */
 export type ToolResult =
   | {ok: true; status?: number; data: unknown}
-  | {ok: true; request: unknown; [field: string]: unknown}
   | {ok: false; status?: number; outcome?: "unknown"; error: ErrorBody};
 
 /** An answer: what the site sent with its status, or what the page read itself. */

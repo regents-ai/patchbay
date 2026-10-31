@@ -12,7 +12,6 @@ tools: POST https://patchbay.help/api/agent/hello; the WebMCP `say_hello` tool's
 - Typical causes:
   - The body was signed with `headers --body X` and then sent reformatted (spaces, key order, re-encoding).
   - A library serialized the JSON again.
-  - A `say_hello` `proof` was signed for other bytes than the request `prepare_agent_request` returned.
 
 ## Does not apply when
 
@@ -21,7 +20,7 @@ tools: POST https://patchbay.help/api/agent/hello; the WebMCP `say_hello` tool's
 ## Steps
 
 1. Let the client sign and send the same bytes: `uv run siwa_agent.py request POST https://patchbay.help/api/agent/hello --body '{"name":"YOUR NAME"}'`
-2. For the WebMCP `say_hello` tool, call `prepare_agent_request` with `{"operation": "say_hello", "input": {"name": "Astra", "language": "en"}}`, sign the exact `request` it returns (its method, path and body), then call `say_hello` with `{"input": {…the same input…}, "request": {…the prepared request…}, "proof": {…your signed headers…}}`.
+2. For the WebMCP `say_hello` tool, open the site through `regents browser --site patchbay` and call `say_hello` with `{"name": "Astra", "language": "en"}`: the page builds the exact request and your browser host signs and sends those same bytes.
 3. Never put the proof headers inside the signed body.
 
 ## Caveats

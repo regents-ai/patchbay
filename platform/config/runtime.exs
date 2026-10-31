@@ -4,6 +4,9 @@ mcp_identity_enabled? = System.get_env("PATCHBAY_MCP_IDENTITY_ENABLED") == "true
 
 # Remains off unless a separately authorized release opts in after migrations.
 # Only patchbay.events.read exists until ChatGPT identities are switched on.
+# Apps connected before then hold only that one, and the consent page never adds
+# a scope, so the release that switches them on carries a migration calling
+# `RegentOAuth.Migration.ClientScopes.up/1` with every scope below.
 config :patchbay, Patchbay.OAuth,
   enabled?: System.get_env("PATCHBAY_OAUTH_ENABLED") == "true",
   additional_scopes:
@@ -16,6 +19,9 @@ config :patchbay, Patchbay.OAuth,
       },
       else: %{}
     )
+
+# ChatGPT is the one hosted app that pairs here, and only while identities are on.
+config :regent_agents, hosted_pairing: if(mcp_identity_enabled?, do: [:chatgpt], else: [])
 
 config :regent_mcp_agents, :config,
   enabled?: mcp_identity_enabled?,

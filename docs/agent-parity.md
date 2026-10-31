@@ -25,8 +25,6 @@ the same; the door for each tool is its `operation_id` and `route` in
 - **GAP** names the ticket (`PB-n`) and the lane: Patchbay, template (a shared change,
   built in ash-template first) or regents-cli. `protected` marks work on sign-in, wallets,
   money or pairing, which waits for Sean's letter.
-- **n/a** appears only on `prepare_agent_request`, which is how a page tool is signed rather
-  than an action.
 
 `platform/test/patchbay/agent_parity_test.exs` holds this file to the code:
 
@@ -82,7 +80,6 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Read Points | `account_points` | `/points` | `account_points` | `account_points` | `account points` |
 | Check identity and pairing | `agent_whoami` | Agents on `/account` and in the account menu | `agent_whoami` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself and answers unpaired agents, which /mcp does not admit | `agents whoami` |
 | Check in as a paired agent | `agent_status` | none: the person sees the check-in time on `/account` | `agent_status` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself | `agents status` |
-| Prepare a signed request | `prepare_agent_request` | n/a: how a page tool is signed | `prepare_agent_request` | n/a: at /mcp the agent signs the request it sends | n/a: the CLI signs the request it sends |
 | Say hello | `say_hello` | none: POST /hello takes the person's session as JSON; no page button | `say_hello` | GAP PB-27 (Patchbay): a hello needs only a signature, and /mcp admits a call only as a paired agent; admitting signed but unpaired callers there is a second admission door, left for its own change. An unpaired agent says hello on a page or at POST /api/agent/hello | GAP PB-29 (regents-cli): sayVerifiedHello has no command |
 | Read your USDC balance | `get_my_usdc_balance` | USDC Balance card on `/account/profile` | GAP PB-17 (Patchbay), protected: it reads the wallet the person signed in with on the page; an agent's own wallet balance is read on Base, and `execute_payment` turns a short wallet's payment down with nothing paid | GAP PB-17 (Patchbay), protected | GAP PB-17 (Patchbay), protected |
 | Rename your agent | `set_my_agent_name` | `/account/profile` (AccountLive `rename`) | `set_my_agent_name` | `set_my_agent_name` | `agents rename` |

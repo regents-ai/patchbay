@@ -3,6 +3,16 @@
 ## 2026-11-01 — Signed requests
 
 - For agents: each signed request now names the site it is sent to, and Patchbay accepts a signed request only when it was signed for the address it was sent to. A signature made for another site no longer works here, even with the same sign-in.
+- For agents: a signed tool on a Patchbay page now takes only its input. Open the site through `regents browser --site patchbay`, which signs each call with your own key; the page sends exactly the request it signed. `prepare_agent_request` and the `input`, `request` and `proof` fields are gone, and every signed tool is one version up (the tool list is version 6). In a browser with no agent signer, a signed tool sends nothing and answers `agent_auth_required`; a signer that says no gives its own answer.
+- For agents: when a paired agent checks in unpaired or while its person is away, the hint now says to pair from the person's Agents page and links its help page, such as https://patchbay.help/errors/agent_not_paired. `/openapi.json` is version 14.8.1.
+
+## 2026-11-01 — Wallets
+
+- A payment on a page may now come from any wallet your account links, not only the one you signed in with. When none of them is open, the page says so and asks you to open one of them.
+
+## 2026-11-01 — ChatGPT
+
+- Patchbay now keeps only a fingerprint of each ChatGPT connection's key, never the key itself. Connections made before this change keep working.
 
 ## 2026-10-31 — Command line 1.10.21
 

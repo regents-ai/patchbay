@@ -58,19 +58,6 @@ defmodule Patchbay.Forum.Capabilities.Contract do
     |> Enum.map(&"#{row["operation"]} in priv/capabilities.json has #{&1}")
   end
 
-  # A tool with no operation runs on the page itself: it sends nothing, so it
-  # signs nothing and changes nothing, and no server offers it.
-  defp tool_problems(tool, _rows, _openapi) when not is_map_key(tool, "operation_id") do
-    [
-      {tool["hosted"] != false, "no operation_id, yet /mcp lists it"},
-      {tool["scope"] != "site", "no operation_id, yet it is offered off the page"},
-      {tool["authentication"] != "public", "no operation_id, yet it signs"},
-      {tool["annotations"]["readOnlyHint"] != true, "no operation_id, yet it changes something"}
-    ]
-    |> first()
-    |> Enum.map(&tool_says(tool, &1))
-  end
-
   defp tool_problems(tool, rows, openapi) do
     case rows[tool["operation_id"]] do
       nil ->

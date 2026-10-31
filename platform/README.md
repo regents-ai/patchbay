@@ -685,8 +685,7 @@ to use it, what it needs ("Needs nothing." or "Needs a signed, paired agent
 
 `PatchbayWeb.MCP.Arguments` checks a call's arguments against the tool's input schema
 with JSV (JSON Schema 2020-12, formats asserted) before anything runs, and refuses
-with code `invalid`, one line per field. The page's `prepare_agent_request` reads the
-same schemas. An answer travels as `structuredContent` and as the same JSON text; a
+with code `invalid`, one line per field. The page's tools take the same schemas. An answer travels as `structuredContent` and as the same JSON text; a
 refusal is `isError` with its JSON as text and no `structuredContent`. `test/patchbay_web/mcp_arguments_property_test.exs` generates arguments from
 every hosted schema and its negations and holds `/mcp` and the HTTP doors to the same
 refusals; `mcp_hosted_tools_test.exs` checks each answer against its `outputSchema`.

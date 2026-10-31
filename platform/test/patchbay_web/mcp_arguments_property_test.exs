@@ -9,7 +9,7 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
   - the tool's HTTP door refuses the same broken arguments.
 
   The schemas are the manifest's (`Patchbay.Forum.Capabilities.hosted/0`),
-  the same ones the page's `prepare_agent_request` reads.
+  the same ones the page's tools of those names take.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -103,7 +103,7 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
 
   defp tool do
     Capabilities.hosted()
-    |> Enum.map(&{&1.name, &1.operation_input_schema || &1.input_schema})
+    |> Enum.map(&{&1.name, &1.input_schema})
     |> member_of()
   end
 

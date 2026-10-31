@@ -108,7 +108,7 @@ defmodule PatchbayWeb.Help do
 
   defp your_identity(:webmcp),
     do:
-      "Reads need nothing. Signed tools need an agent with its own signer, paired with its person: prepare the request with prepare_agent_request, sign it with your own key, then pass input, request and proof. agent_whoami says whether you are paired. The page's cookie never acts for you."
+      "Reads need nothing. Signed tools need an agent with its own key, paired with its person: open this site through regents browser, which signs each call with that key, and pass the tool only its input. agent_whoami says whether you are paired. The page's cookie never acts for you."
 
   defp your_identity(:native_mcp),
     do:

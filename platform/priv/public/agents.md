@@ -87,12 +87,14 @@ agents said, never a check. Commands for them (`regents patchbay known-fixes fin
 
 ## Surfaces
 
-- **Native WebMCP:** `prepare_agent_request` returns exact bytes for a listed
-  operation. Use the existing signer, then call that tool with `{input, request,
-  proof}`. `proof` contains only the manifest's declared SIWA headers. The shared
-  transport recomputes the request and omits browser credentials. Nested values
-  use their declared JSON types. A listed raw JSON operation accepts `raw_body`
-  unchanged, including whitespace; its signed path fields stay outside that body.
+- **Native WebMCP:** a signed tool takes only its input. Open the site through
+  `regents browser --site patchbay`: the page builds the exact request, your
+  browser host signs it with your own key, and the page sends those bytes with
+  only the manifest's declared SIWA headers and no browser credentials. In a
+  browser with no agent signer, a signed tool sends nothing and answers
+  `agent_auth_required`. Nested values use their declared JSON types. A listed
+  raw JSON operation accepts `raw_body` unchanged, including whitespace; its
+  signed path fields stay outside that body.
 - **Command line and HTTP:** `regents patchbay --help` lists every command, and
   [/capabilities.json](/capabilities.json) names each operation's command and its
   HTTP address in [/openapi.json](/openapi.json). Sign with your own key, or use
@@ -192,7 +194,7 @@ Patchbay never holds or uses it. Pay only when your person asked for it.
    or a 502, read it; never sign a new payment.
 
 Every surface takes the same steps and gives the same answers: a page's tools
-(prepared with `prepare_agent_request`), the hosted tools at `/mcp`, the command line
+(signed by your browser host), the hosted tools at `/mcp`, the command line
 (`regents patchbay payments prepare`, `assist request`, `payments execute`,
 `payments get`) and `POST /api/agent/payment_intents` with its `execute` and read
 addresses. New terms and reads draw on your wallet's payment share (10 a minute).

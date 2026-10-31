@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.MCP.Arguments do
   @moduledoc """
   Checks a hosted tool's arguments against its input schema in the manifest,
-  the same schema the page's `prepare_agent_request` reads, with a standard
+  the same schema the page's tool of that name takes, with a standard
   JSON Schema validator (JSV, draft 2020-12, formats asserted).
 
   A call that fits gets back the arguments as the validator read them (a
@@ -14,7 +14,7 @@ defmodule PatchbayWeb.MCP.Arguments do
 
   # Built once, when this module compiles, from the manifest it reads.
   @schemas Map.new(Capabilities.hosted(), fn tool ->
-             {tool.name, tool.operation_input_schema || tool.input_schema}
+             {tool.name, tool.input_schema}
            end)
 
   @roots Map.new(@schemas, fn {name, schema} -> {name, JSV.build!(schema, formats: true)} end)

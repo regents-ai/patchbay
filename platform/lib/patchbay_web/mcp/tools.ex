@@ -36,9 +36,8 @@ defmodule PatchbayWeb.MCP.Tools do
   # How a signed tool is signed on a page, the last sentence of its manifest
   # description. A hosted tool's prerequisite already says to sign the request
   # sent here, so this address leaves the page's steps out.
-  @signing " Signed: on a page, prepare it with prepare_agent_request, sign that request " <>
-             "with your own key, then pass input, request and proof; at /mcp or over " <>
-             "HTTP, sign the request you send."
+  @signing " Signed: on a page, open it through regents browser, which signs it with " <>
+             "your own key; at /mcp or over HTTP, sign the request you send."
 
   # The manifest's hosted tools, in the shape `tools/list` answers with. The
   # repair card names the page a host draws its answer in.
@@ -47,7 +46,7 @@ defmodule PatchbayWeb.MCP.Tools do
              name: tool.name,
              title: tool.title,
              description: String.replace_suffix(tool.description, @signing, ""),
-             inputSchema: tool.operation_input_schema || tool.input_schema,
+             inputSchema: tool.input_schema,
              outputSchema: tool.output_schema,
              annotations: Capabilities.mcp_hints(tool)
            }
@@ -74,6 +73,9 @@ defmodule PatchbayWeb.MCP.Tools do
   # and posting tools are appended only when enabled.
   @chatgpt_names ~w(get_patchbay_help get_webmcp_guide search_threads get_thread
                     render_repair_card get_tool_history read_site_directory)
+
+  # The account identity tools the shared library hosts at the ChatGPT address.
+  @identity_names RegentMCPAgents.Tools.names()
 
   @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
   @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
@@ -149,12 +151,11 @@ defmodule PatchbayWeb.MCP.Tools do
           | :unknown_tool
           | {:invalid_arguments, [String.t(), ...]}
   def call(name, arguments, %{surface: :chatgpt_plugin} = caller)
-      when name in ["register_identity", "get_identity", "pair_identity"] do
+      when name in @identity_names do
     if RegentMCPAgents.enabled?() do
-      case RegentMCPAgents.Tools.call(name, arguments, Map.get(caller, :principal)) do
-        {:ok, answer} -> {:ok, answer}
-        _ -> {:error, RegentMCPAgents.Tools.refusal()}
-      end
+      name
+      |> RegentMCPAgents.Tools.call(arguments, Map.get(caller, :principal))
+      |> identity_answer()
     else
       :unknown_tool
     end
@@ -212,9 +213,32 @@ defmodule PatchbayWeb.MCP.Tools do
       posted(result)
     else
       {:invalid_arguments, _} = invalid -> invalid
-      _ -> {:error, RegentMCPAgents.Tools.refusal()}
+      {:ok, _no_result} -> {:error, RegentMCPAgents.Tools.refusal()}
+      refused -> identity_answer(refused)
     end
   end
+
+  # The shared library's answers, read into the one answer shape every
+  # Patchbay tool gives: a refusal keeps its code, words and hint, and a wait
+  # names its seconds.
+  defp identity_answer({:ok, answer}), do: {:ok, answer}
+  defp identity_answer({:answer, _status, %{"error" => error}, _retry_after}), do: refused(error)
+  defp identity_answer({:refused, _status, error}), do: refused(error)
+
+  defp identity_answer({:error, {:rate_limited, seconds}}) do
+    {:error,
+     ApiError.body(
+       "rate_limited",
+       "Too many requests from this connection just now.",
+       "Wait retry_after_seconds, then call again.",
+       %{retry_after_seconds: seconds}
+     )}
+  end
+
+  defp identity_answer(_no_answer), do: {:error, RegentMCPAgents.Tools.refusal()}
+
+  defp refused(%{"code" => _, "message" => _, "hint" => _} = error), do: {:error, %{error: error}}
+  defp refused(_error), do: {:error, RegentMCPAgents.Tools.refusal()}
 
   defp posted(%{"isError" => false, "structuredContent" => answer}), do: {:ok, answer}
 

@@ -10,6 +10,7 @@ import {
 import type {ForumTool, ForumToolOptions} from "../../js/webmcp/forum_tools.ts";
 import manifest from "../../../priv/tool_manifest.json" with {type: "json"};
 import type {ToolResult} from "../../js/webmcp/tool_result.ts";
+import type {PreparedRequest} from "../../vendor/regent_agent_access/signed_tools.ts";
 
 /** A tool's answer as the agent reads it: the object the browser hands over as it is. */
 type Answer = Record<string, any>;
@@ -24,11 +25,6 @@ type Schema = {
   properties: Record<string, {type?: string; enum?: string[]; format?: string}>;
   additionalProperties?: boolean;
 };
-
-/** The operation input a signed tool's schema wraps. */
-function operationInput(tool: RegisteredTool) {
-  return tool.inputSchema.properties.input as unknown as Schema;
-}
 
 /** A tool as the fake model context holds it. */
 type RegisteredTool = {
@@ -85,7 +81,7 @@ function fakeFetch(answers: FakeAnswer[]) {
   return call as typeof call & typeof globalThis.fetch;
 }
 
-/** The page a signed request is prepared on, and the origin it trusts. */
+/** The page a signed request is built on, and the origin it trusts. */
 const PAGE_ORIGIN = "http://localhost:4000";
 
 /** The visit the page's `regent-visit` tag names. */
@@ -104,18 +100,38 @@ test.beforeEach(() => {
   } as unknown as Window & typeof globalThis;
 });
 
-/** Proof headers as an agent's own signer hands them over. */
+/** Proof headers as an agent's browser host hands them over. */
 const PROOF = Object.fromEntries(manifest.proof_headers.map(name => [name, `signed-${name}`]));
 
+/** The proof for `request`: a request with no body is signed without a body digest. */
+function proofFor(request: {body?: string}) {
+  return request.body === undefined
+    ? Object.fromEntries(Object.entries(PROOF).filter(([name]) => name !== "content-digest"))
+    : PROOF;
+}
+
+/** Every request the browser host was asked to sign on the current page, in order. */
+let signedRequests: PreparedRequest[] = [];
+
+/** The browser host's signer (`window.regentsSign`), as regents browser provides it. */
+async function hostSigner(request: PreparedRequest) {
+  signedRequests.push(request);
+  return {headers: proofFor(request)};
+}
+
 /**
- * Runs `run` on a page at PAGE_ORIGIN whose signed requests go out on
- * `fetch`, the way the browser sends them, then puts the globals back.
+ * Runs `run` on a page at PAGE_ORIGIN whose signed requests are signed by
+ * `signer` (none when it is null) and go out on `fetch`, the way the browser
+ * sends them, then puts the globals back.
  */
-async function onSignedPage(fetch: (path: string, request: SentRequest) => Promise<FakeResponse>, run: () => Promise<void>) {
+async function onSignedPage(fetch: (path: string, request: SentRequest) => Promise<FakeResponse>, run: () => Promise<void>, signer: unknown = hostSigner) {
+  const page = globalThis as {regentsSign?: unknown};
   const previous = {window: globalThis.window, document: globalThis.document, fetch: globalThis.fetch};
   globalThis.window = {location: {origin: PAGE_ORIGIN}} as unknown as Window & typeof globalThis;
   globalThis.document = {querySelector: () => ({content: PAGE_ORIGIN})} as unknown as Document;
   globalThis.fetch = fetch as unknown as typeof globalThis.fetch;
+  signedRequests = [];
+  page.regentsSign = signer;
 
   try {
     await run();
@@ -123,6 +139,7 @@ async function onSignedPage(fetch: (path: string, request: SentRequest) => Promi
     globalThis.window = previous.window;
     globalThis.document = previous.document;
     globalThis.fetch = previous.fetch;
+    delete page.regentsSign;
   }
 }
 
@@ -155,16 +172,15 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.deepEqual(FORUM_TOOL_NAMES, pageTools.map(tool => tool.name));
   for (const tool of modelContext.tools.values()) assert.equal(typeof tool.execute, "function");
 
-  // A signed tool takes the operation's input, the request prepared from it,
-  // and the agent's proof for that exact request.
+  // A signed tool takes only its operation's input; the agent's browser host
+  // signs the exact request the page sends.
   const other = modelContext.tools.get("report_tool_on_another_site")!;
   assert.deepEqual(other.annotations, {
     readOnlyHint: false, untrustedContentHint: false, consequentialHint: true,
   });
-  assert.deepEqual(other.inputSchema.required, ["input", "request", "proof"]);
   assert.equal(other.inputSchema.additionalProperties, false);
 
-  const otherInput = operationInput(other);
+  const otherInput = other.inputSchema;
   assert.deepEqual(otherInput.required, ["origin", "tool_name", "verdict", "client_request_id"]);
   // An agent sends what it saw and what it sent; the server does the hashing.
   assert.equal(otherInput.properties.arguments.type, "object");
@@ -172,7 +188,7 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.equal("arguments_sha256" in otherInput.properties, false);
 
   const reply = modelContext.tools.get("reply_to_report")!;
-  assert.deepEqual(operationInput(reply).required, ["report_id", "verdict", "client_request_id"]);
+  assert.deepEqual(reply.inputSchema.required, ["report_id", "verdict", "client_request_id"]);
   assert.equal(reply.annotations.readOnlyHint, false);
   assert.equal(reply.annotations.untrustedContentHint, false);
 
@@ -210,7 +226,7 @@ test("registering is a no-op in a browser without WebMCP", () => {
   assert.doesNotThrow(() => registerForumTools({}, {})());
 });
 
-test("a signed tool sends the exact prepared request with the agent's proof and hands back the board's answer", async () => {
+test("a signed tool has the browser host sign the exact request for its input, sends it and hands back the board's answer", async () => {
   const fetch = fakeFetch([
     {
       status: 201,
@@ -231,21 +247,16 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
       client_request_id: "request-1",
     };
 
-    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "report_tool_on_another_site", input}),);
+    const result = asAnswer(await tools.get("report_tool_on_another_site")!.execute(input));
 
-    assert.deepEqual(prepared, {
-      ok: true,
-      request: {
-        operation: "report_tool_on_another_site",
-        audience: "patchbay",
-        origin: PAGE_ORIGIN,
-        method: "POST",
-        path: "/forum/reports",
-        body: JSON.stringify(input),
-      },
-    });
-
-    const result = asAnswer(await tools.get("report_tool_on_another_site")!.execute({input, request: prepared.request, proof: PROOF}),);
+    assert.deepEqual(signedRequests, [{
+      operation: "report_tool_on_another_site",
+      audience: "patchbay",
+      origin: PAGE_ORIGIN,
+      method: "POST",
+      path: "/forum/reports",
+      body: JSON.stringify(input),
+    }]);
 
     // The board's answer comes back as the board gave it, with its status.
     assert.deepEqual(result, {
@@ -260,7 +271,7 @@ test("a signed tool sends the exact prepared request with the agent's proof and 
     const [{path, request}] = fetch.requests;
     assert.equal(path, `${PAGE_ORIGIN}/forum/reports`);
     assert.equal(request.method, "POST");
-    assert.equal(request.body, prepared.request.body);
+    assert.equal(request.body, signedRequests[0].body);
     // The agent's proof is its only authority: no page cookie, no page token.
     assert.equal(request.credentials, "omit");
     assert.equal(request.headers["x-csrf-token"], undefined);
@@ -525,11 +536,9 @@ test("cancellation forwards the signal and discards late write success", async (
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({});
     const input = {report_id: "report", verdict: "unknown", client_request_id: "request-1"};
-    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "reply_to_report", input}),);
-    const pending = tools.get("reply_to_report")!
-      .execute({input, request: prepared.request, proof: PROOF}, {signal: controller.signal});
-    await Promise.resolve();
-    await Promise.resolve();
+    const pending = tools.get("reply_to_report")!.execute(input, {signal: controller.signal});
+    // The signer answers first, then the request goes out.
+    await new Promise(resolve => setImmediate(resolve));
     assert.equal(request.signal, controller.signal);
     controller.abort();
     const result = asAnswer(await pending);
@@ -596,7 +605,7 @@ test("the known fixes are read with no sign-in: a site's list, then one fix", as
   assert.equal(fix.steps, "1. Read its status.");
 });
 
-/** The smallest input a signed operation's schema accepts, for tests that only need it prepared. */
+/** The smallest input a signed operation's schema accepts, for tests that only need it sent. */
 function minimalInput(schema: {properties?: Record<string, {type?: string; format?: string; enum?: unknown[]}>; required?: string[]}) {
   return Object.fromEntries((schema.required ?? []).map(field => {
     const property = schema.properties?.[field] ?? {};
@@ -629,22 +638,14 @@ test("every read whose answer is too large says it changed nothing, and how to r
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
     const reads = manifest.tools.filter(tool => tool.scope === "site" && tool.annotations.readOnlyHint === true &&
-      !["prepare_agent_request", "get_patchbay_help", "get_webmcp_guide"].includes(tool.name));
+      !["get_patchbay_help", "get_webmcp_guide"].includes(tool.name));
     assert.ok(reads.length > 10);
 
     for (const entry of reads) {
       const tool = tools.get(entry.name)!;
-      let input: Record<string, unknown> = READ_INPUT[entry.name] ?? {};
-      if ("operation_input_schema" in entry && entry.operation_input_schema) {
-        const operation = minimalInput(entry.operation_input_schema as unknown as Parameters<typeof minimalInput>[0]);
-        const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: entry.name, input: operation}));
-        assert.equal(prepared.ok, true, entry.name);
-        // A read with no body is signed without a body digest.
-        const proof = prepared.request.body === undefined
-          ? Object.fromEntries(Object.entries(PROOF).filter(([name]) => name !== "content-digest"))
-          : PROOF;
-        input = {input: operation, request: prepared.request, proof};
-      }
+      const input = entry.authentication === "siwa_per_request"
+        ? minimalInput(entry.input_schema as unknown as Parameters<typeof minimalInput>[0])
+        : READ_INPUT[entry.name] ?? {};
       const result = asAnswer(await tool.execute(input));
       const {error} = result;
       assert.equal(error?.code, "response_too_large", `${entry.name}: ${error?.message}`);
@@ -659,80 +660,81 @@ test("a write whose answer is too large leaves its outcome unknown", async () =>
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
     const input = {thread_id: "00000000-0000-4000-8000-000000000000", body_markdown: "It worked after a reload.", client_request_id: "r-1"};
-    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "post_reply", input}));
-    const result = asAnswer(await tools.get("post_reply")!.execute({input, request: prepared.request, proof: PROOF}));
+    const result = asAnswer(await tools.get("post_reply")!.execute(input));
     assert.equal(result.error.code, "response_too_large");
     assert.equal(result.outcome, "unknown");
   });
 });
 
-test("a question of several kilobytes is prepared whole, and one past the request limit is refused as unsent", async () => {
-  await onSignedPage(fakeFetch([]), async () => {
-    const prepare = toolsByName({}).get("prepare_agent_request")!;
+test("a question of several kilobytes is signed and sent whole", async () => {
+  const fetch = fakeFetch([{status: 201, body: {report_id: "report-1"}}]);
+  await onSignedPage(fetch, async () => {
     const input = {site: "example.com", title: "Checkout returns ok but the cart stays empty",
       body_markdown: "The add_to_cart tool answers ok, yet the cart \"stays\" empty.\n".repeat(80),
       thread_kind: "help_needed", client_request_id: "q-1"};
-    const prepared = asAnswer(await prepare.execute({operation: "ask_question", input}));
-    assert.equal(prepared.ok, true);
-    assert.deepEqual(JSON.parse(prepared.request.body), input);
-
-    // Each tag and tool within its limits, the whole past what a request may hold.
-    const quotes = Array.from({length: 5}, () => "\"".repeat(9_000));
-    const tooLong = {...input, topic_tags: quotes, tools: quotes};
-    const refused = asAnswer(await prepare.execute({operation: "ask_question", input: tooLong}));
-    assert.equal(refused.error.code, "response_too_large");
-    assert.equal("outcome" in refused, false);
+    const answer = asAnswer(await toolsByName({fetch}).get("ask_question")!.execute(input));
+    assert.equal(answer.ok, true);
+    assert.deepEqual(JSON.parse(signedRequests[0].body!), input);
+    assert.equal(fetch.requests[0].request.body, signedRequests[0].body);
   });
 });
 
-test("a signed tool called without its prepared request says to prepare and sign it, in words", async () => {
-  await onSignedPage(fakeFetch([]), async () => {
-    const whoami = toolsByName({}).get("agent_whoami")!;
-
-    for (const input of [{}, {input: {}}, {input: {}, request: {}, proof: {}}]) {
-      const {error} = asAnswer(await whoami.execute(input));
-      assert.equal(error.code, "invalid_request", JSON.stringify(input));
-      assert.match(error.message + " " + error.hint, /prepare_agent_request/);
-      assert.doesNotMatch(error.message, /Error:/);
-      assert.notEqual(error.message, error.details.reason);
-      assert.equal(typeof error.details.reason, "string");
-    }
-  });
+test("a signed tool in a browser with no agent signer sends nothing and names regents browser", async () => {
+  const fetch = fakeFetch([]);
+  await onSignedPage(fetch, async () => {
+    const {error} = asAnswer(await toolsByName({fetch}).get("agent_whoami")!.execute({}));
+    assert.equal(error.code, "agent_auth_required");
+    assert.match(error.hint, /regents browser --site patchbay/);
+  }, null);
+  assert.equal(fetch.requests.length, 0);
 });
 
-test("prepare_agent_request takes a body up to the board's 16 KB, and refuses one past it or an unknown field, as /mcp does", async () => {
-  await onSignedPage(fakeFetch([]), async () => {
-    const prepare = toolsByName({}).get("prepare_agent_request")!;
+test("the signer's refusal is the tool's answer, and a broken signer answer is named in words; neither sends anything", async () => {
+  const fetch = fakeFetch([]);
+  const no = {code: "pairing_required", message: "Pair this agent first.", hint: "Ask your person for a code."};
+  await onSignedPage(fetch, async () => {
+    assert.deepEqual(asAnswer(await toolsByName({fetch}).get("agent_whoami")!.execute({})).error, no);
+  }, async () => ({error: no}));
+
+  await onSignedPage(fetch, async () => {
+    const {error} = asAnswer(await toolsByName({fetch}).get("agent_whoami")!.execute({}));
+    assert.equal(error.code, "invalid_request");
+    assert.match(error.message, /signer gave an incomplete answer/);
+    assert.match(error.hint, /Update regents-cli/);
+    assert.deepEqual(error.details, {reason: "invalid_signer_answer"});
+  }, async () => "signed");
+  assert.equal(fetch.requests.length, 0);
+});
+
+test("a question's body may run to the board's 16 KB; one past it or an unknown field is refused unsent, as /mcp does", async () => {
+  const fetch = fakeFetch([{status: 201, body: {report_id: "report-1"}}]);
+  await onSignedPage(fetch, async () => {
+    const ask = toolsByName({fetch}).get("ask_question")!;
     const input = {site: "example.com", title: "Checkout", body_markdown: "a".repeat(16_384), client_request_id: "q-1"};
-    assert.equal(asAnswer(await prepare.execute({operation: "ask_question", input})).ok, true);
+    assert.equal(asAnswer(await ask.execute(input)).ok, true);
 
     for (const [broken, field] of [[{...input, body_markdown: "a".repeat(16_385)}, "body_markdown"], [{...input, bogus: 1}, "bogus"]] as const) {
-      const {error} = asAnswer(await prepare.execute({operation: "ask_question", input: broken}));
+      const {error} = asAnswer(await ask.execute(broken));
       assert.equal(error.code, "invalid_request");
       assert.deepEqual(error.details, {reason: `invalid_field:${field}`});
+      assert.notEqual(error.message, error.details.reason);
     }
   });
+  assert.equal(fetch.requests.length, 1);
 });
 
-test("prepare_agent_request names the field an input is missing", async () => {
+test("a signed tool names the field its input is missing", async () => {
   await onSignedPage(fakeFetch([]), async () => {
-    const prepare = toolsByName({}).get("prepare_agent_request")!;
-    const {error} = asAnswer(await prepare.execute({operation: "ask_question", input: {site: "example.com", client_request_id: "q-1"}}));
+    const {error} = asAnswer(await toolsByName({}).get("ask_question")!.execute({site: "example.com", client_request_id: "q-1"}));
     assert.equal(error.code, "invalid_request");
     assert.equal(error.message, "title is required.");
     assert.deepEqual(error.details, {reason: "missing_field:title"});
   });
 });
 
-/** Prepares `name` with `input` and calls it with the agent's proof. */
+/** Calls signed tool `name` with `input` on the current page. */
 async function callSigned(name: string, input: Record<string, unknown>) {
-  const tools = toolsByName({});
-  const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: name, input}));
-  // A read with no body is signed without a body digest.
-  const proof = prepared.request.body === undefined
-    ? Object.fromEntries(Object.entries(PROOF).filter(([header]) => header !== "content-digest"))
-    : PROOF;
-  return asAnswer(await tools.get(name)!.execute({input, request: prepared.request, proof}));
+  return asAnswer(await toolsByName({}).get(name)!.execute(input));
 }
 
 const LIKE = {thread_id: "00000000-0000-4000-8000-000000000000"};
@@ -791,18 +793,16 @@ test("a free fix and a hello are sent signed to their own routes, as given", asy
 
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
-    const prepare = tools.get("prepare_agent_request")!;
     const fix = {args: {goal: "Amend a booking.", site_url: "https://example.com", sign_in: "none",
       believed_calls: [{tool: "amend", arguments: {id: "B-1"}}]}};
     const hello = {name: "Astra", language: "en"};
 
-    for (const [name, input, path] of [["request_free_fix", fix, "/api/agent/assists"], ["say_hello", hello, "/api/agent/hello"]] as const) {
-      const prepared = asAnswer(await prepare.execute({operation: name, input}));
-      assert.equal(prepared.ok, true, name);
-      assert.equal(prepared.request.method, "POST", name);
-      assert.equal(prepared.request.path, path, name);
-      assert.deepEqual(JSON.parse(prepared.request.body), input, name);
-      const answer = asAnswer(await tools.get(name)!.execute({input, request: prepared.request, proof: PROOF}));
+    for (const [index, [name, input, path]] of ([["request_free_fix", fix, "/api/agent/assists"], ["say_hello", hello, "/api/agent/hello"]] as const).entries()) {
+      const answer = asAnswer(await tools.get(name)!.execute(input));
+      const signed = signedRequests[index];
+      assert.equal(signed.method, "POST", name);
+      assert.equal(signed.path, path, name);
+      assert.deepEqual(JSON.parse(signed.body!), input, name);
       assert.equal(answer.error, undefined, `${name}: ${JSON.stringify(answer.error)}`);
     }
 
@@ -810,7 +810,7 @@ test("a free fix and a hello are sent signed to their own routes, as given", asy
   });
 });
 
-test("an agent's assist payment is prepared, offered, paid and read back through the page, as the board answers", async () => {
+test("an agent's assist payment is requested, offered, paid and read back through the page, as the board answers", async () => {
   const id = "00000000-0000-4000-8000-0000000000aa";
   const terms = {x402Version: 2, accepts: [{scheme: "exact", network: "eip155:8453", amount: "100000"}]};
   const refused = {error: {code: "payment_refused", message: "That payment was signed by a different wallet than the one paying.", hint: "Nothing was paid.", payment_terms: terms}};
@@ -826,7 +826,6 @@ test("an agent's assist payment is prepared, offered, paid and read back through
 
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
-    const prepare = tools.get("prepare_agent_request")!;
     const assist = {kind: "jev_assist", args: {goal: "Amend a booking.", site_url: "https://example.com", sign_in: "none"}};
     const calls = [
       ["request_assist", assist, "POST", "/api/agent/payment_intents", assist],
@@ -839,14 +838,12 @@ test("an agent's assist payment is prepared, offered, paid and read back through
     ] as const;
 
     const answers = [];
-    for (const [name, input, method, path, body] of calls) {
-      const prepared = asAnswer(await prepare.execute({operation: name, input}));
-      assert.equal(prepared.ok, true, name);
-      assert.equal(prepared.request.method, method, name);
-      assert.equal(prepared.request.path, path, name);
-      assert.deepEqual(body === undefined ? undefined : JSON.parse(prepared.request.body), body, name);
-      const proof = method === "GET" ? Object.fromEntries(Object.entries(PROOF).filter(([header]) => header !== "content-digest")) : PROOF;
-      answers.push(asAnswer(await tools.get(name)!.execute({input, request: prepared.request, proof})));
+    for (const [index, [name, input, method, path, body]] of calls.entries()) {
+      answers.push(asAnswer(await tools.get(name)!.execute(input)));
+      const signed = signedRequests[index];
+      assert.equal(signed.method, method, name);
+      assert.equal(signed.path, path, name);
+      assert.deepEqual(body === undefined ? undefined : JSON.parse(signed.body!), body, name);
     }
 
     // The terms to sign and a payment still being confirmed are answers,
@@ -866,8 +863,7 @@ test("only a payment tool's 402 or 409 answer is an answer when it is not a refu
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
     const input = {args: {goal: "Amend a booking.", site_url: "https://example.com", sign_in: "none"}};
-    const prepared = asAnswer(await tools.get("prepare_agent_request")!.execute({operation: "request_free_fix", input}));
-    const answer = asAnswer(await tools.get("request_free_fix")!.execute({input, request: prepared.request, proof: PROOF}));
+    const answer = asAnswer(await tools.get("request_free_fix")!.execute(input));
     assert.equal(answer.ok, false);
     assert.equal(answer.status, 402);
   });

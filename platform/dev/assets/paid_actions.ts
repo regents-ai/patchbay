@@ -1,5 +1,5 @@
-// The payments lab's payer: a person's tip or priority report paid from the
-// signed-in wallet through the browser payment door (/api/payment_intents).
+// The payments lab's payer: a person's tip or priority report paid from a
+// wallet the account links, through the browser payment door (/api/payment_intents).
 // No Patchbay page pays this way today; the lab keeps the door exercised.
 import {errorIn, refusal} from "../../assets/js/api_error.ts";
 import {loadPrivyBridge, privyAppId} from "../../assets/js/privy/account.ts";
@@ -59,7 +59,7 @@ type HttpAnswer = {
 type WalletReview = {id: string; signer: string; chain: StepChain; steps?: SignatureStep[]};
 
 /**
- * Pays for one action end to end with the signed-in wallet: creates the
+ * Pays for one action end to end with a wallet the account links: creates the
  * payment intent, asks Patchbay to execute it from Privy's active wallet, and
  * when Patchbay answers with what that wallet is to sign, has the wallet sign
  * exactly that and sends back the signature alone.

@@ -130,9 +130,9 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   end
 
   @doc """
-  A page's payment. Unsigned, it answers with what the signed-in wallet is to
-  sign, when the page has that wallet open; a payment that already went
-  through is read back without any wallet. Signed, the signature must be that
+  A page's payment. Unsigned, it answers with what the page's open wallet is
+  to sign, when the account links it; a payment that already went through is
+  read back without any wallet. Signed, the signature must be that
   wallet's over what the payments library wrote, and only then is the payment
   verified and settled.
   """
@@ -149,18 +149,9 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
         send_wallet_refusal(
           conn,
           "wallet_unavailable",
-          "The wallet you signed in with is not open on this page.",
-          "Open that wallet in your wallet app, then pay again.",
+          "None of your account's wallets is open on this page.",
+          "Open one of them in your wallet app, then pay again.",
           %{payment_intent_id: intent_id}
-        )
-
-      {:wallet_mismatch, intent_id, note} ->
-        send_wallet_refusal(
-          conn,
-          "wallet_mismatch",
-          "Your wallet app has another wallet open.",
-          "Switch your wallet app to the wallet you signed in with, then pay again.",
-          %{payment_intent_id: intent_id, wallet_note: note}
         )
 
       {:payment_refused, intent_id, reason} ->

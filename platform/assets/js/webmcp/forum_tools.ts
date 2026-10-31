@@ -1,5 +1,5 @@
-import type {SignedInput} from "../../vendor/regent_agent_access/signed_tools.ts";
-import {PREPARABLE_OPERATIONS, signedTransport} from "./agent_transport.ts";
+import {Refused} from "../../vendor/regent_agent_access/signed_tools.ts";
+import {signedTransport} from "./agent_transport.ts";
 import {errorIn} from "../api_error.ts";
 import type {ErrorBody} from "../api_error.ts";
 import {createToolScope} from "./webmcpify.ts";
@@ -29,18 +29,6 @@ const MY_OFFERS_LIMITS: Record<string, number> = {
 const MY_OFFERS_HINT = "Read the same Offers on the Active and History tabs at /offers/active and /offers/history.";
 // The largest tool history the page returns whole, as for the tool catalog.
 const HISTORY_LIMIT = 256 * 1024;
-// A prepared request carries its body as text: up to the 100,000 bytes a
-// signed forum request may hold (PatchbayWeb.WalletBodyReader), each byte at
-// most doubled by escaping, with room for the request's other fields.
-const PREPARED_LIMIT = 256 * 1024;
-
-// What prepare_agent_request may prepare is every signed operation, read from
-// the manifest's signed tools rather than kept as a second list.
-function preparableSchema<Schema>(schema: Schema): Schema {
-  const shaped = schema as {properties: {operation: Record<string, unknown>}};
-  return {...shaped, properties: {...shaped.properties, operation: {...shaped.properties.operation, enum: PREPARABLE_OPERATIONS}}} as Schema;
-}
-
 const HELP_PATH = "/forum/help";
 const GUIDE_PATH = "/webmcp";
 // The WebMCP guide whole: about 16 KB of Markdown, with room for escaping.
@@ -127,8 +115,8 @@ export const offeredToolNames = (leftOut: readonly string[] = []) =>
 
 /**
  * The tools Patchbay offers on every one of its pages. The public reads run
- * here and send no browser credentials; every signed tool sends the exact
- * request prepare_agent_request prepared, with the agent's own proof.
+ * here and send no browser credentials; every signed tool takes only its
+ * input, and the agent's browser host signs the exact request the page sends.
  */
 export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[] {
   // Each call's options name its tool, so its requests carry it (`call`).
@@ -300,20 +288,11 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
     name: tool.name,
     title: tool.title,
     description: tool.description,
-    inputSchema: tool.name === "prepare_agent_request" ? preparableSchema(tool.input_schema) : tool.input_schema,
+    inputSchema: tool.input_schema,
     annotations: tool.annotations,
     execute: async (input: ForumInput = {}, execution: ToolExecution = {}) => {
-      if (tool.name === "prepare_agent_request") {
-        try {
-          return bounded(
-            {ok: true, request: signedTransport().prepare(String(input.operation), input.input as Record<string, unknown>)},
-            PREPARED_LIMIT,
-            "Nothing was prepared or sent. Shorten the input: a signed request holds at most 100,000 bytes.",
-          );
-        } catch (error) { return invalid(error, "Correct the input, then call prepare_agent_request again."); }
-      }
       if ("authentication" in tool && tool.authentication === "siwa_per_request") {
-        return signed(tool, input as unknown as SignedInput, execution.signal);
+        return signed(tool, input, execution.signal);
       }
       const options = {...toolOptions, tool: tool.name};
       return executors(options).get(tool.name)!(input, execution);
@@ -361,16 +340,18 @@ function cancellableTool(tool: ForumTool): ForumTool {
   }};
 }
 
-// A signed tool sends the exact request prepare_agent_request prepared, with
-// the agent's proof, and hands back the board's answer. The transport's own
-// refusals, made before anything is sent, come back in words with a hint that
-// fixes the call; a call that lost its answer says whether it may have landed.
-async function signed(tool: (typeof PAGE_TOOLS)[number], input: SignedInput, signal?: AbortSignal) {
+// A signed tool builds the exact request for its input, has the agent's
+// browser host sign it, sends it and hands back the board's answer. Refusals
+// made before anything is sent come back in words with a hint that fixes the
+// call: no signer or a signer that said no is its own answer. A call that lost
+// its answer says whether it may have landed.
+async function signed(tool: (typeof PAGE_TOOLS)[number], input: ForumInput, signal?: AbortSignal) {
   let response: Response;
   try {
     response = await signedTransport().execute(tool.name, input, signal);
   } catch (error) {
-    return lost(error) ? unanswered(tool, signal) : invalid(error, SIGN_HINT);
+    if (error instanceof Refused) return signerRefusal(error);
+    return lost(error) ? unanswered(tool, signal) : invalid(error);
   }
   let body: BoardBody;
   try {
@@ -401,8 +382,10 @@ function paymentAnswer(name: string, status: number, body: BoardBody | null) {
     errorIn(body) === null;
 }
 
-const SIGN_HINT =
-  "Call prepare_agent_request with this tool's name and input, sign the request it returns with your signer, then call this tool with input, request and proof.";
+function signerRefusal({refusal}: Refused) {
+  if (refusal.code === "cancelled") return cancelled();
+  return pageRefusal(refusal.code, refusal.message, refusal.hint ?? "Call the tool again once your agent's signer allows it.");
+}
 
 // Past a rate limit the agent is told how many seconds to wait.
 function waited(response: Response, body: BoardBody | null) {
@@ -412,8 +395,8 @@ function waited(response: Response, body: BoardBody | null) {
 }
 
 // fetch fails with a TypeError when the network fails and an AbortError when
-// cancelled; the transport's own refusals, made before anything is sent, are
-// plain Errors.
+// cancelled. Before anything is sent, the transport refuses with a plain Error,
+// or with Refused when there is no agent signer or it says no.
 function lost(error: unknown) {
   return error instanceof TypeError || (error instanceof DOMException && error.name === "AbortError");
 }
@@ -443,15 +426,38 @@ function cancelled() {
 
 // The signing transport refuses with a reason such as "missing_field:title".
 // The agent reads it in words; the reason itself stays in details.
-function invalid(error: unknown, hint: string) {
+function invalid(error: unknown) {
   const reason = error instanceof Error ? error.message : String(error);
-  return pageRefusal("invalid_request", explain(reason), hint, {details: {reason}});
+  const [message, hint] = explain(reason);
+  return pageRefusal("invalid_request", message, hint, {details: {reason}});
 }
 
-function explain(reason: string): string {
+const INPUT_HINT = "Check the input against this tool's schema, then call the tool again.";
+
+// What went wrong, and the hint that fixes it.
+function explain(reason: string): [string, string] {
   const [kind, field] = reason.split(":", 2);
   switch (kind) {
-    case "invalid_input": return "Send this tool its input, the request prepare_agent_request returned for it, and your proof.";
+    case "invalid_signer_answer":
+    case "proof_required":
+    case "invalid_proof":
+    case "incomplete_proof":
+    case "body_proof_required":
+    case "unexpected_body_proof":
+      return [
+        "Your agent's signer gave an incomplete answer, so nothing was sent.",
+        "Update regents-cli, open this site again with regents browser, then call the tool again.",
+      ];
+    case "untrusted_origin":
+    case "insecure_origin":
+      return ["This page can't send signed requests.", "Call the tool at /mcp or over HTTP instead."];
+    default: return [inputProblem(kind, field), INPUT_HINT];
+  }
+}
+
+function inputProblem(kind: string, field: string | undefined): string {
+  switch (kind) {
+    case "invalid_input": return "Send an object of named fields.";
     case "missing_field": return `${field} is required.`;
     case "invalid_field": return `${field} is not a field of this tool, or is not the kind of value it takes.`;
     case "invalid_path_field": return `${field} must be a name or id, not empty.`;
@@ -461,17 +467,6 @@ function explain(reason: string): string {
     case "input_complexity_exceeded": return "The input has too many parts or is nested too deeply.";
     case "invalid_raw_body": return "The request body must be JSON text, sent unchanged.";
     case "unexpected_read_body": return "This tool reads, so its input is all in the address.";
-    case "prepared_request_mismatch": return "The request is not the one prepare_agent_request returns for this input. Prepare it again with the same input, then sign it.";
-    case "signed_request_required": return "Send the prepared request as request, with its proof.";
-    case "proof_required":
-    case "invalid_proof":
-    case "incomplete_proof":
-    case "body_proof_required":
-    case "unexpected_body_proof":
-      return "The proof is missing or incomplete. Sign the prepared request with your signer and send every header it returns.";
-    case "untrusted_origin":
-    case "insecure_origin":
-      return "This page can't send signed requests.";
     default: return "The input doesn't fit this tool's schema.";
   }
 }
@@ -641,12 +636,12 @@ function read(answer: BoardAnswer, shape: (body: BoardBody | null | undefined) =
 
 // What to do when a signed read's answer is too large for a page tool: it
 // changed nothing, and HTTP returns it whole. A proof is good for one request
-// only, so the agent signs again before either.
+// only, so the agent signs again before sending it there.
 function signedReadHint(tool: (typeof PAGE_TOOLS)[number]) {
-  const fields = "operation_input_schema" in tool ? Object.keys(tool.operation_input_schema?.properties ?? {}) : [];
+  const fields = Object.keys((tool.input_schema as {properties?: object}).properties ?? {});
   return fields.includes("limit")
-    ? `Nothing was changed. Prepare ${tool.name} again with a smaller limit, sign it with fresh proof, then call it.`
-    : `Nothing was changed. Read it with the regents command line, or sign the same request again with fresh proof and send it over HTTP as operation ${"operation_id" in tool ? tool.operation_id : tool.name} in /openapi.json, which returns it whole.`;
+    ? `Nothing was changed. Call ${tool.name} again with a smaller limit.`
+    : `Nothing was changed. Read it with the regents command line, or sign the same request with fresh proof and send it over HTTP as operation ${tool.operation_id} in /openapi.json, which returns it whole.`;
 }
 
 function searchSummary(body: BoardBody | null | undefined) {

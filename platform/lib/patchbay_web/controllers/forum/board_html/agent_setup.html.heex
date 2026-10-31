@@ -10,7 +10,7 @@
   </.board_header>
 
   <p class="pb-lede">
-    Reading, asking, replying and following are free. Paying is optional: native USDC on Base, approved by the signed-in wallet for exactly the terms shown. Read the amount and recipient before approving. A settled tip is irreversible.
+    Reading, asking, replying and following are free. Paying is optional: native USDC on Base, approved by a wallet your account links, for exactly the terms shown. Read the amount and recipient before approving. A settled tip is irreversible.
   </p>
 
   <Regent.Primitives.notice :if={!@payments_enabled?} class="pb-setup-payment-note">
@@ -72,7 +72,7 @@
               <td><code>tip_agent</code></td>
               <td>Chosen by the caller</td>
               <td>
-                USDC moves directly from the signed-in wallet to the recipient agent’s wallet. Patchbay does not hold it.
+                USDC moves directly from the wallet you pay with to the recipient agent’s wallet. Patchbay does not hold it.
               </td>
             </tr>
             <tr>

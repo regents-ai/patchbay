@@ -1,4 +1,5 @@
-// Transport only. SIWA's existing signer owns keys, receipts and signatures.
+// Transport only. The agent's browser host signs: keys, receipts and signatures stay
+// outside the page and never enter a tool's arguments or results.
 export type InputSchema = {
   type: string
   properties?: Record<string, InputSchema>
@@ -33,7 +34,19 @@ export type PreparedRequest = {
   path: string
   body?: string
 }
-export type SignedInput = {input: Record<string, unknown>; request: PreparedRequest; proof: Record<string, string>}
+export type Refusal = {code: string; message: string; hint?: string}
+// The signer the agent's browser host provides as `window.regentsSign`. It checks the
+// exact request against the call the agent made and answers that request's proof
+// headers, or refuses.
+export type HostSigner = (prepared: PreparedRequest) => Promise<{headers: Record<string, string>} | {error: Refusal}>
+// Refused before anything was sent: no host signer, or the host signer said no.
+export class Refused extends Error {
+  readonly refusal: Refusal
+  constructor(refusal: Refusal) {
+    super(refusal.code)
+    this.refusal = refusal
+  }
+}
 
 const MAX_BODY_BYTES = 2_097_152
 const encoder = new TextEncoder()
@@ -171,14 +184,18 @@ export function signedTools(config: {
     return Object.freeze(request)
   }
 
-  async function execute(name: string, signed: SignedInput, signal?: AbortSignal): Promise<Response> {
-    if (!signed || typeof signed !== "object") throw new Error("signed_request_required")
-    const expected = prepare(name, signed.input)
-    if (!signed.request || Object.keys(signed.request).some(key => !Object.hasOwn(expected, key)) ||
-        Object.entries(expected).some(([key, value]) => signed.request[key as keyof PreparedRequest] !== value)) {
-      throw new Error("prepared_request_mismatch")
-    }
-    if (!signed.proof || typeof signed.proof !== "object" || Array.isArray(signed.proof)) throw new Error("proof_required")
+  function hostSigner(): HostSigner {
+    const sign = (globalThis as {regentsSign?: unknown}).regentsSign
+    if (typeof sign === "function") return sign as HostSigner
+    throw new Refused({
+      code: "agent_auth_required",
+      message: "This browser has no agent signer, so nothing was sent.",
+      hint: `Open this site through regents browser --site ${config.audience}, which signs each call with your own agent key, then call the tool through its call_page_tool.`,
+    })
+  }
+
+  function proofHeaders(name: string, expected: PreparedRequest, proof: unknown): Record<string, string> {
+    if (!proof || typeof proof !== "object" || Array.isArray(proof)) throw new Error("proof_required")
     const allowed = new Set(config.proofHeaders)
     const headers: Record<string, string> = {accept: "application/json"}
     for (const [key, value] of Object.entries(config.requestHeaders(name))) {
@@ -187,7 +204,7 @@ export function signedTools(config: {
       }
       headers[key] = value
     }
-    for (const [key, value] of Object.entries(signed.proof)) {
+    for (const [key, value] of Object.entries(proof)) {
       const name = key.toLowerCase()
       if (!allowed.has(name)) continue
       if (Object.hasOwn(headers, name) || typeof value !== "string" || !value || /[\r\n]/.test(value)) throw new Error("invalid_proof")
@@ -200,11 +217,40 @@ export function signedTools(config: {
       if (!headers["content-digest"]) throw new Error("body_proof_required")
       headers["content-type"] = "application/json"
     } else if (headers["content-digest"]) throw new Error("unexpected_body_proof")
+    return headers
+  }
+
+  // Builds the exact request, has the host sign it, then sends those same bytes.
+  async function execute(name: string, input: Record<string, unknown>, signal?: AbortSignal): Promise<Response> {
+    const request = prepare(name, input)
+    const sign = hostSigner()
+    let answer: unknown
+    try {
+      answer = await sign(request)
+    } catch {
+      throw new Refused({
+        code: "signer_unavailable",
+        message: "Your agent's signer stopped before signing, so nothing was sent.",
+        hint: `Open this site again through regents browser --site ${config.audience}, then call the tool again.`,
+      })
+    }
+    // A call cancelled while the signer worked sends nothing.
+    if (signal?.aborted) {
+      throw new Refused({code: "cancelled", message: "The call was cancelled before it was sent; nothing changed."})
+    }
+    if (!plainObject(answer)) throw new Error("invalid_signer_answer")
+    if (Object.hasOwn(answer, "error")) {
+      const refusal = answer.error
+      if (!plainObject(refusal) || typeof refusal.code !== "string" || typeof refusal.message !== "string" ||
+          (refusal.hint !== undefined && typeof refusal.hint !== "string")) throw new Error("invalid_signer_answer")
+      throw new Refused({code: refusal.code, message: refusal.message, ...(refusal.hint ? {hint: refusal.hint} : {})})
+    }
+    const headers = proofHeaders(name, request, answer.headers)
     // The product verifies once through SIWA. No retry, session fallback or reserialization.
-    return fetch(origin + expected.path, {
-      method: expected.method, body: expected.body, headers, credentials: "omit",
+    return fetch(origin + request.path, {
+      method: request.method, body: request.body, headers, credentials: "omit",
       cache: "no-store", redirect: "error", signal,
     })
   }
-  return {prepare, execute}
+  return {execute}
 }

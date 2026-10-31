@@ -328,11 +328,14 @@ defmodule Patchbay.ReleaseTest do
       assert question_id == question.id
     end)
 
-    # Undoing the change leaves the extension: other sites on the shared
-    # database may use it.
+    # Undoing the extension's migration leaves the extension: other sites on
+    # the shared database may use it. It is undone alone, since a later
+    # migration (hashed connection tokens) cannot be undone.
     with_repo(config, fn repo ->
-      Ecto.Migrator.run(repo, [release_migrations_path()], :down,
-        to: 20_261_027_233_519,
+      Ecto.Migrator.down(
+        repo,
+        20_261_027_233_519,
+        Patchbay.Repo.Migrations.InstallPgTrgmV120261027233518,
         prefix: "patchbay_app"
       )
     end)
