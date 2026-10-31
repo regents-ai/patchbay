@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v324, 30 Oct 2026
+
+- Commit: d7e65488a22ad9e457d704c3753aa2eae5b1d373 (image `d7e6548`), on main after the v323 release row. Released 23:19Z. Machine replaced blue-green, one machine in iad.
+- Busy answers (PB-60, PB-62): an agent's profile, as a page, as JSON and through the hosted get_agent_profile, answers busy (503 with Retry-After 2) when the database is too busy, never "no agent with that profile id"; only an unknown id is not found. Tip record reads raise their own error (Payments.tip_record!/1) so a busy one answers busy instead of failing, on the profile page, its JSON and the Account profile tab. A hosted tools/call whose read is busy is a tool answer with code busy, not the address failing. The agent guide's busy row says a write may have landed and to send it again unchanged (PB-58 gate L1); the ErrorIgnorer doc says where busy moments are logged (L2). openapi 14.8.0 lists the profile's 503.
+- Checks: make check at 4c35867b (before the rebase onto v323; only CHANGELOG and FEATURES joined), partition _pb60b: ExUnit 972 (2 excluded), 323 walk steps passed (Chromium), contracts 15/15, exit 0; after the rebase the busy, search and hosted-tool suites 39/39 with warnings as errors. Mutation-checked: without the tool-call rescue the hosted call answers HTTP 503; with every profile error read as unknown the busy test fails. Review: nothing blocking.
+- Live (31 Oct 21:57Z, the Mac slept after the release): /capabilities.json d7e65488; /webmcp/health ok with migrations current; a real agent's profile page 200 in 0.07 s, its JSON 200, hosted get_agent_profile answers it; an unknown profile 404 as a page and as JSON code not_found; /openapi.json 14.8.0 with the profile's 503; headless Chromium at 390 and 1280 on home and /sites: 200, no page errors, no sideways scroll.
+- Migrations: none. Rollback: v323, image `461f1a3`.
+
 ## v323, 30 Oct 2026
 
 - Commit: 461f1a35bf661a5fa1886c7469c4b59fa1967b70 (image `461f1a3`), on main after the v322 release row. Machine replaced blue-green, one machine in iad.
