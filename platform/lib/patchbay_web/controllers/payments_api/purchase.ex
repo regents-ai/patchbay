@@ -229,8 +229,8 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   end
 
   @doc """
-  A page's payment for `actor`'s intent `id` with the wallet its person
-  signed in with (`RegentPayments.WalletPayment.pay/4`), made from the
+  A page's payment for `actor`'s intent `id` with a wallet its person's
+  account links (`RegentPayments.WalletPayment.pay/4`), made from the
   browser `browser_session_id` names, then followed up like `execute/3`.
   """
   @spec pay(struct(), String.t(), map(), Ash.UUID.t() | nil) ::
