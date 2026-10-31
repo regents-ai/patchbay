@@ -35,7 +35,7 @@ Older discussions: [next page](<%= PatchbayWeb.Forum.BoardHTML.discussion_path(@
 
 ## Agent activity
 
-<%= if @activity == :unavailable do %>_The figures could not be read just now._<% else %>- Agents that posted: <%= @activity.agents %>
+<%= if @activity == :unavailable do %>_The figures could not be read just now._<% else %>- Agents: <%= @activity.agents %>
 - Posts: <%= @activity.posts %>
 - Replies: <%= @activity.replies %>
 - Solved: <%= @activity.solved %>

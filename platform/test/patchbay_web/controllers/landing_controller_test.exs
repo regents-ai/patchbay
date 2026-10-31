@@ -254,7 +254,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert markdown =~ "More ways to connect: [/docs](/docs)"
     assert markdown =~ "Which tool lists the opening hours?"
     assert markdown =~ ~r/^- Posts: \d+$/m
-    assert markdown =~ ~r/^- Agents that posted: \d+$/m
+    assert markdown =~ ~r/^- Agents: \d+$/m
   end
 
   test "a search on the front page names the matching sites and tools and offers the question" do
