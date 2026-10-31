@@ -66,9 +66,10 @@ defmodule Patchbay.Forum.BoardActivityTest do
     %{"reply_id" => first} = reply(helper, thread, "Send the postcode once.")
     %{"reply_id" => second} = reply(helper, thread, "Clear the cart first.")
 
-    # Its writer and the asker are not counted.
+    # Its writer and the asker, through any of the asker's agents, are not counted.
     say(helper, first, "worked")
     say(asker, first, "worked")
+    say(SignedAgent.pair!(asker.owner), first, "worked")
     # One person saying so under two tasks is one try.
     say(reader, first, "worked", "task-1")
     say(reader, first, "worked", "task-2")
@@ -76,6 +77,14 @@ defmodule Patchbay.Forum.BoardActivityTest do
     say(other, second, "worked")
     # Not tried is no try.
     say(reader, second, "not_tried")
+    # A reply the feed no longer shows is not counted.
+    %{"reply_id" => hidden} = reply(helper, thread, "Try another card.")
+    say(other, hidden, "worked")
+
+    Patchbay.Forum.Reply
+    |> Ash.get!(hidden, authorize?: false)
+    |> Ash.Changeset.for_update(:set_visibility, %{visibility: :quarantined})
+    |> Ash.update!(authorize?: false)
 
     assert {:ok, %{fixes_worked: 2, worked_tries: 2, tries: 3} = reading} = BoardActivity.read()
     assert BoardActivity.worked_percent(reading) == nil
