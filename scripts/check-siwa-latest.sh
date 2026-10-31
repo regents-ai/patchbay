@@ -11,7 +11,8 @@
 # regents-cli: the pin is the newest release's tag commit; capabilities.json's cli
 # block names the release, that commit and the wheel's SHA256, which the agent
 # guide reads; every install line names the release. The SIWA library: the
-# elixir-utils commit platform/mix.exs pins contains the newest commit that
+# elixir-utils commit platform/mix.exs pins it to (@siwa_ref, which Patchbay
+# keeps apart from the rest of the library) contains the newest commit that
 # changed siwa/siwa-elixir/apps/siwa on elixir-utils main. Needs `gh auth login`
 # and curl.
 set -euo pipefail
@@ -29,7 +30,7 @@ import json, sys
 d = json.load(sys.stdin)
 print(d["info"]["version"], next(u["digests"]["sha256"] for u in d["urls"] if u["packagetype"] == "bdist_wheel"))')
 tag=$(gh api "repos/regents-ai/regents-cli/commits/v$latest" --jq .sha)
-utils=$(sed -nE 's/^ *@elixir_utils_ref "([0-9a-f]{40})"$/\1/p' platform/mix.exs)
+utils=$(sed -nE 's/^ *@siwa_ref "([0-9a-f]{40})"$/\1/p' platform/mix.exs)
 siwa=$(gh api "repos/regents-ai/elixir-utils/commits?path=siwa/siwa-elixir/apps/siwa&sha=main&per_page=1" --jq '.[0].sha')
 
 failed=0
@@ -52,11 +53,11 @@ release=$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["c
   fail "regents-cli $latest is the newest release: $capabilities names $release as cli.release."
 
 if [ -z "$utils" ]; then
-  fail "platform/mix.exs has no @elixir_utils_ref \"<40-character commit>\" line to check."
+  fail "platform/mix.exs has no @siwa_ref \"<40-character commit>\" line to check."
 else
   case $(gh api "repos/regents-ai/elixir-utils/compare/$siwa...$utils" --jq .status) in
     identical | ahead) ;;
-    *) fail "elixir-utils $siwa is the newest SIWA library change: move @elixir_utils_ref in platform/mix.exs from $utils to a commit that contains it." ;;
+    *) fail "elixir-utils $siwa is the newest SIWA library change: move @siwa_ref in platform/mix.exs from $utils to a commit that contains it." ;;
   esac
 fi
 
