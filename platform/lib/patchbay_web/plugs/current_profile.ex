@@ -108,6 +108,8 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
 
   def signed_out_reason(_session), do: :signed_out
 
+  # A profile that is not there, or an id that names none, is an invalid
+  # read; any other error is the database's, and the page says so.
   defp profile(id) do
     case Identity.get_profile(id, load: [:account_wallets]) do
       {:ok, %{authentication_origin: :privy} = profile} -> profile

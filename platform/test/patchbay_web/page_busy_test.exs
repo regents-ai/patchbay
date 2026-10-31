@@ -290,16 +290,26 @@ defmodule PatchbayWeb.PageBusyTest do
       assert_busy_page(page, "/about")
     end
 
-    test "is still signed out when its profile is gone", %{conn: conn} do
-      gone =
-        conn
-        |> Plug.Test.init_test_session(%{})
-        |> PatchbayWeb.Plugs.CurrentProfile.sign_in(Ecto.UUID.generate())
-        |> get("/about")
+    test "is still signed out when its profile is gone, or its cookie names none", %{conn: conn} do
+      for id <- [Ecto.UUID.generate(), "not-a-profile"] do
+        gone =
+          conn
+          |> Plug.Test.init_test_session(%{})
+          |> PatchbayWeb.Plugs.CurrentProfile.sign_in(id)
+          |> get("/about")
 
-      assert gone.assigns.current_profile == nil
-      assert gone.assigns.signed_out_reason == :expired
-      assert html_response(gone, 200)
+        assert gone.assigns.current_profile == nil
+        assert gone.assigns.signed_out_reason == :expired
+        assert html_response(gone, 200)
+      end
+    end
+
+    test "is a fault, never signed out, when its profile fails for another reason", %{
+      signed_in: conn
+    } do
+      Patchbay.Repo.query!("ALTER TABLE agent_profiles RENAME COLUMN public_id TO hidden_away")
+
+      assert_error_sent 500, fn -> get(conn, "/about") end
     end
 
     test "that is open starts over, never signed out, when its profile cannot be read", %{
