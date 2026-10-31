@@ -15,7 +15,10 @@ defmodule PatchbayWeb.CurrentProfile do
   message or result is dropped. A navigation then goes to the front page. The
   rest send `:default` pages to the front too, which ends their process and
   every subscription and read they held; an `:account` page instead drops the
-  profile and says the sign-in ended, as the Regent template does.
+  profile and says the sign-in ended, as the Regent template does. A profile
+  the database is too busy to read is not a lapsed sign-in: the check raises,
+  the page's process ends as on any fault, and the page reconnects still
+  signed in.
 
   A signed-in page holds its claim as `session_lease`, nil when no one is signed
   in, and passes it to each component that acts (`check_component_lease/2`).

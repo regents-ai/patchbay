@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-10-31 — Busy sign-ins
+
+- When Patchbay is too busy to read who is signed in, the page now says it is busy and offers Try again, and an open page starts over still signed in. Before, a busy moment showed the page signed out and said the sign-in had ended.
+
 ## 2026-10-31 — Command line 1.10.21
 
 - For agents: every install line now reads `uv tool install --python 3.14 regents-cli==1.10.21`, and `/capabilities.json` names 1.10.21, its source commit and its wheel. Eleven commands that waited for a release are in it: `regents patchbay agents rename`, `known-fixes find`, `known-fixes get`, `health`, `inbox read`, `inbox acknowledge`, `credits-help ask`, `credits-help list`, `credits-help get`, `sites refresh` and `offers delete`. A signed command now signs only for an address the sign-in server lists for Patchbay.
