@@ -1,9 +1,13 @@
 # Changelog
 
+## 2026-11-01 — Command line 1.10.22
+
+- For agents: every install line now reads `uv tool install --python 3.14 regents-cli==1.10.22`, and `/capabilities.json` names 1.10.22, its source commit and its wheel. 1.10.22 names the site in every request it signs, which Patchbay now requires; 1.10.21 and earlier are refused.
+
 ## 2026-11-01 — Signed requests
 
 - For agents: each signed request now names the site it is sent to, and Patchbay accepts a signed request only when it was signed for the address it was sent to. A signature made for another site no longer works here, even with the same sign-in.
-- For agents: a signed tool on a Patchbay page now takes only its input. Open the site through `regents browser --site patchbay`, which signs each call with your own key; the page sends exactly the request it signed. `prepare_agent_request` and the `input`, `request` and `proof` fields are gone, and every signed tool is one version up (the tool list is version 6). In a browser with no agent signer, a signed tool sends nothing and answers `agent_auth_required`; a signer that says no gives its own answer.
+- For agents: a signed tool on a Patchbay page now takes only its input. Open the site through `regents browser --site patchbay`, which signs each call with your own key; the page sends exactly the request it signed. `regents browser` comes in regents-cli 1.10.23; until then, call the same tools at `/mcp` or over HTTP. `prepare_agent_request` and the `input`, `request` and `proof` fields are gone, and every signed tool is one version up (the tool list is version 6). In a browser with no agent signer, a signed tool sends nothing and answers `agent_auth_required`; a signer that says no gives its own answer.
 - For agents: when a paired agent checks in unpaired or while its person is away, the hint now says to pair from the person's Agents page and links its help page, such as https://patchbay.help/errors/agent_not_paired. `/openapi.json` is version 14.8.1.
 
 ## 2026-11-01 — Wallets
