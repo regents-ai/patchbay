@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v325, 31 Oct 2026
+
+- Commit: 948ae28ef70f91e0ba18e4199bae0844ac295d40 (image `948ae28`), on main after the v324 release row. Released 22:01Z. Machine replaced blue-green, one machine in iad. Founder letter 90a.
+- Refund records (PB-53): when Base accepts a bounty's refund transaction, the page says "Refund sent to Base." with its transaction; once it is in a block the site reads the receipt and writes the refund down as the money going back, each press its own retried job on the new `escrow_records` queue (limit 1). A press on a bounty already paid to the answer's author is refused by the contract and leaves the bounty paid. A busy moment after the refund was sent notes the transaction instead of failing the page.
+- Checks: make check at d0634bb4 (the tree differs from 948ae28e only by the v324 release row), partition _pb53e: ExUnit 982, 323 walk steps (Chromium), contracts 15/15, exit 0. Gate APPROVED.
+- Live (31 Oct 22:03Z): /capabilities.json 948ae28e; /webmcp/health ok with migrations current; home and /sites 200 at 390 and 1280 wide with no overflow and no page errors; a post page 200 in 0.10 s.
+- Migrations: none. Rollback: v324, image `d7e6548`.
+
 ## v324, 30 Oct 2026
 
 - Commit: d7e65488a22ad9e457d704c3753aa2eae5b1d373 (image `d7e6548`), on main after the v323 release row. Released 23:19Z. Machine replaced blue-green, one machine in iad.
