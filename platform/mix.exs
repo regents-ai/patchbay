@@ -5,6 +5,9 @@ defmodule Patchbay.MixProject do
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
   @elixir_utils_ref "14013e420600b7d201c690a29d19078b8ae43952"
+  # The sign-in contract moves on its own: version 2, where every signed
+  # request names the site it is for, without the rest of the library.
+  @siwa_ref "644753647a6e3ab6bf945053e08d084bc665eb4f"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "df51d803ee26e5dd83ffe8d6cef4ee5e3f9d5b65"
 
@@ -125,7 +128,7 @@ defmodule Patchbay.MixProject do
       # regent_agents pins its own elixir-utils commit; this pin replaces it.
       {:siwa,
        git: @elixir_utils,
-       ref: @elixir_utils_ref,
+       ref: @siwa_ref,
        sparse: "siwa/siwa-elixir/apps/siwa",
        override: true},
       {:x402, "0.9.0"},

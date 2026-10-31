@@ -54,6 +54,11 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     # moves it from nothing, through a wrong amount, to the funded record.
     {:ok, chain} = Agent.start_link(fn -> :none end)
 
+    app =
+      server(:wallet_product, fn conn, _ ->
+        PatchbayWeb.Endpoint.call(conn, PatchbayWeb.Endpoint.init([]))
+      end)
+
     broker =
       server(:wallet_broker, fn conn, _ ->
         {:ok, raw, conn} = read_body(conn)
@@ -63,7 +68,8 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
         case Siwa.verify_authenticated_request(payload,
                secret: secret,
                audience: "patchbay",
-               wallet_audiences: ["patchbay"]
+               wallet_audiences: ["patchbay"],
+               authorities: [Siwa.Contract.authority(app)]
              ) do
           {:ok, %{claims: claims}} ->
             answer(conn, 200, %{
@@ -127,11 +133,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     Patchbay.PaymentService.stand_in(payment)
     old_assist = Application.get_env(:patchbay, :assist)
     Application.put_env(:patchbay, :assist, pay_to_address: @assist_wallet)
-
-    app =
-      server(:wallet_product, fn conn, _ ->
-        PatchbayWeb.Endpoint.call(conn, PatchbayWeb.Endpoint.init([]))
-      end)
 
     receipt = issue_receipt(secret, address)
     other_key = :crypto.strong_rand_bytes(32)
@@ -358,6 +359,16 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     # Even a valid signature over a bodyless envelope cannot authorize parsed JSON.
     bodyless = signed(c, "POST", @intents, nil)
     assert send_signed(c, %{bodyless | body: body})["status"] == 401
+  end
+
+  test "a request signed for another site is refused here", c do
+    body = prepare_body("jev_assist", assist_args())
+
+    # Patchbay names the address the request reached it at, so a signature
+    # over another site's address does not verify.
+    request = signed(c, "POST", @intents, body, "patchbay.help")
+    assert send_signed(c, request)["status"] == 401
+    assert_receive {:broker_refused, :signature_lookup_failed}
   end
 
   test "chunked JSON captures exact bytes and cookies confer no authority", c do
@@ -769,9 +780,12 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   end
 
   # A request signed the way an agent's own client signs it: the shared SIWA
-  # library covers the method, path, receipt, wallet and body digest with the
-  # wallet's personal_sign signature.
-  defp signed(c, method, path, body) do
+  # library covers the method, path, site, receipt, wallet and body digest with
+  # the wallet's personal_sign signature.
+  defp signed(c, method, path, body),
+    do: signed(c, method, path, body, Siwa.Contract.authority(c.app))
+
+  defp signed(c, method, path, body, authority) do
     signer =
       Siwa.LocalSigner.from_private_key(Base.encode16(c.key, case: :lower), nil,
         address: c.address
@@ -779,7 +793,13 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
     {:ok, request} =
       Siwa.RequestAuth.sign_authenticated_request(
-        %{method: method, path: path, headers: %{}, body: body},
+        %{
+          method: method,
+          path: path,
+          authority: authority,
+          headers: %{},
+          body: body
+        },
         c.receipt,
         signer,
         secret: c.secret,

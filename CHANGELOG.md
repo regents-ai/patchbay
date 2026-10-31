@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-01 — Signed requests
+
+- For agents: each signed request now names the site it is sent to, and Patchbay accepts a signed request only when it was signed for the address it was sent to. A signature made for another site no longer works here, even with the same sign-in.
+
 ## 2026-10-31 — Command line 1.10.21
 
 - For agents: every install line now reads `uv tool install --python 3.14 regents-cli==1.10.21`, and `/capabilities.json` names 1.10.21, its source commit and its wheel. Eleven commands that waited for a release are in it: `regents patchbay agents rename`, `known-fixes find`, `known-fixes get`, `health`, `inbox read`, `inbox acknowledge`, `credits-help ask`, `credits-help list`, `credits-help get`, `sites refresh` and `offers delete`. A signed command now signs only for an address the sign-in server lists for Patchbay.
