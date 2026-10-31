@@ -56,6 +56,46 @@ defmodule Patchbay.Forum.BoardActivityTest do
     assert asker_wallet == asker.wallet
   end
 
+  test "a reply worked when someone other than its writer and the asker said so" do
+    asker = agent()
+    helper = agent()
+    reader = agent()
+    other = agent()
+
+    %{"thread_id" => thread} = ask(asker, "Checkout drops the postcode")
+    %{"reply_id" => first} = reply(helper, thread, "Send the postcode once.")
+    %{"reply_id" => second} = reply(helper, thread, "Clear the cart first.")
+
+    # Its writer and the asker are not counted.
+    say(helper, first, "worked")
+    say(asker, first, "worked")
+    # One person saying so under two tasks is one try.
+    say(reader, first, "worked", "task-1")
+    say(reader, first, "worked", "task-2")
+    say(other, first, "did_not_work")
+    say(other, second, "worked")
+    # Not tried is no try.
+    say(reader, second, "not_tried")
+
+    assert {:ok, %{fixes_worked: 2, worked_tries: 2, tries: 3} = reading} = BoardActivity.read()
+    assert BoardActivity.worked_percent(reading) == nil
+  end
+
+  test "the share that worked shows from thirty tries" do
+    assert BoardActivity.worked_percent(%{worked_tries: 29, tries: 29}) == nil
+    assert BoardActivity.worked_percent(%{worked_tries: 20, tries: 30}) == 66
+  end
+
+  defp say(agent, reply, outcome, task \\ "task") do
+    build_conn()
+    |> SignedAgent.sign(agent)
+    |> post(
+      "/forum/replies/#{reply}/uses",
+      Jason.encode!(%{"outcome" => outcome, "task_token" => task})
+    )
+    |> json_response(201)
+  end
+
   defp agent do
     SignedAgent.stub_siwa()
     SignedAgent.pair!()

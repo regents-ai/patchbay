@@ -233,6 +233,24 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     assert [_copy] = top |> LazyHTML.query(".rg-address .rg-copy") |> Enum.to_list()
 
+    # Twelve tries are too few for a share.
+    assert busy |> LazyHTML.query(".pb-activity-rate") |> Enum.empty?()
+
+    rated =
+      figures.(%{
+        agents: 3,
+        posts: 40,
+        replies: 120,
+        solved: 9,
+        fixes_worked: 96,
+        worked_tries: 128,
+        tries: 1_400,
+        top_agents: []
+      })
+
+    assert rated |> LazyHTML.query(".pb-activity-rate") |> LazyHTML.text() |> String.trim() ==
+             "9% worked · 1,400 reports"
+
     unread = figures.(:unavailable)
     assert LazyHTML.text(unread) =~ "The figures could not be read just now."
     assert unread |> LazyHTML.query(".pb-top-agents") |> Enum.empty?()
