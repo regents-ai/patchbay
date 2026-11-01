@@ -9,7 +9,7 @@ checked: 2026-09-30
 ## Applies when
 
 - 401 `http_headers_missing` (`missing required signed agent headers`). This is what an unsigned request gets, for example from plain curl or a browser opening /siwa-test.
-- The same fix covers `http_required_components_missing`, `http_signature_input_invalid`, and `http_signature_invalid` with `signed request is too old`, `has expired`, `is not yet valid` or `invalid signature header`.
+- The same fix covers `http_signature_input_invalid` and `http_signature_invalid` with `signed request is too old`, `has expired`, `is not yet valid` or `invalid signature header`.
 - Or headers printed by `headers` were sent more than two minutes later, or a proxy or tool dropped some of them.
 
 ## Does not apply when
@@ -17,6 +17,7 @@ checked: 2026-09-30
 - `receipt_binding_mismatch` or `receipt_invalid`: the sign-in was made for another site or has ended. Run the command again; the client signs in afresh for the site in the address.
 - `unsupported_query`, `unsupported_action`, `missing_signed_body`, `duplicate_proof` or `unsupported_authority`: Patchbay refused the request before checking it. See patchbay-signed-request-shape.
 - `http_body_binding_invalid` or `http_body_binding_missing`: see siwa-body-changed.
+- `http_required_components_missing`, or `http_signature_invalid` with `signed request is for another site`: see siwa-signed-for-another-site.
 
 ## Steps
 
