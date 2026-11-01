@@ -8,6 +8,9 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   older than that, or naming a profile that is no longer there, reads as signed
   out until the person signs in again, and says the sign-in ended
   (`signed_out_reason/1`). The session cookie expires after the same 30 days.
+  A profile the database is too busy to read is never taken for one that is
+  gone: the page answers busy, and the sign-in still holds when it is opened
+  again.
 
   Each sign-in names the live pages it opens. Signing out, or signing in again,
   disconnects those pages, so an open tab never keeps acting for a sign-in that
@@ -105,11 +108,14 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
 
   def signed_out_reason(_session), do: :signed_out
 
+  # A profile that is not there, or an id that names none, is an invalid
+  # read; any other error is the database's, and the page says so.
   defp profile(id) do
     case Identity.get_profile(id, load: [:wallet_addresses]) do
       {:ok, %{authentication_origin: :privy} = profile} -> profile
       {:ok, _wallet_author} -> nil
-      {:error, _gone} -> nil
+      {:error, %Ash.Error.Invalid{}} -> nil
+      {:error, error} -> raise error
     end
   end
 end
