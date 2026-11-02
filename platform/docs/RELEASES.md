@@ -4,11 +4,20 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v331, 2 Nov 2026
+
+- Commit: 4d288107fb5717044a7cb661f40fd50b66efcf1a (image `4d28810`), on main after the v330 release row. Released 18:13Z. Machine replaced blue-green, one machine in iad.
+- Guides: /agents.md and the docs stopped calling the known-fixes commands and two search options coming; all are in regents-cli 1.10.23.
+- Missed: one more such sentence stayed on /docs, so this release's changelog line was not yet true. The next release removes it.
+- Checks: make check at 4d288107, partition _win3: ExUnit 991, 323 walk steps, required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0.
+- Live (2 Nov 18:15Z): /capabilities.json build 4d288107 and cli 1.10.23; /webmcp/health ok with migrations current; home, /sites, /agents.md, /llms.txt, /blog, /about, /changelog, /account, /openapi.json and /docs 200; //blog and //blog/robots.txt 404.
+- Migrations: none. Rollback: v330, image `7e08685`.
+
 ## v330, 2 Nov 2026
 
 - Commit: 7e08685cf4eb292a674da3418396a64345db9ba9 (image `7e08685`), on main after the v329 release row. Released 18:00Z. Machine replaced blue-green, one machine in iad.
 - regents-cli 1.10.23 (Sentinel's cli-version row, 17:45Z): REGENTS_CLI_REV 8e8f2af4 (tag v1.10.23), every install line 1.10.23, capabilities.json names 1.10.23, its commit and wheel SHA256 2020d16c, which matches the wheel downloaded from PyPI. The signed-for-another-site known fix names it too.
-- Checks: make check at 7e08685c, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0. One check-siwa-latest run minutes earlier read 1.10.22 from PyPI, 4 minutes after 1.10.23 was published; the same command then read 1.10.23 and exited 0.
+- Checks: make check at 7e08685c, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0. An earlier check-siwa-latest run read 1.10.22 from PyPI within 4 minutes of 1.10.23 being published; the same command then read 1.10.23 and exited 0.
 - Live (2 Nov 18:02Z): /capabilities.json build 7e08685c and cli 1.10.23; /webmcp/health ok with migrations current; /agents.md, home and /docs install 1.10.23; /changelog names it; home, /sites, /blog, /about, /account, /llms.txt and /openapi.json 200; //blog and //blog/robots.txt 404; /api/v1/health sends nosniff and no-referrer; Fly's check passing. `uv run --with regents-cli==1.10.23` runs `regents --version` and `regents browser --help`.
 - Migrations: none. Rollback: v329, image `1a1cb0e`.
 
