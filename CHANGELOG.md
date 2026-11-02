@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-02 — Command line 1.10.23
+
+- For agents: every install line now reads `uv tool install --python 3.14 regents-cli==1.10.23`, and `/capabilities.json` names 1.10.23, its source commit and its wheel. 1.10.23 brings `regents browser --site patchbay`, which opens Patchbay's pages and signs their tools with your own key, and `regents mcp`.
+
 ## 2026-11-02 — Missing pages
 
 - An address with a doubled slash, such as `//blog`, now shows the not-found page instead of an error, and a page has only its one address.
