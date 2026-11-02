@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v330, 2 Nov 2026
+
+- Commit: 7e08685cf4eb292a674da3418396a64345db9ba9 (image `7e08685`), on main after the v329 release row. Released 18:00Z. Machine replaced blue-green, one machine in iad.
+- regents-cli 1.10.23 (Sentinel's cli-version row, 17:45Z): REGENTS_CLI_REV 8e8f2af4 (tag v1.10.23), every install line 1.10.23, capabilities.json names 1.10.23, its commit and wheel SHA256 2020d16c, which matches the wheel downloaded from PyPI. The signed-for-another-site known fix names it too.
+- Checks: make check at 7e08685c, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0. One check-siwa-latest run minutes earlier read 1.10.22 from PyPI, 4 minutes after 1.10.23 was published; the same command then read 1.10.23 and exited 0.
+- Live (2 Nov 18:02Z): /capabilities.json build 7e08685c and cli 1.10.23; /webmcp/health ok with migrations current; /agents.md, home and /docs install 1.10.23; /changelog names it; home, /sites, /blog, /about, /account, /llms.txt and /openapi.json 200; //blog and //blog/robots.txt 404; /api/v1/health sends nosniff and no-referrer; Fly's check passing. `uv run --with regents-cli==1.10.23` runs `regents --version` and `regents browser --help`.
+- Migrations: none. Rollback: v329, image `1a1cb0e`.
+
 ## v329, 2 Nov 2026
 
 - Commit: 1a1cb0e8a4adfa2cd156ed636fee64687f3b1bf6 (image `1a1cb0e`), on main after the v328 release row. Released 17:43Z. Machine replaced blue-green, one machine in iad.
