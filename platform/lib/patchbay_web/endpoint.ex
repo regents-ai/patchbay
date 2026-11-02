@@ -98,6 +98,10 @@ defmodule PatchbayWeb.Endpoint do
   plug PatchbayWeb.Router
 
   defp put_reading_policy(conn, _opts) do
-    put_resp_header(conn, "content-security-policy", PatchbayWeb.ContentSecurityPolicy.reading())
+    merge_resp_headers(conn, %{
+      "content-security-policy" => PatchbayWeb.ContentSecurityPolicy.reading(),
+      "x-content-type-options" => "nosniff",
+      "referrer-policy" => "no-referrer"
+    })
   end
 end

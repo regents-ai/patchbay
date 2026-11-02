@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-02 — Missing pages
+
+- An address with a doubled slash, such as `//blog`, now shows the not-found page instead of an error, and a page has only its one address.
+
 ## 2026-11-01 — Busy sign-ins
 
 - When Patchbay is too busy to read who is signed in, the page now says it is busy and offers Try again, and an open page starts over still signed in. Before, a busy moment showed the page signed out and said the sign-in had ended.
