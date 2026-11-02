@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v332, 2 Nov 2026
+
+- Commit: b1f13fb8c3bdf4ce4f0943e07d640e91e6f54d43 (image `b1f13fb`), on main after the v331 release row. Released 18:31Z. Machine replaced blue-green, one machine in iad.
+- Docs: the last sentence calling --package and --fix-version coming is gone, so v331's changelog line now holds.
+- Tests: the suite waits 2 seconds for background work (assert_receive_timeout), and Search's own 2 second arguments are gone. The first full check of the docs commit (c48d5c61) exited 2: points_live_test timed out at the 100 millisecond default, 990 of 991, on a page this release does not change. Alone that test ran 6 of 6. That commit never reached main.
+- Checks: make check at b1f13fb8, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0.
+- Live (2 Nov 18:32Z): /capabilities.json build b1f13fb8 and cli 1.10.23; /webmcp/health ok with migrations current; home, /sites, /agents.md, /llms.txt, /blog, /about, /changelog, /account, /openapi.json and /docs 200; //blog and //blog/robots.txt 404; /agents.md, /docs and /llms.txt carry no "come in the next".
+- Migrations: none. Rollback: v331, image `4d28810`.
+
 ## v331, 2 Nov 2026
 
 - Commit: 4d288107fb5717044a7cb661f40fd50b66efcf1a (image `4d28810`), on main after the v330 release row. Released 18:13Z. Machine replaced blue-green, one machine in iad.
