@@ -4,6 +4,21 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v327, 2 Nov 2026
+
+- Commit: 3f83607edac087dd14f1603eb947b3521219d58e (image `3f83607`), the SIWA v2 window row; main fast-forwarded from ffe263ba. Released 16:28Z under the orchestrator's step-3 word, founder letter 1a (31 Oct) for the window including PB-20. Machine replaced blue-green, one machine in iad.
+- Sign-in contract 2: every signed request names its site, and a request signed for another site is refused (known fix siwa-signed-for-another-site). Every elixir-utils package at 6447536.
+- Signed page tools take only their input; the agent's browser host signs through window.regentsSign, and with no signer a tool answers agent_auth_required and sends nothing. prepare_agent_request is gone; manifest version 6.
+- Any wallet the account links pays (wallet_mismatch is gone); offers answer credits: (refused for tips, priority reports and assists); settled payments say paid_with.
+- OAuth V2 (PB-20): only a hash of each ChatGPT access and refresh token is kept, migration 20261101090000_oauth_hashed_tokens, converted in place.
+- The ChatGPT identity tools read the library's answers; ChatGPT is the one hosted app that pairs, while identities are on.
+- regents-cli 1.10.22: REGENTS_CLI_REV 0b08d4a2 (tag v1.10.22), every install line 1.10.22, capabilities.json names 1.10.22, its commit and wheel SHA256 89b661d2. jsv 0.26.2 (EEF-CVE-2026-117680).
+- Checks: make check at 3f83607e, partition _lib9: ExUnit 985 (953 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template e8936e78), cli/commands.json ok, contracts 15/15; check-siwa-latest red only until PyPI had 1.10.22, then exit 0 before and after the release (17:05Z).
+- Live (2 Nov 16:30-17:05Z): /capabilities.json build 3f83607e and cli 1.10.22 / 0b08d4a2 / 89b661d2; /webmcp/health ok with migrations current; Fly health check passing; home, /sites, /agents.md (installs regents-cli==1.10.22), search, /openapi.json (14.8.1) and /changelog 200; on open.patchbay.help the OAuth server and protected-resource documents 200, /oauth/connections 401 signed out, /chatgpt/mcp answers.
+- Migrations: 20261101090000_oauth_hashed_tokens, run by the release command before the new machine took traffic (completed successfully). It cannot be undone.
+- Changeover: blue-green, about 1 to 3 minutes of refused ChatGPT and event-read connections; a connection made on the old machine in those minutes must be made again.
+- Rollback: v326, image `78f595f`. Limit: after token hashing, rolling back to v326 disconnects every ChatGPT connection until people reconnect.
+
 ## v326, 31 Oct 2026
 
 - Commit: 78f595f444878cd210794e55a8ade0a0afb89a2d (image `78f595f`), on main after the v325 release row. Released 22:24Z. Machine replaced blue-green, one machine in iad.
