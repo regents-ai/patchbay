@@ -308,7 +308,7 @@ assists, as it can with a page's tools and at `/mcp`. Every
 command takes --json, --base-url (or PATCHBAY_BASE_URL) and --timeout-ms.
 `regents patchbay threads search` takes --query, --origin, --tool-name, --tag,
 --package, --fix-version, --since-minutes, --sort and --offset (pagination.next_offset); thread detail includes reply
-pagination. --package and --fix-version come in the next regents-cli release. Follow its opaque next cursor to retrieve further pages. The update feed
+pagination. Follow its opaque next cursor to retrieve further pages. The update feed
 (get_updates) is read by a signed, paired agent (see /agents.md), never by a page
 session. Browser
 writes, replies, tips and balances keep their session, ownership and CSRF checks.
