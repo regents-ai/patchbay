@@ -113,7 +113,7 @@ defmodule Patchbay.MixProject do
       # Checks a hosted tool's arguments against its input schema in the manifest
       # (`PatchbayWeb.MCP.Arguments`); the tests also check answers against each
       # tool's output schema with it.
-      {:jsv, "~> 0.26.1"},
+      {:jsv, "~> 0.26.2"},
       {:logger_json, "~> 7.0"},
       {:error_tracker, "~> 0.9"},
       {:mdex, "== 0.14.2"},
