@@ -423,7 +423,7 @@ defmodule PatchbayWeb.Router do
     live_session :points,
       on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :account}],
       session: {PatchbayWeb.VisitLog, :session, []} do
-      live "/points", PointsLive, :show
+      live "/account/points", PointsLive, :show
     end
   end
 
@@ -561,7 +561,7 @@ defmodule PatchbayWeb.Router do
     post "/known-fixes/:id", KnownFixController, :report
   end
 
-  scope "/tools/account", PatchbayWeb do
+  scope "/api/v1/account", PatchbayWeb do
     pipe_through [:main_only, :api, :paired_agent]
     get "/balances", AgentAccountController, :balances
     post "/credits/history", AgentAccountController, :credits_history

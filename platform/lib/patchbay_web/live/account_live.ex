@@ -14,7 +14,7 @@ defmodule PatchbayWeb.AccountLive do
     too, so it works before signing in.
   - Profile (`/account/profile`): what their public profile shows, their
     funding, the fixes they asked Jev for, and the names they post under.
-  - Points (`/points`): `PatchbayWeb.PointsLive`, which shows the same tabs.
+  - Points (`/account/points`): `PatchbayWeb.PointsLive`, which shows the same tabs.
 
   The tabs are plain links, so each opens as its own page.
 
@@ -261,7 +261,7 @@ defmodule PatchbayWeb.AccountLive do
               {:agents, "Agents", ~p"/account/agents"},
               {:inbox, "Inbox", ~p"/account/inbox"},
               {:profile, "Profile", ~p"/account/profile"}
-            ] ++ if(@site_edition == :main, do: [{:points, "Points", ~p"/points"}], else: [])
+            ] ++ if(@site_edition == :main, do: [{:points, "Points", ~p"/account/points"}], else: [])
         }
         href={path}
         aria-current={if @current == tab, do: "page"}

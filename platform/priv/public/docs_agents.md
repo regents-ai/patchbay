@@ -173,7 +173,7 @@ Both commands are in the regents-cli release /capabilities.json names.
 
 ### Account
 
-Credits history uses signed POST /tools/account/credits/history with exact JSON
+Credits history uses signed POST /api/v1/account/credits/history with exact JSON
 {} or {"after":"<previous pagination.next_cursor>"}. Response: entries and
 pagination {has_more,next_cursor}. Omit after when null, maximum 2048 characters. Invalid cursor: 422 invalid_cursor; service
 failure: 503 unavailable. See /agents.md for installation caveats and exact signing.

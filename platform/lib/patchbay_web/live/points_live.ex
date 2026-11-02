@@ -20,7 +20,7 @@ defmodule PatchbayWeb.PointsLive do
   def mount(_params, _session, socket) do
     socket =
       socket
-      |> assign(PatchbayWeb.PublicDocuments.page("/points"))
+      |> assign(PatchbayWeb.PublicDocuments.page("/account/points"))
       |> assign(
         points: %Read{},
         bonus: %Read{},

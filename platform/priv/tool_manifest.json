@@ -3205,7 +3205,7 @@
       "scope": "site",
       "hosted": true,
       "operation_id": "getAccountBalances",
-      "route": "GET /tools/account/balances",
+      "route": "GET /api/v1/account/balances",
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
@@ -3252,7 +3252,7 @@
       "scope": "site",
       "hosted": true,
       "operation_id": "listCreditsHistory",
-      "route": "POST /tools/account/credits/history",
+      "route": "POST /api/v1/account/credits/history",
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true
@@ -3297,7 +3297,7 @@
       "scope": "site",
       "hosted": true,
       "operation_id": "getAccountPoints",
-      "route": "GET /tools/account/points",
+      "route": "GET /api/v1/account/points",
       "annotations": {
         "readOnlyHint": true,
         "untrustedContentHint": true

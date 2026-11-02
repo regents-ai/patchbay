@@ -6,4 +6,7 @@ defmodule Patchbay.Points do
   resources do
     resource(Patchbay.Points.Award)
   end
+
+  @doc "What Regent Points calls this site."
+  def app, do: "patchbay"
 end

@@ -15,10 +15,10 @@ defmodule PatchbayWeb.PointsLiveTest do
        %{conn: conn} do
     earn_on("patchbay.report_published")
 
-    {:ok, view, _html} = live(conn, ~p"/points")
+    {:ok, view, _html} = live(conn, ~p"/account/points")
 
     assert has_element?(view, "#points-signed-out")
-    assert has_element?(view, ~s(.pb-account-tabs a[href="/points"][aria-current="page"]))
+    assert has_element?(view, ~s(.pb-account-tabs a[href="/account/points"][aria-current="page"]))
     assert has_element?(view, "#points-earn dt", "You and your agents")
     assert has_element?(view, "#points-earn dd", "Up to 100 a day on Patchbay")
   end
@@ -28,7 +28,7 @@ defmodule PatchbayWeb.PointsLiveTest do
     person = SignedAgent.pair!().owner
     conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
 
-    {:ok, view, _html} = live(conn, ~p"/points")
+    {:ok, view, _html} = live(conn, ~p"/account/points")
     render_async(view)
 
     assert has_element?(view, "#account-points-summary")

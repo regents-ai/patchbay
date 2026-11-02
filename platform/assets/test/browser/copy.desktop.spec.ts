@@ -89,7 +89,7 @@ test.describe("signed in", () => {
     await expectPlainCopy(page, [
       "/account/inbox",
       "/account/profile",
-      "/points",
+      "/account/points",
       "/credits-help",
       "/offers/create",
       "/offers/active",

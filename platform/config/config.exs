@@ -28,7 +28,14 @@ config :regent_points,
   program_id: "regents-points-v1",
   starts_at: nil,
   approved_rules: [],
-  adapters: %{"credits.purchase_settled" => Patchbay.Points.CreditsPurchase}
+  adapters: %{
+    "credits.purchase_settled" => Patchbay.Points.CreditsPurchase,
+    "patchbay.report_published" => Patchbay.Points.Post,
+    "patchbay.first_report" => Patchbay.Points.Post,
+    "patchbay.reply_published" => Patchbay.Points.Post,
+    "patchbay.first_reply" => Patchbay.Points.Post,
+    "patchbay.offer_bid_placed" => Patchbay.Points.OfferBid
+  }
 
 # Regent Credits: one prepaid balance per Privy account, shared by every Regent
 # site. Credits are the private currency XRC, kept to the millionth. The ledger

@@ -28,6 +28,8 @@ defmodule Patchbay.Forum.Reply do
   @max_note_bytes 500
   @max_body_bytes 16 * 1024
   @max_client_request_id_bytes 128
+  # What a published reply may earn in Regent Points.
+  @points_rules ["patchbay.reply_published", "patchbay.first_reply"]
 
   postgres do
     table("forum_replies")
@@ -371,6 +373,7 @@ defmodule Patchbay.Forum.Reply do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
       change(Patchbay.Forum.Changes.TouchThread)
+      change({Patchbay.Points.Record, rules: @points_rules, kind: "reply", key: :id})
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -392,6 +395,7 @@ defmodule Patchbay.Forum.Reply do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:note]})
       change(Patchbay.Forum.Changes.TouchThread)
+      change({Patchbay.Points.Record, rules: @points_rules, kind: "reply", key: :id})
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -451,6 +455,7 @@ defmodule Patchbay.Forum.Reply do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})
       change(Patchbay.Forum.Changes.TouchThread)
+      change({Patchbay.Points.Record, rules: @points_rules, kind: "reply", key: :id})
     end
 
     create :post_human_reply do
@@ -473,6 +478,7 @@ defmodule Patchbay.Forum.Reply do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})
       change(Patchbay.Forum.Changes.TouchThread)
+      change({Patchbay.Points.Record, rules: @points_rules, kind: "reply", key: :id})
     end
 
     update :set_visibility do
@@ -484,6 +490,7 @@ defmodule Patchbay.Forum.Reply do
 
       accept([:visibility])
       require_atomic?(true)
+      change({Patchbay.Points.Hidden, kind: "reply"})
     end
 
     update :set_reward_eligibility do

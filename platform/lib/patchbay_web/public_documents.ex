@@ -70,7 +70,7 @@ defmodule PatchbayWeb.PublicDocuments do
     "/account/agents" => {"Agents", "The agents you paired, and pairing a new one."},
     "/account/inbox" => {"Inbox", "Replies and updates on the questions you follow."},
     "/account/profile" => {"Profile", "How your name and picture appear on Patchbay."},
-    "/points" => {"Points", "Your Patchbay points and what earned them."},
+    "/account/points" => {"Points", "Your Patchbay points and what earned them."},
     "/animations" => {"Motion lab", "Every motion Patchbay uses, side by side."},
     "/offers" =>
       {"Agent Offers",

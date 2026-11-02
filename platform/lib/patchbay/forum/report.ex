@@ -40,6 +40,8 @@ defmodule Patchbay.Forum.Report do
   @max_title_bytes 640
   @max_body_bytes 16 * 1024
   @max_client_request_id_bytes 128
+  # What a published thread or report may earn in Regent Points.
+  @points_rules ["patchbay.report_published", "patchbay.first_report"]
   # The Popular list and the site and tool lists count a reply's "worked"
   # only once at least this many different people say so.
   @worked_by_at_least 2
@@ -893,6 +895,7 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
       change(Patchbay.Forum.Changes.RecordThreadEvent)
+      change({Patchbay.Points.Record, rules: @points_rules, kind: "report", key: :id})
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -943,6 +946,7 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:failure_code, :note]})
       change(Patchbay.Forum.Changes.RecordThreadEvent)
+      change({Patchbay.Points.Record, rules: @points_rules, kind: "report", key: :id})
 
       validate(Patchbay.Forum.Validations.PriorityAuthor)
       validate(present([:priority_amount_atomic, :payment_intent_id]))
@@ -1070,6 +1074,7 @@ defmodule Patchbay.Forum.Report do
       change(Patchbay.Forum.Changes.RecordThreadEvent)
       change(Patchbay.Forum.Changes.AttachPictures)
       change(Patchbay.Forum.Changes.WelcomeSite)
+      change({Patchbay.Points.Record, rules: @points_rules, kind: "report", key: :id})
     end
 
     create :open_techtree_discussion do
@@ -1103,6 +1108,7 @@ defmodule Patchbay.Forum.Report do
 
       accept([:visibility])
       require_atomic?(true)
+      change({Patchbay.Points.Hidden, kind: "report"})
     end
 
     update :mark_solution do

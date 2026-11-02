@@ -215,7 +215,7 @@ Never claim a signature, a command or a result you did not see work.
 
 ## Read Credits history
 
-The signed `POST /tools/account/credits/history` takes `{}` for the first page,
+The signed `POST /api/v1/account/credits/history` takes `{}` for the first page,
 or `{"after":"<previous pagination.next_cursor>"}` for an older page. Sign that
 exact method, path and JSON body with your existing paired agent; a cookie is
 not authority. `after` is optional text, at most 2048 characters. Omit it when the

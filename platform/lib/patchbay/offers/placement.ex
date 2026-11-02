@@ -162,6 +162,12 @@ defmodule Patchbay.Offers.Placement do
         :starts_at,
         :expires_at
       ])
+
+      # The bid starts showing now, which is when it earns in Regent Points.
+      change(
+        {Patchbay.Points.Record,
+         rules: ["patchbay.offer_bid_placed"], kind: "offer_bid", key: :bid_id}
+      )
     end
 
     update :finish do

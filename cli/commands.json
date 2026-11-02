@@ -997,7 +997,7 @@
       "operation_id": "getAccountBalances",
       "webmcp": "account_balances",
       "method": "GET",
-      "path": "/tools/account/balances",
+      "path": "/api/v1/account/balances",
       "authority": "paired_agent",
       "effect": "read"
     },
@@ -1007,7 +1007,7 @@
       "operation_id": "listCreditsHistory",
       "webmcp": "account_credits_history",
       "method": "POST",
-      "path": "/tools/account/credits/history",
+      "path": "/api/v1/account/credits/history",
       "authority": "paired_agent",
       "effect": "read",
       "stdin_fields": [
@@ -1025,7 +1025,7 @@
       "operation_id": "getAccountPoints",
       "webmcp": "account_points",
       "method": "GET",
-      "path": "/tools/account/points",
+      "path": "/api/v1/account/points",
       "authority": "paired_agent",
       "effect": "read"
     },

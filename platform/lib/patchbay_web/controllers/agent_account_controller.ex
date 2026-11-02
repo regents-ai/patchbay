@@ -18,7 +18,7 @@ defmodule PatchbayWeb.AgentAccountController do
 
   @doc """
   `actor`'s person's Credits and its own spending grant, as a status and a
-  body: `GET /tools/account/balances` and the `account_balances` tool.
+  body: `GET /api/v1/account/balances` and the `account_balances` tool.
   """
   @spec account_balances(Patchbay.Agents.Actor.t()) :: {atom(), map()}
   def account_balances(actor) do
@@ -51,7 +51,7 @@ defmodule PatchbayWeb.AgentAccountController do
 
   @doc """
   One page of `actor`'s person's Credits history after the cursor `params`
-  may carry, as a status and a body: `POST /tools/account/credits/history`
+  may carry, as a status and a body: `POST /api/v1/account/credits/history`
   and the `account_credits_history` tool.
   """
   @spec account_credits_history(Patchbay.Agents.Actor.t(), map()) :: {atom(), map()}
@@ -102,7 +102,7 @@ defmodule PatchbayWeb.AgentAccountController do
 
   @doc """
   `actor`'s person's Points as decimal text, as the Points page shows them,
-  as a status and a body: `GET /tools/account/points` and the
+  as a status and a body: `GET /api/v1/account/points` and the
   `account_points` tool. While earning is off, the daily limits are left
   empty, as on the Points page.
   """

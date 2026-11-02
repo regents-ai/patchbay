@@ -415,7 +415,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
       history = fn agent ->
         agent
-        |> post_json("/tools/account/credits/history", %{})
+        |> post_json("/api/v1/account/credits/history", %{})
         |> json_response(200)
         |> Map.fetch!("entries")
         |> length()
@@ -427,7 +427,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       points = fn agent ->
         agent
         |> signed()
-        |> get("/tools/account/points")
+        |> get("/api/v1/account/points")
         |> json_response(200)
         |> Map.take(["points", "entries"])
       end
@@ -440,9 +440,9 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         {points.(b_paired)["points"], points.(b_paired)["entries"]}
       )
 
-      {:ok, a_view, _} = live(as(a), ~p"/points")
+      {:ok, a_view, _} = live(as(a), ~p"/account/points")
       expect_present("a's Points page", render_async(a_view), a_points)
-      {:ok, b_view, _} = live(as(b), ~p"/points")
+      {:ok, b_view, _} = live(as(b), ~p"/account/points")
       expect_absent("b's Points page shows a's Points", render_async(b_view), a_points)
 
       {:ok, _, a_profile} = live(as(a), ~p"/account/profile")
@@ -458,7 +458,13 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
       expect("a opening a's Jev question", :ok, elem(live(as(a), ~p"/fixes/#{run.id}"), 0))
 
-      for path <- [~p"/account", ~p"/account/agents", ~p"/account/profile", ~p"/points", ~p"/"] do
+      for path <- [
+            ~p"/account",
+            ~p"/account/agents",
+            ~p"/account/profile",
+            ~p"/account/points",
+            ~p"/"
+          ] do
         {_status, conn} = outcome(fn -> get(as(b), path) end)
         expect_absent("b's #{path} shows a's pairing code", conn.resp_body, code)
       end
@@ -1128,7 +1134,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         status_row(
           "API Credits history: cursor is a number",
           refused,
-          api.("/tools/account/credits/history", Jason.encode!(%{"after" => 5}))
+          api.("/api/v1/account/credits/history", Jason.encode!(%{"after" => 5}))
         ),
         status_row(
           "API pairing: code is a number",

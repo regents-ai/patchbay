@@ -12,7 +12,7 @@ defmodule PatchbayWeb.AgentPointsTest do
   test "a paired agent reads its person's Points, told earning is off", %{conn: conn} do
     agent = SignedAgent.pair!()
 
-    body = conn |> SignedAgent.sign(agent) |> get("/tools/account/points") |> json_response(200)
+    body = conn |> SignedAgent.sign(agent) |> get("/api/v1/account/points") |> json_response(200)
 
     assert %{
              "points" => "0",
@@ -29,7 +29,7 @@ defmodule PatchbayWeb.AgentPointsTest do
     stranger = %{wallet: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)}
 
     body =
-      conn |> SignedAgent.sign(stranger) |> get("/tools/account/points") |> json_response(403)
+      conn |> SignedAgent.sign(stranger) |> get("/api/v1/account/points") |> json_response(403)
 
     assert body["error"]["code"] == "agent_not_paired"
   end
@@ -51,13 +51,13 @@ defmodule PatchbayWeb.AgentPointsTest do
     body =
       conn
       |> SignedAgent.sign(%{wallet: wallet})
-      |> get("/tools/account/points")
+      |> get("/api/v1/account/points")
       |> json_response(403)
 
     assert body["error"]["code"] == "person_not_here"
   end
 
   test "an unsigned request is refused before anything is read", %{conn: conn} do
-    assert conn |> get("/tools/account/points") |> json_response(401)
+    assert conn |> get("/api/v1/account/points") |> json_response(401)
   end
 end
