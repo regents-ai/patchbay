@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v328, 2 Nov 2026
+
+- Commit: b5e77545ba2fa2314a5943d7b0dd2303fba71f3c (image `b5e7754`), on main after the v327 release row. Released 17:19Z on the orchestrator's word. Machine replaced blue-green, one machine in iad.
+- Busy sign-ins (PB-61): when the database is too busy to read who is signed in, the page says it is busy and offers Try again, and an open page starts over still signed in. Only a cookie naming no profile signs out; a real fault is a fault.
+- Checks: make check at b5e77545, partition _win3: ExUnit 989 (957 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template 0b65960c), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0.
+- Live (2 Nov 17:20Z): /capabilities.json build b5e77545 and cli 1.10.22; /webmcp/health ok with migrations current; home, /sites, /agents.md, search, /points, /openapi.json, /changelog (names Busy sign-ins), /account and open.patchbay.help 200. The busy answer itself is proved by platform/test/patchbay_web/page_busy_test.exs, not by a live overload.
+- Migrations: none. Rollback: v327, image `3f83607`.
+
 ## v327, 2 Nov 2026
 
 - Commit: 3f83607edac087dd14f1603eb947b3521219d58e (image `3f83607`), the SIWA v2 window row; main fast-forwarded from ffe263ba. Released 16:28Z under the orchestrator's step-3 word, founder letter 1a (31 Oct) for the window including PB-20. Machine replaced blue-green, one machine in iad.
