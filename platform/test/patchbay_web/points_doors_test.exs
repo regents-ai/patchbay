@@ -20,8 +20,8 @@ defmodule PatchbayWeb.PointsDoorsTest do
     only: [approved_version: 3, bid: 5, give_credits: 2, moderator: 0, settle: 2]
 
   alias Patchbay.Forum
-  alias Patchbay.Offers
   alias Patchbay.JevStandIn
+  alias Patchbay.Offers
   alias Patchbay.Payments.SpecialPost
   alias Patchbay.Points
   alias PatchbayWeb.Plugs.CurrentProfile
