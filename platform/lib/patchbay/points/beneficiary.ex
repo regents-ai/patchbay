@@ -30,22 +30,22 @@ defmodule Patchbay.Points.Beneficiary do
        }}
 
   defp as(account, pairing_id) do
-    case Patchbay.Points.Accounts.agent_names(account.id, [pairing_id]) do
-      {:ok, %{^pairing_id => _name}} ->
-        {:ok,
-         %{
-           account_id: account.id,
-           actor_kind: "agent",
-           # The pairing's id, so the Points page names the agent the person paired.
-           actor_id: pairing_id,
-           evidence: %{"attribution_link_id" => pairing_id}
-         }}
-
-      {:ok, _none} ->
-        {:error, :agent_not_paired_with_person}
-
-      {:error, reason} ->
-        {:retry, reason}
+    case Patchbay.Points.Accounts.pairings(account.privy_user_id) do
+      {:ok, pairings} -> agent(account, Enum.find(pairings, &(&1.id == pairing_id)))
+      {:error, reason} -> {:retry, reason}
     end
   end
+
+  defp agent(_account, nil), do: {:error, :agent_not_paired_with_person}
+
+  defp agent(account, pairing),
+    do:
+      {:ok,
+       %{
+         account_id: account.id,
+         actor_kind: "agent",
+         # Points knows an agent by its wallet; the pairing is the proof it acted for this person.
+         actor_id: pairing.wallet,
+         evidence: %{"attribution_link_id" => pairing.id}
+       }}
 end

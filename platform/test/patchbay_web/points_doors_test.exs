@@ -176,7 +176,7 @@ defmodule PatchbayWeb.PointsDoorsTest do
   end
 
   describe "what Points credits" do
-    test "an agent's report earns for the person it is paired with, as the agent",
+    test "an agent's report earns for the person it is paired with, under the agent's wallet",
          %{conn: conn, agent: agent} do
       %{"report_id" => id} =
         conn |> send_json(agent, "/forum/reports", tool_report()) |> json_response(201)
@@ -188,15 +188,21 @@ defmodule PatchbayWeb.PointsDoorsTest do
                  processing_status: :confirmed,
                  account_id: account_id,
                  actor_kind: "agent",
-                 actor_id: pairing_id
+                 actor_id: wallet,
+                 evidence: %{"attribution_link_id" => pairing_id}
                } = event
 
         assert account_id == agent.account.id
+        assert wallet == agent.pairing.wallet
         assert pairing_id == agent.pairing.id
       end
 
       assert Enum.map(events("report", id), & &1.rule_id) |> Enum.sort() ==
                ["patchbay.first_report", "patchbay.report_published"]
+
+      # The Points page names the agent by the wallet it earned under.
+      assert Points.Accounts.agent_names(agent.account.id, [agent.pairing.wallet]) ==
+               {:ok, %{agent.pairing.wallet => agent.pairing.name}}
     end
 
     test "a person's reply earns for them", %{conn: conn, agent: agent, person: person} do
