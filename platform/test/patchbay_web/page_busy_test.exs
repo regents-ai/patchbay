@@ -10,6 +10,8 @@ defmodule PatchbayWeb.PageBusyTest do
   # fails for any other reason is still a fault.
   use PatchbayWeb.ConnCase, async: false
 
+  import Phoenix.LiveViewTest, only: [live_isolated: 3]
+
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias PatchbayWeb.SignedAgent
@@ -263,6 +265,80 @@ defmodule PatchbayWeb.PageBusyTest do
 
       assert json_response(get(conn, "/api/agents/nobody-here"), 404)["error"]["code"] ==
                "not_found"
+    end
+  end
+
+  describe "a signed-in page" do
+    setup %{conn: conn} do
+      person =
+        Patchbay.Identity.upsert_from_privy!(%{
+          privy_user_id: "did:privy:busy-sign-in",
+          wallet_address: "0x" <> String.duplicate("c", 40)
+        })
+
+      signed_in =
+        conn
+        |> Plug.Test.init_test_session(%{})
+        |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id)
+
+      %{person: person, signed_in: signed_in}
+    end
+
+    test "is busy, never signed out, when its profile cannot be read", %{signed_in: conn} do
+      [page] = while_the_connection_is_held([fn -> get(conn, "/about") end])
+
+      assert_busy_page(page, "/about")
+    end
+
+    test "is still signed out when its profile is gone, or its cookie names none", %{conn: conn} do
+      for id <- [Ecto.UUID.generate(), "not-a-profile"] do
+        gone =
+          conn
+          |> Plug.Test.init_test_session(%{})
+          |> PatchbayWeb.Plugs.CurrentProfile.sign_in(id)
+          |> get("/about")
+
+        assert gone.assigns.current_profile == nil
+        assert gone.assigns.signed_out_reason == :expired
+        assert html_response(gone, 200)
+      end
+    end
+
+    test "is a fault, never signed out, when its profile fails for another reason", %{
+      signed_in: conn
+    } do
+      Patchbay.Repo.query!("ALTER TABLE agent_profiles RENAME COLUMN public_id TO hidden_away")
+
+      assert_error_sent 500, fn -> get(conn, "/about") end
+    end
+
+    test "that is open starts over, never signed out, when its profile cannot be read", %{
+      conn: conn,
+      person: person
+    } do
+      session = %{
+        "agent_profile_id" => person.id,
+        "signed_in_at" => System.system_time(:second),
+        "site_edition" => :main
+      }
+
+      {:ok, view, _html} =
+        live_isolated(conn, PatchbayWeb.HeaderAccountLive, session: session)
+
+      Process.flag(:trap_exit, true)
+
+      [reason] =
+        while_the_connection_is_held([
+          fn ->
+            ref = Process.monitor(view.pid)
+            send(view.pid, :agents_changed)
+            assert_receive {:DOWN, ^ref, :process, _pid, reason}, 30_000
+            reason
+          end
+        ])
+
+      assert {exception, _stack} = reason
+      assert Patchbay.DatabaseBusy.kind(exception)
     end
   end
 
