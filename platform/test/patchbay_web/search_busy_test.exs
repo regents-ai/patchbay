@@ -100,11 +100,11 @@ defmodule PatchbayWeb.SearchBusyTest do
         )
 
       render_hook(view, "open", %{"recent" => []})
-      render_async(view, 2_000)
+      render_async(view)
 
       view |> form("#shell-search-form", %{"q" => "reservation"}) |> render_change()
 
-      assert render_async(view, 2_000) =~ "Search is unavailable right now."
+      assert render_async(view) =~ "Search is unavailable right now."
     end
   end
 

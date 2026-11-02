@@ -34,10 +34,10 @@ defmodule PatchbayWeb.SearchLiveTest do
       )
 
     render_hook(view, "open", %{"recent" => []})
-    render_async(view, 2_000)
+    render_async(view)
 
     view |> form("#shell-search-form", %{"q" => "kettlebell"}) |> render_change()
-    html = render_async(view, 2_000)
+    html = render_async(view)
 
     assert html =~ ~s(href="#{PostAddress.path(question)}")
     assert html =~ ~s(href="/#{site.origin}")
@@ -76,16 +76,16 @@ defmodule PatchbayWeb.SearchLiveTest do
       )
 
     render_hook(view, "open", %{})
-    render_async(view, 2_000)
+    render_async(view)
 
     view |> form("#shell-search-form", %{"q" => "ketlebell"}) |> render_change()
-    html = render_async(view, 2_000)
+    html = render_async(view)
 
     assert html =~ ~s(href="#{Patchbay.Forum.PostAddress.path(question)}")
     assert html =~ ~s(href="/#{site.origin}")
 
     view |> form("#shell-search-form", %{"q" => "empty_baskt"}) |> render_change()
-    html = render_async(view, 2_000)
+    html = render_async(view)
 
     assert html =~ ~s(href="/#{site.origin}/tools/empty_basket")
     assert html =~ "Tools"
@@ -100,10 +100,10 @@ defmodule PatchbayWeb.SearchLiveTest do
       )
 
     render_hook(view, "open", %{})
-    render_async(view, 2_000)
+    render_async(view)
 
     view |> form("#shell-search-form", %{"q" => "é"}) |> render_change()
-    html = render_async(view, 2_000)
+    html = render_async(view)
 
     refute html =~ "Search unavailable"
     refute html =~ "Search is unavailable"
@@ -120,12 +120,12 @@ defmodule PatchbayWeb.SearchLiveTest do
       )
 
     view |> form("#shell-search-form", %{"q" => "kettlebell"}) |> render_change()
-    assert render_async(view, 2_000) =~ ~s(href="/#{site.origin}")
+    assert render_async(view) =~ ~s(href="/#{site.origin}")
 
     for _ <- 1..300, do: Patchbay.Limits.spend(:search_address, visitor)
 
     view |> form("#shell-search-form", %{"q" => "kettlebells"}) |> render_change()
-    html = render_async(view, 2_000)
+    html = render_async(view)
     assert has_element?(view, "#shell-search-limited")
     refute html =~ ~s(href="/#{site.origin}")
     refute has_element?(view, "[data-search-result]")
@@ -134,7 +134,7 @@ defmodule PatchbayWeb.SearchLiveTest do
     # Once the minute is over, the same words search again.
     PatchbayWeb.ReadLimit.set({:search_address, visitor}, 60_000, 0)
     view |> form("#shell-search-form", %{"q" => "kettlebell"}) |> render_change()
-    html = render_async(view, 2_000)
+    html = render_async(view)
     refute has_element?(view, "#shell-search-limited")
     assert html =~ ~s(href="/#{site.origin}")
 
@@ -145,7 +145,7 @@ defmodule PatchbayWeb.SearchLiveTest do
       )
 
     other |> form("#shell-search-form", %{"q" => "nothing matches this"}) |> render_change()
-    assert render_async(other, 2_000) =~ "No results for"
+    assert render_async(other) =~ "No results for"
   end
 
   defp visitor, do: "visitor-" <> Ash.UUID.generate()
