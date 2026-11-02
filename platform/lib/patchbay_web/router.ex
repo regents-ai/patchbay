@@ -27,9 +27,10 @@ defmodule PatchbayWeb.Router do
     plug :put_root_layout, html: {PatchbayWeb.Layouts, :root}
     plug :protect_from_forgery
 
-    # Every page carries the sign-in button.
+    # Every page carries the sign-in button, so it sends its origin as a referrer.
     plug :put_secure_browser_headers, %{
-      "content-security-policy" => ContentSecurityPolicy.sign_in()
+      "content-security-policy" => ContentSecurityPolicy.sign_in(),
+      "referrer-policy" => "strict-origin-when-cross-origin"
     }
 
     plug PatchbayWeb.Plugs.BrowserPolicy
