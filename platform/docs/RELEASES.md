@@ -4,6 +4,17 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v329, 2 Nov 2026
+
+- Commit: 1a1cb0e8a4adfa2cd156ed636fee64687f3b1bf6 (image `1a1cb0e`), on main after the v328 release row. Released 17:43Z. Machine replaced blue-green, one machine in iad.
+- One address: a path with an empty step, such as //blog and //blog/robots.txt, answers the not-found page beside the trailing slash rule. It reached the page as a second address for /blog, then raised when the layout built its canonical address (500, Sentinel log 2 Nov 03:11Z).
+- Strict headers: JSON and missing pages send x-content-type-options nosniff and referrer-policy no-referrer beside the content security policy (Sentinel's same check). Pages carrying the sign-in button state strict-origin-when-cross-origin in the :browser pipeline, because put_secure_browser_headers keeps a header already set.
+- Not in this release: /auth/csrf, which belongs to the template's lazy sign-in; the orchestrator rules on it.
+- Main carried 22b0d951 from about 17:33Z until 1a1cb0e8, which failed its check (the no-referrer default reached sign-in pages). It was never deployed.
+- Checks: make check at 1a1cb0e8, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0.
+- Live (2 Nov 17:44Z): /capabilities.json build 1a1cb0e8 and cli 1.10.22; /webmcp/health ok with migrations current; //blog and //blog/robots.txt 404, /blog and /about 200; /api/v1/health and a missing page send nosniff, no-referrer and frame-ancestors 'none'; /, /sites and /account send strict-origin-when-cross-origin; open.patchbay.help home and OAuth server document 200.
+- Migrations: none. Rollback: v328, image `b5e7754`.
+
 ## v328, 2 Nov 2026
 
 - Commit: b5e77545ba2fa2314a5943d7b0dd2303fba71f3c (image `b5e7754`), on main after the v327 release row. Released 17:19Z on the orchestrator's word. Machine replaced blue-green, one machine in iad.
