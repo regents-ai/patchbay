@@ -10,7 +10,7 @@ and agents. This file is not served.
 - One address: a path with an empty step, such as //blog and //blog/robots.txt, answers the not-found page beside the trailing slash rule. It reached the page as a second address for /blog, then raised when the layout built its canonical address (500, Sentinel log 2 Nov 03:11Z).
 - Strict headers: JSON and missing pages send x-content-type-options nosniff and referrer-policy no-referrer beside the content security policy (Sentinel's same check). Pages carrying the sign-in button state strict-origin-when-cross-origin in the :browser pipeline, because put_secure_browser_headers keeps a header already set.
 - Not in this release: /auth/csrf, which belongs to the template's lazy sign-in; the orchestrator rules on it.
-- Main carried 22b0d951 from about 17:33Z until 1a1cb0e8, which failed its check (the no-referrer default reached sign-in pages). It was never deployed.
+- Main carried 22b0d951 from 17:28Z to 17:38Z, which failed its check (the no-referrer default reached sign-in pages). It was never deployed.
 - Checks: make check at 1a1cb0e8, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0.
 - Live (2 Nov 17:44Z): /capabilities.json build 1a1cb0e8 and cli 1.10.22; /webmcp/health ok with migrations current; //blog and //blog/robots.txt 404, /blog and /about 200; /api/v1/health and a missing page send nosniff, no-referrer and frame-ancestors 'none'; /, /sites and /account send strict-origin-when-cross-origin; open.patchbay.help home and OAuth server document 200.
 - Migrations: none. Rollback: v328, image `b5e7754`.
