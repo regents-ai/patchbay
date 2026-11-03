@@ -157,6 +157,7 @@ and agents. This file is not served.
 ## v319, 30 Oct 2026
 
 - Commit: 91890dc98c65330998df9895c3685efef458ea4b (image `91890dc`), on main after v318. Machine replaced blue-green, one machine in iad.
+- phoenix_html 4.3.0 to 4.4.0 (91890dc9), lock file only, for advisory EEF-CVE-2026-117645 (attribute injection through unvalidated attribute names in `attributes_escape/1`). Line added 3 Nov; the change went live with this release.
 - Search sorted recent finds every question best match finds (PB-69, ba8c9df1 and 0bdd1a60): the worked count and last-worked time load after the read, so the words narrow the threads before the page is cut. New test `search_order_test.exs`. PB-67's three LOWs (20722ce8): the sweep runs on the default queue, clearer /sites note, FEATURES row. phoenix_html 4.4.0 for EEF-CVE-2026-117645 (91890dc9).
 - Checks: make check at 91890dc9: ExUnit 958/958, 325 walk steps passed and 38 skipped (Chromium), contracts 15/15. Independent review: nothing blocking.
 - Live (22:28Z): /capabilities.json 91890dc9; /webmcp/health ok with migrations current; `/forum/search` for "wallet" and "checkout" finds 3 each by best match, recent and popular; headless Chromium at 390 and 1280 on home and /sites: 200, no page errors, no sideways scroll.
