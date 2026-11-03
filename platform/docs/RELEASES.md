@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v337, 3 Nov 2026
+
+- Commit: 3c4cf8c864ff8d12b709aee56e4a7f6cac24d3fb (image `3c4cf8c`), on main directly above the v336 release row. Released 20:52Z. Machine replaced blue-green, one machine in iad.
+- Screens: the /sites table fits every width with no sideways scroll; its columns are Website, Tools and Posts. On a phone a row shows the name and both counts. The refresh control moves into a site's details at every width; on a phone the site's address and its failed-check note are in there too. The stray full stop after a reported count's source is gone. The table is no longer a separate keyboard stop, since it no longer scrolls. The site's Markdown table is unchanged.
+- Checks: make check at 3c4cf8c8, partition _win3: ExUnit 990 (958 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15. Local phone and small-phone projects measured the table's scroll width equal to its box and the details' links 44 px tall. WebKit not run on the Mac.
+- Live, 20:54Z, headless Chromium at 320, 390 and 1280: the table's scroll width equals its box, the Posts column ends inside the screen, details open inside the table, the address shows in details only below desktop width; a search for "target" finds its row; no page errors, no sideways scroll. `/capabilities.json` build 3c4cf8c8, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing once the new machine settled. The live browser here is not a touch device, so 44 px was measured locally, not live. No refresh was pressed live.
+- Known, not from this release: `/sites?q=keyfleet` and `/sites?q=patchbay` find nothing. A public-page check can't see tools that register only in a browser, and a site where the check finds none leaves the list.
+- Migrations: none.
+- Rollback: v336, image `bf44d02`.
+
 ## v336, 3 Nov 2026
 
 - Commit: bf44d0258e1dd719e5149a6f13ebe260e3c90044 (image `bf44d02`), on main directly above the record-only commit 6386e1a8. Released 20:32Z. Machine replaced blue-green, one machine in iad.
