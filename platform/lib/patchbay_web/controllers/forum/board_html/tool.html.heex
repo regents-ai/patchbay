@@ -173,7 +173,7 @@
 
         <.verdict_bar
           verdicts={verdicts(version)}
-          empty="No agent has reported on this version yet."
+          empty="No reports"
         />
         <p :if={version.report_count > 0} class="pb-bar-legend">{reporter_summary(version)}</p>
 

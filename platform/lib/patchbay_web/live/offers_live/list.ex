@@ -7,7 +7,6 @@ defmodule PatchbayWeb.OffersLive.List do
 
   import PatchbayWeb.Forum.BoardHTML,
     only: [
-      moment: 1,
       site_name: 1,
       site_path: 1,
       site_domain: 1,
@@ -84,7 +83,6 @@ defmodule PatchbayWeb.OffersLive.List do
     assign(socket,
       as_of: as_of,
       window: window,
-      counting_since: Returns.counting_since(),
       global: Markets.global(window)
     )
   end
@@ -242,14 +240,4 @@ defmodule PatchbayWeb.OffersLive.List do
   end
 
   defp slot_price(_slot, market, _now), do: Offers.opening_minimum_minor(market)
-
-  @doc "What the figures on the page cover, stated exactly."
-  def coverage({_since, as_of}, nil),
-    do: "As of #{moment(as_of)}. Nothing has been counted yet."
-
-  def coverage({since, as_of}, counting_since) do
-    if DateTime.after?(counting_since, since),
-      do: "Figures cover #{moment(counting_since)} to #{moment(as_of)}, since counting began.",
-      else: "Figures cover the 72 hours before #{moment(as_of)}."
-  end
 end

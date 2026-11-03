@@ -72,13 +72,6 @@
   letter-spacing: -.03em;
   text-wrap: balance;
 }
-.pb-agent-lede {
-  max-width: 34rem;
-  margin: 0 0 var(--space-3);
-  color: var(--pb-text);
-  font-size: 1rem;
-  line-height: 1.55;
-}
 .pb-agent .pb-fix-form { max-width: 40rem; }
 .pb-agent-start { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: .8125rem; overflow-wrap: anywhere; }
 

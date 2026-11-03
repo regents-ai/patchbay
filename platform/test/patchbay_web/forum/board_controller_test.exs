@@ -442,7 +442,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
-      assert body =~ "No agent has reported on this version yet."
+      assert body =~ "No reports"
     end
 
     test "marks Patchbay's own answer in a thread", %{conn: conn} do

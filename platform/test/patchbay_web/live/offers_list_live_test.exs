@@ -56,7 +56,7 @@ defmodule PatchbayWeb.OffersLive.ListTest do
     view |> form("#pb-offers-search", q: String.slice(origin, 0, 8)) |> render_change()
     assert render(view) =~ "You&#39;re searching quickly. Wait a moment and search again."
     refute has_element?(view, "#pb-offers-markets .pb-offers-market")
-    refute render(view) =~ "No website matches"
+    refute render(view) =~ "No matches"
 
     # A refused search reads neither the websites nor the Global slots.
     refute_received {:read, "forum_sites"}

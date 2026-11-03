@@ -133,7 +133,6 @@
 .pb-onboarding-steps a { display: inline-block; margin-top: .5rem; font-size: .8125rem; }
 .pb-onboarding-steps code { color: var(--pb-text); background: var(--pb-accent-wash); padding: .125rem .3rem; }
 .pb-start-page { max-width: 76rem; }
-.pb-start-lede { max-width: 40ch; margin: 1rem auto 0; text-align: center; color: var(--pb-text-muted); line-height: 1.6; text-wrap: balance; }
 .pb-start-tabs { margin-bottom: .75rem; border-bottom-color: color-mix(in srgb, currentColor 25%, transparent); }
 /* On a phone the agents sit two by two, so every one is in view. */
 @container pb-page (max-width: 599px) {

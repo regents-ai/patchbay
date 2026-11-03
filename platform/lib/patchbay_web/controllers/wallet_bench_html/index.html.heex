@@ -112,19 +112,18 @@
     </div>
     <Regent.Primitives.empty_state
       :if={@test.total == 0 and filtered?(@matrix.filters)}
-      title="Nothing matches this filter."
+      title="No matches"
     >
       <:action>
         <a class="rg-button rg-button--secondary" href={~p"/wallet-bench?test=#{@test.grid}"}>
-          <span class="rg-button__label">Clear the filter</span>
+          <span class="rg-button__label">Clear filter</span>
         </a>
       </:action>
     </Regent.Primitives.empty_state>
     <Regent.Primitives.empty_state
       :if={@test.total == 0 and !filtered?(@matrix.filters)}
-      title="No results to show yet."
+      title="No results"
     >
-      Results appear here once the bench's first runs finish.
       <:action>
         <a class="rg-button rg-button--secondary" href={~p"/wallet-bench/how-it-works"}>
           <span class="rg-button__label">How the bench works</span>

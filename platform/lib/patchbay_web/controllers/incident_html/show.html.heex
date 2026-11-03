@@ -43,7 +43,7 @@
       posts={@fixes}
       site_edition={@site_edition}
       earned_tips={%{}}
-      empty="No fixes shared yet"
+      empty="No fixes"
     />
     <p :if={@fixes not in [:unavailable, []]} class="pb-incident-more">
       <a href={fixes_path(@incident)}>Every thread tagged {@incident.tag} →</a>

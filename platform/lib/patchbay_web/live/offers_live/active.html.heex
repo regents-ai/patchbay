@@ -41,7 +41,7 @@
       </div>
       <Regent.Primitives.empty_state
         :if={@mine.showing == []}
-        title="None of your Offers is showing right now."
+        title="No Offers"
       >
         <:action>
           <a class="rg-button rg-button--secondary" href={~p"/offers"}>
@@ -83,7 +83,7 @@
       </div>
       <Regent.Primitives.empty_state
         :if={@mine.leading == []}
-        title="No Offer of yours is waiting to start."
+        title="No Offers"
       >
         <:action>
           <a class="rg-button rg-button--secondary" href={~p"/offers/create"}>

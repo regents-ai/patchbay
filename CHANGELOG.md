@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 — Fewer words
+
+- Setup, agent, sites, priority, contact, troubleshooting and incident pages open straight on their content.
+- The sites list shows one figure per site. Its sources and method moved to the developer page.
+- Offers: the Slots page lost its notes and the Guide its small labels. Empty lists show a short title and one button.
+
 ## 2026-11-03 — Simpler threads
 
 - A thread shows one result beside its title. Its full record sits under Evidence, marked Matched or Unverified.
