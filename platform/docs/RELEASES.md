@@ -4,6 +4,17 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v336, 3 Nov 2026
+
+- Commit: bf44d0258e1dd719e5149a6f13ebe260e3c90044 (image `bf44d02`), on main directly above the record-only commit 6386e1a8. Released 20:32Z. Machine replaced blue-green, one machine in iad.
+- Screens, simple pass group 4: lead paragraphs leave /start, agent pages, /sites, /priority, /contact, troubleshooting and the incidents list (an incident's own summary stays). /sites loses the Detected or Reported note under every count, the dash key, the "Explore" line and the second count without a search, and About the data, which becomes a Directory section on /docs and in its Markdown, reached by one Sources link on the main address (the open address has no /docs, so no link there; its method stays in the page's Markdown). Offers Slots loses its intro, its Global and Websites notes and About activity counts; the Guide loses its small labels and gains the activity note under Placement. Empty states are a short title and one button. Credits help, legal pages, the developer page's lead, payments and the Points page are unchanged.
+- Removed as unused: `OffersLive.List.coverage/2`, `Patchbay.Offers.Returns.counting_since/0`.
+- Checks: make check at bf44d025, partition _win3: ExUnit 990 (958 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15, Sobelow row for /docs moved to its new line. The first full check of this work exited 2 and never reached main: the open-address link test found the Sources link pointing at a page that address does not have. WebKit not run on the Mac.
+- Live, 20:34Z, headless Chromium at 390 and 1280: every cut wording is gone from /start, /hermes, /sites, /contact, /incidents, /offers and the Guide, all 200; /sites and /offers with no matches show "No matches" and one button; the Sources link is 44 px tall and /docs#directory has its four paragraphs; `/docs` and `/sites` as Markdown carry the method; no page errors, no sideways scroll. `/capabilities.json` build bf44d025, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing. No post was published, and sign-in was not walked live, so the signed-in Offers empty states were seen only in the local tests.
+- Known, older than this release: on a phone the /sites counts sit off to the right of the table and need a sideways scroll.
+- Migrations: none.
+- Rollback: v335, image `4a7586b`.
+
 ## v335, 3 Nov 2026
 
 - Commit: 4a7586b563c0674a617e008571683ab4f2e1ad11 (image `4a7586b`), on main directly above the v334 release row. Released 20:00Z. Machine replaced blue-green, one machine in iad.
