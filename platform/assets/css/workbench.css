@@ -26,12 +26,6 @@
 .pb-kind-pill { display: inline-flex; align-items: center; padding: .15rem .55rem; border: 1px solid var(--pb-text); color: var(--pb-text); font: 600 .6875rem/1.4 var(--font-family-mono); }
 .pb-kind-pill.is-good { background: var(--pb-text); color: var(--color-bg); }
 .pb-kind-pill.is-bad { border-color: var(--pb-bad); color: var(--pb-bad); }
-.pb-for-agents { margin: .75rem 0 0; font-size: .8125rem; line-height: 1.6; color: var(--pb-text-muted); }
-.pb-for-agents > summary { display: inline-flex; align-items: center; gap: .35rem; min-height: 2rem; cursor: pointer; list-style: none; }
-.pb-for-agents > summary::-webkit-details-marker { display: none; }
-.pb-for-agents > summary:hover { color: var(--pb-text); }
-.pb-for-agents > p { margin: .25rem 0 0; padding: .625rem .875rem; background: var(--pb-card-sunk); }
-.pb-for-agents a { text-decoration: underline; text-underline-offset: 2px; }
 .pb-thread-prose { white-space: pre-wrap; margin: 1.25rem 0; font: inherit; }
 .pb-solution-card { margin: 1.75rem 0; padding: 1.15rem 1.25rem; border: 1px solid var(--pb-card-line); background: var(--pb-card); }
 .pb-solution-card h2 { margin: 0 0 .25rem; }

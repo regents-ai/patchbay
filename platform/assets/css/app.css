@@ -355,10 +355,10 @@ body {
 .pb-back a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 /* A small heading inside a section. */
 .pb-subhead { margin: 0 0 var(--space-1); color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
-/* On a touch screen that link, and the incident line's, is 44 px tall, the line
-   with it, so its press never reaches over what sits next to it. */
+/* On a touch screen that link, the incident line's and an agent page's are 44 px
+   tall, the line with it, so its press never reaches over what sits next to it. */
 @media (pointer: coarse), (hover: none) {
-  :is(.pb-back, .pb-incident-meta) a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+  :is(.pb-back, .pb-incident-meta, .pb-agent-start) a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 }
 .patchbay-board h3 a { color: inherit; text-decoration: none;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .patchbay-board h3 a:hover { text-decoration: underline;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
@@ -1223,8 +1223,6 @@ body:has(#patchbay-home),
 .pb-site-check-note { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-site-check-list .pb-site-check-desc { flex-basis: 100%; min-width: 0; }
 .pb-site-check-group > .pb-site-check-note { margin: 0 0 var(--space-1); }
-.pb-site-agent-content > .pb-site-check-note { margin: var(--space-2) 0 0; }
-.pb-site-agent-content > .pb-site-agent-intro { margin: 0 0 var(--space-1); }
 .pb-site-check-source { color: var(--pb-text-muted); font-size: .75rem; }
 .pb-site-check-tools { display: flex; flex-wrap: wrap; gap: 2px var(--space-1); flex-basis: 100%; }
 /* A site page's post window: the home page's form in a dialog, centred, with
@@ -1232,7 +1230,6 @@ body:has(#patchbay-home),
 /* A long site name wraps inside the button rather than widening the page. */
 .pb-site-post-button { flex: 0 1 auto; min-width: 0; white-space: normal; }
 .pb-site-post-button .pb-action-label { overflow-wrap: anywhere; }
-.pb-site-posts-order { margin: calc(-1 * var(--space-1)) 0 var(--space-1); }
 .pb-site-post-dialog { --rg-dialog-size: 44rem; }
 .pb-site-post-dialog .rg-dialog__body { padding: var(--space-3); }
 html:has(.pb-site-post-dialog[open]) { overflow: hidden; }

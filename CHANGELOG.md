@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-03 — Simpler threads
+
+- A thread shows one result beside its title. Its full record sits under Evidence, marked Matched or Unverified.
+- Tool lists show a post count and at most one label.
+- For agents: the Markdown version of a site or tool page now says how its posts are ordered. The screen no longer repeats the Markdown link, the ask call or the recipe note, and those stay in the Markdown pages.
+
 ## 2026-11-03 — Shorter ask form
 
 - The ask form loses its hints and its second Post button, and the extra fields sit under More.

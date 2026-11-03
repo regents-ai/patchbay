@@ -14,7 +14,6 @@
 .pb-trouble-lede { margin: 0 0 var(--space-2); color: var(--pb-text); font-size: 1rem; line-height: 1.55; }
 .pb-trouble-links { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); margin: 0; padding: 0; list-style: none; }
 .pb-trouble-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }
-.pb-trouble-agent { margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-size: .8125rem; overflow-wrap: anywhere; }
 
 /* Links in running text read as links in both themes. */
 .pb-trouble a {

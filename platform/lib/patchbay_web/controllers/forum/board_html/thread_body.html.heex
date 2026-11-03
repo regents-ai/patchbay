@@ -14,9 +14,8 @@
     <.tool_chips site={@report.site} names={@report.tool_names} />
     <span class="pb-kind-pill">{thread_kind_label(@report)}</span>
     <span
-      :if={@report.verdict}
+      :if={@report.verdict && is_nil(@report.solution_reply)}
       class={["pb-kind-pill", verdict_class(@report.verdict)]}
-      title="The outcome the author reported"
     >{verdict_label(@report.verdict)}</span>
   </:context>
 
@@ -57,12 +56,6 @@
       class="pb-thread-prose"
       phx-no-format
     >{@report.note}</p>
-    <p
-      :if={!@report.body_markdown && !@report.note && @report.verdict}
-      class="pb-thread-caption"
-    >
-      No written context. The recorded tool outcome is under Evidence below.
-    </p>
     <.post_pictures pictures={@report.pictures} />
     <p :if={@report.page_url} class="pb-post-page">
       <.icon name={:link} />
@@ -88,16 +81,6 @@
   </p>
 
   <.techtree_result :if={@techtree} result={@techtree} digest={@report.techtree_digest} />
-
-  <details :if={@site_edition == :main && about_patchbay?(@report.site)} class="pb-for-agents">
-    <summary><.icon name={:agent} /> For agents</summary>
-    <p>
-      Written {written_on(@report.inserted_at)}.
-      <a href={updates_path(@report.inserted_at)}>{updates_label(@report.inserted_at)}</a>
-      since then. The hosted MCP server offers {count_label(hosted_tool_count(), "tool", "tools")} today.
-      <strong><a href={~p"/start"}>Current recipe: Start</a></strong>
-    </p>
-  </details>
 
   <Regent.Discussion.replies
     id="patchbay-replies"
@@ -148,22 +131,14 @@
 
   <Regent.Primitives.disclosure
     id="report-evidence"
-    summary="Evidence & tool history"
+    summary="Evidence"
     class="pb-thread-evidence"
   >
-    <p class="pb-thread-caption">
-      {cond do
-        @report.verified ->
-          "Page record matched: the receipt matches Patchbay’s recorded call and named checks, not every conclusion in this report."
-
-        @report.thread_kind == :failure_report ->
-          "This is the author’s account. Patchbay has not matched it to a logged call."
-
-        true ->
-          "This is the author’s account. An ordinary question carries no call evidence."
-      end}
-    </p>
     <dl class="pb-evidence-facts">
+      <dt>Record</dt><dd><.checked_mark id="pb-thread-checked" report={@report} /></dd>
+      <dt :if={@report.verdict}>Result</dt><dd :if={@report.verdict}>
+        {verdict_label(@report.verdict)}
+      </dd>
       <dt>Reported</dt><dd>{DateTime.to_iso8601(@report.inserted_at)}</dd>
       <dt>Report ID</dt><dd><code>{@report.id}</code></dd>
       <dt :if={@report.tool}>Tool version</dt><dd :if={@report.tool}>
@@ -191,7 +166,7 @@
   <Regent.Primitives.disclosure
     :if={@site_edition == :main && @report.priority_amount_atomic}
     id="pb-thread-payment"
-    summary="Paid priority · separate from evidence"
+    summary="Paid priority"
     open={not is_nil(@escrow_problem)}
   >
     <p class="pb-thread-caption">

@@ -280,7 +280,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert body =~ "No WebMCP tools found on quiet.example yet."
 
-      assert body =~ "Nothing has been asked or reported about this site yet."
+      assert body =~ "No posts"
     end
 
     test "presents a tool's copy on the tool row", %{conn: conn} do
@@ -1124,7 +1124,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       preview = post(conn, ~p"/threads", %{"ask" => typed, "step" => "preview"})
       html = html_response(preview, 200)
-      assert html =~ "Your post, exactly as everyone will see it"
+      assert html =~ ~s(id="pb-hero-post-title")
       assert html =~ "This looks like a key or sign-in token for an account."
       assert Forum.list_recent_reports!().results == []
 
@@ -1270,8 +1270,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
-      assert body =~ "Patchbay has not matched it to a logged call"
-      refute body =~ "Page record matched"
+      assert body =~ "Not matched to a logged call"
+      refute body =~ "Matches Patchbay's recorded call"
     end
   end
 

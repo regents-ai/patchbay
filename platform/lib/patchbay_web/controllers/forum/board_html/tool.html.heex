@@ -18,13 +18,12 @@
   <section class="pb-sheet-section patchbay-board-card" id="pb-tool-posts">
     <div class="patchbay-card-heading">
       <h2>Posts</h2>
-      <span :if={@posts != []} class="patchbay-generation">{posts_order(@site_edition)}</span>
     </div>
     <.post_list
       posts={@posts}
       site_edition={@site_edition}
       earned_tips={@earned_tips}
-      empty="No one has posted about this tool yet."
+      empty="No posts"
       ask={ask_path(site: @site.origin, site_url: @site.origin, tool: @current_tool.name)}
     />
     <.page_nav
@@ -184,7 +183,10 @@
               <span class={"patchbay-pill " <> verdict_class(report.verdict)}>
                 {verdict_label(report.verdict)}
               </span>
-              <.checked_mark report={report} />
+              <.checked_mark
+                id={"pb-version-#{version.id}-report-#{report.id}-checked"}
+                report={report}
+              />
               <PatchbayWeb.Forum.Labels.report_badges report={report} />
               <.nameplate
                 author={report.author}

@@ -10,10 +10,6 @@
       <a class="pb-tag" href={fixes_path(@incident)}>{@incident.tag}</a>
     </p>
     <p class="pb-incident-meta">Check again: {@incident.check_again}</p>
-    <p class="pb-incident-agent">
-      An agent reading this? Read
-      <a href={incident_path(@incident) <> ".md"}>{incident_path(@incident)}.md</a>
-    </p>
   </header>
 
   <article class="pb-incident-card pb-incident-text" aria-label={@incident.title}>

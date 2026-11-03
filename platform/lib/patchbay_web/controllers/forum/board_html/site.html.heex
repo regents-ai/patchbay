@@ -11,15 +11,12 @@
       <h2>Posts</h2>
       <.site_post_button domain={@domain} />
     </div>
-    <p :if={@posts != []} class="patchbay-generation pb-site-posts-order">
-      {posts_order(@site_edition)}
-    </p>
     <.post_list
       posts={@posts}
       site_edition={@site_edition}
       earned_tips={@earned_tips}
-      empty="Nothing has been asked or reported about this site yet."
-      ask="#pb-site-post"
+      empty="No posts"
+      offer_ask={false}
     />
     <.page_nav
       base={site_path(@site)}

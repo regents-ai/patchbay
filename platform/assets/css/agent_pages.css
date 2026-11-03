@@ -81,7 +81,6 @@
 }
 .pb-agent .pb-fix-form { max-width: 40rem; }
 .pb-agent-start { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: .8125rem; overflow-wrap: anywhere; }
-.pb-agent-start + .pb-agent-start { margin-top: var(--space-1); }
 
 /* Links in running text read as links in both themes. */
 :is(.pb-agent-start, .pb-agent-step, .pb-agent-section-head) a {

@@ -40,7 +40,6 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     assert html =~ emudhra.title
     assert html =~ "Actions"
-    assert html =~ ~s(href="/incidents/emudhra.md")
     assert html =~ ~s(href="#{PostAddress.path(fix)}")
     refute html =~ ~s(href="#{PostAddress.path(other)}")
 

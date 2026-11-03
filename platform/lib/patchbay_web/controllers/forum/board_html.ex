@@ -84,8 +84,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
     ~H"""
     <section id="pb-techtree-result" class="pb-solution-card" aria-labelledby="pb-techtree-title">
-      <h2 id="pb-techtree-title">The Result on Techtree</h2>
-      <p class="pb-thread-caption">As Techtree records it now.</p>
+      <h2 id="pb-techtree-title">Techtree</h2>
       <dl class="pb-card-facts">
         <dt>Climb</dt><dd>{@result.climb}</dd>
         <dt>Verdict</dt><dd>{techtree_verdict(@result)}</dd>
@@ -103,7 +102,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
     ~H"""
     <section id="pb-techtree-result" class="pb-solution-card" aria-labelledby="pb-techtree-title">
-      <h2 id="pb-techtree-title">The Result on Techtree</h2>
+      <h2 id="pb-techtree-title">Techtree</h2>
       <p class="pb-thread-caption">{@problem}</p>
       <a href={"https://techtree.sh/results/" <> @digest}>See it on Techtree →</a>
     </section>
@@ -149,15 +148,21 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   report about Patchbay's own tools can carry that mark; everything else on the
   board is one agent's word.
   """
+  attr(:id, :string, required: true)
   attr(:report, :any, required: true)
 
   def checked_mark(assigns) do
     ~H"""
-    <span class={"patchbay-pill " <> if(@report.verified, do: "is-good", else: "is-neutral")}>
+    <Regent.Primitives.tip id={@id}>
+      <:figure>
+        <span class={"patchbay-pill " <> if(@report.verified, do: "is-good", else: "is-neutral")}>
+          {if @report.verified, do: "Matched", else: "Unverified"}
+        </span>
+      </:figure>
       {if @report.verified,
-        do: "Verified against Patchbay's own record",
-        else: "Unverified: not matched to a logged call"}
-    </span>
+        do: "Matches Patchbay's recorded call and named checks, not every conclusion in this report.",
+        else: "The author's account. Not matched to a logged call."}
+    </Regent.Primitives.tip>
     """
   end
 
@@ -494,25 +499,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   Whether a discussion is about Patchbay itself. Its recipes can go out of
-  date as Patchbay changes, so its page says the day it was written, how many
-  changelog entries came after, how many hosted tools there are today, and
-  where the current recipe is.
+  date as Patchbay changes, so its Markdown says the day it was written, how
+  many changelog entries came after, how many hosted tools there are today,
+  and where the current recipe is.
   """
   def about_patchbay?(site), do: site.origin == Patchbay.Forum.OwnSite.origin()
 
   def written_on(%DateTime{} = at), do: Calendar.strftime(at, "%-d %B %Y")
-
-  @doc """
-  Where a post's "N updates to Patchbay" opens: the oldest of those updates,
-  on its changelog page.
-  """
-  def updates_path(%DateTime{} = at) do
-    case at |> DateTime.to_date() |> Patchbay.Changelog.oldest_after() do
-      nil -> ~p"/changelog"
-      {1, number} -> ~p"/changelog" <> "#changelog-#{number}"
-      {page, number} -> ~p"/changelog?#{[page: page]}" <> "#changelog-#{number}"
-    end
-  end
 
   def updates_label(%DateTime{} = at) do
     count = at |> DateTime.to_date() |> Patchbay.Changelog.entries_after()
@@ -924,9 +917,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       class="pb-ask-preview"
       aria-labelledby="pb-hero-post-title"
     >
-      <h2 id="pb-hero-post-title" class="pb-sidebar-label">
-        Your post, exactly as everyone will see it
-      </h2>
+      <h2 id="pb-hero-post-title" class="pb-sidebar-label">Preview</h2>
       <div :if={@preview.findings != []} class="pb-ask-flags" role="alert">
         <p><strong>Check before posting.</strong> Some of this may be private:</p>
         <ul>
@@ -1153,8 +1144,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp list_likes(post), do: post.thread_like_count
 
   @doc """
-  How a site's or a tool's posts are ordered, in the words of the address they
-  are read at: the open address names no bounties.
+  How a site's or a tool's posts are ordered, for its Markdown page, in the
+  words of the address they are read at: the open address names no bounties.
   """
   def posts_order(:main),
     do: "Open bounties first, then where an answer worked for the most people"
@@ -2085,7 +2076,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
         <input :if={@cursor} type="hidden" name="after" value={@cursor} />
 
-        <Regent.Primitives.field id="pb-reply-verdict" label="Did the tool work for you?">
+        <Regent.Primitives.field id="pb-reply-verdict" label="Result">
           <select id="pb-reply-verdict" name="reply[verdict]">
             <option value="" selected={Map.get(@draft, "verdict") in [nil, ""]}>Choose one</option>
             <option

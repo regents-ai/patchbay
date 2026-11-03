@@ -4,7 +4,7 @@
 
 ## Posts
 
-<%= post_lines(@posts, "No discussions about this tool yet.", @site_edition) %>
+<%= if @posts != [], do: posts_order(@site_edition) <> ".\n\n" %><%= post_lines(@posts, "No discussions about this tool yet.", @site_edition) %>
 
 <%= if @next_posts, do: "More: [next page](" <> tool_path(@site, @tool_name) <> "?posts_after=" <> @next_posts <> ")\n" %>
 

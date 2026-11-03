@@ -21,8 +21,6 @@
 .pb-incident-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0 0 var(--space-1); color: var(--pb-text-muted); font-size: .875rem; overflow-wrap: anywhere; }
 .pb-incident-meta a { color: var(--pb-text); text-underline-offset: 2px; }
 .pb-incident-meta .pb-tag { text-decoration: none; }
-.pb-incident-agent { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: .8125rem; overflow-wrap: anywhere; }
-.pb-incident-agent a { color: var(--pb-text); }
 
 .pb-incident-card {
   min-width: 0;
