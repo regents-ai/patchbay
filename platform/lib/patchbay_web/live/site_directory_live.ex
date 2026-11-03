@@ -153,7 +153,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         class="pb-directory-scroll"
         role="region"
         aria-label="Website listings"
-        tabindex="0"
       >
         <table id="directory-table" class="pb-directory-table">
           <caption id="directory-caption" class="visually-hidden">
@@ -162,8 +161,8 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           <thead id="directory-columns">
             <tr>
               <th scope="col">Website</th>
-              <th scope="col" class="pb-directory-numeric">WebMCP tools</th>
-              <th scope="col" class="pb-directory-numeric">Forum posts</th>
+              <th scope="col" class="pb-directory-numeric">Tools</th>
+              <th scope="col" class="pb-directory-numeric">Posts</th>
             </tr>
           </thead>
           <tbody
@@ -197,26 +196,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   </button>
                   <div class="pb-directory-url">
                     <a href={site.page_url} rel="noopener noreferrer" target="_blank">{site.host}<span class="visually-hidden"> (opens website)</span></a>
-                    <button
-                      :if={@page.cache_available? and site.due? and !site.pending?}
-                      type="button"
-                      class="pb-directory-refresh"
-                      phx-click="update"
-                      phx-value-host={site.host}
-                      phx-disable-with="…"
-                      aria-label={"Refresh " <> site.name}
-                      title="Refresh tools"
-                    >
-                      <.refresh_icon />
-                    </button>
-                    <span
-                      :if={site.pending?}
-                      class="pb-directory-refresh pb-directory-refresh--busy"
-                      role="status"
-                      aria-label={"Refreshing " <> site.name}
-                    >
-                      <.refresh_icon /><span class="visually-hidden">Refreshing</span>
-                    </span>
                     <span
                       :if={site.failed? and !site.pending?}
                       class="pb-directory-failure"
@@ -232,13 +211,43 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   <div class="pb-directory-detail-heading">
                     <span><strong>{site.name}</strong>
                     · {category_label(site.category, @site_edition)}</span>
-                    <a href={"/" <> site.domain}>Open forum →</a>
+                    <div class="pb-directory-detail-links">
+                      <a
+                        class="pb-directory-detail-host"
+                        href={site.page_url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >{site.host}<span class="visually-hidden"> (opens website)</span></a>
+                      <a href={"/" <> site.domain}>Open forum →</a>
+                      <button
+                        :if={@page.cache_available? and site.due? and !site.pending?}
+                        type="button"
+                        class="pb-directory-refresh"
+                        phx-click="update"
+                        phx-value-host={site.host}
+                        phx-disable-with="…"
+                        aria-label={"Refresh " <> site.name}
+                        title="Refresh tools"
+                      >
+                        <.refresh_icon />
+                      </button>
+                      <span
+                        :if={site.pending?}
+                        class="pb-directory-refresh pb-directory-refresh--busy"
+                        role="status"
+                        aria-label={"Refreshing " <> site.name}
+                      >
+                        <.refresh_icon /><span class="visually-hidden">Refreshing</span>
+                      </span>
+                    </div>
                   </div>
                   <p :if={site.reported_observation} class="pb-directory-evidence">
                     Reported: {site.reported_observation["count"]} tools · {site.reported_observation[
                       "source"
                     ]}
-                    <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation["snapshot_date"]}</span>.
+                    <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation[
+                      "snapshot_date"
+                    ]}</span>
                   </p>
                   <p :if={site.failed?} class="pb-directory-notice">
                     The check was incomplete. Previous information is kept.

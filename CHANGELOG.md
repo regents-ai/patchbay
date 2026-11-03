@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-03 — Sites on phones
+
+- The sites list fits a phone: each site shows its name and both counts without scrolling sideways. Its address sits in the site's details.
+
 ## 2026-11-03 — Fewer words
 
 - Setup, agent, sites, priority, contact, troubleshooting and incident pages open straight on their content.
