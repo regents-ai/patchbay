@@ -24,7 +24,6 @@
 }
 .pb-fix-more label { display: block; margin-bottom: .25rem; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-fix-more .rg-muted { margin-top: .3rem; font-size: .6875rem; color: var(--pb-text-muted); }
-.pb-fix-goal-hint { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
 /* The site's tools, A to Z: a scrolling list of rows, each picked or unpicked
    with a press; a picked row takes the accent. */
 .pb-fix-tools { min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -48,8 +47,7 @@
 .pb-hero-pictures-note { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-hero-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 /* The details open from a full-width button whose arrow turns over; open,
-   the button and what it holds read as one box, which ends in its own post
-   button. */
+   the button and what it holds read as one box. */
 .pb-ask-more.pb-hero-details { padding-top: 0; border-top: 0; }
 .pb-hero-details > summary {
   justify-content: space-between; gap: .75rem; padding: 0 1rem;
@@ -63,10 +61,6 @@
 .pb-hero-details[open] { border: 1px solid var(--pb-text); }
 .pb-hero-details[open] > summary { border-width: 0 0 1px; }
 .pb-hero-details > .pb-ask-more-fields { margin-top: 0; padding: 1rem; }
-.pb-hero-details-post { justify-content: flex-end; }
-/* Where the post button sits under the form, the open details' own button
-   takes its place rather than standing just above it. */
-.pb-fix-form:has(.pb-hero-details[open]) > .pb-hero-actions { display: none; }
 @media (prefers-reduced-motion: reduce) { .pb-ask-more-chevron { transition: none; } }
 /* The type of post: four buttons, two by two, one picked at a time. */
 .pb-hero-kind { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; min-width: 0; margin: 0; padding: 0; border: 0; }

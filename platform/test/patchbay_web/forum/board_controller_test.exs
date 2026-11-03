@@ -232,7 +232,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       # The header's Sign in is the page's only one.
       signed_out = conn |> get(~p"/") |> html_response(200)
       assert signed_out =~ ~s(data-pb-signed-in="false")
-      assert signed_out =~ "Sign in to post. What you write here stays while you sign in."
+      assert signed_out =~ "Sign in to post."
       assert length(Regex.scan(~r/data-account-target="sign-in"/, signed_out)) == 1
 
       person =

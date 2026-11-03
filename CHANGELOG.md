@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-03 — Shorter ask form
+
+- The ask form loses its hints and its second Post button, and the extra fields sit under More.
+- The home page's search box and the search window just say Search, and the window's key legend is gone.
+
 ## 2026-11-03 — Fewer labels
 
 - Pages lose the small capital labels over their headings, and the trail of links above them. A page that sits under another keeps one plain link back.

@@ -82,7 +82,7 @@ test.describe("the home page's preview", () => {
     // The post button and the details toggle. On a phone both are under the
     // address; on a desktop the post button stands beside the question and the
     // toggle is under the address.
-    const controls = [await askForPreview(page), page.getByRole("group").getByText("Details help find a solution")]
+    const controls = [await askForPreview(page), page.getByRole("group").getByText("More", {exact: true})]
     const places = () => Promise.all(controls.map(control => control.boundingBox()))
     const before = await places()
     // Leaving the field asks at once, as a tap on the button does; what is

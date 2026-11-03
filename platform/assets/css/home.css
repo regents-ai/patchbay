@@ -156,13 +156,12 @@
 .pb-home-ask .pb-fix-more :is(input:not([type=checkbox]):not([type=radio]), textarea, select) { border-color: var(--pb-text); background: var(--pb-field); }
 .pb-home-ask :where(.pb-hero-details > summary, .pb-fix-more .pb-hero-kind label:not(:has(input:checked))) { background: var(--pb-field); }
 .pb-home-ask .pb-fix-tools-list { background: var(--pb-field); }
-.pb-home-ask .pb-fix-more :is(label, legend), .pb-home-ask .pb-fix-goal-hint { color: var(--pb-text); }
+.pb-home-ask .pb-fix-more :is(label, legend) { color: var(--pb-text); }
 @container pb-page (min-width: 50rem) {
   .pb-home-ask .pb-fix-form { grid-template-columns: minmax(0, 1fr) auto; }
   .pb-home-ask .pb-fix-form > * { grid-column: 1 / -1; }
   .pb-home-ask .pb-fix-form > .pb-fix-ask { grid-area: 1 / 1; }
   .pb-home-ask .pb-fix-form > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; }
-  .pb-home-ask .pb-fix-form:has(.pb-hero-details[open]) > .pb-hero-actions { display: flex; }
 }
 @container pb-page (max-width: 760px) {
   .pb-home-ask .pb-hero-actions .rg-button { flex: 1 1 100%; min-width: 0; padding: .5rem; font-size: 1rem; line-height: 1.15; }

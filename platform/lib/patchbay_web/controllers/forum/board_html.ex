@@ -823,7 +823,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:profile, :any, required: true)
   attr(:directory, :boolean, required: true, doc: "whether the WebMCP Site Directory is offered")
   attr(:hero, :map, required: true)
-  attr(:goal_hint, :string, required: true, doc: "the line under the first box")
 
   attr(:window, :boolean,
     default: false,

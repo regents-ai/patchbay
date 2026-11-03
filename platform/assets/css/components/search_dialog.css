@@ -238,22 +238,6 @@
   overflow-wrap: anywhere;
 }
 
-.shell-search__footer {
-  display: flex;
-  flex: none;
-  gap: 1.25rem;
-  padding: 0.6rem 1.1rem;
-  border-block-start: 1px solid var(--color-border);
-  color: var(--color-fg-muted);
-  font-size: 0.78rem;
-}
-
-.shell-search__footer span {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
 /* A phone has no keys to name, so the box takes the top of the screen and
    closes with a word. */
 @media (max-width: 47.99rem) {
@@ -263,8 +247,7 @@
   }
 
   .shell-search .shell-search__esc,
-  .shell-search .shell-search__enter,
-  .shell-search__footer {
+  .shell-search .shell-search__enter {
     display: none;
   }
 

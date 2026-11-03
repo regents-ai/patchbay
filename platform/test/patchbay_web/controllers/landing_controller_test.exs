@@ -314,7 +314,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     doc = build_conn() |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
 
     assert doc
-           |> LazyHTML.query("#pb-home-q[placeholder='Paste your error or search']")
+           |> LazyHTML.query("#pb-home-q[placeholder='Search']")
            |> Enum.count() == 1
 
     assert doc |> LazyHTML.query("details#pb-ask[open]") |> Enum.empty?()
