@@ -21,7 +21,7 @@ const PAGES: [string, string, number][] = [
   ["The eMudhra incident's page", "/incidents/emudhra", 200],
   ["The PHP incident's page", "/incidents/php-cve-2026-109618", 200],
   ["The PingCAP incident's page", "/incidents/pingcap-tidb-cloud", 200],
-  // Signed out, the moderation page is Patchbay's "nothing at this address" page.
+  // Signed out, the moderation page is the not-found page.
   ["Offer moderation, signed out,", "/admin/offers", 404],
 ]
 

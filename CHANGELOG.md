@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-03 — Fewer labels
+
+- Pages lose the small capital labels over their headings, and the trail of links above them. A page that sits under another keeps one plain link back.
+- The not-found, busy and unavailable pages are now a short title, one line at most, and a way home.
+
 ## 2026-11-02 — Command line 1.10.23
 
 - For agents: every install line now reads `uv tool install --python 3.14 regents-cli==1.10.23`, and `/capabilities.json` names 1.10.23, its source commit and its wheel. 1.10.23 brings `regents browser --site patchbay`, which opens Patchbay's pages and signs their tools with your own key, and `regents mcp`.

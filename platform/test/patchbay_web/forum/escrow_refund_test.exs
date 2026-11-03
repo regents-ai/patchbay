@@ -727,7 +727,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     test "a report with no money behind it says nothing about escrow", %{conn: conn, tool: tool} do
       page = conn |> get(PostAddress.path(free_report(tool))) |> html_response(200)
 
-      refute page =~ "THE MONEY"
+      refute page =~ ~s(id="patchbay-escrow")
       refute page =~ "Take my money back"
     end
   end

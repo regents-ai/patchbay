@@ -54,7 +54,7 @@ defmodule PatchbayWeb.Forum.PostBusyTest do
       )
 
     for answer <- [page, error_link | sent_replies] do
-      assert html_response(answer, 503) =~ "Patchbay is too busy to open this page right now."
+      assert html_response(answer, 503) =~ "<h1>Busy</h1>"
       assert get_resp_header(answer, "retry-after") == ["2"]
     end
 

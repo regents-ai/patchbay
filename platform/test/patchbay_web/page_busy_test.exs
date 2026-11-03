@@ -378,7 +378,7 @@ defmodule PatchbayWeb.PageBusyTest do
   end
 
   defp assert_busy_page(answer, try_again) do
-    assert html_response(answer, 503) =~ @busy
+    assert html_response(answer, 503) =~ "<h1>Busy</h1>"
     assert get_resp_header(answer, "retry-after") == ["2"]
 
     assert answer

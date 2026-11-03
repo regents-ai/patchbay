@@ -350,14 +350,16 @@ body {
 .patchbay-board .patchbay-topbar,
 .patchbay-board .patchbay-card { width: 100%; margin-inline: auto; }
 .patchbay-board .patchbay-card { margin-top: var(--space-2); }
-.patchbay-board .patchbay-kicker a { color: inherit; text-decoration: none; }
-/* On a touch screen a link in a small kicker line (a page's way back, the
-   bench's Patchbay) is 44 px tall, the line with it, so its press never
-   reaches over what sits next to it. */
+/* A page's way back, one plain link above its heading. */
+.pb-back { margin: 0 0 var(--space-1); color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+.pb-back a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+/* A small heading inside a section. */
+.pb-subhead { margin: 0 0 var(--space-1); color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
+/* On a touch screen that link, and the incident line's, is 44 px tall, the line
+   with it, so its press never reaches over what sits next to it. */
 @media (pointer: coarse), (hover: none) {
-  :is(.patchbay-kicker, .pb-wb-kicker, .pb-incident-kicker, .pb-incident-meta) a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+  :is(.pb-back, .pb-incident-meta) a { display: inline-flex; align-items: center; min-height: 2.75rem; }
 }
-.patchbay-board .patchbay-kicker a:hover { text-decoration: underline; }
 .patchbay-board h3 a { color: inherit; text-decoration: none;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .patchbay-board h3 a:hover { text-decoration: underline;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .patchbay-board-list { display: grid; gap: 0; margin: var(--space-1) 0 0; padding: 0; list-style: none; }
@@ -524,8 +526,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   line-height: 1.1;
   overflow-wrap: anywhere;
  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
-.patchbay-board .patchbay-topbar .patchbay-kicker { color: var(--pb-accent-deep); }
-.patchbay-board .patchbay-topbar .patchbay-kicker a { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-topbar .patchbay-generation { color: var(--pb-text-muted); }
 .patchbay-board .patchbay-mark {
   background: #0c0c0c;
@@ -608,7 +608,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
   padding: var(--rg-panel-padding);
   background: var(--pb-accent-wash);
 }
-.pb-changed .patchbay-kicker { color: var(--pb-accent-deep); }
 .pb-changed .patchbay-empty-state { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-change-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1); margin: 0 0 var(--space-1); font-size: .8125rem; }
 .pb-change-title s { color: var(--pb-bad); text-decoration-thickness: 1px; }
@@ -639,19 +638,8 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
    The not-found and unavailable pages: the same paper, one way back.
    ========================================================================== */
 
-.pb-kicker {
-  margin: 0 0 var(--space-1);
-  color: var(--pb-accent-deep);
-  font-family: var(--font-family-ui);
-  font-size: .68rem;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: .16em;
-  text-transform: uppercase;
-}
-
 .pb-error { min-height: 100vh; display: grid; place-items: center; padding: var(--space-4) var(--space-3); }
 .pb-error-inner { width: min(100%, 32rem); }
-.pb-error-links { display: flex; flex-wrap: wrap; gap: var(--space-2); font-size: var(--pb-fs-xs); }
 .pb-error h1 { margin: 0; font-family: var(--font-family-title); font-size: clamp(1.75rem, 5vw, 2.6rem); font-weight: var(--font-weight-regular); line-height: 1.1; letter-spacing: -.028em;  font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; }
 .pb-error-lede { margin: var(--space-2) 0 var(--space-4); color: var(--pb-text-muted); font-size: .95rem; line-height: 1.6; }
 
@@ -723,7 +711,6 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 
 }
 .pb-receipt-stub::before { content: none; }
-.pb-receipt-stub .patchbay-kicker { margin: 0; }
 .pb-receipt-value {
   color: var(--pb-text);
   font: var(--font-weight-semibold) .8rem/1.35 var(--font-family-mono);
@@ -1317,7 +1304,6 @@ html:has(.pb-site-post-dialog[open]) { overflow: hidden; }
 
 #report-evidence .patchbay-facts > div > span:first-child { flex: 0 0 6rem; }
 #report-evidence time { min-width: 0; text-align: right; font: var(--pb-fs-micro)/1.5 var(--font-family-mono); }
-#patchbay-report .patchbay-result-box .patchbay-kicker { color: var(--pb-text-muted); }
 #patchbay-replies .rg-empty { padding: var(--space-2) 0; text-align: left; font-size: var(--pb-fs-xs); }
 .pb-full-evidence:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 3px; }
 
@@ -1389,7 +1375,6 @@ h1, h2, h3, h4, h5, h6 {
 .pb-section-head { flex-wrap: wrap; }
 .pb-search-field { flex: 1 1 14rem; min-width: 0; font-size: var(--pb-fs-xs); }
 .pb-error-inner { padding: var(--rg-panel-padding); display: grid; gap: var(--space-3); }
-.pb-error-inner .pb-kicker { margin: 0; }
 .patchbay-notice.rg-panel { background: transparent; border: 0; }
 .patchbay-card { min-width: 0; }
 .patchbay-facts > div { flex-wrap: wrap; }
@@ -1710,9 +1695,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .pb-wb-head { display: grid; gap: var(--space-1); }
-.pb-wb-kicker { margin: 0; color: var(--pb-wb-violet); font: 400 .6875rem/1.4 var(--font-family-mono); letter-spacing: .28em; text-transform: uppercase; }
-.pb-wb-kicker a { color: inherit; text-decoration: none; }
-.pb-wb-kicker a:hover { text-decoration: underline; }
 .pb-wb-head h1 { min-width: 0; margin: 0; padding-block: .08em; font: 400 clamp(2rem, 5vw, 3.25rem)/1.2 var(--font-family-title); letter-spacing: -.035em; overflow-wrap: anywhere; }
 .pb-wb-lede { max-width: 46rem; margin: 0; color: var(--pb-wb-ink-soft); font-size: var(--pb-fs-md); line-height: 1.5; }
 .pb-wb-sheet .rg-disclosure a { color: inherit; text-decoration: underline; text-decoration-color: currentColor; text-underline-offset: .2em; white-space: nowrap; }

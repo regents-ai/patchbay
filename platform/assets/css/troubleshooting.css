@@ -2,7 +2,6 @@
    see, why and what to do for each problem, in the site's own look. */
 .pb-trouble { padding: var(--space-4) 0 var(--space-6); }
 .pb-trouble > * { max-width: 52rem; }
-.pb-trouble-kicker { margin: 0 0 var(--space-2); color: var(--pb-text-muted); font-size: .875rem; }
 .pb-trouble-head h1 {
   margin: 0 0 var(--space-2);
   font-family: var(--font-family-title);
@@ -25,7 +24,6 @@
   touch-action: manipulation;
 }
 .pb-trouble a.rg-button { text-decoration: none; }
-.pb-trouble-kicker a { display: inline-flex; align-items: center; min-height: 2.75rem; color: inherit; }
 
 .pb-trouble-first, .pb-trouble-toc { margin-top: var(--space-5); }
 :is(.pb-trouble-first, .pb-trouble-toc, .pb-trouble-problem, .pb-trouble-ask) h2 {

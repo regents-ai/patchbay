@@ -1,7 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="credits-help">
   <.board_header>
     <:title>Credits help</:title>
-    <:crumbs><a href={~p"/"}>ALL QUESTIONS</a> / CREDITS HELP</:crumbs>
   </.board_header>
 
   <p class="pb-dir-lede">
@@ -61,10 +60,7 @@
     id="credits-help-posts"
   >
     <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">{if @admin?, do: "EVERYONE'S POSTS", else: "YOUR POSTS"}</p>
-        <h2>{if @admin?, do: "All posts", else: "Your posts"}</h2>
-      </div>
+      <h2>{if @admin?, do: "All posts", else: "Your posts"}</h2>
       <span class="patchbay-generation">Newest first</span>
     </div>
 

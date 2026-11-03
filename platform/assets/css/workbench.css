@@ -129,7 +129,6 @@
 .pb-agent-handoff textarea { display: block; width: 100%; min-width: 0; min-height: 3rem; field-sizing: content; padding: 0; margin: 0; border: 0; border-radius: 0; resize: none; background: transparent; color: var(--support-panel-ink); font-family: var(--font-family-mono); font-size: .8125rem; line-height: 1.65; overflow-wrap: anywhere; }
 .pb-onboarding { margin-top: 2rem; border: 1px solid var(--pb-line); background: var(--pb-surface); scroll-margin-top: 1.5rem; }
 .pb-onboarding-head { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 1.5rem 2rem; border-bottom: 1px solid var(--pb-line); }
-.pb-onboarding-head .patchbay-kicker { margin: 0 0 .5rem; font-size: .625rem; letter-spacing: .1em; color: var(--pb-text-muted); }
 .pb-onboarding-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: 1.75rem; line-height: 1.2; }
 .pb-onboarding-head > a { flex: 0 0 auto; font-size: .8125rem; }
 .pb-onboarding-steps { margin: 0; padding: 0; list-style: none; }

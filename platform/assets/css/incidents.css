@@ -8,8 +8,6 @@
   padding: var(--space-4) var(--rg-panel-padding) var(--space-6);
   font-family: var(--font-family-sans);
 }
-.pb-incident-kicker { margin: 0 0 var(--space-2); color: var(--pb-text-muted); font-size: .875rem; }
-.pb-incident-kicker a { color: inherit; text-underline-offset: 2px; }
 .pb-incident-head h1 {
   margin: 0 0 var(--space-2);
   font-family: var(--font-family-title);

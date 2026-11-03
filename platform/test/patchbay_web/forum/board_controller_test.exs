@@ -137,7 +137,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert String.starts_with?(clear, "/")
       refute clear =~ "q="
 
-      refute html =~ "This page is unavailable"
+      refute html =~ ~s(class="pb-error")
     end
   end
 
@@ -321,13 +321,13 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert get_resp_header(page, "x-robots-tag") == ["noindex"]
 
       assert conn |> get("/not-a-host") |> html_response(404) =~
-               "There is nothing at this address."
+               "Not found"
     end
 
     test "a Patchbay page name ending in .md is a missing page", %{conn: conn} do
       for path <- ["/docs.md", "/wallet-bench.md", "/blog.md", "/help.md"] do
         {404, _headers, body} = assert_error_sent(404, fn -> get(conn, path) end)
-        assert body =~ "There is nothing at this address."
+        assert body =~ "Not found"
       end
     end
 
@@ -406,7 +406,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
-      assert body =~ "WHAT CHANGED"
+      assert body =~ "Changes"
       assert body =~ ~s(<s>Start checkout</s>)
       assert body =~ ~s(<ins>Begin checkout</ins>)
 

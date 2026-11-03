@@ -15,7 +15,7 @@ defmodule PatchbayWeb.TrailingSlashTest do
     for path <- ["/about/", "/contact/", "/wallet-bench/", "/llms.txt/"] do
       response = request(path, "text/html")
       assert response.status == 404
-      assert response.resp_body =~ "There is nothing at this address."
+      assert response.resp_body =~ "Not found"
     end
   end
 
@@ -31,7 +31,7 @@ defmodule PatchbayWeb.TrailingSlashTest do
     for path <- ["//blog", "//blog/robots.txt", "/blog//", "/sites//shop.example"] do
       response = request(path, "text/html")
       assert response.status == 404
-      assert response.resp_body =~ "There is nothing at this address."
+      assert response.resp_body =~ "Not found"
     end
   end
 

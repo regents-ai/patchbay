@@ -7,23 +7,23 @@ defmodule PatchbayWeb.ErrorHTMLTest do
   test "renders 404.html as a styled page with a way home" do
     html = render_to_string(PatchbayWeb.ErrorHTML, "404", "html", conn: build_conn())
 
-    assert html =~ "There is nothing at this address."
+    assert html =~ "Not found"
     assert html =~ ~s{class="pb-error"}
     assert html =~ ~r{<link rel="stylesheet" href="/assets/js/app.css[^"]*">}
 
     assert html =~
-             ~r{<a class="pb-cta rg-button rg-button--primary" href="/">\s*<span class="rg-button__label">Back to questions</span>\s*</a>}
+             ~r{<a class="pb-cta rg-button rg-button--primary" href="/">\s*<span class="rg-button__label">Home</span>\s*</a>}
   end
 
   test "an unknown address renders the styled not-found page", %{conn: conn} do
     conn = get(conn, "/no-such-page")
 
-    assert html_response(conn, 404) =~ "There is nothing at this address."
+    assert html_response(conn, 404) =~ "Not found"
   end
 
   test "renders 500.html" do
     html = render_to_string(PatchbayWeb.ErrorHTML, "500", "html", conn: build_conn())
-    assert html =~ "This page is unavailable."
+    assert html =~ "Unavailable"
     assert html =~ ~s(href="")
     assert html =~ ~s(role="alert")
     refute html =~ "No reports yet"

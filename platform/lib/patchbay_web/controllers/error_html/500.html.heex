@@ -6,25 +6,18 @@
     <title>Page unavailable · Patchbay</title>
     <meta name="robots" content="noindex" />
     <link rel="stylesheet" href={~p"/assets/js/app.css"} />
-    <script defer src={~p"/assets/js/theme.js"}>
-    </script>
   </head>
   <body>
     <Regent.Structure.frame>
       <Regent.Structure.row rail={false}>
         <main class="pb-error">
           <Regent.Structure.panel class="pb-error-inner">
-            <p class="pb-kicker">Patchbay · 500</p>
-            <h1>This page is unavailable.</h1>
+            <h1>Unavailable</h1>
             <Regent.Primitives.notice tone="error">
-              The data could not be loaded. Try again with the same address and search.
+              This page couldn't load.
             </Regent.Primitives.notice>
             <a class="pb-cta rg-button rg-button--primary" href=""><span class="rg-button__label">Try again</span></a>
-            <a href="/">Back to questions</a>
-            <Regent.ThemeToggle.button
-              id="pb-error-theme-toggle"
-              data-pb-theme-toggle
-            />
+            <a href="/">Home</a>
           </Regent.Structure.panel>
         </main>
       </Regent.Structure.row>

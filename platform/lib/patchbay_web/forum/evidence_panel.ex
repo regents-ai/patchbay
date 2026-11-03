@@ -17,10 +17,7 @@ defmodule PatchbayWeb.Forum.EvidencePanel do
       aria-labelledby="pb-evidence-title"
     >
       <div class="patchbay-card-heading">
-        <div>
-          <p class="patchbay-kicker">EVIDENCE</p>
-          <h2 id="pb-evidence-title">Record</h2>
-        </div>
+        <h2 id="pb-evidence-title">Record</h2>
       </div>
       <ol class="pb-evidence-levels">
         <li :for={level <- @levels} class={["pb-evidence-level", level.held? && "is-held"]}>

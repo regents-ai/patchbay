@@ -272,7 +272,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def what_changed(assigns) do
     ~H"""
     <div class="pb-changed">
-      <p class="patchbay-kicker">WHAT CHANGED</p>
+      <h4 class="pb-subhead">Changes</h4>
       <p :if={is_nil(@change)} class="patchbay-empty-state">
         This is the earliest version of this tool the board has, so there is nothing before it to read against.
       </p>
@@ -438,7 +438,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "The page's heading: plain words, or a name drawn as an address."
   )
 
-  slot(:crumbs, required: true)
+  slot(:back)
   slot(:meta)
 
   def board_header(assigns) do
@@ -448,7 +448,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <div class="patchbay-brand">
           <.crown_mark />
           <div>
-            <p class="patchbay-kicker">{render_slot(@crumbs)}</p>
+            <p :if={@back != []} class="pb-back">{render_slot(@back)}</p>
             <h1>{render_slot(@title)}</h1>
           </div>
         </div>
@@ -1099,7 +1099,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
     ~H"""
     <div class="pb-schema">
-      <p class="patchbay-kicker">{String.upcase(@label)}</p>
+      <h3 class="pb-subhead">{@label}</h3>
       <p :if={@fields == []} class="patchbay-muted">
         {@schema["description"] || "No named fields. See the raw schema below."}
       </p>
@@ -1556,10 +1556,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       data-payments-enabled={to_string(@payments_enabled)}
     >
       <div class="patchbay-card-heading">
-        <div>
-          <p class="patchbay-kicker">FUNDING</p>
-          <h3>Balance</h3>
-        </div>
+        <h3>Balance</h3>
       </div>
       <dl class="pb-fund-facts">
         <div>
@@ -1731,8 +1728,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def reported_copy(assigns) do
     ~H"""
     <div :if={@tool.title || @tool.description} class="patchbay-reported-copy">
-      <p :if={@own?} class="patchbay-kicker">HOW PATCHBAY DESCRIBES THIS VERSION</p>
-      <p :if={!@own?} class="patchbay-kicker">HOW AN AGENT DESCRIBED THIS VERSION</p>
+      <h4 :if={@own?} class="pb-subhead">Description</h4>
+      <h4 :if={!@own?} class="pb-subhead">Reported description</h4>
       <p :if={@tool.title} class="patchbay-board-facts">{@tool.title}</p>
       <p :if={@tool.description} class="patchbay-muted">{@tool.description}</p>
     </div>
@@ -2172,10 +2169,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       id="patchbay-escrow"
     >
       <div class="patchbay-card-heading">
-        <div>
-          <p class="patchbay-kicker">THE MONEY</p>
-          <h3>{escrowed(@report)} USDC on this report</h3>
-        </div>
+        <h3>{escrowed(@report)} USDC on this report</h3>
       </div>
 
       <p class="patchbay-board-facts">{escrow_standing_said(@report)}</p>
