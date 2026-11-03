@@ -4,6 +4,18 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v335, 3 Nov 2026
+
+- Commit: 4a7586b563c0674a617e008571683ab4f2e1ad11 (image `4a7586b`), on main directly above the v334 release row. Released 20:00Z. Machine replaced blue-green, one machine in iad.
+- Screens, simple pass group 3: a thread shows one result beside its title (solved, otherwise the reported outcome); the outcome moves to a Result row under Evidence, with a Record row marked Matched or Unverified whose press explains it, replacing the evidence captions; Evidence and Paid priority are the disclosure names. Site and tool pages lose the post-order sentence, and a site page with no posts offers only Post about. Tool rows show a post count and at most one label; source and last seen stay in the site's Markdown and on the tool page. Names: Preview, Result, Answer, Techtree. "An agent reading this?", the thread's "For agents" note and the site panel's "Agent ask" leave the screen. Profile names stay with the template chief, since they sit on the account page.
+- Agents: nothing leaves the Markdown pages. The site and tool Markdown pages now state the post order, read from `posts_order/1`. "Copy for your agent" still carries the ask call.
+- Removed as unused: `updates_path/1`, `Patchbay.Changelog.oldest_after/1` and the test that exercised them.
+- Checks: make check at 4a7586b5, partition _win3: ExUnit 992 (958 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15. The first full check of this work exited 2 and never reached main: three tests named what the cuts removed (the updates link, the incident's Markdown link, the tool row's checked date, which that test now reads from Markdown), and the walk found the agent page's Troubleshooting link under 44 px on a phone, now fixed by the touch rule.
+- Live, 20:03Z, headless Chromium at 390 and 1280: /keyfleet.ai has one post button and no Agent ask; an open thread and a solved thread each show one result; Evidence opens and its mark explains itself; /hermes, /incidents, /incidents/emudhra and /help answer 200 with no agent line; no page errors, no sideways scroll. `/keyfleet.ai` as Markdown still carries `ask_question` and `/incidents.md` answers. `/capabilities.json` build 4a7586b5, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing. No post was published, and sign-in was not walked live.
+- Known: on a phone the mark's explanation runs to the screen edge with its text in full; the shared tip's placement belongs to the template.
+- Migrations: none.
+- Rollback: v334, image `5403abd`.
+
 ## v334, 3 Nov 2026
 
 - Commit: 5403abd5e574be5b4a39b7d5ef6d49b381fe8f1e (image `5403abd`), on main directly above the v333 release row. Released 19:26Z. Machine replaced blue-green, one machine in iad.
