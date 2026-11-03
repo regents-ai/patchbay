@@ -4,6 +4,17 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v333, 3 Nov 2026
+
+- Commit: 2c617c09a3dd68f7689b6da9ea7c07f8fb6ab311 (image `2c617c0`), on main directly above the v332 release row. Released 18:58Z. Machine replaced blue-green, one machine in iad.
+- Screens, simple pass group 1: banners lose the breadcrumb line and the small capital labels over headings go; a page below another keeps one plain link back (tool, tool and report errors, incident, Credits help, troubleshooting, Wallet Bench method); labels that were the only heading become small plain headings ("WHAT CHANGED" is now "Changes"). HTML 404, 429, 500 and 503 are a title, one line at most and a way home, without the theme switch. `.patchbay-kicker` stays only for the two account page labels, which are the template chief's.
+- Build: `js/theme.ts` is no longer a separate script; `app.ts` still imports it.
+- Scan: 11 `.sobelow-skips` rows moved with their lines; the same raw calls, no new ones.
+- Checks: make check at 2c617c09, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15. The first full check of this work exited 2: the scan rows, the walk's underlined-link rule on troubleshooting pages (`.pb-back a` is now underlined), and one desktop motion step ("a refused name shakes its reason") that then held 9 of 9 repeats alone and in the next full check. WebKit not run on the Mac.
+- Live, 19:00Z, headless Chromium at 390 and 1280: 14 pages answer as expected with no page errors, no sideways scroll and none of the old labels; `/no-such-page` and `//blog` show "Not found". The Markdown and JSON not-found answers are unchanged. `/capabilities.json` build 2c617c09, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing. WebMCP tools not listed live: this Chromium has no `navigator.modelContext`, and the walk's WebMCP steps ran locally. Sentinel read asked for.
+- Migrations: none.
+- Rollback: v332, image `b1f13fb`.
+
 ## v332, 2 Nov 2026
 
 - Commit: b1f13fb8c3bdf4ce4f0943e07d640e91e6f54d43 (image `b1f13fb`), on main after the v331 release row. Released 18:31Z. Machine replaced blue-green, one machine in iad.
