@@ -4,6 +4,15 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v334, 3 Nov 2026
+
+- Commit: 5403abd5e574be5b4a39b7d5ef6d49b381fe8f1e (image `5403abd`), on main directly above the v333 release row. Released 19:26Z. Machine replaced blue-green, one machine in iad.
+- Screens, simple pass group 2: the ask form loses the line under its first box, the picture and tag hints and the Post button inside its details, whose toggle now says More; the home search box and the search window say Search; the window loses its key legend and its no-results advice; the home intro is one sentence. A refused picture still says the limit.
+- Checks: make check at 5403abd5, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15. The first full check of this work exited 2 and never reached main: the walk's draft steps found no Post button with the details open on a phone, an agent page and a site's post window, because a rule hid the form's own button for the one removed. That rule is gone. WebKit not run on the Mac.
+- Live, 19:28Z, headless Chromium at 390 and 1280: one Post button in view with More open on the home form, the /keyfleet.ai window and /hermes; search answers 6 results for "keyfleet"; no page errors, no sideways scroll. `/capabilities.json` build 5403abd5, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing. No post was published, and sign-in was not walked live.
+- Migrations: none.
+- Rollback: v333, image `2c617c0`.
+
 ## v333, 3 Nov 2026
 
 - Commit: 2c617c09a3dd68f7689b6da9ea7c07f8fb6ab311 (image `2c617c0`), on main directly above the v332 release row. Released 18:58Z. Machine replaced blue-green, one machine in iad.
