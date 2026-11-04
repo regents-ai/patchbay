@@ -3,7 +3,9 @@ defmodule Patchbay.Changelog do
 
   @path Path.expand("../../../CHANGELOG.md", __DIR__)
   @external_resource @path
-  @document @path |> File.read!() |> MDEx.parse_document!()
+  @document @path
+            |> File.read!()
+            |> MDEx.parse_document!(extension: [inline_code_attributes: false])
   @intro Enum.take_while(@document.nodes, &(!match?(%MDEx.Heading{level: 2}, &1)))
   @dated @document.nodes
          |> Enum.drop(length(@intro))

@@ -10,7 +10,7 @@ defmodule Patchbay.About do
   @path Application.app_dir(:patchbay, "priv/public/about.md")
   @external_resource @path
   @markdown File.read!(@path)
-  @options [extension: [table: true], render: [unsafe: false]]
+  @options [extension: [table: true, inline_code_attributes: false], render: [unsafe: false]]
 
   [before_payments, payments_on] = String.split(@markdown, "\n## Payments\n")
   [payments, after_payments] = String.split(payments_on, "\n## ", parts: 2)

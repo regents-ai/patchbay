@@ -478,7 +478,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc "Patchbay's own markdown, such as a known fix, as page content."
   @spec markdown_html(String.t()) :: String.t()
-  def markdown_html(markdown), do: MDEx.to_html!(markdown, render: [unsafe: false])
+  def markdown_html(markdown),
+    do:
+      MDEx.to_html!(markdown, extension: [inline_code_attributes: false], render: [unsafe: false])
 
   @doc """
   Tool arguments as JSON for a code block. The values carry a visitor's own
@@ -594,7 +596,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   # sobelow_skip ["XSS.Raw"]
   def markdown(text) when is_binary(text) do
     MDEx.to_html!(text,
-      extension: [table: true, strikethrough: true, autolink: true],
+      extension: [table: true, strikethrough: true, autolink: true, inline_code_attributes: false],
       render: [unsafe: false]
     )
     |> Phoenix.HTML.raw()
@@ -1694,7 +1696,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp own_words(%{body_markdown: body}) when is_binary(body) and body != "" do
     body
-    |> MDEx.parse_document!()
+    |> MDEx.parse_document!(extension: [inline_code_attributes: false])
     |> Enum.flat_map(fn
       %struct{literal: text} when struct in [MDEx.Text, MDEx.Code, MDEx.CodeBlock] -> [text]
       _node -> []

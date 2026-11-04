@@ -4,7 +4,7 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "644753647a6e3ab6bf945053e08d084bc665eb4f"
+  @elixir_utils_ref "d73265f1eec3b1ce786692de1b31fa151e40203f"
   @design_system "https://github.com/regents-ai/design-system.git"
   @design_system_ref "df51d803ee26e5dd83ffe8d6cef4ee5e3f9d5b65"
 
@@ -93,12 +93,12 @@ defmodule Patchbay.MixProject do
       {:nebulex, "~> 3.0"},
       {:nebulex_local, "~> 3.0"},
       {:ash_oban, "~> 0.10.3"},
-      {:igniter, "== 0.8.4", only: [:dev, :test], runtime: false},
+      {:igniter, "== 0.8.5", only: [:dev, :test], runtime: false},
       {:simple_sat, "~> 0.1"},
       # Shared baseline: compatible with Cachex 4.1.1 and Nebulex Distributed.
       {:ex_hash_ring, "== 6.0.4"},
       {:lazy_html, ">= 0.1.0", only: :test},
-      {:phoenix_live_dashboard, "~> 0.8.3"},
+      {:phoenix_live_dashboard, "~> 0.9"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},
       {:req, "== 0.7.5"},
@@ -113,10 +113,10 @@ defmodule Patchbay.MixProject do
       # Checks a hosted tool's arguments against its input schema in the manifest
       # (`PatchbayWeb.MCP.Arguments`); the tests also check answers against each
       # tool's output schema with it.
-      {:jsv, "~> 0.26.2"},
+      {:jsv, "~> 0.27"},
       {:logger_json, "~> 7.0"},
       {:error_tracker, "~> 0.9"},
-      {:mdex, "== 0.14.2"},
+      {:mdex, "== 0.14.6"},
       {:domainatrex, "~> 3.2"},
       {:regent_privy,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},
@@ -142,8 +142,8 @@ defmodule Patchbay.MixProject do
       {:hammer, "~> 7.5"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
-      {:sobelow, "~> 0.16", only: [:dev, :test], runtime: false},
-      {:usage_rules, "~> 1.2.8", only: [:dev, :test], runtime: false},
+      {:sobelow, "~> 0.18", only: [:dev, :test], runtime: false},
+      {:usage_rules, "~> 1.3", only: [:dev, :test], runtime: false},
       {:credo_ash,
        git: @elixir_utils,
        ref: @elixir_utils_ref,

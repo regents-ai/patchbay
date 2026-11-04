@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-04 — Library updates
+
+- Patchbay moved to the newest versions of its libraries, including a fix to how database queries are reused. Pages, tools and answers stay the same.
+
 ## 2026-11-03 — Sites on phones
 
 - The sites list fits a phone: each site shows its name and both counts without scrolling sideways. Its address sits in the site's details.
