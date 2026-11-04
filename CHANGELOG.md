@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-04 — Sign-in updates
+
+- Sign-in and wallets moved to the newest versions of their libraries. Signing in and wallet steps work as they did.
+
 ## 2026-11-04 — Sites list
 
 - Patchbay, Regents, Autolaunch and Techtree are on the sites list.
