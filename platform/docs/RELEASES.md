@@ -7,7 +7,7 @@ and agents. This file is not served.
 ## v342, 4 Nov 2026
 
 - Commit: 6950a1d5740e97e2c9c1f4420a415dd070261fe3 (image `6950a1d`), on main directly above the v341 record. Released 20:46Z. Machine replaced blue-green, one machine in iad, check passing. Rollback: v341, image `1b779a6`. No migrations, no secret changes.
-- WebMCP token: Sean's new origin-trial token, in source as before (public header, DEPLOY.md section 6), for https://patchbay.help:443, expiring 2027-03-30. Replaces the one that ran out on 17 Nov 2026.
+- WebMCP token: Sean's new origin-trial token, in source as before (public header, DEPLOY.md section 6), for https://patchbay.help:443, expiring 2027-03-30. Replaces the one due to run out on 17 Nov 2026.
 - Home Connect card (Sean's item 4 and 4a): the ten agent types the account's pairing box supports plus the command line, each a logo tile with a name on hover and one line to copy; "Learn more" to `/docs`. The home no longer links `/start`, which stays for the pages that still link it. Commands only where a Patchbay guide gives one (Claude Code, Codex, Hermes, command line); OpenClaw, IronClaw, Pi and Any agent carry a written message not yet tried on those agents.
 - Hex: the image's `mix local.hex --force` installed Hex 2.6.0 (build log), the same as local.
 - Check: `make check` at 6950a1d5, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 5cd1f0b6, CLI commands ok, hex.audit clean. Dependabot 0 open before the release.
