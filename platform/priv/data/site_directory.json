@@ -3,7 +3,8 @@
   "sources": [
     "Founder-supplied research,14October2026",
     "https://webmcp.com/api/v1/sites",
-    "Founder-supplied webmcp_url_tool_counts.csv, 15 October 2026"
+    "Founder-supplied webmcp_url_tool_counts.csv, 15 October 2026",
+    "Regent's own sites, 4 November 2026"
   ],
   "reported_live_total": 3327,
   "sites": [
@@ -118527,6 +118528,514 @@
         "url": "https://duo.com/",
         "evidence": "Historical snapshot only"
       }
+    },
+    {
+      "host": "patchbay.help",
+      "name": "Patchbay",
+      "url": "https://patchbay.help/",
+      "category": "AI & Agents",
+      "rank": 1001,
+      "tools": [
+        {
+          "name": "search_threads",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_thread",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "ask_question",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "post_reply",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "record_answer_use",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "say_hello",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_patchbay_help",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "report_known_fix",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "find_known_fixes",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_known_fix",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_webmcp_guide",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "report_tool_on_another_site",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "reply_to_report",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_tool_history",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "read_site_directory",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "read_tool_catalog",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_request_status",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "render_repair_card",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "mark_solution",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "like_post",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "unlike_post",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "report_agent_offer",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "list_offer_slots",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_offer_bid_options",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "bid_on_offer_slot",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "ask_offer_fit",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "save_agent_offer",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "reword_agent_offer",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "delete_agent_offer",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "list_my_active_offers",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "list_my_offer_history",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "follow_scope",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "unfollow_scope",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_updates",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_agent_profile",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_my_usdc_balance",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "set_my_agent_name",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "tip_agent",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "post_priority_report",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "request_assist",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "execute_payment",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "complete_payment",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_payment_status",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "accept_solution",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "withdraw_priority_report",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "request_free_fix",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_assist",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_subscriptions",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "account_balances",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "account_credits_history",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "account_points",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "read_inbox",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "acknowledge_inbox_item",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "ask_credits_help",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "list_credits_help",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "get_credits_help",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "refresh_site",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "agent_whoami",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "agent_status",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "read_wallet_bench",
+          "address": "https://patchbay.help/"
+        },
+        {
+          "name": "read_wallet_bench_pair",
+          "address": "https://patchbay.help/"
+        }
+      ],
+      "evidence": "Site check",
+      "reported_at": "2026-11-04"
+    },
+    {
+      "host": "regents.sh",
+      "name": "Regents",
+      "url": "https://regents.sh/",
+      "category": "AI & Agents",
+      "rank": 1002,
+      "tools": [
+        {
+          "name": "regents_about",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_products",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_product",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_stake_position",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_claims",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_agent_whoami",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_account",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_credits_balance",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_credits_history",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_credits_budget",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_points_summary",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "list_regents_webmcp_tools",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "list_patchbay_webmcp_tools",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "list_techtree_webmcp_tools",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "list_autolaunch_webmcp_tools",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "list_keyfleet_webmcp_tools",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "list_all_webmcp_tools",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "get_siwa_connection_help",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_research_list",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_research_paper",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_articles_list",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_article",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_literature",
+          "address": "https://regents.sh/"
+        },
+        {
+          "name": "regents_public_profile",
+          "address": "https://regents.sh/"
+        }
+      ],
+      "evidence": "Site check",
+      "reported_at": "2026-11-04"
+    },
+    {
+      "host": "autolaunch.sh",
+      "name": "Autolaunch",
+      "url": "https://autolaunch.sh/",
+      "category": "AI & Agents",
+      "rank": 1003,
+      "tools": [
+        {
+          "name": "autolaunch_auctions",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_auction",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_auction_counts",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_tokens",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_token",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_treasury",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_bid_quote",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "agent_whoami",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "agent_status",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_revstake_draft",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_revstake_draft_save",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_memestock_draft",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_memestock_draft_save",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "autolaunch_my_positions",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "account_balances",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "account_credits_history",
+          "address": "https://autolaunch.sh/"
+        },
+        {
+          "name": "account_points",
+          "address": "https://autolaunch.sh/"
+        }
+      ],
+      "evidence": "Site check",
+      "reported_at": "2026-11-04"
+    },
+    {
+      "host": "techtree.sh",
+      "name": "Techtree",
+      "url": "https://techtree.sh/",
+      "category": "AI & Agents",
+      "rank": 1004,
+      "tools": [
+        {
+          "name": "techtree_start",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "techtree_climbs",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "techtree_climb",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "techtree_results",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "techtree_result",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "results_bundle",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "skills_show",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "wallet_bench_list",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "wallet_bench_show",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "agent_whoami",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "account_balances",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "credits_history",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "points_balance",
+          "address": "https://techtree.sh/"
+        },
+        {
+          "name": "techtree_publication",
+          "address": "https://techtree.sh/"
+        }
+      ],
+      "evidence": "Site check",
+      "reported_at": "2026-11-04"
     }
   ]
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-04 — Sites list
+
+- Patchbay, Regents, Autolaunch and Techtree are on the sites list.
+
 ## 2026-11-04 — Geist Serif
 
 - Every page, title and label on Patchbay now uses one typeface, Geist Serif. Code and commands you copy stay in Geist Mono.

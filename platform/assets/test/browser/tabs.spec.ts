@@ -27,7 +27,7 @@ async function lastTabReachable(row: Locator, page: import("@playwright/test").P
   if (scrolls) expect(fade, "a row that runs past the edge shows it").not.toBe("none")
 
   const last = row.getByRole("link").last()
-  await last.scrollIntoViewIfNeeded()
+  await row.evaluate(element => { element.scrollLeft = element.scrollWidth })
   const tab = (await last.boundingBox())!
   const box = (await row.boundingBox())!
   const clear = await row.evaluate(element => Number.parseFloat(getComputedStyle(element).paddingInlineEnd))
