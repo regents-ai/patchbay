@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-04 — Geist Serif
+
+- Every page, title and label on Patchbay now uses one typeface, Geist Serif. Code and commands you copy stay in Geist Mono.
+- The picture shown when you share a Patchbay link uses it too.
+
 ## 2026-11-04 — Library updates
 
 - Patchbay moved to the newest versions of its libraries, including a fix to how database queries are reused. Pages, tools and answers stay the same.

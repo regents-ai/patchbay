@@ -32,7 +32,7 @@
 
 /* The side sheets: the shared sheet, flat, with rules between their parts. */
 .pb-home-sheet { padding: var(--space-4); }
-.pb-home-sheet h2 { margin: 0 0 var(--space-2); font-size: var(--pb-fs-sm, .9375rem); font-weight: var(--font-weight-semibold); }
+.pb-home-sheet h2 { margin: 0 0 var(--space-2); font-size: var(--pb-fs-sm, .9375rem); }
 
 /* The crowd peeks over the sheet's heading; no words sit under it. */
 .pb-home-crowd { display: flex; align-items: flex-end; gap: .5rem; margin-bottom: var(--space-2); }
@@ -48,7 +48,7 @@
 }
 .pb-home-lede { margin: 0; max-width: 46ch; color: var(--pb-text); font-size: .9375rem; line-height: 1.55; }
 .pb-home-setup { margin: var(--space-1) 0 0; font-size: var(--pb-fs-xs); }
-.pb-home-setup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text); font-weight: var(--font-weight-semibold); }
+.pb-home-setup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text); }
 
 /* The connect box: a tab for each agent program, then its line and a copy
    button. The tabs are radio buttons, laid out as a row of tabs; the open
@@ -66,7 +66,7 @@
   color: var(--pb-text-muted); font-size: .8125rem; cursor: pointer;
 }
 .pb-connect-tabs > label:hover { color: var(--pb-text); }
-.pb-connect-pick:checked + label { border-bottom-color: currentColor; color: var(--pb-text); font-weight: 600; }
+.pb-connect-pick:checked + label { border-bottom-color: currentColor; color: var(--pb-text); }
 .pb-connect-pick:focus-visible + label { outline: 2px solid var(--pb-accent); outline-offset: 2px; }
 /* The radio itself is read and pressed through its label. */
 .pb-connect-pick { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
@@ -85,7 +85,7 @@
 }
 /* A line breaks only at its spaces: no word, flag or address is split. */
 .pb-connect-line > span { white-space: nowrap; }
-.pb-connect-more { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--pb-fs-xs); font-weight: var(--font-weight-semibold); }
+.pb-connect-more { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--pb-fs-xs); }
 @container pb-page (max-width: 599px) {
   .pb-connect-say .rg-copy { min-height: 44px; }
 }
@@ -94,7 +94,7 @@
 .pb-activity-figures { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; margin: 0; border: 1px solid var(--pb-line); background: var(--pb-line); }
 .pb-activity-figures > div { display: flex; flex-direction: column-reverse; justify-content: flex-end; gap: .15rem; min-width: 0; padding: var(--space-2); background: var(--pb-surface); }
 .pb-activity-figures dt { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); overflow-wrap: anywhere; }
-.pb-activity-figures dd { margin: 0; font: 600 1.5rem/1.1 var(--font-family-mono); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.pb-activity-figures dd { margin: 0; font: 1.5rem/1.1 var(--font-family-ui); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 /* The replies that worked take a row of their own, the share of tries that
    worked under its name (first in the flow, so last on screen). */
 .pb-activity-figures > .pb-activity-wide { grid-column: 1 / -1; }
@@ -176,7 +176,7 @@
   margin-top: var(--space-3);
   border-bottom: 1px solid var(--pb-line);
 }
-.pb-feed-head h2 { display: flex; align-items: center; min-height: 48px; margin: 0; font-size: 1.0625rem; font-weight: var(--font-weight-semibold); }
+.pb-feed-head h2 { display: flex; align-items: center; min-height: 48px; margin: 0; font-size: 1.0625rem; }
 .pb-feed-count { margin-inline-start: .3em; color: var(--pb-text-muted); font-weight: 400; font-variant-numeric: tabular-nums; }
 .pb-feed-head .pb-feed-tabs { gap: 0 1.25rem; margin: 0; border-bottom: 0; }
 .pb-feed-head .pb-feed-tabs a { min-height: 48px; margin-bottom: -1px; }
@@ -198,7 +198,6 @@
 .pb-find-answers li span { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-find-answers a { color: var(--pb-text); }
 .pb-find-ask { grid-column: 1 / -1; margin: 0; font-size: .9375rem; }
-.pb-find-ask a { font-weight: 600; }
 
 @container pb-page (max-width: 899px) {
   .pb-feed-home { padding-top: var(--space-2); }

@@ -6,7 +6,7 @@
   gap: var(--space-3);
   max-width: calc(48rem + 2 * var(--rg-panel-padding));
   padding: var(--space-4) var(--rg-panel-padding) var(--space-6);
-  font-family: var(--font-family-sans);
+  font-family: var(--font-family-ui);
 }
 .pb-incident-head h1 {
   margin: 0 0 var(--space-2);
@@ -29,7 +29,7 @@
   border-radius: var(--radius);
   background: var(--pb-card);
 }
-.pb-incident h2 { margin: 0 0 var(--space-2); font-family: var(--font-family-sans); font-size: 1.375rem; font-weight: 600; letter-spacing: -.015em; }
+.pb-incident h2 { margin: 0 0 var(--space-2); font-family: var(--font-family-ui); font-size: 1.375rem; letter-spacing: -.015em; }
 .pb-incident-text { line-height: 1.55; overflow-wrap: anywhere; }
 .pb-incident-text > :first-child { margin-top: 0; }
 .pb-incident-text > :last-child { margin-bottom: 0; }
@@ -75,7 +75,7 @@
 .pb-incident-row { display: grid; gap: var(--space-1); min-width: 0; padding: var(--space-2) var(--rg-panel-padding); border-bottom: 1px solid var(--pb-card-line); }
 .pb-incident-row:last-child { border-bottom: 0; }
 .pb-incident-row .pb-incident-meta { margin: 0; }
-.pb-incident-row-title { color: var(--pb-text); font-size: 1.0625rem; font-weight: 600; line-height: 1.4; overflow-wrap: anywhere; text-decoration: none; }
+.pb-incident-row-title { color: var(--pb-text); font-size: 1.0625rem; line-height: 1.4; overflow-wrap: anywhere; text-decoration: none; }
 .pb-incident-row-title:hover { text-decoration: underline; }
 
 @media (max-width: 599px) {

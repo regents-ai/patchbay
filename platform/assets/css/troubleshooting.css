@@ -44,7 +44,7 @@
   border-top: 1px solid var(--pb-line);
   scroll-margin-top: var(--space-4);
 }
-.pb-trouble-problem h3 { margin: 1rem 0 .25rem; color: var(--pb-text-muted); font-size: .875rem; font-weight: 600; }
+.pb-trouble-problem h3 { margin: 1rem 0 .25rem; color: var(--pb-text-muted); font-size: .875rem; }
 .pb-trouble-problem p { margin: .4rem 0 0; line-height: 1.55; }
 .pb-trouble code { font-family: var(--font-family-mono); font-size: .9em; overflow-wrap: anywhere; }
 .pb-trouble pre {
