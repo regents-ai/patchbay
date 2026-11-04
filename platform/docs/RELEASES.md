@@ -4,6 +4,23 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v338, 4 Nov 2026
+
+- Commit: 1483d63f9523451bf9bc3288cbb1614d65868ab7 (image `1483d63`), on main directly above the v337 record. Released 03:57Z. Machine replaced blue-green, one machine in iad. Sean's order "all packages need to be updated", lane file control coordination/PACKAGES-LATEST-2026-11-04.md.
+- Majors: none.
+- Moved, Hex (22): ash_sql 0.8.4 to 0.8.7 (0.8.3 to 0.8.5 retired for security), ash_double_entry 1.0.19 to 1.1.1, ash_money 0.2.6 to 0.2.7, ex_money 6.2.1 to 6.3.0, ex_money_sql 2.1.0 to 2.2.0, fine 0.1.6 to 0.2.0, floki 0.38.4 to 0.38.5, hammer 7.5.0 to 7.5.1, igniter 0.8.4 to 0.8.5, jsv 0.26.2 to 0.27.0, lazy_html 0.1.13 to 0.1.14, localize 1.3.0 to 1.6.1, localize_sql 1.0.1 to 1.1.0, mdex 0.14.2 to 0.14.6, mdex_native 0.2.12 to 0.3.1, nimble_options 1.1.1 to 1.2.0, phoenix_live_dashboard 0.8.7 to 0.9.1, rustler_precompiled 0.10.0 to 0.10.1, sobelow 0.16.0 to 0.18.1, swoosh 1.29.0 to 1.29.3, usage_rules 1.2.8 to 1.3.1, websock_adapter 0.6.0 to 0.7.0. All 108 Hex packages shared with ash-template are on its versions.
+- Moved, other: elixir-utils 6447536 to d73265f; @types/node 26.6.5 to 26.6.6; puppeteer-core 25.14.0 to 25.16.0 (picture machine, below).
+- Stopped, with the newest beside each: @privy-io/react-auth 3.49.1 (3.51.1), waits for the template's sign-in release and Sean's real sign-in; esbuild 0.25.4 (0.28.2), waits for the template's version list; ex_hash_ring 6.0.4 (7.0.0), `== 6.0.4` in the shared baseline; puid 1.1.2 (2.8.0), boruta asks for `~> 1.0`; ash_postgres stays on its commit, no Hex release carries #910; forge-std 1.16.2 (1.17.0) and OpenZeppelin 5.7.0 (5.7.0), frozen on-chain record. Runtimes and base images are wave 2.
+- Code: mdex 0.14.6 turns on inline code attributes, which drops text in braces straight after inline code (`` `x`{.class} tail `` lost `{.class}`). Every Markdown read and render here sets `inline_code_attributes: false`, forum posts included. sobelow 0.18's finding is removed in the code: the endpoint names Plug's parsers, so `Parsers.LastRead` builds no module name.
+- Checks: make check at 1483d63f, partition _win3, exit 0: ExUnit 990 (958 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template 2d169ccd), CLI commands, newest SIWA, contracts 15 on unchanged pins. WebKit not run on the Mac. Dependabot: 0 open at 03:52Z.
+- Live, 03:59Z to 04:02Z, headless Chromium at 390 and 1280: /capabilities.json 1483d63f, cli 1.10.23, /webmcp/health ok with migrations current; home, /sites, /offers, /offers/bid?slot=1, /wallet-bench, /docs, /changelog, /terms, /about, /blog, /account and a thread 200, no sideways scroll, no page errors; Sign in opens Privy's dialog (nothing entered). A body that does not decode answers 400 and one over its limit 413, in JSON, for JSON and multipart. CLI 1.10.23 with the computer's default key: `regents patchbay doctor` every check held; `account balances` and `agents status` read the paired account (signed agent read). Logs: no error or critical lines.
+- Not proven: a signed-in wallet read on the page (needs a person's sign-in), WebMCP's tool list live (this Chromium has no navigator.modelContext), a posted body with braces after inline code on the live site (probed locally).
+- Known, not from this release: the regents CLI installed on this Mac is 1.10.20, and its doctor says "request body does not match the SIWA contract" against sites on SIWA v2. /auth/csrf stays red until Patchbay adopts the template's sign-in after Points (orchestrator's ruling).
+- Checks to add once confirmed live for an hour or more: braces after inline code are kept in a forum post.
+- Migrations: none.
+- Rollback: v337, image `3c4cf8c`.
+- Picture machine (patchbay-shots): v6, 04:04Z, puppeteer-core 25.16.0. Tried locally first with the machine's calls and Playwright's Chromium: a WebP picture of patchbay.help. Stopped until the next picture wakes it, so no live picture on v6 yet. Rollback: v5, image `2455b78`.
+
 ## v337, 3 Nov 2026
 
 - Commit: 3c4cf8c864ff8d12b709aee56e4a7f6cac24d3fb (image `3c4cf8c`), on main directly above the v336 release row. Released 20:52Z. Machine replaced blue-green, one machine in iad.
