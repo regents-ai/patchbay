@@ -4,6 +4,18 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v340, 4 Nov 2026
+
+- Commit: 6cab9b2626cde5f6152771d1f1c87010cd5b2c47 (image `6cab9b2`), on main directly above the v339 record. Released 05:11Z. Machine replaced blue-green, one machine in iad. Rollback: v339, image `7176401`. No migration. Moved on the orchestrator's relay of Sean's sign-in on the template; if the template's `/account` checks fail, roll back at once.
+- Majors: @solana/kit 5.5.1 to 8.6.0, @stripe/stripe-js 1.54.2 to 10.2.1, uuid 11.1.1 to 14.0.3, @babel/runtime 7.29.7 to 8.1.0 (through the wallet packages).
+- Moved, npm: @privy-io/react-auth 3.49.1 to 3.51.1, viem 2.57.7 to 2.57.16, @solana-program/system 0.10.0 to 0.16.0, @solana-program/token 0.9.0 to 0.18.0, axios 1.20.0 to 1.21.0, ws 8.22.0 to 8.22.1, @modelcontextprotocol/server and core 2.3.1 to 2.4.0, and the wallet packages under them within their ranges. @solana/kit, @solana-program/*, @stripe/stripe-js and viem are now named directly, as on the template. The typescript override is gone; nothing needs it.
+- Moved, other: esbuild 0.25.4 to 0.28.2.
+- Differs from the shared list: Patchbay keeps one top-level zod 4.6.7 override under Sean's 91a. The list's narrow form puts zod 3.22.4 back in the lock and reopens GHSA-mrhx-c7xc-m3w5. The orchestrator confirmed this stands on Patchbay only; other sites are Sean's decision.
+- Check: `make check` exit 0: ExUnit 990, walks 323 passed and 37 skipped, required fixes against template b303ecd8, contracts 15. `npm audit` 0. Dependabot 0 before and after release.
+- Live read: build 6cab9b26 on `/capabilities.json`, CLI 1.10.23. At 1280, 390 and 320 wide on the nine pages read for v339, including the wallet pages `/wallet-bench` and `/offers/bid?slot=1`: every page 200, no sideways scroll, 0 page errors. Sign in opens Privy's dialog at all three widths. `regents patchbay doctor` held and `account balances` answered as a paired agent.
+- Not proven: a real sign-in with Privy 3.51.1 on patchbay.help, which is Sean's; WebKit is not run on the Mac; a live picture on patchbay-shots v6.
+- Still behind the list: ex_hash_ring 6.0.4 (newest 7.0.0; Cachex 4.1.1 asks `~> 6.0`), puid 1.1.2 (newest 2.8.0; boruta 2.3.8 asks `~> 1.0`), ash_postgres on commit 55db7d44 (fix unreleased), forge-std 1.16.2 (newest 1.17.0) and OpenZeppelin 5.7.0 frozen with the on-chain record. Runtimes and base images are wave 2.
+
 ## v339, 4 Nov 2026
 
 - Commit: 71764012942869f48a35a05bc1cecdf78bfddcf4 (image `7176401`), on main directly above the v338 record. Released 04:47Z. Machine replaced blue-green, one machine in iad. Rollback: v338, image `1483d63`. No migration.
