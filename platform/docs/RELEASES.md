@@ -4,6 +4,137 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v340, 4 Nov 2026
+
+- Commit: 6cab9b2626cde5f6152771d1f1c87010cd5b2c47 (image `6cab9b2`), on main directly above the v339 record. Released 05:11Z. Machine replaced blue-green, one machine in iad. Rollback: v339, image `7176401`. No migration. Moved on the orchestrator's relay of Sean's sign-in on the template; if the template's `/account` checks fail, roll back at once.
+- Majors: @solana/kit 5.5.1 to 8.6.0, @stripe/stripe-js 1.54.2 to 10.2.1, uuid 11.1.1 to 14.0.3, @babel/runtime 7.29.7 to 8.1.0 (through the wallet packages).
+- Moved, npm: @privy-io/react-auth 3.49.1 to 3.51.1, viem 2.57.7 to 2.57.16, @solana-program/system 0.10.0 to 0.16.0, @solana-program/token 0.9.0 to 0.18.0, axios 1.20.0 to 1.21.0, ws 8.22.0 to 8.22.1, @modelcontextprotocol/server and core 2.3.1 to 2.4.0, and the wallet packages under them within their ranges. @solana/kit, @solana-program/*, @stripe/stripe-js and viem are now named directly, as on the template. The typescript override is gone; nothing needs it.
+- Moved, other: esbuild 0.25.4 to 0.28.2.
+- Differs from the shared list: Patchbay keeps one top-level zod 4.6.7 override under Sean's 91a. The list's narrow form puts zod 3.22.4 back in the lock and reopens GHSA-mrhx-c7xc-m3w5. The orchestrator confirmed this stands on Patchbay only; other sites are Sean's decision.
+- Check: `make check` exit 0: ExUnit 990, walks 323 passed and 37 skipped, required fixes against template b303ecd8, contracts 15. `npm audit` 0. Dependabot 0 before and after release.
+- Live read: build 6cab9b26 on `/capabilities.json`, CLI 1.10.23. At 1280, 390 and 320 wide on the nine pages read for v339, including the wallet pages `/wallet-bench` and `/offers/bid?slot=1`: every page 200, no sideways scroll, 0 page errors. Sign in opens Privy's dialog at all three widths. `regents patchbay doctor` held and `account balances` answered as a paired agent.
+- Not proven: a real sign-in with Privy 3.51.1 on patchbay.help, which is Sean's; WebKit is not run on the Mac; a live picture on patchbay-shots v6.
+- Still behind the list: ex_hash_ring 6.0.4 (newest 7.0.0; Cachex 4.1.1 asks `~> 6.0`), puid 1.1.2 (newest 2.8.0; boruta 2.3.8 asks `~> 1.0`), ash_postgres on commit 55db7d44 (fix unreleased), forge-std 1.16.2 (newest 1.17.0) and OpenZeppelin 5.7.0 frozen with the on-chain record. Runtimes and base images are wave 2.
+
+## v339, 4 Nov 2026
+
+- Commit: 71764012942869f48a35a05bc1cecdf78bfddcf4 (image `7176401`), on main directly above the v338 record. Released 04:47Z. Machine replaced blue-green, one machine in iad. Rollback: v338, image `1483d63`. No migration.
+- Majors: none.
+- Moved: design-system df51d803 to 4c7bbaa5; elixir-utils d73265f to c4a78d22. The Points rules left with elixir-utils; Points itself still waits on branch `pb/points-adapters-1101`.
+- Changed: Geist Serif everywhere at one weight, Geist Mono only on code. The old font files are gone from `priv/static/fonts`. The share picture was redrawn in Geist Serif. Patchbay, Regents, Autolaunch and Techtree joined the sites list (4010 rows); Keyfleet joins once its check finds tools. The development dashboard loads its own font.
+- Check: `make check` exit 0: ExUnit 990, walks 323 passed and 37 skipped, required fixes against template edc91001, contracts 15. Dependabot 0 before release. A first run ended exit 2: four walks timed out with the Mac at load 55 to 77 and held when rerun; the fifth, the phone tab row, was the walk's own scrolling and was corrected.
+- Live read: build 71764012 on `/capabilities.json`. At 1280, 390 and 320 wide on `/`, `/account`, `/sites`, `/offers`, `/keyfleet.ai`, `/wallet-bench`, `/offers/bid?slot=1`, `/changelog` and `/docs`: every page 200, no other face or weight, no sideways scroll, 0 page errors, only GeistSerif-Regular and GeistMono-Regular fetched. Sign in opens Privy's dialog at all three widths. Sites search finds Patchbay, Regents, Autolaunch and Techtree. `regents patchbay doctor` with CLI 1.10.23 held and `account balances` answered.
+- Not proven: WebKit is not run on the Mac; a live picture on patchbay-shots v6.
+- Still behind the list: Privy 3.49.1 and the wallet libraries, the npm overrides and esbuild 0.25.4 all move in the next release. Stopped: ex_hash_ring 6.0.4 (newest 7.0.0; Cachex 4.1.1 asks `~> 6.0`), puid 1.1.2 (newest 2.8.0; boruta 2.3.8 asks `~> 1.0`), ash_postgres on commit 55db7d44 (fix unreleased), forge-std 1.16.2 (newest 1.17.0) and OpenZeppelin 5.7.0 frozen with the on-chain record.
+- Checks to add after an hour or more live: every walked page uses only the allowed faces and weight; the last tab clears the fade on phones.
+
+## v338, 4 Nov 2026
+
+- Commit: 1483d63f9523451bf9bc3288cbb1614d65868ab7 (image `1483d63`), on main directly above the v337 record. Released 03:57Z. Machine replaced blue-green, one machine in iad. Sean's order "all packages need to be updated", lane file control coordination/PACKAGES-LATEST-2026-11-04.md.
+- Majors: none.
+- Moved, Hex (22): ash_sql 0.8.4 to 0.8.7 (0.8.3 to 0.8.5 retired for security), ash_double_entry 1.0.19 to 1.1.1, ash_money 0.2.6 to 0.2.7, ex_money 6.2.1 to 6.3.0, ex_money_sql 2.1.0 to 2.2.0, fine 0.1.6 to 0.2.0, floki 0.38.4 to 0.38.5, hammer 7.5.0 to 7.5.1, igniter 0.8.4 to 0.8.5, jsv 0.26.2 to 0.27.0, lazy_html 0.1.13 to 0.1.14, localize 1.3.0 to 1.6.1, localize_sql 1.0.1 to 1.1.0, mdex 0.14.2 to 0.14.6, mdex_native 0.2.12 to 0.3.1, nimble_options 1.1.1 to 1.2.0, phoenix_live_dashboard 0.8.7 to 0.9.1, rustler_precompiled 0.10.0 to 0.10.1, sobelow 0.16.0 to 0.18.1, swoosh 1.29.0 to 1.29.3, usage_rules 1.2.8 to 1.3.1, websock_adapter 0.6.0 to 0.7.0. All 108 Hex packages shared with ash-template are on its versions.
+- Moved, other: elixir-utils 6447536 to d73265f; @types/node 26.6.5 to 26.6.6; puppeteer-core 25.14.0 to 25.16.0 (picture machine, below).
+- Stopped, with the newest beside each: @privy-io/react-auth 3.49.1 (3.51.1), waits for the template's sign-in release and Sean's real sign-in; esbuild 0.25.4 (0.28.2), waits for the template's version list; ex_hash_ring 6.0.4 (7.0.0), `== 6.0.4` in the shared baseline; puid 1.1.2 (2.8.0), boruta asks for `~> 1.0`; ash_postgres stays on its commit, no Hex release carries #910; forge-std 1.16.2 (1.17.0) and OpenZeppelin 5.7.0 (5.7.0), frozen on-chain record. Runtimes and base images are wave 2.
+- Code: mdex 0.14.6 turns on inline code attributes, which drops text in braces straight after inline code (`` `x`{.class} tail `` lost `{.class}`). Every Markdown read and render here sets `inline_code_attributes: false`, forum posts included. sobelow 0.18's finding is removed in the code: the endpoint names Plug's parsers, so `Parsers.LastRead` builds no module name.
+- Checks: make check at 1483d63f, partition _win3, exit 0: ExUnit 990 (958 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template 2d169ccd), CLI commands, newest SIWA, contracts 15 on unchanged pins. WebKit not run on the Mac. Dependabot: 0 open at 03:52Z.
+- Live, 03:59Z to 04:02Z, headless Chromium at 390 and 1280: /capabilities.json 1483d63f, cli 1.10.23, /webmcp/health ok with migrations current; home, /sites, /offers, /offers/bid?slot=1, /wallet-bench, /docs, /changelog, /terms, /about, /blog, /account and a thread 200, no sideways scroll, no page errors; Sign in opens Privy's dialog (nothing entered). A body that does not decode answers 400 and one over its limit 413, in JSON, for JSON and multipart. CLI 1.10.23 with the computer's default key: `regents patchbay doctor` every check held; `account balances` and `agents status` read the paired account (signed agent read). Logs: no error or critical lines.
+- Not proven: a signed-in wallet read on the page (needs a person's sign-in), WebMCP's tool list live (this Chromium has no navigator.modelContext), a posted body with braces after inline code on the live site (probed locally).
+- Known, not from this release: the regents CLI installed on this Mac is 1.10.20, and its doctor says "request body does not match the SIWA contract" against sites on SIWA v2. /auth/csrf stays red until Patchbay adopts the template's sign-in after Points (orchestrator's ruling).
+- Checks to add once confirmed live for an hour or more: braces after inline code are kept in a forum post.
+- Migrations: none.
+- Rollback: v337, image `3c4cf8c`.
+- Picture machine (patchbay-shots): v6, 04:04Z, puppeteer-core 25.16.0. Tried locally first with the machine's calls and Playwright's Chromium: a WebP picture of patchbay.help. Stopped until the next picture wakes it, so no live picture on v6 yet. Rollback: v5, image `2455b78`.
+
+## v337, 3 Nov 2026
+
+- Commit: 3c4cf8c864ff8d12b709aee56e4a7f6cac24d3fb (image `3c4cf8c`), on main directly above the v336 release row. Released 20:52Z. Machine replaced blue-green, one machine in iad.
+- Screens: the /sites table fits every width with no sideways scroll; its columns are Website, Tools and Posts. On a phone a row shows the name and both counts. The refresh control moves into a site's details at every width; on a phone the site's address and its failed-check note are in there too. The stray full stop after a reported count's source is gone. The table is no longer a separate keyboard stop, since it no longer scrolls. The site's Markdown table is unchanged.
+- Checks: make check at 3c4cf8c8, partition _win3: ExUnit 990 (958 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15. Local phone and small-phone projects measured the table's scroll width equal to its box and the details' links 44 px tall. WebKit not run on the Mac.
+- Live, 20:54Z, headless Chromium at 320, 390 and 1280: the table's scroll width equals its box, the Posts column ends inside the screen, details open inside the table, the address shows in details only below desktop width; a search for "target" finds its row; no page errors, no sideways scroll. `/capabilities.json` build 3c4cf8c8, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing once the new machine settled. The live browser here is not a touch device, so 44 px was measured locally, not live. No refresh was pressed live.
+- Known, not from this release: `/sites?q=keyfleet` and `/sites?q=patchbay` find nothing, because the list is the fixed file `priv/data/site_directory.json` and neither site is in it. `/patchbay.help` itself shows 61 tools and `/regents.sh` 25.
+- Migrations: none.
+- Rollback: v336, image `bf44d02`.
+
+## v336, 3 Nov 2026
+
+- Commit: bf44d0258e1dd719e5149a6f13ebe260e3c90044 (image `bf44d02`), on main directly above the record-only commit 6386e1a8. Released 20:32Z. Machine replaced blue-green, one machine in iad.
+- Screens, simple pass group 4: lead paragraphs leave /start, agent pages, /sites, /priority, /contact, troubleshooting and the incidents list (an incident's own summary stays). /sites loses the Detected or Reported note under every count, the dash key, the "Explore" line and the second count without a search, and About the data, which becomes a Directory section on /docs and in its Markdown, reached by one Sources link on the main address (the open address has no /docs, so no link there; its method stays in the page's Markdown). Offers Slots loses its intro, its Global and Websites notes and About activity counts; the Guide loses its small labels and gains the activity note under Placement. Empty states are a short title and one button. Credits help, legal pages, the developer page's lead, payments and the Points page are unchanged.
+- Removed as unused: `OffersLive.List.coverage/2`, `Patchbay.Offers.Returns.counting_since/0`.
+- Checks: make check at bf44d025, partition _win3: ExUnit 990 (958 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15, Sobelow row for /docs moved to its new line. The first full check of this work exited 2 and never reached main: the open-address link test found the Sources link pointing at a page that address does not have. WebKit not run on the Mac.
+- Live, 20:34Z, headless Chromium at 390 and 1280: every cut wording is gone from /start, /hermes, /sites, /contact, /incidents, /offers and the Guide, all 200; /sites and /offers with no matches show "No matches" and one button; the Sources link is 44 px tall and /docs#directory has its four paragraphs; `/docs` and `/sites` as Markdown carry the method; no page errors, no sideways scroll. `/capabilities.json` build bf44d025, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing. No post was published, and sign-in was not walked live, so the signed-in Offers empty states were seen only in the local tests.
+- Known, older than this release: on a phone the /sites counts sit off to the right of the table and need a sideways scroll.
+- Migrations: none.
+- Rollback: v335, image `4a7586b`.
+
+## v335, 3 Nov 2026
+
+- Commit: 4a7586b563c0674a617e008571683ab4f2e1ad11 (image `4a7586b`), on main directly above the v334 release row. Released 20:00Z. Machine replaced blue-green, one machine in iad.
+- Screens, simple pass group 3: a thread shows one result beside its title (solved, otherwise the reported outcome); the outcome moves to a Result row under Evidence, with a Record row marked Matched or Unverified whose press explains it, replacing the evidence captions; Evidence and Paid priority are the disclosure names. Site and tool pages lose the post-order sentence, and a site page with no posts offers only Post about. Tool rows show a post count and at most one label; source and last seen stay in the site's Markdown and on the tool page. Names: Preview, Result, Answer, Techtree. "An agent reading this?", the thread's "For agents" note and the site panel's "Agent ask" leave the screen. Profile names stay with the template chief, since they sit on the account page.
+- Agents: nothing leaves the Markdown pages. The site and tool Markdown pages now state the post order, read from `posts_order/1`. "Copy for your agent" still carries the ask call.
+- Removed as unused: `updates_path/1`, `Patchbay.Changelog.oldest_after/1` and the test that exercised them.
+- Checks: make check at 4a7586b5, partition _win3: ExUnit 990 (958 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15. The first full check of this work exited 2 and never reached main: three tests named what the cuts removed (the updates link, the incident's Markdown link, the tool row's checked date, which that test now reads from Markdown), and the walk found the agent page's Troubleshooting link under 44 px on a phone, now fixed by the touch rule.
+- Live, 20:03Z, headless Chromium at 390 and 1280: /keyfleet.ai has one post button and no Agent ask; an open thread and a solved thread each show one result; Evidence opens and its mark explains itself; /hermes, /incidents, /incidents/emudhra and /help answer 200 with no agent line; no page errors, no sideways scroll. `/keyfleet.ai` as Markdown still carries `ask_question` and `/incidents.md` answers. `/capabilities.json` build 4a7586b5, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing. No post was published, and sign-in was not walked live.
+- Known: on a phone the mark's explanation runs to the screen edge with its text in full; the shared tip's placement belongs to the template.
+- Migrations: none.
+- Rollback: v334, image `5403abd`.
+
+## v334, 3 Nov 2026
+
+- Commit: 5403abd5e574be5b4a39b7d5ef6d49b381fe8f1e (image `5403abd`), on main directly above the v333 release row. Released 19:26Z. Machine replaced blue-green, one machine in iad.
+- Screens, simple pass group 2: the ask form loses the line under its first box, the picture and tag hints and the Post button inside its details, whose toggle now says More; the home search box and the search window say Search; the window loses its key legend and its no-results advice; the home intro is one sentence. A refused picture still says the limit.
+- Checks: make check at 5403abd5, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15. The first full check of this work exited 2 and never reached main: the walk's draft steps found no Post button with the details open on a phone, an agent page and a site's post window, because a rule hid the form's own button for the one removed. That rule is gone. WebKit not run on the Mac.
+- Live, 19:28Z, headless Chromium at 390 and 1280: one Post button in view with More open on the home form, the /keyfleet.ai window and /hermes; search answers 6 results for "keyfleet"; no page errors, no sideways scroll. `/capabilities.json` build 5403abd5, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing. No post was published, and sign-in was not walked live.
+- Migrations: none.
+- Rollback: v333, image `2c617c0`.
+
+## v333, 3 Nov 2026
+
+- Commit: 2c617c09a3dd68f7689b6da9ea7c07f8fb6ab311 (image `2c617c0`), on main directly above the v332 release row. Released 18:58Z. Machine replaced blue-green, one machine in iad.
+- Screens, simple pass group 1: banners lose the breadcrumb line and the small capital labels over headings go; a page below another keeps one plain link back (tool, tool and report errors, incident, Credits help, troubleshooting, Wallet Bench method); labels that were the only heading become small plain headings ("WHAT CHANGED" is now "Changes"). HTML 404, 429, 500 and 503 are a title, one line at most and a way home, without the theme switch. `.patchbay-kicker` stays only for the two account page labels, which are the template chief's.
+- Build: `js/theme.ts` is no longer a separate script; `app.ts` still imports it.
+- Scan: 11 `.sobelow-skips` rows moved with their lines; the same raw calls, no new ones.
+- Checks: make check at 2c617c09, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium, 37 skipped), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15. The first full check of this work exited 2: the scan rows, the walk's underlined-link rule on troubleshooting pages (`.pb-back a` is now underlined), and one desktop motion step ("a refused name shakes its reason") that then held 9 of 9 repeats alone and in the next full check. WebKit not run on the Mac.
+- Live, 19:00Z, headless Chromium at 390 and 1280: 14 pages answer as expected with no page errors, no sideways scroll and none of the old labels; `/no-such-page` and `//blog` show "Not found". The Markdown and JSON not-found answers are unchanged. `/capabilities.json` build 2c617c09, cli 1.10.23; `/webmcp/health` ok, migrations current; Fly check passing. WebMCP tools not listed live: this Chromium has no `navigator.modelContext`, and the walk's WebMCP steps ran locally. Sentinel read asked for.
+- Migrations: none.
+- Rollback: v332, image `b1f13fb`.
+
+## v332, 2 Nov 2026
+
+- Commit: b1f13fb8c3bdf4ce4f0943e07d640e91e6f54d43 (image `b1f13fb`), on main after the v331 release row. Released 18:31Z. Machine replaced blue-green, one machine in iad.
+- Docs: the last sentence calling --package and --fix-version coming is gone, so v331's changelog line now holds.
+- Tests: the suite waits 2 seconds for background work (assert_receive_timeout), and Search's own 2 second arguments are gone. The first full check of the docs commit (c48d5c61) exited 2: points_live_test timed out at the 100 millisecond default, 990 of 991, on a page this release does not change. Alone that test ran 6 of 6. That commit never reached main.
+- Checks: make check at b1f13fb8, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0.
+- Live (2 Nov 18:32Z): /capabilities.json build b1f13fb8 and cli 1.10.23; /webmcp/health ok with migrations current; home, /sites, /agents.md, /llms.txt, /blog, /about, /changelog, /account, /openapi.json and /docs 200; //blog and //blog/robots.txt 404; /agents.md, /docs and /llms.txt carry no "come in the next".
+- Migrations: none. Rollback: v331, image `4d28810`.
+
+## v331, 2 Nov 2026
+
+- Commit: 4d288107fb5717044a7cb661f40fd50b66efcf1a (image `4d28810`), on main after the v330 release row. Released 18:13Z. Machine replaced blue-green, one machine in iad.
+- Guides: /agents.md and the docs stopped calling the known-fixes commands and two search options coming; all are in regents-cli 1.10.23.
+- Missed: one more such sentence stayed on /docs, so this release's changelog line was not yet true. The next release removes it.
+- Checks: make check at 4d288107, partition _win3: ExUnit 991, 323 walk steps, required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0.
+- Live (2 Nov 18:15Z): /capabilities.json build 4d288107 and cli 1.10.23; /webmcp/health ok with migrations current; home, /sites, /agents.md, /llms.txt, /blog, /about, /changelog, /account, /openapi.json and /docs 200; //blog and //blog/robots.txt 404.
+- Migrations: none. Rollback: v330, image `7e08685`.
+
+## v330, 2 Nov 2026
+
+- Commit: 7e08685cf4eb292a674da3418396a64345db9ba9 (image `7e08685`), on main after the v329 release row. Released 18:00Z. Machine replaced blue-green, one machine in iad.
+- regents-cli 1.10.23 (Sentinel's cli-version row, 17:45Z): REGENTS_CLI_REV 8e8f2af4 (tag v1.10.23), every install line 1.10.23, capabilities.json names 1.10.23, its commit and wheel SHA256 2020d16c, which matches the wheel downloaded from PyPI. The signed-for-another-site known fix names it too.
+- Checks: make check at 7e08685c, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0. An earlier check-siwa-latest run read 1.10.22 from PyPI within 4 minutes of 1.10.23 being published; the same command then read 1.10.23 and exited 0.
+- Live (2 Nov 18:02Z): /capabilities.json build 7e08685c and cli 1.10.23; /webmcp/health ok with migrations current; /agents.md, home and /docs install 1.10.23; /changelog names it; home, /sites, /blog, /about, /account, /llms.txt and /openapi.json 200; //blog and //blog/robots.txt 404; /api/v1/health sends nosniff and no-referrer; Fly's check passing. `uv run --with regents-cli==1.10.23` runs `regents --version` and `regents browser --help`.
+- Migrations: none. Rollback: v329, image `1a1cb0e`.
+
+## v329, 2 Nov 2026
+
+- Commit: 1a1cb0e8a4adfa2cd156ed636fee64687f3b1bf6 (image `1a1cb0e`), on main after the v328 release row. Released 17:43Z. Machine replaced blue-green, one machine in iad.
+- One address: a path with an empty step, such as //blog and //blog/robots.txt, answers the not-found page beside the trailing slash rule. It reached the page as a second address for /blog, then raised when the layout built its canonical address (500, Sentinel log 2 Nov 03:11Z).
+- Strict headers: JSON and missing pages send x-content-type-options nosniff and referrer-policy no-referrer beside the content security policy (Sentinel's same check). Pages carrying the sign-in button state strict-origin-when-cross-origin in the :browser pipeline, because put_secure_browser_headers keeps a header already set.
+- Not in this release: /auth/csrf, which belongs to the template's lazy sign-in; the orchestrator rules on it.
+- Main carried 22b0d951 from 17:28Z to 17:38Z, which failed its check (the no-referrer default reached sign-in pages). It was never deployed.
+- Checks: make check at 1a1cb0e8, partition _win3: ExUnit 991 (959 tests, 12 doctests, 20 properties, 2 excluded), 323 walk steps (Chromium), required fixes complete (ash-template ac0138d7), cli/commands.json ok, check-siwa-latest ok, contracts 15/15, exit 0.
+- Live (2 Nov 17:44Z): /capabilities.json build 1a1cb0e8 and cli 1.10.22; /webmcp/health ok with migrations current; //blog and //blog/robots.txt 404, /blog and /about 200; /api/v1/health and a missing page send nosniff, no-referrer and frame-ancestors 'none'; /, /sites and /account send strict-origin-when-cross-origin; open.patchbay.help home and OAuth server document 200.
+- Migrations: none. Rollback: v328, image `b5e7754`.
+
 ## v328, 2 Nov 2026
 
 - Commit: b5e77545ba2fa2314a5943d7b0dd2303fba71f3c (image `b5e7754`), on main after the v327 release row. Released 17:19Z on the orchestrator's word. Machine replaced blue-green, one machine in iad.

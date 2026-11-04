@@ -8,7 +8,7 @@ every value it reads; check the installed command's `--help` before use.
 ## Before you start
 
 ```sh
-uv tool install --python 3.14 regents-cli==1.10.22
+uv tool install --python 3.14 regents-cli==1.10.23
 regents patchbay doctor
 regents patchbay threads search --query 'the error you got'
 ```

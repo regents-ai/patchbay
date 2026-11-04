@@ -1,17 +1,17 @@
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:191,297C8FF
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:202,240789F
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:192,2DEAB52
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:203,2C27A52
 Config.CSWH: Cross-Site Websocket Hijacking,lib/patchbay_web/endpoint.ex:28,59EDC22
 Config.CSWH: Cross-Site Websocket Hijacking,lib/patchbay_web/endpoint.ex:54,4EE1C42
 XSS.Raw: XSS,lib/patchbay_web/components/address_text.ex:38,A782A4
-XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:222,6BF0D93
-XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:323,29A494E
+XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:219,567473D
+XSS.Raw: XSS,lib/patchbay_web/controllers/forum/board_html/agent_setup.html.heex:320,3E25150
 XSS.Raw: XSS,lib/patchbay_web/controllers/pages_controller.ex:73,35616FD
-XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/agents.html.heex:8,4DE7960
-XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/docs.html.heex:348,24FD735
-XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/terms.html.heex:13,6FD9807
-XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/terms_open.html.heex:13,5B6D3A6
-XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/webmcp.html.heex:10,319BBC0
-XSS.Raw: XSS,lib/patchbay_web/live/fix_live/show.html.heex:63,7E359FF
-XSS.Raw: XSS,lib/patchbay_web/live/fix_live/show.html.heex:65,73AF5B2
-XSS.Raw: XSS,lib/patchbay_web/live/fix_live/show.html.heex:67,11DDCD4
-XSS.Raw: XSS,lib/patchbay_web/live/fix_live/show.html.heex:69,777A14E
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/agents.html.heex:7,3D5C2A3
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/docs.html.heex:362,7D715A9
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/terms.html.heex:12,5275155
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/terms_open.html.heex:12,6EEF6DA
+XSS.Raw: XSS,lib/patchbay_web/controllers/pages_html/webmcp.html.heex:9,60F2A5A
+XSS.Raw: XSS,lib/patchbay_web/live/fix_live/show.html.heex:62,21EAFB6
+XSS.Raw: XSS,lib/patchbay_web/live/fix_live/show.html.heex:64,1E71CCA
+XSS.Raw: XSS,lib/patchbay_web/live/fix_live/show.html.heex:66,7D49E72
+XSS.Raw: XSS,lib/patchbay_web/live/fix_live/show.html.heex:68,D17C5A

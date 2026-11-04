@@ -14,24 +14,18 @@
 .pb-thread h2 { font-family: var(--font-family-title); font-weight: 400; font-size: 1.0625rem; line-height: 1.4; }
 .pb-thread h3 { font-family: var(--font-family-title); font-weight: 400; font-size: .875rem; margin-top: 1.5rem; }
 .pb-thread-jev { margin: .75rem 0 0; padding: .625rem .875rem; border-left: 2px solid var(--pb-accent); background: var(--pb-surface); font-size: .8125rem; line-height: 1.6; }
-.pb-thread-jev strong { display: block; font-weight: 600; }
-.pb-flash { margin: 0 0 .75rem; padding: .625rem .875rem; border-left: 2px solid var(--pb-bad); background: var(--pb-surface); color: var(--pb-bad); font-size: .875rem; font-weight: var(--font-weight-semibold); }
+.pb-thread-jev strong { display: block; }
+.pb-flash { margin: 0 0 .75rem; padding: .625rem .875rem; border-left: 2px solid var(--pb-bad); background: var(--pb-surface); color: var(--pb-bad); font-size: .875rem; }
 .pb-section-unavailable { margin: .75rem 0; font-size: .875rem; }
 .pb-section-unavailable a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
 /* A refused page's way on reads as a link, not as more of the refusal. */
-.pb-refusal a { color: var(--pb-accent-deep); font-weight: var(--font-weight-semibold); text-decoration: underline; text-underline-offset: .2em; }
+.pb-refusal a { color: var(--pb-accent-deep); text-decoration: underline; text-underline-offset: .2em; }
 .pb-refusal a:hover { text-decoration-thickness: 2px; }
 .pb-thread-jev span { color: var(--pb-text-muted); }
 .pb-thread-caption { font-size: .8125rem; color: var(--pb-text-muted); line-height: 1.6; }
-.pb-kind-pill { display: inline-flex; align-items: center; padding: .15rem .55rem; border: 1px solid var(--pb-text); color: var(--pb-text); font: 600 .6875rem/1.4 var(--font-family-mono); }
+.pb-kind-pill { display: inline-flex; align-items: center; padding: .15rem .55rem; border: 1px solid var(--pb-text); color: var(--pb-text); font: .6875rem/1.4 var(--font-family-ui); }
 .pb-kind-pill.is-good { background: var(--pb-text); color: var(--color-bg); }
 .pb-kind-pill.is-bad { border-color: var(--pb-bad); color: var(--pb-bad); }
-.pb-for-agents { margin: .75rem 0 0; font-size: .8125rem; line-height: 1.6; color: var(--pb-text-muted); }
-.pb-for-agents > summary { display: inline-flex; align-items: center; gap: .35rem; min-height: 2rem; cursor: pointer; list-style: none; }
-.pb-for-agents > summary::-webkit-details-marker { display: none; }
-.pb-for-agents > summary:hover { color: var(--pb-text); }
-.pb-for-agents > p { margin: .25rem 0 0; padding: .625rem .875rem; background: var(--pb-card-sunk); }
-.pb-for-agents a { text-decoration: underline; text-underline-offset: 2px; }
 .pb-thread-prose { white-space: pre-wrap; margin: 1.25rem 0; font: inherit; }
 .pb-solution-card { margin: 1.75rem 0; padding: 1.15rem 1.25rem; border: 1px solid var(--pb-card-line); background: var(--pb-card); }
 .pb-solution-card h2 { margin: 0 0 .25rem; }
@@ -50,7 +44,7 @@
 .pb-fix-card { margin: 1.25rem 0 1.75rem; padding: 1.15rem 1.25rem; border: 1px solid var(--pb-line); background: var(--pb-surface); }
 .pb-fix-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .25rem 1rem; }
 .pb-fix-head h2 { display: inline-flex; align-items: center; gap: .4rem; margin: 0; }
-.pb-fix-worked { margin: 0; color: var(--pb-text); font-size: .875rem; font-weight: 600; }
+.pb-fix-worked { margin: 0; color: var(--pb-text); font-size: .875rem; }
 .pb-fix-card .pb-thread-caption { margin: 0; }
 .pb-fix-card .pb-thread-caption a { font-size: .8125rem; }
 /* An answer with no fix shows its opening lines as plain words, ending in an
@@ -58,22 +52,22 @@
 .pb-fix-excerpt { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 6; line-clamp: 6; overflow: hidden; margin: .75rem 0; line-height: 1.6; overflow-wrap: anywhere; }
 .pb-fix-facts dd { white-space: pre-wrap; }
 .pb-fix-facts dd.pb-fix-list { white-space: normal; }
-.pb-fix-standing { display: inline-block; margin: .75rem 0 0; padding: .1rem .5rem; border: 1px solid var(--pb-line-strong); font-size: .75rem; font-weight: 600; }
+.pb-fix-standing { display: inline-block; margin: .75rem 0 0; padding: .1rem .5rem; border: 1px solid var(--pb-line-strong); font-size: .75rem; }
 .pb-fix-standing.is-confirmed_fix { border-color: var(--pb-good); color: var(--pb-text); background: var(--pb-good-wash); }
 .pb-fix-standing.is-not_proven { border-color: var(--pb-bad); background: var(--pb-bad-wash); }
 .pb-fix-sources, .pb-fix-updates { margin: 0; padding-left: 1.1rem; white-space: normal; }
 .pb-fix-updates time { color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-ask-more { border-top: 1px solid var(--pb-line); padding-top: var(--space-2); }
-.pb-ask-more summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-size: .875rem; font-weight: 600; }
+.pb-ask-more summary { min-height: 2.75rem; display: flex; align-items: center; cursor: pointer; font-size: .875rem; }
 .pb-ask-more-fields { display: grid; gap: var(--space-3); margin-top: var(--space-2); }
 .pb-ask-preview { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--pb-text); background: var(--pb-surface); }
 .pb-ask-preview-post h3 { margin: .35rem 0 .5rem; font-size: 1.25rem; line-height: 1.3; }
 .pb-ask-flags { padding: var(--space-2) var(--space-3); border: 1px solid var(--pb-bad); color: var(--pb-text); font-size: .875rem; }
 .pb-ask-flags p, .pb-ask-flags ul { margin: .25rem 0; }
-.pb-ask-flag-at { color: var(--pb-text-muted); font-family: var(--font-family-mono); font-size: .75rem; }
+.pb-ask-flag-at { color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: .75rem; }
 .pb-ask-visibility { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.45; }
 .pb-reply-outcome { margin: .6rem 0 0; color: var(--pb-text-muted); font-size: .75rem; }
-.pb-quiet-button { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .25rem .8rem; border: 1px solid var(--pb-line-strong); background: transparent; color: var(--pb-text); font: var(--font-weight-semibold) .75rem var(--font-family-ui); cursor: pointer; }
+.pb-quiet-button { display: inline-flex; align-items: center; gap: .35rem; min-height: 2.25rem; padding: .25rem .8rem; border: 1px solid var(--pb-line-strong); background: transparent; color: var(--pb-text); font: .75rem var(--font-family-ui); cursor: pointer; }
 @media (hover: hover) and (pointer: fine) { .pb-quiet-button:hover { background: var(--pb-surface); } }
 /* On a touch screen the quiet buttons and the list's page links are 44 px tall. */
 @media (pointer: coarse), (hover: none) {
@@ -123,24 +117,22 @@
 .pb-agent-intro h1 { max-width: 19ch; margin: 0; justify-self: center; text-align: center; font-family: var(--font-family-title); font-size: clamp(2rem, 3vw, 2.75rem); font-weight: 400; line-height: 1.12; text-wrap: balance; }
 .pb-agent-handoff { padding: 1rem 1.5rem; min-width: 0; }
 .pb-agent-handoff-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: .5rem; }
-.pb-agent-handoff-head label { font-family: var(--font-family-mono); font-size: .75rem; letter-spacing: .06em; }
+.pb-agent-handoff-head label { font-family: var(--font-family-ui); font-size: .75rem; letter-spacing: .06em; }
 .pb-agent-handoff .rg-button { color: var(--support-panel-ink); border-color: currentColor; min-height: 2.75rem; font-size: .8125rem; padding: .5rem 1rem; }
 .pb-agent-handoff .rg-button:hover { color: var(--pb-accent-ink); background: var(--pb-accent); border-color: var(--pb-accent); }
-.pb-agent-handoff textarea { display: block; width: 100%; min-width: 0; min-height: 3rem; field-sizing: content; padding: 0; margin: 0; border: 0; border-radius: 0; resize: none; background: transparent; color: var(--support-panel-ink); font-family: var(--font-family-mono); font-size: .8125rem; line-height: 1.65; overflow-wrap: anywhere; }
+.pb-agent-handoff textarea { display: block; width: 100%; min-width: 0; min-height: 3rem; field-sizing: content; padding: 0; margin: 0; border: 0; border-radius: 0; resize: none; background: transparent; color: var(--support-panel-ink); font-family: var(--font-family-ui); font-size: .8125rem; line-height: 1.65; overflow-wrap: anywhere; }
 .pb-onboarding { margin-top: 2rem; border: 1px solid var(--pb-line); background: var(--pb-surface); scroll-margin-top: 1.5rem; }
 .pb-onboarding-head { display: flex; justify-content: space-between; align-items: center; gap: 1.5rem; padding: 1.5rem 2rem; border-bottom: 1px solid var(--pb-line); }
-.pb-onboarding-head .patchbay-kicker { margin: 0 0 .5rem; font-size: .625rem; letter-spacing: .1em; color: var(--pb-text-muted); }
 .pb-onboarding-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: 1.75rem; line-height: 1.2; }
 .pb-onboarding-head > a { flex: 0 0 auto; font-size: .8125rem; }
 .pb-onboarding-steps { margin: 0; padding: 0; list-style: none; }
 .pb-onboarding-steps li { display: grid; grid-template-columns: 2rem minmax(0, 1fr); gap: 1rem; padding: 1.5rem 0; border-bottom: 1px solid var(--pb-line); }
-.pb-onboarding-steps li > span { padding-top: .25rem; font-family: var(--font-family-mono); font-size: .6875rem; color: var(--pb-text-muted); }
-.pb-onboarding-steps h3 { margin: 0 0 .5rem; font-weight: 600; font-size: 1rem; line-height: 1.4; }
+.pb-onboarding-steps li > span { padding-top: .25rem; font-family: var(--font-family-ui); font-size: .6875rem; color: var(--pb-text-muted); }
+.pb-onboarding-steps h3 { margin: 0 0 .5rem; font-size: 1rem; line-height: 1.4; }
 .pb-onboarding-steps p { margin: 0; font-size: .875rem; line-height: 1.65; color: var(--pb-text-muted); max-width: 60ch; }
 .pb-onboarding-steps a { display: inline-block; margin-top: .5rem; font-size: .8125rem; }
 .pb-onboarding-steps code { color: var(--pb-text); background: var(--pb-accent-wash); padding: .125rem .3rem; }
 .pb-start-page { max-width: 76rem; }
-.pb-start-lede { max-width: 40ch; margin: 1rem auto 0; text-align: center; color: var(--pb-text-muted); line-height: 1.6; text-wrap: balance; }
 .pb-start-tabs { margin-bottom: .75rem; border-bottom-color: color-mix(in srgb, currentColor 25%, transparent); }
 /* On a phone the agents sit two by two, so every one is in view. */
 @container pb-page (max-width: 599px) {

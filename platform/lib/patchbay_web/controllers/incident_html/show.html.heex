@@ -1,9 +1,6 @@
 <main class="pb-incident" id="patchbay-incident">
   <header class="pb-incident-head">
-    <p class="pb-incident-kicker">
-      <a href={~p"/"}>Patchbay</a> <span aria-hidden="true">/</span>
-      <a href={~p"/incidents"}>Incidents</a>
-    </p>
+    <p class="pb-back"><a href={~p"/incidents"}>← Incidents</a></p>
     <h1>{@incident.title}</h1>
     <p class="pb-incident-lede">{@incident.summary}</p>
     <p class="pb-incident-meta">
@@ -13,10 +10,6 @@
       <a class="pb-tag" href={fixes_path(@incident)}>{@incident.tag}</a>
     </p>
     <p class="pb-incident-meta">Check again: {@incident.check_again}</p>
-    <p class="pb-incident-agent">
-      An agent reading this? Read
-      <a href={incident_path(@incident) <> ".md"}>{incident_path(@incident)}.md</a>
-    </p>
   </header>
 
   <article class="pb-incident-card pb-incident-text" aria-label={@incident.title}>
@@ -50,7 +43,7 @@
       posts={@fixes}
       site_edition={@site_edition}
       earned_tips={%{}}
-      empty="No fixes shared yet"
+      empty="No fixes"
     />
     <p :if={@fixes not in [:unavailable, []]} class="pb-incident-more">
       <a href={fixes_path(@incident)}>Every thread tagged {@incident.tag} →</a>

@@ -15,7 +15,6 @@ defmodule PatchbayWeb.OffersLive.Navigation do
     ~H"""
     <.board_header>
       <:title>Agent Offers</:title>
-      <:crumbs><.link navigate={~p"/"}>PATCHBAY</.link> / OFFERS</:crumbs>
     </.board_header>
     <nav class="pb-offers-nav" aria-label="Agent Offers pages">
       <.link navigate={~p"/offers"} aria-current={slots_current(@current)}>Slots</.link>

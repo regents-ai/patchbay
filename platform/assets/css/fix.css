@@ -24,7 +24,6 @@
 }
 .pb-fix-more label { display: block; margin-bottom: .25rem; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-fix-more .rg-muted { margin-top: .3rem; font-size: .6875rem; color: var(--pb-text-muted); }
-.pb-fix-goal-hint { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
 /* The site's tools, A to Z: a scrolling list of rows, each picked or unpicked
    with a press; a picked row takes the accent. */
 .pb-fix-tools { min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -48,8 +47,7 @@
 .pb-hero-pictures-note { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-hero-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 /* The details open from a full-width button whose arrow turns over; open,
-   the button and what it holds read as one box, which ends in its own post
-   button. */
+   the button and what it holds read as one box. */
 .pb-ask-more.pb-hero-details { padding-top: 0; border-top: 0; }
 .pb-hero-details > summary {
   justify-content: space-between; gap: .75rem; padding: 0 1rem;
@@ -63,10 +61,6 @@
 .pb-hero-details[open] { border: 1px solid var(--pb-text); }
 .pb-hero-details[open] > summary { border-width: 0 0 1px; }
 .pb-hero-details > .pb-ask-more-fields { margin-top: 0; padding: 1rem; }
-.pb-hero-details-post { justify-content: flex-end; }
-/* Where the post button sits under the form, the open details' own button
-   takes its place rather than standing just above it. */
-.pb-fix-form:has(.pb-hero-details[open]) > .pb-hero-actions { display: none; }
 @media (prefers-reduced-motion: reduce) { .pb-ask-more-chevron { transition: none; } }
 /* The type of post: four buttons, two by two, one picked at a time. */
 .pb-hero-kind { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; min-width: 0; margin: 0; padding: 0; border: 0; }
@@ -74,7 +68,7 @@
 .pb-fix-more .pb-hero-kind label {
   position: relative; display: flex; align-items: center; justify-content: center; min-height: 2.75rem;
   margin: 0; padding: .5rem .75rem; border: 1px solid var(--pb-text); background: var(--pb-surface);
-  color: var(--pb-text); font-size: .875rem; font-weight: var(--font-weight-semibold); text-align: center; cursor: pointer;
+  color: var(--pb-text); font-size: .875rem; text-align: center; cursor: pointer;
 }
 /* The hidden choice covers its whole button, border included. */
 .pb-hero-kind input { position: absolute; inset: -1px; margin: 0; opacity: 0; cursor: pointer; }
@@ -115,7 +109,7 @@
 .pb-fix-working { font-size: .75rem; color: var(--pb-text-on-ink-muted); }
 .pb-fix-working::before { content: "●"; margin-right: .4rem; color: var(--pb-accent-deep); animation: pb-fix-pulse 1.2s ease-in-out infinite; }
 @keyframes pb-fix-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
-.pb-fix-log { padding: .75rem 1rem 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-mono); }
+.pb-fix-log { padding: .75rem 1rem 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-ui); }
 .pb-fix-line { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: .5rem; white-space: pre-wrap; overflow-wrap: anywhere; }
 .pb-fix-at { color: var(--pb-text-on-ink-muted); }
 /* On a phone the time column is as wide as "+10.3s" and no wider. */
@@ -124,20 +118,20 @@
   .pb-fix-line { grid-template-columns: 3.25rem minmax(0, 1fr); }
 }
 .pb-fix-line--head { color: var(--pb-text-on-ink-muted); }
-.pb-fix-line--note { color: var(--pb-text-on-ink-muted); font-style: italic; }
-.pb-fix-line--call { color: var(--pb-accent-deep); font-weight: var(--font-weight-semibold); }
+.pb-fix-line--note { color: var(--pb-text-on-ink-muted); }
+.pb-fix-line--call { color: var(--pb-accent-deep); }
 /* Jev's reading, in the person colour mixed toward the text so it reads on either theme. */
 .pb-fix-line--jev { color: color-mix(in srgb, var(--pb-human-edge) 50%, var(--pb-text)); }
-.pb-fix-line--done { color: var(--pb-good); font-weight: var(--font-weight-semibold); }
+.pb-fix-line--done { color: var(--pb-good); }
 .pb-fix-line--wait, .pb-fix-line--fail { color: var(--pb-bad); }
 .pb-fix-answer { border: 1px solid var(--pb-line); background: var(--pb-surface); }
 .pb-fix-answer-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .6rem 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-fix-answer-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: 1rem; }
 .pb-fix-answer-head .rg-button { flex: none; white-space: nowrap; }
-.pb-fix-answer-text { margin: 0; padding: 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.pb-fix-answer-text { margin: 0; padding: 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-ui); white-space: pre-wrap; overflow-wrap: anywhere; }
 .pb-fix-known { margin-bottom: 1rem; }
 .pb-fix-known-body { padding: .25rem 1rem 1rem; font-size: .875rem; line-height: 1.6; overflow-wrap: anywhere; }
-.pb-fix-known-body h3 { margin: 1rem 0 .25rem; font-size: .8125rem; font-weight: 600; }
+.pb-fix-known-body h3 { margin: 1rem 0 .25rem; font-size: .8125rem; }
 .pb-fix-known-body ul { margin: 0; padding-left: 1.25rem; list-style: disc; }
 .pb-fix-known-body ol { margin: 0; padding-left: 1.25rem; list-style: decimal; }
 .pb-fix-known-body li + li { margin-top: .25rem; }

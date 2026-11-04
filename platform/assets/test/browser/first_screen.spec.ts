@@ -109,11 +109,11 @@ test("the Wallet Bench board takes the sheet's width", async ({page, isMobile}) 
   await problems.expect()
 })
 
-// Layers: Geist at 400 and 600 only, and nothing floats on a blurred shadow.
+// Layers: one weight, 400, and nothing floats on a blurred shadow.
 // The theme switch is design-system's artwork (its laser's glow is drawn
 // there), so it is left to design-system's own checks.
 for (const path of ["/", "/sites", "/wallet-bench", "/offers", "/keyfleet.ai", "/changelog", "/agent-setup"]) {
-  test(`${path} draws text at 400 and 600 only, with no soft shadows`, async ({page}) => {
+  test(`${path} draws text at 400 only, with no soft shadows`, async ({page}) => {
     await page.goto(path)
     const found = await page.evaluate(() => {
       const weights: string[] = []
@@ -123,7 +123,7 @@ for (const path of ["/", "/sites", "/wallet-bench", "/offers", "/keyfleet.ai", "
         if (box.width === 0 || box.height === 0 || element.closest(".rg-theme-toggle")) continue
         const style = getComputedStyle(element)
         const words = [...element.childNodes].some(node => node.nodeType === Node.TEXT_NODE && node.textContent!.trim())
-        if (words && !["400", "600"].includes(style.fontWeight)) weights.push(`${element.tagName} ${style.fontWeight}`)
+        if (words && style.fontWeight !== "400") weights.push(`${element.tagName} ${style.fontWeight}`)
         // Each shadow is "colour x y blur spread"; a blur above zero is a soft shadow.
         for (const shadow of style.boxShadow === "none" ? [] : style.boxShadow.split(/,(?![^(]*\))/)) {
           const lengths = shadow.replace(/\w+\([^)]*\)/g, "").match(/-?[\d.]+px/g) ?? []

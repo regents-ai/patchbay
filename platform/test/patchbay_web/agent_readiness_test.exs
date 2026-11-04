@@ -103,13 +103,12 @@ defmodule PatchbayWeb.AgentReadinessTest do
   end
 
   describe "a missing address" do
-    test "answers a browser with the styled page and links out of it", %{conn: conn} do
+    test "answers a browser with the styled page and a way home", %{conn: conn} do
       conn = get(conn, "/no-such-page")
 
       html = html_response(conn, 404)
-      assert html =~ "There is nothing at this address."
-      assert html =~ ~s(href="/docs")
-      assert html =~ ~s(href="/sitemap.xml")
+      assert html =~ "Not found"
+      assert html =~ ~s(href="/")
     end
 
     test "answers a markdown reader with a markdown map", %{conn: conn} do

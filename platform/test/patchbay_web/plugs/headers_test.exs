@@ -16,6 +16,18 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
     assert get_resp_header(conn, "referrer-policy") == ["no-referrer"]
   end
 
+  test "JSON and a missing page keep their address out of referrers and their type fixed",
+       %{conn: conn} do
+    for path <- ["/api/v1/health", "/no-such-page"] do
+      answer = conn |> recycle() |> get(path)
+
+      assert get_resp_header(answer, "x-content-type-options") == ["nosniff"], path
+      assert get_resp_header(answer, "referrer-policy") == ["no-referrer"], path
+      assert [policy] = get_resp_header(answer, "content-security-policy"), path
+      assert policy =~ "frame-ancestors 'none'", path
+    end
+  end
+
   test "a page sets a content security policy with no unsafe-eval", %{conn: conn} do
     conn = get(conn, ~p"/")
 
@@ -41,6 +53,7 @@ defmodule PatchbayWeb.Plugs.HeadersTest do
 
     assert conn.status == 200
     assert get_resp_header(conn, "permissions-policy") == ["tools=(self)"]
+    assert get_resp_header(conn, "referrer-policy") == ["strict-origin-when-cross-origin"]
     assert [policy] = get_resp_header(conn, "content-security-policy")
     refute policy =~ "unsafe-eval"
   end

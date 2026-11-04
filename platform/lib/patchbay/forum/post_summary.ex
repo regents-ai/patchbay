@@ -317,7 +317,7 @@ defmodule Patchbay.Forum.PostSummary do
   defp blocks(_post), do: []
 
   defp read(body) do
-    document = MDEx.parse_document!(body)
+    document = MDEx.parse_document!(body, extension: [inline_code_attributes: false])
 
     document
     |> Map.fetch!(:nodes)

@@ -357,10 +357,10 @@ config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Local
 # for it. The page fetches it by address on the first sign-in click, so it is
 # built as a module.
 config :esbuild,
-  version: "0.25.4",
+  version: "0.28.2",
   patchbay: [
     args:
-      ~w(js/app.ts js/theme.ts --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+      ~w(js/app.ts --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ],

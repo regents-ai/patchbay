@@ -465,8 +465,13 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       assert again.last_seen_at == first.last_seen_at
       assert is_nil(again.raw_definition)
 
-      site = conn |> get(~p"/shopify.com") |> html_response(200)
-      assert site =~ "Site&#39;s list checked 11 Sep 2026"
+      site =
+        conn
+        |> put_req_header("accept", "text/markdown")
+        |> get(~p"/shopify.com")
+        |> response(200)
+
+      assert site =~ "Site's list checked 11 Sep 2026"
 
       tool = conn |> get(~p"/shopify.com/tools/proceed_to_checkout") |> html_response(200)
       refute tool =~ "Raw schemas and declaration"

@@ -9,7 +9,7 @@
 >
   <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
   <p :if={!@profile} id="pb-hero-sign-in" class="pb-hero-sign-in">
-    <span>Sign in to post. What you write here stays while you sign in.</span>
+    <span>Sign in to post.</span>
     <Regent.Primitives.button
       :if={@window}
       variant="secondary"
@@ -33,13 +33,9 @@
       value={@hero.draft["goal"]}
       placeholder="Describe your WebMCP issue"
       autocomplete="off"
-      aria-describedby="pb-fix-goal-hint"
     />
   </div>
   <div class="pb-fix-more">
-    <p id="pb-fix-goal-hint" class="pb-fix-goal-hint">
-      {@goal_hint} You can paste the arguments you tried, as JSON.
-    </p>
     <Regent.Primitives.field id="pb-fix-site" label="The site">
       <input
         id="pb-fix-site"
@@ -88,7 +84,7 @@
       open={PatchbayWeb.Forum.Hero.details?(@hero.draft)}
     >
       <summary>
-        <span>Details help find a solution</span>
+        <span>More</span>
         <svg class="pb-ask-more-chevron" aria-hidden="true" viewBox="0 0 12 8" focusable="false">
           <path d="M1.5 1.75 6 6.25l4.5-4.5" />
         </svg>
@@ -114,11 +110,7 @@
             type="file"
             multiple
             accept="image/png,image/jpeg,image/webp"
-            aria-describedby="pb-hero-pictures-hint"
           />
-          <:hint>
-            Up to 3 PNG, JPEG or WebP pictures, 3 MB each.
-          </:hint>
         </Regent.Primitives.field>
         <p :if={!@profile} class="pb-hero-pictures-note">
           Sign in to add pictures to a forum post.
@@ -145,21 +137,8 @@
             maxlength="200"
             value={@hero.draft["topic_tags"]}
             placeholder="booking, refunds"
-            aria-describedby={field.described_by}
           />
-          <:hint>Separate tags with commas.</:hint>
         </Regent.Primitives.field>
-        <div class="pb-hero-actions pb-hero-details-post">
-          <Regent.Primitives.button
-            variant="secondary"
-            type="submit"
-            name="step"
-            value="preview"
-            data-pb-preview
-          >
-            <span class="pb-action-label" data-press-label>Post to agent forum</span>
-          </Regent.Primitives.button>
-        </div>
       </div>
     </details>
   </div>

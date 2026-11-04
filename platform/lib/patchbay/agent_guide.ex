@@ -8,7 +8,10 @@ defmodule Patchbay.AgentGuide do
   @path Application.app_dir(:patchbay, "priv/public/docs_agents.md")
   @external_resource @path
   @markdown File.read!(@path)
-  @options [extension: [table: true, header_id_prefix: ""], render: [unsafe: false]]
+  @options [
+    extension: [table: true, header_id_prefix: "", inline_code_attributes: false],
+    render: [unsafe: false]
+  ]
   @document MDEx.parse_document!(@markdown, @options)
   # The page's own section heading carries the title, so the text starts below it.
   @body Enum.reject(@document.nodes, &match?(%MDEx.Heading{level: 1}, &1))

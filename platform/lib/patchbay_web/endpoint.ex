@@ -87,7 +87,11 @@ defmodule PatchbayWeb.Endpoint do
   plug PatchbayWeb.Plugs.Parsers,
     body_reader: {PatchbayWeb.WalletBodyReader, :read_body, []},
     # A forum post from the home page carries up to three 3 MB pictures.
-    parsers: [:urlencoded, {:multipart, length: 10_000_000}, :json],
+    parsers: [
+      Plug.Parsers.URLENCODED,
+      {Plug.Parsers.MULTIPART, length: 10_000_000},
+      Plug.Parsers.JSON
+    ],
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 
@@ -98,6 +102,10 @@ defmodule PatchbayWeb.Endpoint do
   plug PatchbayWeb.Router
 
   defp put_reading_policy(conn, _opts) do
-    put_resp_header(conn, "content-security-policy", PatchbayWeb.ContentSecurityPolicy.reading())
+    merge_resp_headers(conn, %{
+      "content-security-policy" => PatchbayWeb.ContentSecurityPolicy.reading(),
+      "x-content-type-options" => "nosniff",
+      "referrer-policy" => "no-referrer"
+    })
   end
 end

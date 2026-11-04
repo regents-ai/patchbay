@@ -201,7 +201,7 @@ defmodule PatchbayWeb.SearchLive do
           maxlength="100"
           phx-debounce="150"
           phx-mounted={JS.ignore_attributes(["aria-activedescendant"])}
-          placeholder="Paste an error, or search questions, sites and tools"
+          placeholder="Search"
         />
         <button type="button" class="shell-search__close" data-search-close>
           <kbd class="shell-search__esc">Esc</kbd>
@@ -236,7 +236,6 @@ defmodule PatchbayWeb.SearchLive do
         >
           <.icon name={:search} />
           <p><strong>No results for “{@search.query}”</strong></p>
-          <p>Try an error message, a site, a tool or words from a question.</p>
         </div>
         <section
           :for={{{group, items}, g} <- Enum.with_index(@search.results)}
@@ -276,11 +275,6 @@ defmodule PatchbayWeb.SearchLive do
       <p id="shell-search-status" class="visually-hidden" aria-live="polite">
         {result_count(@search)}
       </p>
-      <footer class="shell-search__footer" aria-hidden="true">
-        <span><kbd>↑</kbd><kbd>↓</kbd> Move</span>
-        <span><kbd>↵</kbd> Open</span>
-        <span><kbd>Esc</kbd> Close</span>
-      </footer>
     </Regent.Structure.dialog>
     """
   end

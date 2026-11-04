@@ -113,7 +113,6 @@
 }
 
 .credits-panel__figures dd {
-  font-weight: 600;
   text-align: end;
 }
 
@@ -165,7 +164,6 @@
   color: var(--pb-text);
   font: inherit;
   font-size: 3rem;
-  font-weight: 300;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
 }
@@ -177,7 +175,6 @@
 .credits-panel__amount span {
   color: var(--pb-text-muted);
   font-size: 3rem;
-  font-weight: 300;
   line-height: 1.15;
 }
 

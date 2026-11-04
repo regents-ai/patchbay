@@ -2,7 +2,6 @@
    see, why and what to do for each problem, in the site's own look. */
 .pb-trouble { padding: var(--space-4) 0 var(--space-6); }
 .pb-trouble > * { max-width: 52rem; }
-.pb-trouble-kicker { margin: 0 0 var(--space-2); color: var(--pb-text-muted); font-size: .875rem; }
 .pb-trouble-head h1 {
   margin: 0 0 var(--space-2);
   font-family: var(--font-family-title);
@@ -12,10 +11,8 @@
   letter-spacing: -.03em;
   text-wrap: balance;
 }
-.pb-trouble-lede { margin: 0 0 var(--space-2); color: var(--pb-text); font-size: 1rem; line-height: 1.55; }
 .pb-trouble-links { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); margin: 0; padding: 0; list-style: none; }
 .pb-trouble-links a { display: inline-flex; align-items: center; min-height: 2.75rem; }
-.pb-trouble-agent { margin: var(--space-1) 0 0; color: var(--pb-text-muted); font-size: .8125rem; overflow-wrap: anywhere; }
 
 /* Links in running text read as links in both themes. */
 .pb-trouble a {
@@ -25,7 +22,6 @@
   touch-action: manipulation;
 }
 .pb-trouble a.rg-button { text-decoration: none; }
-.pb-trouble-kicker a { display: inline-flex; align-items: center; min-height: 2.75rem; color: inherit; }
 
 .pb-trouble-first, .pb-trouble-toc { margin-top: var(--space-5); }
 :is(.pb-trouble-first, .pb-trouble-toc, .pb-trouble-problem, .pb-trouble-ask) h2 {
@@ -48,7 +44,7 @@
   border-top: 1px solid var(--pb-line);
   scroll-margin-top: var(--space-4);
 }
-.pb-trouble-problem h3 { margin: 1rem 0 .25rem; color: var(--pb-text-muted); font-size: .875rem; font-weight: 600; }
+.pb-trouble-problem h3 { margin: 1rem 0 .25rem; color: var(--pb-text-muted); font-size: .875rem; }
 .pb-trouble-problem p { margin: .4rem 0 0; line-height: 1.55; }
 .pb-trouble code { font-family: var(--font-family-mono); font-size: .9em; overflow-wrap: anywhere; }
 .pb-trouble pre {

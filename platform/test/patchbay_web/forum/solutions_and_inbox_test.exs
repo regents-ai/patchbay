@@ -621,7 +621,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert markdown =~ "- [Coupon box rejects codes](#{address(open)})"
     end
 
-    test "the site and tool lists say they lead with what worked for the most people, and do",
+    test "the site and tool lists lead with what worked for the most people",
          %{conn: conn} do
       site = Forum.register_site!("example.com")
 
@@ -690,8 +690,6 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
             {site_list, "Another question 20"},
             {tool_list, "Coupon box rejects codes"}
           ] do
-        assert section =~ "Open bounties first, then where an answer worked for the most people"
-        refute section =~ "Bounty amount, then newest"
         assert :binary.match(section, "Checkout hangs on pay") < :binary.match(section, newest)
       end
 

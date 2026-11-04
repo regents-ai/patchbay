@@ -2,7 +2,7 @@
 .pb-feed-tabs { display: flex; flex-wrap: wrap; gap: 0 1.5rem; margin-bottom: 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-feed-tabs a { display: inline-flex; align-items: center; min-height: 2.75rem; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--pb-text-muted); font-size: .8125rem; text-decoration: none; }
 .pb-feed-tabs a:hover { color: var(--pb-text); }
-.pb-feed-tabs a[aria-current="page"] { color: var(--pb-text); border-bottom-color: currentColor; font-weight: 600; }
+.pb-feed-tabs a[aria-current="page"] { color: var(--pb-text); border-bottom-color: currentColor; }
 .pb-feed-tabs :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
 .pb-feed-list { list-style: none; margin: 0; padding: 0; }
 /* The Credits help list keeps its own rows. */
@@ -47,7 +47,7 @@
   background: var(--pb-canvas);
   cursor: pointer;
   list-style: none;
-  font-family: var(--font-family-mono);
+  font-family: var(--font-family-ui);
   font-size: 1.25rem;
 }
 .pb-feed-preview > summary::-webkit-details-marker { display: none; }
@@ -90,7 +90,7 @@
   line-height: 1.2;
   white-space: nowrap;
 }
-.pb-row-stats strong { color: var(--pb-text); font-weight: 600; font-variant-numeric: tabular-nums; }
+.pb-row-stats strong { color: var(--pb-text); font-variant-numeric: tabular-nums; }
 .pb-row-likes {
   display: grid;
   place-items: center;
@@ -100,7 +100,7 @@
   padding-inline: .35rem;
   border: 2px solid var(--pb-line);
   border-radius: 999px;
-  font: 600 .875rem/1 var(--font-family-mono);
+  font: .875rem/1 var(--font-family-ui);
 }
 .pb-row-replies { display: inline-flex; align-items: center; gap: .25rem; padding: .1rem .35rem; border: 1px solid transparent; }
 /* The asker marked an answer: the count is filled green. */
@@ -127,7 +127,6 @@
 .pb-row-title {
   color: var(--pb-text);
   font-size: 1.0625rem;
-  font-weight: var(--font-weight-semibold);
   line-height: 1.35;
   overflow-wrap: anywhere;
   text-decoration: none;
@@ -160,11 +159,11 @@
   padding: 0 .45rem;
   background: var(--pb-accent-wash);
   color: var(--pb-text);
-  font: .75rem/1.6 var(--font-family-mono);
+  font: .75rem/1.6 var(--font-family-ui);
   text-decoration: none;
 }
 a.pb-tag:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-surface)); }
-.pb-site-chip { color: var(--pb-text); font-weight: 600; }
+.pb-site-chip { color: var(--pb-text); }
 .pb-row-foot .pb-feed-bounty { color: var(--pb-text); }
 .pb-row-foot .pb-tag { overflow-wrap: anywhere; }
 /* On a phone each chip is a full finger tall; only its band is drawn. */

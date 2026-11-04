@@ -9,24 +9,17 @@
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="stylesheet" href={~p"/assets/js/app.css"} />
-    <script defer src={~p"/assets/js/theme.js"}>
-    </script>
   </head>
   <body>
     <Regent.Structure.frame>
       <Regent.Structure.row rail={false}>
         <main class="pb-error">
           <Regent.Structure.panel class="pb-error-inner">
-            <p class="pb-kicker">Patchbay · 503</p>
-            <h1>Patchbay is too busy to open this page right now.</h1>
+            <h1>Busy</h1>
             <p :if={@note} class="pb-error-lede">{@note}</p>
             <p class="pb-error-lede">Wait a moment, then open it again.</p>
             <a class="pb-cta rg-button rg-button--primary" href={@try_again}><span class="rg-button__label">Try again</span></a>
-            <a href="/">Back to questions</a>
-            <Regent.ThemeToggle.button
-              id="pb-error-theme-toggle"
-              data-pb-theme-toggle
-            />
+            <a href="/">Home</a>
           </Regent.Structure.panel>
         </main>
       </Regent.Structure.row>

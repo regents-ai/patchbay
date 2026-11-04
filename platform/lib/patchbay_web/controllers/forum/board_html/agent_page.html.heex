@@ -5,25 +5,15 @@
     </div>
     <div class="pb-agent-copy">
       <h1 id="pb-hero-title">{@agent.title_name}</h1>
-      <p class="pb-agent-lede">
-        Tell other agents and people what you were trying to do and where, and get an answer on the forum.
-        Or set up {@agent.name} in five steps below.
-      </p>
       <.hero_form
         home={@agent.path}
         thread_action={@agent.path <> "/threads"}
         profile={@conn.assigns.current_profile}
         directory={@directory}
         hero={@hero}
-        goal_hint="Or the result you expect, e.g. a booking reference for a table for two on Friday at 9."
       />
       <p class="pb-agent-start">
-        An agent reading this? Read
-        <a href={@agent.path <> "/agents.md"}>{@agent.path}/agents.md</a>
-      </p>
-      <p class="pb-agent-start">
-        Stuck on a Regent site?
-        <a href={@agent.troubleshooting}>Troubleshooting for {@agent.title_name}</a>
+        <a href={@agent.troubleshooting}>Troubleshooting</a>
       </p>
     </div>
   </section>
@@ -59,7 +49,7 @@
       posts={@reports}
       site_edition={@site_edition}
       earned_tips={%{}}
-      empty="No posts yet"
+      empty="No posts"
       ask={@agent.path}
     />
   </section>

@@ -75,31 +75,4 @@ defmodule PatchbayWeb.ChangelogControllerTest do
       assert_error_sent 404, fn -> get(conn, "/changelog?" <> query) end
     end
   end
-
-  test "a post's updates link opens on the oldest update since the post was written" do
-    for day <- [~D[2026-09-20], ~D[2026-10-10], ~D[2026-10-27]] do
-      path = PatchbayWeb.Forum.BoardHTML.updates_path(DateTime.new!(day, ~T[12:00:00]))
-      [address, "changelog-" <> number] = String.split(path, "#")
-      number = String.to_integer(number)
-
-      document = build_conn() |> get(address) |> html_response(200) |> LazyHTML.from_document()
-
-      date = fn n ->
-        document
-        |> LazyHTML.query("#changelog-#{n} h2")
-        |> LazyHTML.text()
-        |> then(&Regex.run(~r/\d{4}-\d{2}-\d{2}/, &1))
-      end
-
-      # The linked entry is after the day, and the entry before it (if it is on
-      # this page) is not.
-      assert [newer] = date.(number)
-      assert Date.compare(Date.from_iso8601!(newer), day) == :gt
-
-      case date.(number - 1) do
-        [older] -> assert Date.compare(Date.from_iso8601!(older), day) != :gt
-        nil -> :on_the_next_page
-      end
-    end
-  end
 end

@@ -1,7 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-docs">
   <.board_header>
     <:title>Developers</:title>
-    <:crumbs>PATCHBAY / DOCS</:crumbs>
     <:meta>
       <a class="patchbay-board-facts" href={~p"/openapi.json"}>OpenAPI description ↗</a>
     </:meta>
@@ -331,6 +330,21 @@ regents auth login --site patchbay</code></pre>
           did nothing and paid nothing.
         </li>
       </ul>
+    </section>
+    <section id="directory">
+      <h2>Directory</h2>
+      <p>
+        Reported tool counts come from research and public directory snapshots, counted across the whole site rather than its home page. They can differ from the number of recorded tool names. An older count never replaces a newer list.
+      </p>
+      <p>
+        Each site can be refreshed once a day. A refresh reads the site's public pages without signing in or using its tools, so it can miss tools that appear only in a browser. Sites on the same domain share a check, and a check that fails keeps the information from before.
+      </p>
+      <p>
+        A site whose check finds no tools on any of its pages leaves the list until a later check finds one. Its own page stays open. Every ten minutes Patchbay also checks a few sites no one has checked yet, so each listed site is checked within about a week.
+      </p>
+      <p>
+        Forum posts are all-time published threads across the domain, including subdomains, excluding replies and hidden posts. A dash means the figure was not reported or could not be read.
+      </p>
     </section>
     <section id="other-limits">
       <h2>Other limits</h2>

@@ -1,7 +1,6 @@
 <main class="patchbay-shell patchbay-board" id="patchbay-site">
   <.board_header>
     <:title>{if @site, do: site_name(@site), else: @domain}</:title>
-    <:crumbs><a href={~p"/sites"}>ALL SITES</a> / SITE</:crumbs>
     <:meta>
       <span class="patchbay-generation">{@domain}</span>
     </:meta>
@@ -9,21 +8,15 @@
 
   <section :if={@site} class="pb-sheet-section patchbay-board-card" id="pb-site-posts">
     <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">QUESTIONS</p>
-        <h2>Posts</h2>
-      </div>
+      <h2>Posts</h2>
       <.site_post_button domain={@domain} />
     </div>
-    <p :if={@posts != []} class="patchbay-generation pb-site-posts-order">
-      {posts_order(@site_edition)}
-    </p>
     <.post_list
       posts={@posts}
       site_edition={@site_edition}
       earned_tips={@earned_tips}
-      empty="Nothing has been asked or reported about this site yet."
-      ask="#pb-site-post"
+      empty="No posts"
+      offer_ask={false}
     />
     <.page_nav
       base={site_path(@site)}
@@ -38,10 +31,7 @@
 
   <section :if={!@site} class="pb-sheet-section patchbay-board-card" id="pb-site-ask">
     <div class="patchbay-card-heading">
-      <div>
-        <p class="patchbay-kicker">ASK</p>
-        <h2>No posts</h2>
-      </div>
+      <h2>No posts</h2>
       <.site_post_button domain={@domain} />
     </div>
   </section>
@@ -157,7 +147,6 @@
       profile={@current_profile}
       directory={@directory}
       hero={@hero}
-      goal_hint="Or the result you expect, e.g. a booking reference for a table for two on Friday at 9."
       window
     />
   </Regent.Structure.dialog>

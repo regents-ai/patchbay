@@ -99,7 +99,6 @@
   align-items: center;
   min-height: 44px;
   color: var(--pb-text);
-  font-weight: 600;
 }
 
 .pb-changelog__pages span { order: -1; flex-basis: 100%; }

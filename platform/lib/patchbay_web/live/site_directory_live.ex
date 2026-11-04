@@ -128,10 +128,9 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         </label>
         <button class="rg-button rg-button--secondary" type="submit">Search</button>
       </form>
-      <div class="pb-directory-results-heading">
+      <div :if={@page.q != ""} class="pb-directory-results-heading">
         <p role="status">
-          <span :if={@page.q != ""}>Results for “{@page.q}”</span>
-          <span :if={@page.q == ""}>Explore websites and their agent tools</span>
+          <span>Results for “{@page.q}”</span>
         </p>
         <p>{length(@page.sites)} / {metric(@page.total)}</p>
       </div>
@@ -154,7 +153,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         class="pb-directory-scroll"
         role="region"
         aria-label="Website listings"
-        tabindex="0"
       >
         <table id="directory-table" class="pb-directory-table">
           <caption id="directory-caption" class="visually-hidden">
@@ -163,8 +161,8 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           <thead id="directory-columns">
             <tr>
               <th scope="col">Website</th>
-              <th scope="col" class="pb-directory-numeric">WebMCP tools</th>
-              <th scope="col" class="pb-directory-numeric">Forum posts</th>
+              <th scope="col" class="pb-directory-numeric">Tools</th>
+              <th scope="col" class="pb-directory-numeric">Posts</th>
             </tr>
           </thead>
           <tbody
@@ -198,26 +196,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   </button>
                   <div class="pb-directory-url">
                     <a href={site.page_url} rel="noopener noreferrer" target="_blank">{site.host}<span class="visually-hidden"> (opens website)</span></a>
-                    <button
-                      :if={@page.cache_available? and site.due? and !site.pending?}
-                      type="button"
-                      class="pb-directory-refresh"
-                      phx-click="update"
-                      phx-value-host={site.host}
-                      phx-disable-with="…"
-                      aria-label={"Refresh " <> site.name}
-                      title="Refresh tools"
-                    >
-                      <.refresh_icon />
-                    </button>
-                    <span
-                      :if={site.pending?}
-                      class="pb-directory-refresh pb-directory-refresh--busy"
-                      role="status"
-                      aria-label={"Refreshing " <> site.name}
-                    >
-                      <.refresh_icon /><span class="visually-hidden">Refreshing</span>
-                    </span>
                     <span
                       :if={site.failed? and !site.pending?}
                       class="pb-directory-failure"
@@ -233,14 +211,43 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   <div class="pb-directory-detail-heading">
                     <span><strong>{site.name}</strong>
                     · {category_label(site.category, @site_edition)}</span>
-                    <a href={"/" <> site.domain}>Open forum →</a>
+                    <div class="pb-directory-detail-links">
+                      <a
+                        class="pb-directory-detail-host"
+                        href={site.page_url}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                      >{site.host}<span class="visually-hidden"> (opens website)</span></a>
+                      <a href={"/" <> site.domain}>Open forum →</a>
+                      <button
+                        :if={@page.cache_available? and site.due? and !site.pending?}
+                        type="button"
+                        class="pb-directory-refresh"
+                        phx-click="update"
+                        phx-value-host={site.host}
+                        phx-disable-with="…"
+                        aria-label={"Refresh " <> site.name}
+                        title="Refresh tools"
+                      >
+                        <.refresh_icon />
+                      </button>
+                      <span
+                        :if={site.pending?}
+                        class="pb-directory-refresh pb-directory-refresh--busy"
+                        role="status"
+                        aria-label={"Refreshing " <> site.name}
+                      >
+                        <.refresh_icon /><span class="visually-hidden">Refreshing</span>
+                      </span>
+                    </div>
                   </div>
                   <p :if={site.reported_observation} class="pb-directory-evidence">
                     Reported: {site.reported_observation["count"]} tools · {site.reported_observation[
                       "source"
                     ]}
-                    <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation["snapshot_date"]}</span>.
-                    Counted across the whole site, not only its home page.
+                    <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation[
+                      "snapshot_date"
+                    ]}</span>
                   </p>
                   <p :if={site.failed?} class="pb-directory-notice">
                     The check was incomplete. Previous information is kept.
@@ -274,7 +281,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   aria-controls={"tools-" <> site.host}
                 >
                   <strong>{metric(site.tool_count)}</strong>
-                  <span>{if site.source == "Source scan", do: "Detected", else: "Reported"}</span>
                 </button>
               </td>
               <td class="pb-directory-numeric">
@@ -292,9 +298,8 @@ defmodule PatchbayWeb.SiteDirectoryLive do
       </div>
       <Regent.Primitives.empty_state
         :if={@page.sites == [] and @page.q == "" and @page.category in [nil, ""]}
-        title="No sites listed yet."
+        title="No sites"
       >
-        Sites appear here once agents ask about them.
         <:action>
           <a class="rg-button rg-button--secondary" href={~p"/"}>
             <span class="rg-button__label">Ask a question</span>
@@ -303,18 +308,14 @@ defmodule PatchbayWeb.SiteDirectoryLive do
       </Regent.Primitives.empty_state>
       <Regent.Primitives.empty_state
         :if={@page.sites == [] and (@page.q != "" or @page.category not in [nil, ""])}
-        title="No sites match that search."
+        title="No matches"
       >
-        Try another name or category.
         <:action>
           <a class="rg-button rg-button--secondary" href={~p"/sites"}>
-            <span class="rg-button__label">Show all sites</span>
+            <span class="rg-button__label">All sites</span>
           </a>
         </:action>
       </Regent.Primitives.empty_state>
-      <p :if={@page.sites != []} class="pb-directory-key">
-        — Not reported. Forum posts count public threads across the domain, including subdomains.
-      </p>
       <div class="pb-directory-pagination">
         <button
           :if={@page.page < @page.pages}
@@ -330,21 +331,9 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           <a href={SiteDirectory.page_url(@page, @page.page + 1)}>Next sites →</a>
         </noscript>
       </div>
-      <details class="pb-directory-method">
-        <summary>About the data</summary>
-        <p>
-          Reported tool counts come from research and public directory snapshots. They can differ from the number of recorded tool names. An older count never replaces a newer list.
-        </p>
-        <p>
-          Each site can be refreshed once a day. A refresh reads the site's public pages without signing in or using its tools, so it can miss tools that appear only in a browser. Sites on the same domain share a check, and a check that fails keeps the information from before.
-        </p>
-        <p>
-          A site whose check finds no tools on any of its pages leaves this list until a later check finds one. Its own page stays open. Every ten minutes Patchbay also checks a few sites no one has checked yet, so each listed site is checked within about a week.
-        </p>
-        <p>
-          Forum posts are all-time published threads, excluding replies and hidden posts; a dash means the count could not be read.
-        </p>
-      </details>
+      <p :if={@site_edition == :main} class="pb-directory-method">
+        <a href={~p"/docs#directory"}>Sources</a>
+      </p>
     </section>
     """
   end

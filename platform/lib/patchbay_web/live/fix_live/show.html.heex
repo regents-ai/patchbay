@@ -11,7 +11,6 @@
   </p>
 
   <header class="pb-fix-head">
-    <p class="patchbay-kicker"><a href={~p"/"}>PATCHBAY</a> / FIX</p>
     <h1 id="pb-fix-headline">{@headline}</h1>
     <p class="pb-fix-request">
       {@run.goal} · <a href={@run.site_url} rel="noopener noreferrer nofollow">{@host}</a>
@@ -98,7 +97,7 @@
 
   <section :if={@answer} class="pb-fix-answer" aria-labelledby="pb-fix-answer-title">
     <div class="pb-fix-answer-head">
-      <h2 id="pb-fix-answer-title">The answer, ready for your agent</h2>
+      <h2 id="pb-fix-answer-title">Answer</h2>
       <Regent.Primitives.copy_button id="pb-fix-copy" target="pb-fix-answer-text">
         Copy
       </Regent.Primitives.copy_button>

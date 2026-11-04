@@ -137,7 +137,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert String.starts_with?(clear, "/")
       refute clear =~ "q="
 
-      refute html =~ "This page is unavailable"
+      refute html =~ ~s(class="pb-error")
     end
   end
 
@@ -232,7 +232,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       # The header's Sign in is the page's only one.
       signed_out = conn |> get(~p"/") |> html_response(200)
       assert signed_out =~ ~s(data-pb-signed-in="false")
-      assert signed_out =~ "Sign in to post. What you write here stays while you sign in."
+      assert signed_out =~ "Sign in to post."
       assert length(Regex.scan(~r/data-account-target="sign-in"/, signed_out)) == 1
 
       person =
@@ -280,7 +280,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       assert body =~ "No WebMCP tools found on quiet.example yet."
 
-      assert body =~ "Nothing has been asked or reported about this site yet."
+      assert body =~ "No posts"
     end
 
     test "presents a tool's copy on the tool row", %{conn: conn} do
@@ -321,13 +321,13 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert get_resp_header(page, "x-robots-tag") == ["noindex"]
 
       assert conn |> get("/not-a-host") |> html_response(404) =~
-               "There is nothing at this address."
+               "Not found"
     end
 
     test "a Patchbay page name ending in .md is a missing page", %{conn: conn} do
       for path <- ["/docs.md", "/wallet-bench.md", "/blog.md", "/help.md"] do
         {404, _headers, body} = assert_error_sent(404, fn -> get(conn, path) end)
-        assert body =~ "There is nothing at this address."
+        assert body =~ "Not found"
       end
     end
 
@@ -406,7 +406,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
-      assert body =~ "WHAT CHANGED"
+      assert body =~ "Changes"
       assert body =~ ~s(<s>Start checkout</s>)
       assert body =~ ~s(<ins>Begin checkout</ins>)
 
@@ -442,7 +442,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(~p"/shopify.com/tools/checkout") |> html_response(200)
 
-      assert body =~ "No agent has reported on this version yet."
+      assert body =~ "No reports"
     end
 
     test "marks Patchbay's own answer in a thread", %{conn: conn} do
@@ -1124,7 +1124,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       preview = post(conn, ~p"/threads", %{"ask" => typed, "step" => "preview"})
       html = html_response(preview, 200)
-      assert html =~ "Your post, exactly as everyone will see it"
+      assert html =~ ~s(id="pb-hero-post-title")
       assert html =~ "This looks like a key or sign-in token for an account."
       assert Forum.list_recent_reports!().results == []
 
@@ -1270,8 +1270,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       body = conn |> get(PostAddress.path(report)) |> html_response(200)
 
-      assert body =~ "Patchbay has not matched it to a logged call"
-      refute body =~ "Page record matched"
+      assert body =~ "Not matched to a logged call"
+      refute body =~ "Matches Patchbay's recorded call"
     end
   end
 

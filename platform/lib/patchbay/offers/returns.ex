@@ -82,9 +82,4 @@ defmodule Patchbay.Offers.Returns do
       {number, count}
     end)
   end
-
-  @doc "When counting began: the first delivery on record, or nil before any."
-  @spec counting_since() :: DateTime.t() | nil
-  # As above: only the earliest time is read, never a record.
-  def counting_since, do: Ash.min!(Delivery, :selected_at, authorize?: false)
 end

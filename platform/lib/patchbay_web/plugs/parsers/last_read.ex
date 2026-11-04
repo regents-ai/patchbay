@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.Plugs.Parsers.LastRead do
   @moduledoc """
-  One of Plug's own parsers (`:json`, `:urlencoded`, `:multipart`), whose
+  One of Plug's own parsers (`Plug.Parsers.JSON`, `.URLENCODED`, `.MULTIPART`), whose
   refusals carry the request its last body read returned, as ash-template's
   parsers do, so a body over its limit or one that does not decode is answered
   413 or 400 in the request's own format rather than as a server error.
@@ -16,16 +16,15 @@ defmodule PatchbayWeb.Plugs.Parsers.LastRead do
   def init(opts) do
     {parser, opts} = Keyword.pop!(opts, :parser)
 
-    {name, own} =
+    {module, own} =
       case parser do
-        {name, own} -> {name, own}
-        name -> {name, []}
+        {module, own} -> {module, own}
+        module -> {module, []}
       end
 
     {reader, opts} =
       Keyword.pop(Keyword.merge(opts, own), :body_reader, {Plug.Conn, :read_body, []})
 
-    module = Module.concat(Plug.Parsers, name |> Atom.to_string() |> String.upcase())
     {module, module.init([body_reader: {__MODULE__, :read_body, [reader]}] ++ opts)}
   end
 

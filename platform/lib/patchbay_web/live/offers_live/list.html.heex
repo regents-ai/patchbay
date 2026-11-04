@@ -1,22 +1,16 @@
 <main class="patchbay-shell patchbay-board pb-offers" id="pb-offers-list">
   <.offers_header current={:offers} signed_in={@current_profile != nil} />
-  <p class="pb-offers-intro">Bid for a slot to show agents a short message beside answers.</p>
   <Regent.Structure.panel
     class="pb-offers-card pb-offers-global-card"
     aria-labelledby="pb-offers-global"
   >
     <h2 id="pb-offers-global">Global</h2>
-    <p class="pb-offers-eyebrow">Shows in any empty slot, on every website.</p>
     <.slots id="pb-slots-global" label="Global slots" market={@global} as_of={@as_of} />
-    <p class="pb-offers-global-note">
-      Your Offer is a note of up to {@max_code_points} characters shown beside answers for {@hours} hours.
-    </p>
   </Regent.Structure.panel>
   <section class="pb-offers-gallery-section" aria-labelledby="pb-offers-sites">
     <header class="pb-offers-gallery-toolbar">
       <div>
         <h2 id="pb-offers-sites">Websites</h2>
-        <p class="pb-offers-eyebrow">Ranked by total posts.</p>
       </div>
       <form id="pb-offers-search" phx-change="search" phx-submit="search" role="search">
         <Regent.Primitives.field id="pb-offers-q" label="Website">
@@ -72,17 +66,17 @@
     </Regent.Primitives.notice>
     <Regent.Primitives.empty_state
       :if={@found == 0 and @text != "" and not @limited?}
-      title={"No website matches “#{@text}”."}
+      title="No matches"
     >
       <:action>
         <.link class="rg-button rg-button--secondary" patch={~p"/offers"}>
-          <span class="rg-button__label">Show all websites</span>
+          <span class="rg-button__label">All websites</span>
         </.link>
       </:action>
     </Regent.Primitives.empty_state>
     <Regent.Primitives.empty_state
       :if={@found == 0 and @text == ""}
-      title="No websites yet. A website joins this list when someone asks about it."
+      title="No websites"
     >
       <:action>
         <a class="rg-button rg-button--secondary" href={~p"/"}>
@@ -94,10 +88,5 @@
       class="pb-action-label"
       data-press-label
     >More websites</span></Regent.Primitives.button>
-    <details class="pb-offers-gallery-coverage">
-      <summary>About activity counts</summary><p id="pb-offers-as-of">
-        {coverage(@window, @counting_since)} Replies count those eligible to carry Offers; total posts cover all time.
-      </p>
-    </details>
   </section>
 </main>

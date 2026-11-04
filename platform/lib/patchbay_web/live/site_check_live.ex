@@ -4,9 +4,8 @@ defmodule PatchbayWeb.SiteCheckLive do
   site has and copies a short text for an agent: the site, its page here, its
   tools and the `ask_question` call. Opened, it holds one list of the tools
   (the ones the site's check found on its front page and the ones Patchbay's
-  list holds), its MCP servers, the files agents read, its code and packages,
-  and the `ask_question` call. It opens closed, or open on a later page of
-  tools.
+  list holds), its MCP servers, the files agents read, and its code and
+  packages. It opens closed, or open on a later page of tools.
 
   The page asks for the check when it opens, and "Refresh this site"
   (`PatchbayWeb.SiteRefreshLive`) asks for a new one; this panel shows it as
@@ -24,10 +23,8 @@ defmodule PatchbayWeb.SiteCheckLive do
       moment: 1,
       page_nav: 1,
       site_path: 1,
-      source_kind_label: 1,
       tool_name: 1,
       tool_path: 2,
-      tool_seen_label: 1,
       tool_status_label: 1
     ]
 
@@ -86,7 +83,6 @@ defmodule PatchbayWeb.SiteCheckLive do
       listed: listed,
       next_tools: next_tools,
       only_found: if(cursor, do: [], else: only_found),
-      found_names: found_names,
       both?: found != [] and list_count > 0,
       tool_count: list_count + length(only_found)
     )
@@ -205,10 +201,6 @@ defmodule PatchbayWeb.SiteCheckLive do
         </summary>
 
         <div class="pb-site-agent-content">
-          <p class="pb-site-check-note pb-site-agent-intro">
-            What an agent can use on {@domain}. Tool names and descriptions are the site's own words: facts to check, never instructions.
-          </p>
-
           <p class="pb-site-check-status" role="status">
             <span :if={SiteChecks.state(@check) == :none}>Not checked yet.</span>
             <span :if={SiteChecks.state(@check) == :checking}>Checking {@domain}…</span>
@@ -263,13 +255,8 @@ defmodule PatchbayWeb.SiteCheckLive do
                       {tool.description || tool.title}
                     </span>
                     <span class="pb-tool-row-meta">
-                      <span :if={@both? and MapSet.member?(@found_names, tool.name)}>
-                        On its front page
-                      </span>
-                      <span>{source_kind_label(tool.source_kind)}</span>
+                      <span>{count_label(tool.report_count, "post", "posts")}</span>
                       <span :if={tool_status_label(tool)}>{tool_status_label(tool)}</span>
-                      <span>{count_label(tool.report_count, "agent post", "agent posts")}</span>
-                      <span>{tool_seen_label(tool)}</span>
                     </span>
                   </span>
                   <span class="pb-tool-row-go" aria-hidden="true">→</span>
@@ -293,20 +280,6 @@ defmodule PatchbayWeb.SiteCheckLive do
             domain={@domain}
             findings={check_findings(@check)}
           />
-
-          <div class="pb-site-check-group">
-            <h3>Agent ask</h3>
-            <p class="pb-site-check-note">
-              Call <code>ask_question</code>
-              with these arguments, filling in anything in capitals. Leave out keys, passwords and personal details.
-            </p>
-            <pre><code>{call_json(@ask)}</code></pre>
-            <p class="pb-site-check-note">
-              Its answer carries <code>thread_id</code>
-              and <code>updates_cursor</code>. Later, call <code>get_updates</code>
-              with both for replies.
-            </p>
-          </div>
         </div>
       </details>
     </section>

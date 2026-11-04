@@ -72,16 +72,8 @@
   letter-spacing: -.03em;
   text-wrap: balance;
 }
-.pb-agent-lede {
-  max-width: 34rem;
-  margin: 0 0 var(--space-3);
-  color: var(--pb-text);
-  font-size: 1rem;
-  line-height: 1.55;
-}
 .pb-agent .pb-fix-form { max-width: 40rem; }
 .pb-agent-start { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: .8125rem; overflow-wrap: anywhere; }
-.pb-agent-start + .pb-agent-start { margin-top: var(--space-1); }
 
 /* Links in running text read as links in both themes. */
 :is(.pb-agent-start, .pb-agent-step, .pb-agent-section-head) a {
@@ -124,11 +116,10 @@
   grid-row: 1 / span 99;
   padding-top: .2rem;
   color: var(--pb-text-muted);
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 .pb-agent-step > * { grid-column: 2; min-width: 0; }
-.pb-agent-step h3 { margin: 0 0 .25rem; font-size: 1.125rem; font-weight: 600; line-height: 1.4; }
+.pb-agent-step h3 { margin: 0 0 .25rem; font-size: 1.125rem; line-height: 1.4; }
 .pb-agent-step-why { margin: 0 0 .5rem; color: var(--pb-text-muted); line-height: 1.5; }
 .pb-agent-step p:not(.pb-agent-step-why) { margin: .5rem 0 0; line-height: 1.55; overflow-wrap: anywhere; }
 .pb-agent-step pre {

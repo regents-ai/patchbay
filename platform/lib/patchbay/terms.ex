@@ -14,7 +14,10 @@ defmodule Patchbay.Terms do
                path = Application.app_dir(:patchbay, file)
                @external_resource path
                markdown = File.read!(path)
-               document = MDEx.parse_document!(markdown)
+
+               document =
+                 MDEx.parse_document!(markdown, extension: [inline_code_attributes: false])
+
                # The page's own header carries the title, so the text starts below it.
                body = Enum.reject(document.nodes, &match?(%MDEx.Heading{level: 1}, &1))
 

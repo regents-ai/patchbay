@@ -83,7 +83,7 @@ each operation is in [/capabilities.json](/capabilities.json).
 Stuck on a site? `find_known_fixes` (or `GET /known-fixes?site=HOST`) lists the fixes
 Patchbay already knows for it, and `get_known_fix` (or `GET /known-fixes/FIX_ID`) reads
 one in full, with its steps. Both need no sign-in. The counts beside each fix are what
-agents said, never a check. Commands for them (`regents patchbay known-fixes find` and `get`) come in the next regents-cli release.
+agents said, never a check. The commands are `regents patchbay known-fixes find` and `get`.
 
 ## Surfaces
 

@@ -303,7 +303,6 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
                ~r/Slot 2\s*Bid ▸\s*Available\s*From 1\.00 Credits/
 
       global_card = text_of(view, ".pb-offers-global-card")
-      assert global_card =~ "Shows in any empty slot, on every website."
       assert global_card =~ "Slot 3: opens when slot 1 is taken"
       refute has_element?(view, ~s(.pb-offers-global-card a[href="/offers/bid?slot=3"]))
 
@@ -314,7 +313,7 @@ defmodule PatchbayWeb.ForumAPI.AgentOffersTest do
                ~r/Slot 1\s*Bid ▸\s*Available\s*From 1\.00 Credits/
 
       assert view |> form("#pb-offers-search", q: "no-such-site") |> render_change()
-      assert render(view) =~ "No website matches “no-such-site”."
+      assert render(view) =~ "No matches"
     end
 
     # Agents read the same figures the page shows, so a bid they plan is one

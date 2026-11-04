@@ -60,14 +60,14 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
     test "answers 404 to a visitor, and to a signed-in profile off the allowlist",
          %{conn: conn} do
       assert conn |> get(~p"/moderation") |> html_response(404) =~
-               "There is nothing at this address."
+               "Not found"
 
       signed_out_of_list = moderator!("0x" <> String.duplicate("b", 40))
 
       assert conn
              |> signed_in(signed_out_of_list)
              |> get(~p"/moderation")
-             |> html_response(404) =~ "There is nothing at this address."
+             |> html_response(404) =~ "Not found"
     end
   end
 

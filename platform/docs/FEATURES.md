@@ -130,7 +130,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | A static file opened directly can do nothing (no script, no framing, no sniffing) | `test/patchbay_web/plugs/headers_test.exs` |
 | One open motion lab page holds at most 12 notes however fast it is pressed | `test/patchbay_web/live/animations_live_test.exs` |
 | A tip in the page stays under the header and the open account menu at 390 wide; the motion lab's drawer opens over the header | `assets/test/browser/layers.spec.ts` |
-| Text is drawn at Geist 400 and 600 only, and nothing floats on a blurred shadow, on the home page, Sites, the Wallet Bench, Offers, a site's page, the changelog and Agent payments | `assets/test/browser/first_screen.spec.ts` (320, 390, 1280) |
+| Text is drawn at weight 400 only, and nothing floats on a blurred shadow, on the home page, Sites, the Wallet Bench, Offers, a site's page, the changelog and Agent payments | `assets/test/browser/first_screen.spec.ts` (320, 390, 1280) |
 | Tests and the browser walk never reach outside this machine | `test/support/offline.ex` (fails `mix test`), `dev/patchbay_dev/walk_offline.ex` (fails the walk) |
 | The browser walk drops its own database and saved sign-ins, and only its own, even when its server never starts | `assets/test/browser/support/failed_start_check.sh`, `test/patchbay_dev/walk_database_test.exs` |
 | A visit line names only Patchbay's own routes, tools and outcomes, never what a caller or browser sent, and never the address a visit came from | `test/patchbay_web/visit_log_test.exs`, `test/patchbay_web/visit_lines_test.exs` |

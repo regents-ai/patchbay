@@ -15,7 +15,7 @@ defmodule PatchbayWeb.TrailingSlashTest do
     for path <- ["/about/", "/contact/", "/wallet-bench/", "/llms.txt/"] do
       response = request(path, "text/html")
       assert response.status == 404
-      assert response.resp_body =~ "There is nothing at this address."
+      assert response.resp_body =~ "Not found"
     end
   end
 
@@ -27,13 +27,23 @@ defmodule PatchbayWeb.TrailingSlashTest do
     assert %{"error" => %{"code" => "not_found"}} = Jason.decode!(response.resp_body)
   end
 
+  test "an address with an empty step in it is the site's not-found page" do
+    for path <- ["//blog", "//blog/robots.txt", "/blog//", "/sites//shop.example"] do
+      response = request(path, "text/html")
+      assert response.status == 404
+      assert response.resp_body =~ "Not found"
+    end
+  end
+
   test "the homepage keeps its slash" do
     assert request("/", "text/html").status == 200
   end
 
+  # Plug.Test reads a leading // as a host, where a real server keeps it as the path.
   defp request(path, accept) do
     :get
-    |> conn(path)
+    |> conn("/" <> String.trim_leading(path, "/"))
+    |> Map.put(:request_path, path)
     |> put_req_header("accept", accept)
     |> PatchbayWeb.Endpoint.call(PatchbayWeb.Endpoint.init([]))
   end

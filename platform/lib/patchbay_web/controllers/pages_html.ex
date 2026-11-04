@@ -44,7 +44,11 @@ defmodule PatchbayWeb.PagesHTML do
   """
   @spec webmcp_guide_html() :: String.t()
   def webmcp_guide_html do
-    options = [extension: [table: true, header_id_prefix: ""], render: [unsafe: false]]
+    options = [
+      extension: [table: true, header_id_prefix: "", inline_code_attributes: false],
+      render: [unsafe: false]
+    ]
+
     document = MDEx.parse_document!(PatchbayWeb.PagesMD.webmcp(%{}), options)
 
     body =
@@ -61,7 +65,7 @@ defmodule PatchbayWeb.PagesHTML do
   """
   @spec agents_guide_html([map()]) :: String.t()
   def agents_guide_html(agents) do
-    options = [extension: [table: true], render: [unsafe: false]]
+    options = [extension: [table: true, inline_code_attributes: false], render: [unsafe: false]]
     document = MDEx.parse_document!(PatchbayWeb.PagesMD.agents(%{agents: agents}), options)
 
     body =
