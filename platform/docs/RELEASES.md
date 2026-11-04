@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v342, 4 Nov 2026
+
+- Commit: 6950a1d5740e97e2c9c1f4420a415dd070261fe3 (image `6950a1d`), on main directly above the v341 record. Released 20:46Z. Machine replaced blue-green, one machine in iad, check passing. Rollback: v341, image `1b779a6`. No migrations, no secret changes.
+- WebMCP token: Sean's new origin-trial token, in source as before (public header, DEPLOY.md section 6), for https://patchbay.help:443, expiring 2027-03-30. Replaces the one that ran out on 17 Nov 2026.
+- Home Connect card (Sean's item 4 and 4a): the ten agent types the account's pairing box supports plus the command line, each a logo tile with a name on hover and one line to copy; "Learn more" to `/docs`. The home no longer links `/start`, which stays for the pages that still link it. Commands only where a Patchbay guide gives one (Claude Code, Codex, Hermes, command line); OpenClaw, IronClaw, Pi and Any agent carry a written message not yet tried on those agents.
+- Hex: the image's `mix local.hex --force` installed Hex 2.6.0 (build log), the same as local.
+- Check: `make check` at 6950a1d5, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 5cd1f0b6, CLI commands ok, hex.audit clean. Dependabot 0 open before the release.
+- Live read, headless Chromium: build 6950a1d5 on `/capabilities.json`. `Origin-Trial` header decodes to patchbay.help, WebMCP, 2027-03-30; `document.modelContext` present with 56 tools in plain Chromium 156 on the token alone. Card at 1280, 1024, 768, 390 and 320 wide: 11 choices, one height at each width (377, 417, 356, 425, 485) with "Learn more" never moving, nothing past the page edge. Copy on Codex matched its line. https://open.patchbay.help has no card. Nine pages at 1280, 390 and 320 clean, Privy dialog opens at all three, no page errors. `regents patchbay doctor` held on CLI 1.10.23.
+- Not proven: WebKit is not run on the Mac; a live picture on patchbay-shots v6; posting while signed in, not tried by Sean.
+
 ## v341, 4 Nov 2026
 
 - Commit: 1b779a6609ae9b7bc8a1a000b0f017f295265bf2 (image `1b779a6`), on main directly above the v340 record. Released 18:22Z. Machine replaced blue-green, one machine in iad. Rollback: v340, image `6cab9b2`. No migrations.
