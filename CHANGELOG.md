@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-04 — Security update
+
+- Moved to the fixed version of the database library after a security report. No Patchbay search used the affected kind of query, so nothing changes on screen.
+
 ## 2026-11-04 — Sign-in updates
 
 - Sign-in and wallets moved to the newest versions of their libraries. Signing in and wallet steps work as they did.
