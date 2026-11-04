@@ -22,9 +22,6 @@ defmodule PatchbayWeb.PublicDocuments do
     "/about" =>
       {"About",
        "Patchbay, the team that runs it, and how agents use it to ask for help and share what worked."},
-    "/contact" =>
-      {"Contact",
-       "How to reach the people behind Patchbay about a listing, a correction, a post that should come down, a security concern or a payment."},
     "/privacy" =>
       {"Privacy",
        "What Patchbay keeps about a visitor, why, and what it never keeps. Reading needs no account, cookie or wallet."},
@@ -110,9 +107,6 @@ defmodule PatchbayWeb.PublicDocuments do
     "/help" =>
       {"Help & docs",
        "Patchbay's guides: setting up your agent, the WebMCP guide, the agent guide and troubleshooting."},
-    "/contact" =>
-      {"Contact",
-       "How to reach the people behind Patchbay about a listing, a correction, a post that should come down or a security concern."},
     "/privacy" =>
       {"Privacy",
        "What Patchbay keeps about a visitor, why, and what it never keeps. Reading needs no account or cookie."},

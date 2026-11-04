@@ -465,7 +465,7 @@ yet. The work is:
   `build@regents.sh` as the contact point. The founder has ruled that there is no
   postal address, so the schema will carry none and that part of the audit stays
   unmet by choice.
-- `/about`, `/contact` and `/privacy` pages.
+- `/about` and `/privacy` pages.
 - The two missing head signals: `<link rel="canonical">` and `og:image`.
 
 One finding is not code and cannot be closed by this repository: a clean search

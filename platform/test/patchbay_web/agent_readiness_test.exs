@@ -186,7 +186,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
     test "the fixed pages answer as markdown and a browser still gets HTML", %{conn: conn} do
       for path <-
-            ~w(/start /agent-setup /priority /blog /docs /about /contact /privacy) do
+            ~w(/start /agent-setup /priority /blog /docs /about /privacy) do
         assert {200, body} = markdown(conn, path)
         assert String.starts_with?(body, "# "), "#{path} did not start with a heading"
       end
@@ -740,15 +740,14 @@ defmodule PatchbayWeb.AgentReadinessTest do
       for path <- ~w(/help /about /privacy), do: assert(footer =~ ~s(href="#{path}"))
 
       assert conn |> get("/help") |> html_response(200) =~ ~s(href="/docs")
-      assert conn |> get("/about") |> html_response(200) =~ ~s(href="/contact")
 
-      for path <- ~w(/about /contact /privacy /docs) do
+      for path <- ~w(/about /privacy /docs) do
         html = conn |> get(path) |> html_response(200)
         text = html |> Floki.parse_document!() |> Floki.find("main") |> Floki.text()
         assert String.length(text) >= 500, "#{path} has fewer than 500 characters of copy"
       end
 
-      assert conn |> get("/contact") |> html_response(200) =~ "build@regents.sh"
+      assert conn |> get("/about") |> html_response(200) =~ "build@regents.sh"
       docs = conn |> get("/docs") |> html_response(200)
       assert docs =~ ~s(href="/openapi.json")
 

@@ -1271,40 +1271,71 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  The agent programs the home page's connect box offers, in tab order, each
-  with the one line that connects it, as Patchbay's own guides give it.
+  The agent programs the home page's connect box offers, in order: the ones with
+  a command of their own, then the ones that take a message, then the regents
+  command line. `kind` is the program's harness value, which picks its picture;
+  the command line has none. Each line is what Patchbay's own guides give that
+  program. No guide names a command for the rest, so they get the agent guide.
   """
   @spec connect_options() :: [map()]
   def connect_options do
-    mcp = PatchbayWeb.Endpoint.url() <> "/mcp"
+    origin = PatchbayWeb.Endpoint.url()
+    mcp = origin <> "/mcp"
+    guide = "Guide: #{origin}/agents.md"
+    any = "Connect to #{mcp} for Patchbay's tools, no key needed. #{guide}"
 
     [
-      %{
-        id: "claude-code",
-        label: "Claude Code",
-        say: "Add Patchbay's tools:",
-        line: "claude mcp add --transport http patchbay #{mcp}"
-      },
-      %{
-        id: "codex",
-        label: "Codex",
-        say: "Add Patchbay's tools:",
-        line: "codex mcp add patchbay --url #{mcp}"
-      },
-      %{
-        id: "cli",
-        label: "Command line",
-        say: "Install the regents command line:",
-        line: Patchbay.Forum.Capabilities.cli_install()
-      }
+      run(
+        "claude-code",
+        "claude_code",
+        "Claude Code",
+        "claude mcp add --transport http patchbay #{mcp}"
+      ),
+      run("codex", "codex", "Codex", "codex mcp add patchbay --url #{mcp}"),
+      run(
+        "hermes",
+        "hermes",
+        "Hermes",
+        "printf 'n\\ny\\n' | hermes mcp add patchbay --url #{mcp}"
+      ),
+      send_line("openclaw", "openclaw", "OpenClaw", any),
+      send_line("ironclaw", "ironclaw", "IronClaw", any),
+      send_line("pi", "pi", "Pi", any),
+      send_line(
+        "grok-bot",
+        "grok_bot",
+        "Grok Bot",
+        "Open #{origin}/grokbot and keep the tab open. Patchbay's tools come from the page itself."
+      ),
+      send_line(
+        "muse",
+        "muse",
+        "Muse",
+        "Connect to #{mcp} yourself, no key needed: your connectors cannot add Patchbay's tools. #{guide}"
+      ),
+      send_line(
+        "dots",
+        "dots",
+        "Dots",
+        "On your cloud computer, connect to #{mcp} for Patchbay's tools, no key needed. #{guide}"
+      ),
+      send_line("any", "other", "Any agent", any),
+      run("cli", nil, "Command line", Patchbay.Forum.Capabilities.cli_install())
     ]
   end
 
+  defp run(id, kind, label, line),
+    do: %{id: id, kind: kind, label: label, say: "Run this", line: line}
+
+  defp send_line(id, kind, label, line),
+    do: %{id: id, kind: kind, label: label, say: "Send this", line: line}
+
   @doc """
-  The connect box: a tab for each agent program, each with its line and a copy
-  button. The tabs are radio buttons, so they work before any script loads.
-  Each word of a line is kept whole, so a narrow page breaks it only at its
-  spaces, never inside a flag or the address.
+  The connect box: a picture for each agent program, then the chosen one's line
+  and a copy button. The pictures are radio buttons, so they work before any
+  script loads, and every line keeps its place in one grid cell, so choosing
+  never changes the height. Each word of a line is kept whole, so a narrow page
+  breaks it only at its spaces, unless one word is wider than the whole box.
   """
   def connect_box(assigns) do
     assigns = assign(assigns, :options, connect_options())
@@ -1323,10 +1354,25 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             value={option.id}
             checked={index == 0}
           />
-          <label for={"pb-connect-pick-#{option.id}"}>{option.label}</label>
+          <label class="pb-connect-choice" for={"pb-connect-pick-#{option.id}"}>
+            <Regent.Account.agent_mark :if={option.kind} kind={option.kind} />
+            <span :if={is_nil(option.kind)} class="rg-account__mark" aria-hidden="true">
+              <svg
+                viewBox="0 0 128 128"
+                fill="none"
+                stroke="#8A8F98"
+                stroke-width="8"
+                stroke-linecap="square"
+              >
+                <rect x="24" y="30" width="80" height="68" rx="18" />
+                <path d="M44 50l14 14-14 14M66 78h18" />
+              </svg>
+            </span>
+            <span class="pb-connect-name">{option.label}</span>
+          </label>
           <div class="pb-connect-panel">
             <div class="pb-connect-say">
-              <p>{option.say}</p>
+              <p><strong>{option.label}</strong> {option.say}</p>
               <Regent.Primitives.copy_button
                 id={"pb-copy-#{option.id}"}
                 target={"pb-connect-#{option.id}"}
@@ -1337,7 +1383,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           </div>
         <% end %>
       </fieldset>
-      <a class="pb-connect-more" href={~p"/docs"}>More ways to connect →</a>
+      <a class="pb-connect-more" href={~p"/docs"}>Learn more →</a>
     </section>
     """
   end

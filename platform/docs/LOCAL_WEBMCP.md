@@ -25,8 +25,8 @@ A headless Chromium started by Playwright takes the same switch as
 (`assets/test/browser/webmcp.spec.ts`) starts its Chromium that way.
 
 On https://patchbay.help the origin-trial token does the same for visitors.
-It is a public token, tied to that one host, and it expires on 17 November
-2026. It lives in `PatchbayWeb.Plugs.BrowserPolicy`
+It is a public token, tied to that one host, and it expires on 30 March
+2027. It lives in `PatchbayWeb.Plugs.BrowserPolicy`
 (`lib/patchbay_web/plugs/browser_policy.ex`), which sends it as an
 `Origin-Trial` response header beside `Permissions-Policy: tools=(self)` on
 every page. Renew it there, with its new expiry in the comment beside it,

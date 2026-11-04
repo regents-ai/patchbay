@@ -4,6 +4,28 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v342, 4 Nov 2026
+
+- Commit: 6950a1d5740e97e2c9c1f4420a415dd070261fe3 (image `6950a1d`), on main directly above the v341 record. Released 20:46Z. Machine replaced blue-green, one machine in iad, check passing. Rollback: v341, image `1b779a6`. No migrations, no secret changes.
+- WebMCP token: Sean's new origin-trial token, in source as before (public header, DEPLOY.md section 6), for https://patchbay.help:443, expiring 2027-03-30. Replaces the one that ran out on 17 Nov 2026.
+- Home Connect card (Sean's item 4 and 4a): the ten agent types the account's pairing box supports plus the command line, each a logo tile with a name on hover and one line to copy; "Learn more" to `/docs`. The home no longer links `/start`, which stays for the pages that still link it. Commands only where a Patchbay guide gives one (Claude Code, Codex, Hermes, command line); OpenClaw, IronClaw, Pi and Any agent carry a written message not yet tried on those agents.
+- Hex: the image's `mix local.hex --force` installed Hex 2.6.0 (build log), the same as local.
+- Check: `make check` at 6950a1d5, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 5cd1f0b6, CLI commands ok, hex.audit clean. Dependabot 0 open before the release.
+- Live read, headless Chromium: build 6950a1d5 on `/capabilities.json`. `Origin-Trial` header decodes to patchbay.help, WebMCP, 2027-03-30; `document.modelContext` present with 56 tools in plain Chromium 156 on the token alone. Card at 1280, 1024, 768, 390 and 320 wide: 11 choices, one height at each width (377, 417, 356, 425, 485) with "Learn more" never moving, nothing past the page edge. Copy on Codex matched its line. https://open.patchbay.help has no card. Nine pages at 1280, 390 and 320 clean, Privy dialog opens at all three, no page errors. `regents patchbay doctor` held on CLI 1.10.23.
+- Not proven: WebKit is not run on the Mac; a live picture on patchbay-shots v6; posting while signed in, not tried by Sean.
+
+## v341, 4 Nov 2026
+
+- Commit: 1b779a6609ae9b7bc8a1a000b0f017f295265bf2 (image `1b779a6`), on main directly above the v340 record. Released 18:22Z. Machine replaced blue-green, one machine in iad. Rollback: v340, image `6cab9b2`. No migrations.
+- Security: ecto 3.14.2 to 3.14.3 for EEF-CVE-2026-118391 (GHSA-cxjx-vmm2-qr8r), in the lock only; ecto_sql 3.14.0 stays. Template list commit dec67a25. Exposure read in the code, not a test: no json_extract_path, field[^key], splice/1 or constant/1 in Patchbay's lib; get_path only with a literal path; filters use fixed keys with bound values.
+- Changed: `/contact` is gone with no redirect, and `/about` has a Contact section (Sean's 1 a through the orchestrator; template v174 eb94293d). Patchbay's Contact keeps its own Help wording, points Product information to `/help`, and drops the template's sentence on wallet recovery phrases because the open address says nothing of wallets.
+- Hex: the image's `mix local.hex --force` installed Hex 2.6.0 (build log), the same as local.
+- Check: `make check` at 1b779a66, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 5cd1f0b6, CLI commands ok, hex.audit and the security scan clean. A first run ended exit 2 on stale Sobelow line numbers after the route left; fixed by 1b779a66. Dependabot 0 before release.
+- Live read, headless Chromium: build 1b779a66 on `/capabilities.json`. `/contact` answers 404 with no Location on https://patchbay.help and https://open.patchbay.help; `/about` 200 with Contact on both. At 1280, 390 and 320 wide on the nine pages read for v339: every page 200, no sideways scroll, allowed faces only, Privy dialog opens. No page errors. `regents patchbay doctor` on CLI 1.10.23: every check held.
+- Sean's real sign-in on v340: worked on patchbay.help with several accounts and a reload, and all four template checks on template.regents.sh/account (Sean's 1 a and 2 a, 18:15Z). Posting while signed in was not tried.
+- ChatGPT plugin: never published per `plugins/README.md`; upload, review and publication sit on Sean's OpenAI account, unseen from here. `/.well-known/openai-apps-challenge` answers 404 and OPENAI_APPS_CHALLENGE is not set. The 6 Oct ZIP outside the repository is stale; `scripts/package-plugin.py` builds a fresh one with the new supportURL.
+- Not proven: WebKit is not run on the Mac; a live picture on patchbay-shots v6.
+
 ## v340, 4 Nov 2026
 
 - Commit: 6cab9b2626cde5f6152771d1f1c87010cd5b2c47 (image `6cab9b2`), on main directly above the v339 record. Released 05:11Z. Machine replaced blue-green, one machine in iad. Rollback: v339, image `7176401`. No migration. Moved on the orchestrator's relay of Sean's sign-in on the template; if the template's `/account` checks fail, roll back at once.

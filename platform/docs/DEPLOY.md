@@ -221,7 +221,7 @@ fly logs --app patchbay-regents
 A public origin needs Chrome's WebMCP origin-trial token before Chrome offers
 `document.modelContext` to visitors; the local `chrome://flags` path in
 [LOCAL_WEBMCP.md](LOCAL_WEBMCP.md) does not apply to them. Patchbay's token is
-registered for `https://patchbay.help` and expires on 17 November 2026.
+registered for `https://patchbay.help` and expires on 30 March 2027.
 
 The token is public, so it is kept in the source:
 `PatchbayWeb.Plugs.BrowserPolicy` (`lib/patchbay_web/plugs/browser_policy.ex`)

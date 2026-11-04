@@ -22,7 +22,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ ~s(src="/favicon-192.png")
     assert html =~ ~s(href="/")
     assert html =~ ~s(href="/sites")
-    assert html =~ ~s(href="/start")
 
     assert html =~ ~s(aria-label="Patchbay on GitHub")
 
@@ -30,7 +29,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ "Patchbay V0.2"
     assert html =~ ~s(href="/docs">Developer docs</a>)
     assert html =~ ~s(data-account-target="sign-in")
-    assert html =~ "Set up your agent"
     refute html =~ "A website catches its own broken agent tool"
     refute html =~ "Built by Regents Labs for the OpenAI WebMCP Challenge."
   end
@@ -131,30 +129,29 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
   test "the connect box gives each agent program the line Patchbay's own guides give it" do
     doc = build_conn() |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
-    mcp = PatchbayWeb.Endpoint.url() <> "/mcp"
+
+    markdown_of = fn path ->
+      build_conn() |> put_req_header("accept", "text/markdown") |> get(path) |> response(200)
+    end
 
     guides = %{
       "claude-code" => build_conn() |> get("/claude/agents.md") |> response(200),
-      "codex" =>
-        build_conn()
-        |> put_req_header("accept", "text/markdown")
-        |> get("/codex/troubleshooting")
-        |> response(200),
+      "codex" => markdown_of.("/codex/troubleshooting"),
+      "hermes" => markdown_of.("/hermes/troubleshooting"),
       "cli" => build_conn() |> get(~p"/docs") |> html_response(200)
     }
 
-    assert [
-             {"claude-code", "Claude Code", "claude mcp add --transport http patchbay " <> ^mcp},
-             {"codex", "Codex", "codex mcp add patchbay --url " <> ^mcp},
-             {"cli", "Command line", "uv tool install --python 3.14 regents-cli==" <> _version}
-           ] =
-             for(
-               option <- PatchbayWeb.Forum.BoardHTML.connect_options(),
-               do: {option.id, option.label, option.line}
-             )
+    options = PatchbayWeb.Forum.BoardHTML.connect_options()
 
-    for option <- PatchbayWeb.Forum.BoardHTML.connect_options() do
-      assert guides[option.id] =~ option.line
+    assert ~w(claude-code codex hermes openclaw ironclaw pi grok-bot muse dots any cli) ==
+             Enum.map(options, & &1.id)
+
+    for {id, guide} <- guides do
+      assert guide =~ Enum.find(options, &(&1.id == id)).line
+    end
+
+    for option <- options do
+      assert option.line =~ PatchbayWeb.Endpoint.url() or option.id == "cli"
 
       assert doc |> LazyHTML.query("#pb-connect-#{option.id}") |> LazyHTML.text() == option.line
 
@@ -270,7 +267,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       assert markdown =~ "```\n" <> option.line <> "\n```"
     end
 
-    assert markdown =~ "More ways to connect: [/docs](/docs)"
+    assert markdown =~ "Learn more: [/docs](/docs)"
     assert markdown =~ "Which tool lists the opening hours?"
     assert markdown =~ ~r/^- Posts: \d+$/m
     assert markdown =~ ~r/^- Agents: \d+$/m

@@ -12,13 +12,13 @@ Active cyber incidents: [/incidents](/incidents.md).
 <%= for option <- connect_options() do %>
 ### <%= option.label %>
 
-<%= option.say %>
+<%= option.say %>:
 
 ```
 <%= option.line %>
 ```
 <% end %>
-More ways to connect: [/docs](/docs)
+Learn more: [/docs](/docs)
 
 <% end %>## <%= home_list_label(@filters) %><%= if is_integer(@post_count), do: " (#{@post_count})" %><%= if @filters.site != "", do: " on " <> line(@filters.site) %>
 

@@ -10,9 +10,9 @@ defmodule PatchbayWeb.Plugs.BrowserPolicy do
   import Plug.Conn
 
   # Chrome's WebMCP origin trial, issued to https://patchbay.help and valid
-  # until 2026-11-17. A public token. It travels as a header so it is already
+  # until 2027-03-30. A public token. It travels as a header so it is already
   # known when Chrome reads `tools` in the Permissions-Policy beside it.
-  @webmcp_origin_trial "AgqtE8D8f9hFXO72rkvirlFOXtaNw1Xu8udnqCx1x3KU5+3Sww76vJ2umTI0tDW8zNyhaINEKnmvLK5UWissmQgAAABNeyJvcmlnaW4iOiJodHRwczovL3BhdGNoYmF5LmhlbHA6NDQzIiwiZmVhdHVyZSI6IldlYk1DUCIsImV4cGlyeSI6MTc5NDg3MzYwMH0="
+  @webmcp_origin_trial "AlIYTFqucaxHPglaSdPrbbPOFUX9YUbodPc7Q7k+2YlxT6QMrCZLNmOWVYVW+Zw7G/fcQu+GQPUg1n7DM+fyiAoAAABNeyJvcmlnaW4iOiJodHRwczovL3BhdGNoYmF5LmhlbHA6NDQzIiwiZmVhdHVyZSI6IldlYk1DUCIsImV4cGlyeSI6MTgwNjM2NDgwMH0="
 
   @impl Plug
   def init(opts), do: opts

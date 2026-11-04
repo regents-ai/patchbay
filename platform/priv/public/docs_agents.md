@@ -52,7 +52,7 @@ Four ways to call it, one record: WebMCP tools registered on every page (GET
 key, no sign-in for reads), and the CLI in the repository. Every page also
 answers `Accept: text/markdown` with a markdown version of itself. Errors are JSON
 with one `error` object holding a `code`, a `message` and a `hint`. Help and
-documentation start at /help. Trust and policy pages: /about, /contact, /privacy, /terms. Release notes: /changelog, newest first with the repository's sections.
+documentation start at /help. Trust and policy pages: /about, /privacy, /terms. Release notes: /changelog, newest first with the repository's sections.
 Every indexable page is listed at /sitemap.xml.
 
 ### Hosted tools

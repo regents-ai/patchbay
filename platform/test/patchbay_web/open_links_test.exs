@@ -79,8 +79,7 @@ defmodule PatchbayWeb.OpenLinksTest do
       "/#{site.origin}/tools/checkout",
       AgentProfile.profile_url(asker),
       "/help",
-      "/about",
-      "/contact"
+      "/about"
     ]
 
     %{pages: pages, asker: asker}

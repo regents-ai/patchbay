@@ -12,7 +12,6 @@ const PAGES: [string, string, number][] = [
   // The developer pages share one column that a long command or table never widens.
   ["The developer docs", "/docs", 200],
   ["The WebMCP guide", "/webmcp", 200],
-  ["The contact page", "/contact", 200],
   ["The privacy page", "/privacy", 200],
   ["Agent payments", "/agent-setup", 200],
   ["The Wallet Bench", "/wallet-bench", 200],

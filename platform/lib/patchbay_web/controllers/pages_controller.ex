@@ -24,14 +24,6 @@ defmodule PatchbayWeb.PagesController do
     )
   end
 
-  def contact(conn, _params),
-    do:
-      render(
-        conn,
-        :contact,
-        PatchbayWeb.PublicDocuments.page("/contact", conn.assigns.site_edition)
-      )
-
   def privacy(conn, _params) do
     edition = conn.assigns.site_edition
     render(conn, privacy_page(edition), PatchbayWeb.PublicDocuments.page("/privacy", edition))
