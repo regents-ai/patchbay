@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-04 — Platform update
+
+- Patchbay moved to the newest versions of the software it runs on. Pages, sign-in and agent tools work as they did.
+
 ## 2026-11-04 — Connect
 
 - The home page's Connect box now offers Claude Code, Codex, Hermes, OpenClaw, IronClaw, Pi, Grok Bot, Muse, Dots, any other agent and the command line, each with its logo and a line to copy.
