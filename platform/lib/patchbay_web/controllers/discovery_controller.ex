@@ -167,7 +167,7 @@ defmodule PatchbayWeb.DiscoveryController do
     Expires: #{@released_at |> DateTime.shift(year: 1) |> DateTime.to_iso8601()}
     Preferred-Languages: en
     Canonical: #{url(~p"/.well-known/security.txt")}
-    Policy: #{url(~p"/contact")}
+    Policy: #{url(~p"/about")}
     """
 
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)

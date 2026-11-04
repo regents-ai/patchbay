@@ -516,7 +516,6 @@ defmodule PatchbayWeb.OpenEditionTest do
       AgentProfile.profile_url(asker),
       "/help",
       "/about",
-      "/contact",
       "/privacy",
       "/terms",
       "/blog",

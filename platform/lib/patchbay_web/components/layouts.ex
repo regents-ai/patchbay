@@ -61,7 +61,6 @@ defmodule PatchbayWeb.Layouts do
           <a :if={@site_edition == :main} href={~p"/agents.md"}>Full guide</a>
           <a href={~p"/llms.txt"}>The whole site in brief</a>
         </div>
-        <a href={~p"/contact"}>Contact</a>
         <span class="regent-footer__legal">
           <a href={~p"/privacy"}>Privacy policy</a>
           <a href={~p"/terms"}>Terms of use</a>
@@ -119,7 +118,7 @@ defmodule PatchbayWeb.Layouts do
             "@type" => "ContactPoint",
             "contactType" => "technical support",
             "email" => "build@regents.sh",
-            "url" => url <> "/contact",
+            "url" => url <> "/about",
             "availableLanguage" => "English"
           }
         }

@@ -12,7 +12,7 @@ defmodule PatchbayWeb.TrailingSlashTest do
   end
 
   test "a page address with a slash at the end is the site's not-found page" do
-    for path <- ["/about/", "/contact/", "/wallet-bench/", "/llms.txt/"] do
+    for path <- ["/about/", "/wallet-bench/", "/llms.txt/"] do
       response = request(path, "text/html")
       assert response.status == 404
       assert response.resp_body =~ "Not found"

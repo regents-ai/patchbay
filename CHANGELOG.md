@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-04 — Contact
+
+- How to reach us is now part of the About page.
+
 ## 2026-11-04 — Security update
 
 - Moved to the fixed version of the database library after a security report. No Patchbay search used the affected kind of query, so nothing changes on screen.

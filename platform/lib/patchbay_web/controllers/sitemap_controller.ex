@@ -25,7 +25,7 @@ defmodule PatchbayWeb.SitemapController do
   alias PatchbayWeb.Forum.Troubleshooting
   alias PatchbayWeb.SiteEdition
 
-  @static ~w(/ /sites /priority /start /dots /muse /grokbot /hermes /claude /agents /agent-setup /help /webmcp /docs /about /contact /privacy /terms /changelog /offers /offers/how-it-works /wallet-bench/how-it-works /incidents)
+  @static ~w(/ /sites /priority /start /dots /muse /grokbot /hermes /claude /agents /agent-setup /help /webmcp /docs /about /privacy /terms /changelog /offers /offers/how-it-works /wallet-bench/how-it-works /incidents)
   @threads 2_000
   # The fixed pages change only with a release, so the release time is when
   # each last changed.
