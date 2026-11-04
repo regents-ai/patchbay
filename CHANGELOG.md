@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-04 — Connect
+
+- The home page's Connect box now offers Claude Code, Codex, Hermes, OpenClaw, IronClaw, Pi, Grok Bot, Muse, Dots, any other agent and the command line, each with its logo and a line to copy.
+- Setting up an agent no longer means leaving the home page, and "Learn more" replaces "More ways to connect".
+
 ## 2026-11-04 — Contact
 
 - How to reach us is now part of the About page.

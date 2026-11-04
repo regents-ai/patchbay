@@ -47,47 +47,106 @@
   letter-spacing: -.03em;
 }
 .pb-home-lede { margin: 0; max-width: 46ch; color: var(--pb-text); font-size: .9375rem; line-height: 1.55; }
-.pb-home-setup { margin: var(--space-1) 0 0; font-size: var(--pb-fs-xs); }
-.pb-home-setup a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text); }
 
-/* The connect box: a tab for each agent program, then its line and a copy
-   button. The tabs are radio buttons, laid out as a row of tabs; the open
-   tab's line shows under the row. */
+/* The connect box: a picture for each agent program, six to a row, then the
+   chosen one's line and a copy button. The pictures are radio buttons. Every
+   line sits in one grid cell with only the chosen one seen, so the tallest sets
+   the height and choosing never moves what is below. A picture's name shows on
+   hover or keyboard focus, under a first-row picture and over a later one, and
+   stays inside the sheet at each row's ends; the chosen one is named beside its
+   line. */
 .pb-connect { margin-top: var(--space-2); padding-top: var(--space-3); border-top: 1px solid var(--pb-line); }
 .pb-connect-tabs {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0 var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0 .375rem;
   margin: 0; padding: 0; border: 0; min-width: 0;
 }
-.pb-connect-tabs > label {
-  display: inline-flex; align-items: center; min-height: 44px;
-  border-bottom: 2px solid transparent;
-  color: var(--pb-text-muted); font-size: .8125rem; cursor: pointer;
+.pb-connect-choice {
+  position: relative;
+  margin-bottom: .375rem;
+  border: 1px solid var(--pb-line);
+  background: #fff;
+  cursor: pointer;
 }
-.pb-connect-tabs > label:hover { color: var(--pb-text); }
-.pb-connect-pick:checked + label { border-bottom-color: currentColor; color: var(--pb-text); }
-.pb-connect-pick:focus-visible + label { outline: 2px solid var(--pb-accent); outline-offset: 2px; }
+.pb-connect-choice:hover { border-color: var(--pb-text-muted); }
+.pb-connect-pick:checked + .pb-connect-choice {
+  border-color: var(--pb-text);
+  box-shadow: inset 0 0 0 1px var(--pb-text);
+}
+.pb-connect-pick:focus-visible + .pb-connect-choice { outline: 2px solid var(--pb-accent); outline-offset: 2px; }
+.pb-connect-choice .rg-account__mark {
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+  inline-size: 100%;
+  block-size: 2.75rem;
+  padding: .3125rem;
+  border: 0;
+  background: transparent;
+}
+.pb-connect-choice svg { inline-size: 100%; block-size: 100%; }
+.pb-connect-name {
+  position: absolute;
+  inset-block-start: calc(100% + 6px);
+  inset-inline-start: 50%;
+  z-index: var(--rg-layer-tip);
+  padding: 2px 8px;
+  border: 1px solid var(--pb-line);
+  background: var(--color-surface-elevated, var(--color-surface));
+  color: var(--pb-text);
+  font-size: .8125rem;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition: opacity 120ms ease;
+}
+.pb-connect-choice:nth-of-type(n + 7) .pb-connect-name { inset-block: auto calc(100% + 6px); }
+.pb-connect-choice:nth-of-type(6n + 1) .pb-connect-name { inset-inline-start: 0; transform: none; }
+.pb-connect-choice:nth-of-type(6n) .pb-connect-name { inset-inline: auto 0; transform: none; }
+.pb-connect-pick:focus-visible + .pb-connect-choice .pb-connect-name { opacity: 1; }
+@media (hover: hover) {
+  .pb-connect-choice:hover .pb-connect-name { opacity: 1; }
+}
+.pb-connect-pick:checked + .pb-connect-choice .pb-connect-name { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+  .pb-connect-name { transition: none; }
+}
 /* The radio itself is read and pressed through its label. */
 .pb-connect-pick { position: absolute; width: 1px; height: 1px; margin: 0; opacity: 0; pointer-events: none; }
-.pb-connect-panel { display: none; order: 1; flex: 1 0 100%; min-width: 0; padding-top: var(--space-2); border-top: 1px solid var(--pb-line); }
-.pb-connect-pick:checked + label + .pb-connect-panel { display: block; }
-.pb-connect-say { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-2); margin-bottom: var(--space-1); }
-.pb-connect-say p { margin: 0; color: var(--pb-text-muted); font-size: .8125rem; }
-.pb-connect-say .rg-copy { min-height: 2.25rem; padding: .25rem .875rem; font-size: .8125rem; }
+.pb-connect-panel {
+  display: flex;
+  flex-direction: column;
+  grid-row: 4;
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-top: var(--space-1);
+  visibility: hidden;
+}
+.pb-connect-pick:checked + .pb-connect-choice + .pb-connect-panel { visibility: visible; }
+.pb-connect-say { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); margin-bottom: var(--space-1); }
+.pb-connect-say p { margin: 0; min-width: 0; color: var(--pb-text-muted); font-size: .8125rem; }
+.pb-connect-say strong { color: var(--pb-text); font-weight: inherit; }
+.pb-connect-say strong::after { content: " ·"; color: var(--pb-text-muted); }
+.pb-connect-say .rg-copy { flex: none; min-height: 2.25rem; padding: .25rem .875rem; font-size: .8125rem; }
 .pb-connect-line {
   display: block;
+  flex: 1;
   padding: var(--space-2);
   border: 1px solid var(--pb-line);
   background: var(--pb-canvas, var(--color-bg));
   font: .8125rem/1.55 var(--font-family-mono);
   overflow-wrap: normal;
 }
-/* A line breaks only at its spaces: no word, flag or address is split. */
-.pb-connect-line > span { white-space: nowrap; }
+/* A line breaks at its spaces. A word stays whole unless it is wider than the box. */
+.pb-connect-line > span { display: inline-block; max-width: 100%; overflow-wrap: anywhere; }
 .pb-connect-more { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--pb-fs-xs); }
 @container pb-page (max-width: 599px) {
   .pb-connect-say .rg-copy { min-height: 44px; }
+  .pb-connect-choice .rg-account__mark { padding: .125rem; }
+}
+@container pb-page (max-width: 379px) {
+  .pb-connect-say strong { display: block; }
+  .pb-connect-say strong::after { content: none; }
 }
 
 /* The board's figures, two to a row, and the agents who wrote the most. */
@@ -209,8 +268,6 @@
   .pb-feed-head { display: grid; }
   /* The five tabs keep one row under the heading, closer together. */
   .pb-feed-head .pb-feed-tabs { gap: 0 .75rem; }
-  .pb-connect-tabs > label { font-size: .75rem; }
-  .pb-connect-tabs { column-gap: .75rem; }
   .pb-home-crowd { gap: .35rem; }
 }
 /* Too narrow for all five: the row swipes sideways and fades at its far edge,
