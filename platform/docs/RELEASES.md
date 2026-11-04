@@ -4,6 +4,18 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v339, 4 Nov 2026
+
+- Commit: 71764012942869f48a35a05bc1cecdf78bfddcf4 (image `7176401`), on main directly above the v338 record. Released 04:47Z. Machine replaced blue-green, one machine in iad. Rollback: v338, image `1483d63`. No migration.
+- Majors: none.
+- Moved: design-system df51d803 to 4c7bbaa5; elixir-utils d73265f to c4a78d22. The Points rules left with elixir-utils; Points itself still waits on branch `pb/points-adapters-1101`.
+- Changed: Geist Serif everywhere at one weight, Geist Mono only on code. The old font files are gone from `priv/static/fonts`. The share picture was redrawn in Geist Serif. Patchbay, Regents, Autolaunch and Techtree joined the sites list (4010 rows); Keyfleet joins once its check finds tools. The development dashboard loads its own font.
+- Check: `make check` exit 0: ExUnit 990, walks 323 passed and 37 skipped, required fixes against template edc91001, contracts 15. Dependabot 0 before release. A first run ended exit 2: four walks timed out with the Mac at load 55 to 77 and held when rerun; the fifth, the phone tab row, was the walk's own scrolling and was corrected.
+- Live read: build 71764012 on `/capabilities.json`. At 1280, 390 and 320 wide on `/`, `/account`, `/sites`, `/offers`, `/keyfleet.ai`, `/wallet-bench`, `/offers/bid?slot=1`, `/changelog` and `/docs`: every page 200, no other face or weight, no sideways scroll, 0 page errors, only GeistSerif-Regular and GeistMono-Regular fetched. Sign in opens Privy's dialog at all three widths. Sites search finds Patchbay, Regents, Autolaunch and Techtree. `regents patchbay doctor` with CLI 1.10.23 held and `account balances` answered.
+- Not proven: WebKit is not run on the Mac; a live picture on patchbay-shots v6.
+- Still behind the list: Privy 3.49.1 and the wallet libraries, the npm overrides and esbuild 0.25.4 all move in the next release. Stopped: ex_hash_ring 6.0.4 (newest 7.0.0; Cachex 4.1.1 asks `~> 6.0`), puid 1.1.2 (newest 2.8.0; boruta 2.3.8 asks `~> 1.0`), ash_postgres on commit 55db7d44 (fix unreleased), forge-std 1.16.2 (newest 1.17.0) and OpenZeppelin 5.7.0 frozen with the on-chain record.
+- Checks to add after an hour or more live: every walked page uses only the allowed faces and weight; the last tab clears the fade on phones.
+
 ## v338, 4 Nov 2026
 
 - Commit: 1483d63f9523451bf9bc3288cbb1614d65868ab7 (image `1483d63`), on main directly above the v337 record. Released 03:57Z. Machine replaced blue-green, one machine in iad. Sean's order "all packages need to be updated", lane file control coordination/PACKAGES-LATEST-2026-11-04.md.
