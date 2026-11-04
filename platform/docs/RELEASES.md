@@ -4,6 +4,18 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v343, 4 Nov 2026
+
+- Commit: abedf519b456974e47d1f8b18eea1be2ca0cfb71 (image `abedf51`), on main directly above the v342 record. Released 22:04Z. Machine replaced blue-green, one machine in iad, check passing. Rollback: v342, image `6950a1d`. No migrations ("Migrations already up"), no secret changes.
+- Runtimes (wave 2, the template's list): Elixir 1.20.4 to 1.20.5, Node 26.12.0 to 26.13.0, Debian bookworm-20261020 to trixie-20261027, gcc 16.2.0-trixie, Hex 2.6.0 and rebar3 3.28.0 at fixed versions, Erlang 29.1.2 unchanged. Postgres stays 17.7. Pins and `.tool-versions` compared line for line with the template's main.
+- Image shape: moved to the template's stages, because the old one had no gcc stage and installed libncurses5. npm runs in its own stage with `--omit=dev --ignore-scripts`; `deps.get` uses `--check-locked`; the runner is Debian slim with coreutils and libsctp1 and libcrypto lifted from the builder; LANG is C.UTF-8 and the user is `app`, not `nobody`.
+- Image: 63 MB (v342 was 67 MB). No C compile and no missing package in the build log; native code arrives as three downloads (ex_secp256k1, mdex_native, ex_keccak). Hex 2.6.0 in the build log.
+- First boot on trixie: the migrate machine ran as `app` and exited 0 at 22:05:00Z; the serving machine's init started 22:05:05Z and the endpoint was listening at 22:05:11Z, about 6 seconds. No libsctp, latin1 or shared-library lines in the logs read.
+- Check: `make check` at abedf519 under Elixir 1.20.5 and Node 26.13.0, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 56e59b64, CLI commands ok, hex.audit clean. Dependabot 0 open before the release.
+- Live read, headless Chromium: build abedf519 on `/capabilities.json`. Bundles built with `--omit=dev` work: the Privy dialog opens at 1280, 390 and 320 from its own bundle, 56 WebMCP tools register from the main bundle, Copy on the card matched its line. `Origin-Trial` header decodes to patchbay.help, WebMCP, 2027-03-30. Card: 11 choices, one height at each width (377 at 1280, 417 at 1024, 356 at 768, 425 at 390, 485 at 320), "Learn more" never moves, nothing past the page edge. Nine pages at 1280, 390 and 320 clean, no page errors. `regents patchbay doctor` held on CLI 1.10.23.
+- Picture machine (patchbay-shots): v7, 22:09Z, commit 6b4de23 (image `patchbay-shots:6b4de23`, 429 MB), rollback v6 `deployment-01M6JBKWRD46BJBTZ7P565CMH0`. Node's floating 24 tag to node:26.13.0-trixie-slim by digest. One picture through a private `fly proxy` to its flycast address, POST /shot for https://patchbay.help/: 200, image/webp, 1600 by 1000, 77,922 bytes, 24.6 s from a stopped machine; opened and read, it shows the live home with the Connect card. Nothing was saved on Patchbay and no refresh was pressed.
+- Not proven: WebKit is not run on the Mac; a real sign-in on trixie (Privy's dialog opens; Sean's last sign-in was on v340); posting while signed in.
+
 ## v342, 4 Nov 2026
 
 - Commit: 6950a1d5740e97e2c9c1f4420a415dd070261fe3 (image `6950a1d`), on main directly above the v341 record. Released 20:46Z. Machine replaced blue-green, one machine in iad, check passing. Rollback: v341, image `1b779a6`. No migrations, no secret changes.
