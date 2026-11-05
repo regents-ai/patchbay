@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v344, 5 Nov 2026
+
+- Commit: 1be30cefeed03765563873359011b121f68a3334 (image `1be30ce`), one commit on main above 6cccd845. Fly CreatedAt 2026-11-05T03:32:16Z. One machine in iad, check passing. Rollback: v343, image `abedf51`.
+- Shared re-pin: design-system 4c7bbaa5 to 46e68fab (a copy button can copy a page fetched when pressed; no Patchbay page uses it) and elixir-utils c4a78d22 to 4e527975 (18 lock entries), with `RegentHttp.ErrorSaving.attach()` in `Patchbay.Application`, as on ash-template. A crash save that fails is now one warning line and no longer stops later crashes being saved.
+- Credits deposits changed with the pin: a node that does not answer is a warning line and a minute's wait, not an error. A successful `DepositCursor` job therefore no longer proves Base answered; read that warning line and `health_chain_request_failures_total`.
+- Image: 63 MB. Migrate machine completed successfully.
+- Check: `make check` at 1be30cef under Elixir 1.20.5, Node 26.13.0 and Hex 2.6.0, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 9fcf105e.
+- Live read, headless Chromium, 03:34Z: build 1be30cef on `/capabilities.json`; health ok; 56 WebMCP tools; nine pages at 1280, 390 and 320 with no page errors; Privy dialog opens at all three widths. CLI 1.10.23 as the paired agent: `agents whoami` "Authenticated yes", `account balances` answered.
+- Not proven: WebKit is not run on the Mac; a real sign-in or posting while signed in; `ErrorSaving` on a real failed save (its own library test covers that).
+
 ## v343, 4 Nov 2026
 
 - Commit: abedf519b456974e47d1f8b18eea1be2ca0cfb71 (image `abedf51`), on main directly above the v342 record. Released 22:04Z. Machine replaced blue-green, one machine in iad, check passing. Rollback: v342, image `6950a1d`. No migrations ("Migrations already up"), no secret changes.
