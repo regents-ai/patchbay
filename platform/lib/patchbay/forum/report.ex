@@ -1124,6 +1124,7 @@ defmodule Patchbay.Forum.Report do
       description("Brings an incident's opening post in line with its file after a release.")
       accept([:title, :body_markdown])
       require_atomic?(false)
+      validate(present(:incident))
     end
 
     update :mark_incident_fix do

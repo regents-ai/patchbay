@@ -196,6 +196,8 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     reply = reply!(thread, "Set a longer timeout")
 
+    assert {:error, _} = Forum.refresh_incident_briefing(thread, %{body_markdown: "Other words"})
+
     html =
       conn
       |> signed_in(person!("a"))

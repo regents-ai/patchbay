@@ -293,7 +293,7 @@ defmodule Patchbay.ForumTest do
   end
 
   describe "file_report/1" do
-    test "what a report says never changes; only its escrow, its accepted answer and Jev's reading do" do
+    test "what a report says never changes; only its escrow, its accepted answer and Jev's reading do, and an incident's briefing follows its file" do
       assert action_names(Report) ==
                Enum.sort([
                  {:read, :read},
@@ -320,6 +320,11 @@ defmodule Patchbay.ForumTest do
                  {:ask_question, :create},
                  {:open_techtree_discussion, :create},
                  {:for_techtree_digest, :read},
+                 {:open_incident_discussion, :create},
+                 {:for_incident, :read},
+                 {:incident_discussions, :read},
+                 {:refresh_incident_briefing, :update},
+                 {:mark_incident_fix, :update},
                  {:for_site, :read},
                  {:priority_queue, :read},
                  {:search, :read},
