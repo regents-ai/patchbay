@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.PrivySessionController do
   @moduledoc """
-  The two requests that start and end a Patchbay sign-in.
+  The requests that start and end a Patchbay sign-in, and the token they carry.
 
   The browser proves who it is with a pair of Privy tokens and nothing else:
   the access token travels as the bearer and the identity token as Privy's own
@@ -43,6 +43,12 @@ defmodule PatchbayWeb.PrivySessionController do
       {:unprocessable_entity, "Your account has no wallet yet.", "Sign in again to get one."},
     "unauthorized" => {:unauthorized, "That sign-in could not be verified.", "Sign in again."}
   }
+
+  def csrf(conn, _params) do
+    conn
+    |> put_resp_header("cache-control", "no-store")
+    |> json(%{csrf_token: get_csrf_token()})
+  end
 
   def create(conn, _untrusted_params) do
     with {:ok, pair} <- session_pair(conn),

@@ -445,11 +445,12 @@ defmodule PatchbayWeb.Router do
     post "/visit-log", VisitLogController, :create, log: false
   end
 
-  scope "/auth/privy", PatchbayWeb do
+  scope "/auth", PatchbayWeb do
     pipe_through :privy_session
 
-    post "/session", PrivySessionController, :create
-    delete "/session", PrivySessionController, :delete
+    get "/csrf", PrivySessionController, :csrf
+    post "/privy/session", PrivySessionController, :create
+    delete "/privy/session", PrivySessionController, :delete
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do

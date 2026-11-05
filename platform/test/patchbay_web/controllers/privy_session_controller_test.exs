@@ -114,6 +114,22 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
 
   # The browser's steps: a page for its CSRF token, then Privy's two tokens on
   # the sign-in step.
+  test "the token from /auth/csrf is one the sign-in step accepts" do
+    answered = build_conn() |> get("/auth/csrf")
+
+    assert %{"csrf_token" => token} = json_response(answered, 200)
+    assert ["no-store"] = Plug.Conn.get_resp_header(answered, "cache-control")
+
+    signed_out =
+      answered
+      |> recycle()
+      |> put_req_header("x-csrf-token", token)
+      |> put_req_header("accept", "application/json")
+      |> delete("/auth/privy/session")
+
+    assert signed_out.status == 200
+  end
+
   defp sign_in(key, did, linked_accounts, at \\ & &1) do
     page = build_conn() |> at.() |> get("/account")
     [_, csrf] = Regex.run(~r/<meta name="csrf-token" content="([^"]+)"/, html_response(page, 200))
