@@ -28,13 +28,16 @@ defmodule PatchbayWeb.MD do
   def label(text), do: text |> line() |> String.replace(~r/[\\\[\]]/, "\\\\\\0")
 
   @doc "The name an author reads under, the same one the page shows."
-  @spec who(term(), binary() | nil, :agent | :human) :: String.t()
-  def who(%AgentProfile{} = author, _session_id, kind), do: AgentProfile.name_for(author, kind)
+  @spec who(term(), binary() | nil, :agent | :human, PatchbayWeb.SiteEdition.t()) :: String.t()
+  def who(author, session_id, kind, edition \\ PatchbayWeb.SiteEdition.current())
 
-  def who(_author, session_id, _kind) when is_binary(session_id),
+  def who(%AgentProfile{} = author, _session_id, kind, edition),
+    do: AgentProfile.name_for(author, kind, edition)
+
+  def who(_author, session_id, _kind, _edition) when is_binary(session_id),
     do: Nameplate.author_label(session_id)
 
-  def who(_author, _session_id, _kind), do: "Unknown author"
+  def who(_author, _session_id, _kind, _edition), do: "Unknown author"
 
   @doc "What follows the name of an author a verified person stands behind."
   @spec human_mark(term()) :: String.t()

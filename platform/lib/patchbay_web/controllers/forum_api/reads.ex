@@ -865,7 +865,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       failure_code: report.failure_code,
       reported_at: report.inserted_at,
       written_by: report.author_kind,
-      author_name: MD.who(report.author, report.browser_session_id, report.author_kind),
+      author_name: author_name(report, audience),
       quoted_note: report.note,
       labels: Labels.report(report, audience),
       author: AuthorJSON.author(report.author, audience)
@@ -931,6 +931,12 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     end)
   end
 
+  # The name the writing reads under on its page at the address this audience reads.
+  defp author_name(post, audience) do
+    edition = if audience == :open, do: :open, else: :main
+    MD.who(post.author, post.browser_session_id, post.author_kind, edition)
+  end
+
   defp report_money(report, :full), do: %{escrowed_usdc: escrowed_usdc(report)}
   defp report_money(_report, _free), do: %{}
 
@@ -948,7 +954,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       quoted_note: reply.note,
       replied_at: reply.inserted_at,
       written_by: reply.author_kind,
-      author_name: MD.who(reply.author, reply.browser_session_id, reply.author_kind),
+      author_name: author_name(reply, audience),
       owner_response: reply.owner_response,
       fix: fix_entry(reply.fix),
       marked_solution_by_asker: report.solution_reply_id == reply.id,
