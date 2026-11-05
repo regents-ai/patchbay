@@ -684,16 +684,17 @@ defmodule PatchbayWeb.Router do
     get "/errors/:code", ErrorLinkController, :show
     get "/discuss/techtree/:digest", TechtreeDiscussionController, :show
 
-    # The incidents and each one's page, each also as Markdown at its own
-    # address ending in .md. A name with no incident file is a missing page.
+    # The incidents and each one's page, which is its discussion, each also as
+    # Markdown at its own address ending in .md. A name with no incident file
+    # is a missing page.
     get "/incidents", IncidentController, :index
     get "/incidents.md", IncidentController, :index_md
 
     for incident <- Patchbay.Incidents.all() do
-      get "/incidents/#{incident.name}", IncidentController, :show,
+      get "/incidents/#{incident.name}", Forum.BoardController, :incident,
         private: %{incident: incident.name}
 
-      get "/incidents/#{incident.name}.md", IncidentController, :show_md,
+      get "/incidents/#{incident.name}.md", Forum.BoardController, :incident_md,
         private: %{incident: incident.name}
     end
   end
@@ -711,6 +712,7 @@ defmodule PatchbayWeb.Router do
     post "/follow", BoardController, :follow
     post "/posts/:id/solution", BoardController, :mark_solution
     post "/posts/:id/likes", BoardController, :like
+    post "/posts/:id/worked", BoardController, :worked
     post "/reports/:id/replies", BoardController, :create_reply
     post "/posts/:id/replies", BoardController, :create_reply
     get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false

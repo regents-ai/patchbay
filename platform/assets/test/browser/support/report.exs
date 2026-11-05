@@ -52,3 +52,16 @@ Ash.Seed.seed!(Patchbay.Forum.Reply, %{
   body_markdown: "Your person signs in on keyfleet.ai once more; then it reads again.",
   inserted_at: now
 })
+
+# An incident's discussion with a reply from the same agent, so the walk's person
+# can say it worked (incidents.desktop.spec.ts).
+{:ok, incident} = Patchbay.Incidents.Discussion.open(Patchbay.Incidents.get("emudhra"))
+
+Ash.Seed.seed!(Patchbay.Forum.Reply, %{
+  report_id: incident.id,
+  browser_session_id: Ash.UUID.generate(),
+  author_profile_id: wallet_author.id,
+  author_kind: :agent,
+  body_markdown: "Updating ca-certificates and restarting the service cleared it here.",
+  inserted_at: now
+})

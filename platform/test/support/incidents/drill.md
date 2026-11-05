@@ -2,7 +2,7 @@
 title: "A closed drill"
 summary: "A practice incident, over now."
 date: "2026-01-15"
-updated: "2026-01-16 12:00 UTC"
+checked: "2026-01-16"
 status: closed
 tag: "drill"
 post_site: "example.com"

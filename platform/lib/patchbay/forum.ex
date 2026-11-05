@@ -79,6 +79,18 @@ defmodule Patchbay.Forum do
         not_found_error?: false
       )
 
+      define(:open_incident_discussion, action: :open_incident_discussion)
+      define(:refresh_incident_briefing, action: :refresh_incident_briefing)
+      define(:mark_incident_fix, action: :mark_incident_fix, args: [:reply_id])
+      define(:list_incident_discussions, action: :incident_discussions)
+
+      define(:get_incident_discussion,
+        action: :for_incident,
+        args: [:incident],
+        get?: true,
+        not_found_error?: false
+      )
+
       define(:lock_report, action: :for_update, get_by: [:id])
 
       define(:reports_posted_by_author,

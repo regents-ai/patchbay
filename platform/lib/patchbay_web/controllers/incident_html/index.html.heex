@@ -4,15 +4,15 @@
   </header>
 
   <ol class="pb-incident-list">
-    <li :for={row <- @rows} class="pb-incident-row">
-      <a class="pb-incident-row-title" href={incident_path(row.incident)}>{row.incident.title}</a>
+    <li :for={incident <- @incidents} class="pb-incident-row">
+      <a class="pb-incident-row-title" href={incident_path(incident)}>{incident.title}</a>
       <p class="pb-incident-meta">
-        <.status_pill incident={row.incident} />
-        <time datetime={Date.to_iso8601(row.incident.date)}>{day(row.incident.date)}</time>
-        <a :if={row.threads != :unavailable} href={fixes_path(row.incident)}>
-          {threads_label(row.threads)}
+        <.status_pill incident={incident} />
+        <span>Checked {day(incident.checked)}</span>
+        <a :if={@replies != :unavailable} href={incident_path(incident) <> "#patchbay-replies"}>
+          {replies_label(Map.get(@replies, incident.name, 0))}
         </a>
-        <span :if={row.threads == :unavailable}>Threads could not be counted just now</span>
+        <span :if={@replies == :unavailable}>Replies could not be counted just now</span>
       </p>
     </li>
   </ol>

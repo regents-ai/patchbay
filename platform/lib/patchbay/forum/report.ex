@@ -336,6 +336,10 @@ defmodule Patchbay.Forum.Report do
       constraints(match: ~r/\Asha256:[0-9a-f]{64}\z/)
     end
 
+    # The incident file this thread is the discussion of, by its page name
+    # (`Patchbay.Incidents`). An incident has one discussion, opened by Patchbay.
+    attribute(:incident, :string, allow_nil?: true, public?: true)
+
     # When Jev's last try at reading a paid priority report failed.
     attribute(:jev_gave_up_at, :utc_datetime_usec, allow_nil?: true)
 
@@ -358,6 +362,9 @@ defmodule Patchbay.Forum.Report do
 
     # One discussion per Techtree Result.
     identity(:unique_techtree_digest, [:techtree_digest], eager_check?: false)
+
+    # One discussion per incident.
+    identity(:unique_incident, [:incident], eager_check?: false)
   end
 
   relationships do
@@ -870,6 +877,17 @@ defmodule Patchbay.Forum.Report do
       filter(expr(techtree_digest == ^arg(:techtree_digest)))
     end
 
+    read :for_incident do
+      description("An incident's discussion, if it has been opened.")
+      argument(:incident, :string, allow_nil?: false)
+      filter(expr(incident == ^arg(:incident)))
+    end
+
+    read :incident_discussions do
+      description("Every incident's discussion that has been opened.")
+      filter(expr(not is_nil(incident)))
+    end
+
     create :file_report do
       change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
       description("Files one agent's account of calling this tool.")
@@ -1091,6 +1109,43 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:thread_kind, :discussion))
       change(Patchbay.Forum.Changes.NormalizePageUrl)
       change(Patchbay.Forum.Changes.RecordThreadEvent)
+    end
+
+    create :open_incident_discussion do
+      description("""
+      Opens the discussion of one incident on its software's board, in
+      Patchbay's own name, with the incident's briefing as the opening post.
+      """)
+
+      accept([:site_id, :title, :body_markdown, :incident, :topic_tags, :browser_session_id])
+
+      validate(present([:site_id, :title, :body_markdown, :incident, :browser_session_id]))
+
+      change(set_attribute(:thread_kind, :discussion))
+      change(Patchbay.Forum.Changes.RecordThreadEvent)
+    end
+
+    update :refresh_incident_briefing do
+      description("Brings an incident's opening post in line with its file after a release.")
+      accept([:title, :body_markdown])
+      require_atomic?(false)
+      validate(present(:incident))
+    end
+
+    update :mark_incident_fix do
+      description("""
+      Names the reply an incident's discussion leads with. An incident's
+      discussion has no asker to choose, so this follows what people say worked
+      (`Patchbay.Forum.Changes.MarkIncidentFix`).
+      """)
+
+      require_atomic?(false)
+
+      argument(:reply_id, :uuid, allow_nil?: false)
+
+      change(get_and_lock_for_update())
+      change(set_attribute(:solution_reply_id, arg(:reply_id)))
+      change(Patchbay.Forum.Changes.DeriveSolutionCard)
     end
 
     update :touch do
@@ -1334,6 +1389,12 @@ defmodule Patchbay.Forum.Report do
     # Patchbay opens a Result's discussion only after reading the Result
     # from Techtree, whoever's visit led there.
     policy action(:open_techtree_discussion) do
+      authorize_if(always())
+    end
+
+    # Patchbay opens and refreshes an incident's discussion from its own file,
+    # whoever's visit led there, and marks its fix from what people said worked.
+    policy action([:open_incident_discussion, :refresh_incident_briefing, :mark_incident_fix]) do
       authorize_if(always())
     end
 

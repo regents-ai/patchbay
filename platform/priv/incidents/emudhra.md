@@ -1,109 +1,82 @@
 ---
-title: "eMudhra: 8 certificate authority keys can be recovered"
-summary: "Browsers already block the bad certificates. Servers, containers and command-line tools may still trust them. Update your trust store, then test with one curl command."
+title: "eMudhra: private keys of 8 certificate authorities can be recovered"
+summary: "Browsers block the bad certificates. Servers, containers, developer tools and some apps may still trust them. Test the client you use, then update its trust store."
 date: "2026-10-20"
-updated: "2026-10-21 10:50 UTC"
+checked: "2026-11-05"
 status: active
 tag: "emudhra"
 post_site: "emudhra.com"
-check_again: "Once Node.js ships its fix (pull request 66871)"
+check_again: "On 9 November 2026, when eMudhra's full incident report is due, and when Apple ships its fix for macOS developer tools"
 ---
 
 ## Summary
 
-- The private keys of 8 eMudhra intermediate certificate authorities (CAs) can
-  be recovered from the certificates. With them, anyone can make a certificate
-  that looks valid for any domain.
-- Why: the keys were made on 30 April 2025 as small numbers (less than 256),
-  not large random numbers (Mozilla, bug 2083449). eMudhra says a test step for
-  its hardware key store made a second, weak key pair, and staff used it by
-  mistake because the key names were similar. Sectigo cross-signed the same
-  keys.
-- eMudhra revoked the 8 intermediates on 18 October 2026. Sectigo revoked its
-  cross-signs. Mozilla and Chrome are removing trust in the root
-  "emSign ECC Root CA - G3".
-- Mozilla's test site found no entries for these intermediates in the
-  certificate transparency logs for that period. Nobody knows yet if attackers
-  used the keys.
+- The private keys of 8 eMudhra intermediate certificate authorities (CAs) can be worked out from their public certificates. Six issue TLS certificates and two issue code-signing certificates.
+- With a TLS key, anyone can make a certificate for any website or service.
+- A person named Wayne reported this to the root programs on 17 October 2026, and the matter became public on 20 October. Mozilla says several people recovered the keys on their own, some publicly.
+- eMudhra revoked all 8 on 18 October. Sectigo revoked its cross-signs by 19 October. Mozilla and Chrome are removing trust in the root "emSign ECC Root CA - G3". Mozilla is keeping "emSign Root CA - G1" for now.
+- eMudhra says it will leave the public TLS business. Its full incident report, with KPMG's review, is due by 9 November 2026.
 
 ## Exposure
 
-- **Browsers: safe when up to date.** Chrome, Firefox, Safari (Apple, since
-  19 October) and Microsoft block the 8 intermediates.
-- **Everything else: maybe not.** Many programs outside browsers do not check
-  revocation lists. They trust the bad certificates until their trust store is
-  updated. This includes servers, containers, SDKs, language runtimes, agents
-  that call APIs, and the `curl` built into macOS (it reads
-  `/etc/ssl/cert.pem` and does not check revocation).
+- **Browsers:** blocked in Firefox and Chrome since 17 October, on Microsoft platforms since 20 October and on Apple products since 22 October.
+- **Non-browser clients:** still at risk until updated. Many do not read revocation information and ship their own CA list. This covers servers, containers, language runtimes, libraries and agents.
+- **macOS developer tools:** on 28 October, the test site reported that the built-in `git`, `curl` and `python3` still trust these certificates. They read `/etc/ssl/cert.pem` and skip revocation. It also reported that macOS 27.2 undid fixes users had applied. The test site says Apple will update that file in a future macOS update.
+- **Electron apps:** apps such as Slack and Discord need a version rebuilt on a patched Electron. Updating the operating system is not enough.
+- **Site owners:** eMudhra reports about 30,800 certificates under the affected hierarchies, for one US client group, and says they moved to its G1 RSA root. InCommon, a certificate service, said on 22 October that eMudhra would stop issuing from these chains in about 30 days, with the date still to be confirmed.
+
+**Exploitation**
+
+- No source we opened shows the keys being used against a real victim.
+- The test site found no certificate transparency (CT) entries for these intermediates from April 2025 until disclosure, and it rules out attacks in that period on browsers that enforce CT. It does not know about clients that do not enforce CT. `curl` is one such client.
+- eMudhra says it knows of no evidence the keys were recovered or used before disclosure. That is the company's own statement.
+- Since disclosure, certificates signed with these keys do exist. A community report in the Mozilla bug counts 107,107 logged on 20 and 21 October, most of them proof-of-concept certificates for `google.com`. We could not check the count ourselves. It also says most carry no revocation pointer, so a client that checks only the final certificate finds nothing.
+
+**Still open**
+
+- The root cause is not settled. On 2 November, eMudhra said its earlier answers came from internal analysis and that KPMG was now reviewing the matter.
+- Mozilla had not checked eMudhra's RSA keys at the time of its first review. Participants in the bug have questioned eMudhra's answers on the RSA keys and on a revocation list signed with the wrong key.
 
 ## Actions
 
-1. **Test.** Run this with the same tool or runtime your program uses:
-
+1. Test from the same client your program uses. A browser test tells you nothing about your server.
    ```
    curl https://dv-g3b-emudhra.we-have-a-problem.com/
+   curl https://dv-g3b-aaa-emudhra.we-have-a-problem.com/
    ```
-
-   A certificate error means you are safe. A normal page means your client
-   still trusts the bad certificates. A test from your browser, or from a
-   different tool, does not prove your server is safe.
-2. **Update the trust store your program uses.** Fixed versions:
-   - Debian 12 `ca-certificates` 20250419~deb12u2; Debian 13 20250419+deb13u1
-   - Ubuntu `ca-certificates` 20260816ubuntu0.22.04.1 (and the matching
-     versions for 24.04, 26.04 and 26.10)
-   - Alpine `ca-certificates` 20261020-r0; Homebrew `ca-certificates`
-     2026-09-25_1; the curl CA bundle of 2026-10-20
-   - Python certifi 2026.10.19; pip 26.2.2; uv 0.13.4
-   - Go 1.27.3 or 1.26.10
-   - Elixir castore 1.0.22
-   - Rust webpki-roots 1.0.10; rustls-webpki 0.103.16
-   - Cloudflare Tunnel (cloudflared) 2026.10.2; Cloudflare One Client and
-     WARP 2026.8.2115.0 on desktop
-   - **Not fixed yet:** Node.js and Bun.
-
-   The full list, which people keep adding to, is on Mozilla's test site.
-3. **Rebuild container images** without the build cache, so they get the new
-   package. Then restart or redeploy. An updated SDK alone may not be enough,
-   because the SDK may use the trust store of the system or runtime under it.
-4. **Never fix a certificate error by turning off certificate checks.** That
-   removes the protection the update gives you.
-5. **On macOS, for the built-in curl only** (experts only): point curl at a CA
-   bundle without the two affected roots, "AAA Certificate Services" and
-   "emSign ECC Root CA - G3", with the `CURL_CA_BUNDLE` setting. Mozilla does
-   not recommend removing roots for ordinary users: removing "AAA Certificate
-   Services" can break other sites that chain to it.
-
-## Evidence
-
-Proven:
-
-- The keys can be recovered. Mozilla says several people recovered them on
-  their own.
-- Patchbay tested its own fix: since release v262 (21 October), patchbay.help
-  trusts castore 1.0.22's list for every outbound call. From the live server,
-  the test site above is refused as an unknown issuer, and Patchbay's own
-  services still connect.
-
-Not proven:
-
-- That nobody misused the keys. No rogue certificate has been found.
-- That eMudhra's other keys are safe. Mozilla had not yet checked the RSA keys,
-  and eMudhra says it will check every key ceremony again.
-
-## Sharing
-
-Post with the tag `emudhra`. Name the site of the software you fixed (for
-example nodejs.org), or emudhra.com. A useful post says:
-
-- the software and its version;
-- what you changed;
-- the `curl` (or other) test you ran from the real path, and what it printed.
+   A certificate error is the good result: the client refuses these CAs. A page means it still accepts them. A TLS-intercepting proxy changes the result, because you are then testing the proxy.
+2. Run the two hosts below as well. A page here means the client trusts these CAs and also accepts certificates never logged to CT, which is the case an attacker could use unnoticed.
+   ```
+   curl https://dv-g3b-noct-emudhra.we-have-a-problem.com/
+   curl https://dv-g3b-aaa-noct-emudhra.we-have-a-problem.com/
+   ```
+3. Update the trust store or runtime your program uses. Fixed versions:
+   - Debian `ca-certificates` 20250419~deb12u2, 20250419+deb13u1, 20260816+nmu1
+   - Ubuntu `ca-certificates` 20260816ubuntu0.22.04.1, .24.04.1, .26.04.1, .26.10.1
+   - Alpine `ca-certificates` 20261020-r0
+   - Fedora 2026.2.92_v9.0.319. RHEL 2026.2.92_v9.0.319 with -60.3.el6_10, -70.3.el7_9, -81.3.el8_10, -90.3.el9_8 or -100.3.el10_2
+   - Homebrew `ca-certificates` 2026-09-25_1. curl CA bundle 2026-10-20. NSS 3.131.1
+   - Node.js 26.12.1, 24.22.1, 22.23.4
+   - Bun 1.4.4. Deno 2.9.8
+   - Go 1.27.3, 1.26.10
+   - Python 3.15.2, 3.14.10, 3.13.18, 3.12.16, 3.11.18. certifi 2026.10.19. pip 26.2.2. uv 0.13.5
+   - Elixir castore 1.0.22. Erlang certifi 2.18.0
+   - Rust webpki-roots and webpki-root-certs 1.0.10. rustls-webpki 0.103.16
+   - Composer ca-bundle 1.4.16, 1.6.0
+   - Electron 44.9.1, 43.8.1, 42.11.16
+   - Docker CLI and Engine 29.9.2. Docker Desktop 4.96.2
+4. Rebuild container images and restart services, so the new list is really in use. On Node.js, sessions resumed from before the update are not checked again.
+5. On Debian or Ubuntu with their OpenJDK, the Java keystore does not refresh by itself. As root, run `rm -f /etc/ssl/certs/java/cacerts && update-ca-certificates --fresh`.
+6. Watch for software without a fix. The test site listed these as pending when we checked: OpenJDK, certbot, containerd, Godot, LibreOffice, TrueNAS, Bottlerocket, OpenHarmony and Apple's command-line tools. Its list changes often.
+7. On macOS, the test site gives expert steps to remove the roots from `/etc/ssl/cert.pem`. A macOS update may replace that file, so repeat the test after each update. Removing "AAA Certificate Services" can break unaffected sites.
+8. If your site uses a certificate that chains to emSign ECC Root CA - G3, replace it. InCommon customers should reissue as RSA, as its notice asks.
+9. Never answer a certificate error by turning off certificate checks.
 
 ## Sources
 
-- Cloudflare, "eMudhra certificate compromise":
-  https://blog.cloudflare.com/emudhra-certificate-compromise/
-- Mozilla's test site and list of patched packages (Dennis Jackson):
-  https://emudhra.we-have-a-problem.com
-- Mozilla bug 2083449: https://bugzilla.mozilla.org/show_bug.cgi?id=2083449
-- Node.js fix in progress: https://github.com/nodejs/node/pull/66871
+- [Mozilla bug 2083449](https://bugzilla.mozilla.org/show_bug.cgi?id=2083449): incident record. Report, weak keys, revocation times, root removal, exit from public TLS, open questions, KPMG, community CT count.
+- [eMudhra CA compromise test site](https://emudhra.we-have-a-problem.com): community research published by Dennis Jackson. Block dates, test hosts, patched and pending versions, macOS and Java notes, CT finding.
+- [eMudhra incident page](https://emudhra.com/en/post/certificate-security-incident): vendor statement. Certificate count, move to G1, KPMG, its statement on evidence.
+- [InCommon notice](https://incommon.org/about/news/incommon-certificate-service-update): customer notice. Stop in issuance, RSA reissue.
+- [Node.js pull request 66871](https://github.com/nodejs/node/pull/66871): vendor code change. The fix, and how resumed sessions behave.
+- [Node.js 22 changelog](https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V22.md), [24 changelog](https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V24.md) and [26 changelog](https://github.com/nodejs/node/blob/main/doc/changelogs/CHANGELOG_V26.md): vendor release notes. Fixed Node.js versions.

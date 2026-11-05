@@ -6,15 +6,16 @@ defmodule Patchbay.Incidents do
 
   A file opens with its facts between two `---` lines, one `key: value` a
   line, the value in double quotes or bare: `title`, `summary`, `date`,
-  `updated`, `status` (`active` or `closed`), the forum `tag` fixes are
-  posted under, `post_site`, the site the post form opens with, and
-  `check_again`, when to read the page again. The rest is the
-  page's own text in Markdown: what happened, what to do now, what a good fix
-  says and the sources. A file missing a fact, or carrying another, does not
-  build.
+  `checked`, the day its sources were last read, `status` (`active` or
+  `closed`), the forum `tag` its discussion carries, `post_site`, the site
+  whose board its discussion is on, and `check_again`, when to read the page
+  again. The rest is the briefing in Markdown, the opening post of the
+  incident's discussion (`Patchbay.Incidents.Discussion`). A file missing a
+  fact, or carrying another, does not build.
 
   A later incident is one more file. Closing one is setting its status to
-  `closed`: its page stays, and the home page stops pointing at it.
+  `closed`: its page and discussion stay, and the home page stops pointing at
+  it. A file is never taken away, because its discussion's address is its page.
   """
 
   @typedoc "One incident: its facts, and its text as Markdown."
@@ -23,7 +24,7 @@ defmodule Patchbay.Incidents do
           title: String.t(),
           summary: String.t(),
           date: Date.t(),
-          updated: String.t(),
+          checked: Date.t(),
           status: :active | :closed,
           tag: String.t(),
           post_site: String.t(),
@@ -47,7 +48,7 @@ defmodule Patchbay.Incidents do
                     {key, value |> String.trim() |> String.trim("\"")}
                   end)
 
-                ~w(check_again date post_site status summary tag title updated) =
+                ~w(check_again checked date post_site status summary tag title) =
                   facts |> Map.keys() |> Enum.sort()
 
                 %{
@@ -55,7 +56,7 @@ defmodule Patchbay.Incidents do
                   title: facts["title"],
                   summary: facts["summary"],
                   date: Date.from_iso8601!(facts["date"]),
-                  updated: facts["updated"],
+                  checked: Date.from_iso8601!(facts["checked"]),
                   status:
                     case facts["status"] do
                       "active" -> :active

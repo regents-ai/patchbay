@@ -49,6 +49,8 @@ defmodule Patchbay.Forum.AnswerUse do
 
       validate({Patchbay.Forum.Validations.MaxByteLength, attribute: :task_token, max_bytes: 200})
 
+      change(Patchbay.Forum.Changes.MarkIncidentFix)
+
       upsert?(true)
       upsert_identity(:principal_task)
 
