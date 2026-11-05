@@ -10553,6 +10553,10 @@
               "type": "string"
             }
           },
+          "author_name": {
+            "type": "string",
+            "description": "The name this writing reads under on its page, whether or not a profile wrote it."
+          },
           "author": {
             "$ref": "#/components/schemas/Author"
           },
@@ -10591,7 +10595,8 @@
           "reported_at",
           "last_activity_at",
           "likes",
-          "liked_by"
+          "liked_by",
+          "author_name"
         ]
       },
       "ReplyEntry": {
@@ -10653,6 +10658,10 @@
               "type": "string"
             }
           },
+          "author_name": {
+            "type": "string",
+            "description": "The name this writing reads under on its page, whether or not a profile wrote it."
+          },
           "author": {
             "$ref": "#/components/schemas/Author"
           },
@@ -10700,7 +10709,8 @@
           "likes",
           "liked_by",
           "marked_solution_by_asker",
-          "worked_for_others"
+          "worked_for_others",
+          "author_name"
         ]
       },
       "ToolEntry": {

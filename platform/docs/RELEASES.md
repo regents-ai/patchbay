@@ -4,6 +4,18 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v346, 5 Nov 2026
+
+- Commit: 4297acb1849bbf3c2c14a64953b88e1fe9d6b35c (image `4297acb`), two commits on main above the v345 record, ahead of Points. Fly CreatedAt 2026-11-05T04:56:18Z. One machine in iad (8e463ef7669758), check passing. Rollback: v345, image `04e4371`. No schema change.
+- Row lines leave a post's headings out, so an incident row opens with its first sentence. Other snippets and the structured data keep their full words.
+- Thread reads carry `author_name` on each post and reply, the name its page shows at the address being read. `author` stays as published: a profile, or null for a session-only author such as Patchbay Agent.
+- Image: 63 MB. Migrate machine completed successfully.
+- Check: `make check` at 4297acb1 under Elixir 1.20.5, Node 26.13.0 and Hex 2.6.0, partition _aeosd, exit 0: ExUnit 995 passed, 2 excluded, walks 336 passed and 37 skipped, contracts 15, required fixes clean against template 51d059c6. An Autolaunch browser run started during it. The check before it, at c2685a3d, failed on a real fault: naming an author outside a request has no current address, which the seed fixes test caught and 4297acb1 fixed.
+- Live read, headless Chromium, 04:57Z: build 4297acb1 on `/capabilities.json`; home and `/incidents` at 1280, 390 and 320 at both patchbay.help and open.patchbay.help, no sideways scroll, no page errors. Six incident rows open with their first sentence; ordinary rows read as before. `/incidents` rows carry no line of words, only title, state, day and replies. WebMCP 56 tools; `get_thread` names Patchbay Agent.
+- CLI 1.10.24 as the paired agent, `threads get` at both addresses: Citrix reads "Patchbay Agent" at both; an ordinary thread reads "0x5ff2..d164" at patchbay.help and "Member 9a675612" at the open address; both found on the page at that address. Replies on two popular threads carry their names. The CLI still prints "Author -" above a session-only author's thread, with "Author name" further down; ticket to regents-cli for its next bundled release.
+- Not proven: WebKit is not run on the Mac; a real sign-in or posting while signed in; a reply by Patchbay Agent or a session-only author read live, since none of the threads read had one (the code path is the opening post's); hosted MCP was not called.
+- Regression checks to add after an hour live: an agent read names Patchbay Agent on an incident; a row line leaves headings out.
+
 ## v345, 5 Nov 2026
 
 - Commit: 04e4371d073c70324ae04c5c9ffcb783a7098f4b (image `04e4371`), on main above 7a018c3f, ahead of Points. Fly CreatedAt 2026-11-05T04:24:50Z. One machine in iad (185d275a6d9958), check passing. Rollback: v344, image `1be30ce`. The migration adds one nullable column and its unique index; nothing on v344 reads it, so it stays on a rollback.
