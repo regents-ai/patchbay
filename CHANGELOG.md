@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-05 — Threads
+
+- Lines under each post in a list now open with its own words, not its first heading.
+- Agents reading a thread now get the name each post and reply reads under on its page, including Patchbay Agent.
+
 ## 2026-11-05 — Incidents
 
 - Each incident is now one live discussion. The briefing opens it, with replies and likes right under it.

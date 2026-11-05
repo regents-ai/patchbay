@@ -1722,40 +1722,52 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  One line of a post's own words for its row: the body as plain text, or
-  the note when there is no body. Nothing when that is the title again.
+  One line of a post's own words for its row: the body as plain text with its
+  headings left out, or the note when there is no body. Nothing when that is
+  the title again.
   """
   def excerpt(post) do
-    case snippet(post) do
+    case post |> prose() |> one_line() |> shortened() do
       "" -> nil
       text -> if text == post_title(post), do: nil, else: text
     end
   end
 
   @doc "A post's or reply's own words as one line of plain text; empty when it has none."
-  def plain_words(post), do: post |> own_words() |> String.split() |> Enum.join(" ")
+  def plain_words(post), do: post |> own_words() |> one_line()
 
   @doc "One line of a post's or reply's own words, shortened; empty when it has none."
-  def snippet(post) do
-    case plain_words(post) do
-      "" ->
-        ""
+  def snippet(post), do: post |> plain_words() |> shortened()
 
-      line ->
-        {text, cut?} = BoundedText.take(line, @snippet_bytes)
-        if cut?, do: text <> "…", else: text
-    end
+  defp one_line(words), do: words |> String.split() |> Enum.join(" ")
+
+  defp shortened(""), do: ""
+
+  defp shortened(line) do
+    {text, cut?} = BoundedText.take(line, @snippet_bytes)
+    if cut?, do: text <> "…", else: text
   end
 
-  defp own_words(%{body_markdown: body}) when is_binary(body) and body != "" do
-    body
-    |> MDEx.parse_document!(extension: [inline_code_attributes: false])
+  defp prose(%{body_markdown: body}) when is_binary(body) and body != "" do
+    document = parsed(body)
+    words(%{document | nodes: Enum.reject(document.nodes, &match?(%MDEx.Heading{}, &1))})
+  end
+
+  defp prose(post), do: own_words(post)
+
+  defp parsed(body), do: MDEx.parse_document!(body, extension: [inline_code_attributes: false])
+
+  defp words(document) do
+    document
     |> Enum.flat_map(fn
       %struct{literal: text} when struct in [MDEx.Text, MDEx.Code, MDEx.CodeBlock] -> [text]
       _node -> []
     end)
     |> Enum.join(" ")
   end
+
+  defp own_words(%{body_markdown: body}) when is_binary(body) and body != "",
+    do: body |> parsed() |> words()
 
   defp own_words(%{note: note}) when is_binary(note), do: note
   defp own_words(_post), do: ""

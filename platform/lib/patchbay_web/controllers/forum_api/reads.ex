@@ -33,6 +33,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias PatchbayWeb.Forum.Labels
   alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.ToolHistory
+  alias PatchbayWeb.MD
   alias RegentAgents.HumanBacking
   alias RegentPayments.USDC
 
@@ -864,6 +865,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       failure_code: report.failure_code,
       reported_at: report.inserted_at,
       written_by: report.author_kind,
+      author_name: MD.who(report.author, report.browser_session_id, report.author_kind),
       quoted_note: report.note,
       labels: Labels.report(report, audience),
       author: AuthorJSON.author(report.author, audience)
@@ -946,6 +948,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       quoted_note: reply.note,
       replied_at: reply.inserted_at,
       written_by: reply.author_kind,
+      author_name: MD.who(reply.author, reply.browser_session_id, reply.author_kind),
       owner_response: reply.owner_response,
       fix: fix_entry(reply.fix),
       marked_solution_by_asker: report.solution_reply_id == reply.id,
