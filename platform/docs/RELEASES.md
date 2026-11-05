@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v344, 5 Nov 2026
+
+- Commit: 1be30cefeed03765563873359011b121f68a3334 (image `1be30ce`), one commit on main above 6cccd845. Fly CreatedAt 2026-11-05T03:32:16Z. One machine in iad, check passing. Rollback: v343, image `abedf51`.
+- Shared re-pin: design-system 4c7bbaa5 to 46e68fab (a copy button can copy a page fetched when pressed; no Patchbay page uses it) and elixir-utils c4a78d22 to 4e527975 (18 lock entries), with `RegentHttp.ErrorSaving.attach()` in `Patchbay.Application`, as on ash-template. A crash save that fails is now one warning line and no longer stops later crashes being saved.
+- Credits deposits changed with the pin: a node that does not answer is a warning line and a minute's wait, not an error. A successful `DepositCursor` job therefore no longer proves Base answered; read that warning line and `health_chain_request_failures_total`.
+- Image: 63 MB. Migrate machine completed successfully.
+- Check: `make check` at 1be30cef under Elixir 1.20.5, Node 26.13.0 and Hex 2.6.0, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 9fcf105e.
+- Live read, headless Chromium, 03:34Z: build 1be30cef on `/capabilities.json`; health ok; 56 WebMCP tools; nine pages at 1280, 390 and 320 with no page errors; Privy dialog opens at all three widths. CLI 1.10.23 as the paired agent: `agents whoami` "Authenticated yes", `account balances` answered.
+- Not proven: WebKit is not run on the Mac; a real sign-in or posting while signed in; `ErrorSaving` on a real failed save (its own library test covers that).
+
 ## v343, 4 Nov 2026
 
 - Commit: abedf519b456974e47d1f8b18eea1be2ca0cfb71 (image `abedf51`), on main directly above the v342 record. Released 22:04Z. Machine replaced blue-green, one machine in iad, check passing. Rollback: v342, image `6950a1d`. No migrations ("Migrations already up"), no secret changes.
@@ -14,6 +24,7 @@ and agents. This file is not served.
 - Check: `make check` at abedf519 under Elixir 1.20.5 and Node 26.13.0, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 56e59b64, CLI commands ok, hex.audit clean. Dependabot 0 open before the release.
 - Live read, headless Chromium: build abedf519 on `/capabilities.json`. Bundles built with `--omit=dev` work: the Privy dialog opens at 1280, 390 and 320 from its own bundle, 56 WebMCP tools register from the main bundle, Copy on the card matched its line. `Origin-Trial` header decodes to patchbay.help, WebMCP, 2027-03-30. Card: 11 choices, one height at each width (377 at 1280, 417 at 1024, 356 at 768, 425 at 390, 485 at 320), "Learn more" never moves, nothing past the page edge. Nine pages at 1280, 390 and 320 clean, no page errors. `regents patchbay doctor` held on CLI 1.10.23.
 - Picture machine (patchbay-shots): v7, 22:09Z, commit 6b4de23 (image `patchbay-shots:6b4de23`, 429 MB), rollback v6 `deployment-01M6JBKWRD46BJBTZ7P565CMH0`. Node's floating 24 tag to node:26.13.0-trixie-slim by digest. One picture through a private `fly proxy` to its flycast address, POST /shot for https://patchbay.help/: 200, image/webp, 1600 by 1000, 77,922 bytes, 24.6 s from a stopped machine; opened and read, it shows the live home with the Connect card. Nothing was saved on Patchbay and no refresh was pressed.
+- Outbound calls after release: a signed `regents patchbay agents whoami` at 22:41:09Z answered "Authenticated yes", which goes through the sign-in service. Sentinel read 7 `DepositCursor` reads and 7 `ReadEscrowRefund` sweeps as success in the 35 minutes to 22:41Z with no "Base could not be read" line and no `health_chain_request_failures_total` series. A failed newest-block read fails the `DepositCursor` job, so those reads mean Base answered; Credits reads through `Patchbay.ChainClient`, the client that failure count watches.
 - Not proven: WebKit is not run on the Mac; a real sign-in on trixie (Privy's dialog opens; Sean's last sign-in was on v340); posting while signed in.
 
 ## v342, 4 Nov 2026

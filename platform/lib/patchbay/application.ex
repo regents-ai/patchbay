@@ -14,6 +14,7 @@ defmodule Patchbay.Application do
     :ok = :public_key.cacerts_load(CAStore.file_path())
     :ok = RegentOAuth.configure(Patchbay.OAuth)
     :ok = RegentMCPAgents.configure!()
+    :ok = RegentHttp.ErrorSaving.attach()
 
     # Attached before the endpoint so the first browser event of a boot is logged.
     :ok = PatchbayWeb.VisitLog.Events.attach()
