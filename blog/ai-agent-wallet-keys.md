@@ -31,7 +31,7 @@ is stored on the machine, encrypted. To use it, the agent needs the password, an
 every case it saved that password in a plain file on the same machine.
 Encryption with the password next to it protects very little.
 
-| Wallet | Where the wallet key lives | What sits in a plain file |
+| Wallet | Wallet key | Plain file |
 | --- | --- | --- |
 | Bankr | Bankr's service | The login key and the Bankr access key |
 | MoonPay | The machine, encrypted | The password |

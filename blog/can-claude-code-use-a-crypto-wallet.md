@@ -20,7 +20,7 @@ or the password that unlocks it, ended up in a plain file on the machine.
 
 ## Results
 
-| Wallet | Install | Make a wallet | Who holds the key |
+| Wallet | Install | Make a wallet | Key holder |
 | --- | --- | --- | --- |
 | [Bankr](/wallet-bench/H05/W01) | 61 seconds | 177 seconds | Bankr; the agent keeps its login and access keys in plain files |
 | [MoonPay](/wallet-bench/H05/W03) | 76 seconds | 70 seconds | The machine, encrypted; the password is in a plain file |
