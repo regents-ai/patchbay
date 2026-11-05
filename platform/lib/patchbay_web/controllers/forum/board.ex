@@ -14,6 +14,8 @@ defmodule PatchbayWeb.Forum.Board do
 
   import Ash.Expr
 
+  require Ash.Query
+
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Principal
@@ -485,6 +487,24 @@ defmodule PatchbayWeb.Forum.Board do
     [report.post_likes | Enum.map(replies, & &1.likes)]
     |> List.flatten()
     |> Enum.filter(&(&1.author_profile_id == profile.id))
+    |> MapSet.new(& &1.reply_id)
+  end
+
+  @doc """
+  The replies on this page the reader has said worked for them. Only an
+  incident's discussion asks.
+  """
+  @spec said_worked(Report.t(), [Patchbay.Forum.Reply.t()], term()) :: MapSet.t()
+  def said_worked(%Report{incident: nil}, _replies, _profile), do: MapSet.new()
+  def said_worked(%Report{}, _replies, nil), do: MapSet.new()
+
+  def said_worked(%Report{}, replies, profile) do
+    ids = Enum.map(replies, & &1.id)
+    principal = Patchbay.Forum.Principal.for_profile(profile.id)
+
+    Patchbay.Forum.AnswerUse
+    |> Ash.Query.filter(reply_id in ^ids and principal == ^principal and outcome == :worked)
+    |> Ash.read!()
     |> MapSet.new(& &1.reply_id)
   end
 

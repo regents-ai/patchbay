@@ -12,7 +12,10 @@
   <:context>
     <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
     <.tool_chips site={@report.site} names={@report.tool_names} />
-    <span class="pb-kind-pill">{thread_kind_label(@report)}</span>
+    <span :if={!@incident} class="pb-kind-pill">{thread_kind_label(@report)}</span>
+    <PatchbayWeb.IncidentHTML.status_pill :if={@incident} incident={@incident} />
+    <span :if={@incident}>Checked {PatchbayWeb.IncidentHTML.day(@incident.checked)}</span>
+    <a :if={@incident} class="pb-tag" href={~p"/?#{[tag: @incident.tag, sort: "popular"]}"}>{@incident.tag}</a>
     <span
       :if={@report.verdict && is_nil(@report.solution_reply)}
       class={["pb-kind-pill", verdict_class(@report.verdict)]}
@@ -104,6 +107,10 @@
       can_accept={
         @site_edition == :main && can_accept?(@report, reply, @conn.assigns.current_profile)
       }
+      said_worked={
+        if @incident && !own_reply?(reply, @conn.assigns.current_profile),
+          do: reply.id in @said_worked
+      }
     />
     <:footer>
       <nav
@@ -130,6 +137,7 @@
   </Regent.Discussion.replies>
 
   <Regent.Primitives.disclosure
+    :if={!@incident}
     id="report-evidence"
     summary="Evidence"
     class="pb-thread-evidence"

@@ -637,6 +637,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
          report.browser_session_id == assigns.forum_session_id)
   end
 
+  @doc "Whether a reply is the reader's own, or their agent's."
+  def own_reply?(_reply, nil), do: false
+
+  def own_reply?(reply, profile) do
+    Patchbay.Forum.Principal.for(reply) == Patchbay.Forum.Principal.for_profile(profile.id)
+  end
+
   @doc "The bounty a Markdown post line carries, worded as the page's own bounty link is."
   def bounty_label(%{bounty_open: true} = report), do: "Bounty · #{escrowed(report)} USDC"
   def bounty_label(_report), do: nil
@@ -1806,6 +1813,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "Whether the reader is this paid report's asker and may accept this reply."
   )
 
+  attr(:said_worked, :boolean,
+    default: nil,
+    doc: "Whether the reader has said this reply worked; nil where the page does not ask."
+  )
+
   def reply(assigns) do
     ~H"""
     <Regent.Discussion.post
@@ -1860,6 +1872,21 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Reported outcome: {verdict_label(@reply.verdict)}
       </p>
       <:actions>
+        <form
+          :if={not is_nil(@said_worked)}
+          method="post"
+          action={~p"/posts/#{@report.id}/worked"}
+          class="pb-mark-solution"
+        >
+          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+          <input type="hidden" name="reply_id" value={@reply.id} />
+          <input type="hidden" name="worked" value={to_string(!@said_worked)} />
+          <input :if={@cursor} type="hidden" name="after" value={@cursor} />
+          <input type="hidden" name="replies" value={@reply_filter} />
+          <button type="submit" class="pb-quiet-button" aria-pressed={to_string(@said_worked)}>
+            <span class="pb-action-label" data-press-label><.icon name={:check} /> Worked</span>
+          </button>
+        </form>
         <form
           :if={@can_mark}
           method="post"
@@ -2057,6 +2084,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @spec answer_caption(Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t()) :: String.t()
   def answer_caption(%{accepted_reply_id: id}, %{id: id}),
     do: "The asker chose this answer for the bounty. Their word, not a check."
+
+  def answer_caption(%{incident: incident}, _reply) when is_binary(incident),
+    do: "Marked because people say this worked. Their word, not a check."
 
   def answer_caption(_report, _reply),
     do: "The asker says this worked. Their word, not a check."

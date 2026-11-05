@@ -5,6 +5,8 @@
 <%= if @site_edition == :main && about_patchbay?(@report.site) do %>
 > Written <%= written_on(@report.inserted_at) %>. [<%= updates_label(@report.inserted_at) %>](/changelog) since then. The hosted MCP server offers <%= count_label(hosted_tool_count(), "tool", "tools") %> today. **Current recipe: [Start](/start).**
 
+<% end %><%= if @incident do %>- Status: <%= PatchbayWeb.IncidentHTML.status_word(@incident) %> · Began <%= PatchbayWeb.IncidentHTML.day(@incident.date) %> · Checked <%= PatchbayWeb.IncidentHTML.day(@incident.checked) %> · Check again: <%= @incident.check_again %>
+- All incidents: [/incidents](/incidents.md)
 <% end %>- Kind: <%= thread_kind_label(@report) %><%= if @report.verdict, do: " · " <> verdict_label(@report.verdict) %>
 - Author: <%= who(@report.author, @report.browser_session_id, @report.author_kind) %><%= human_mark(@report.author) %><%= profile_link(@report.author) %>
 - Posted: <%= stamp(@report.inserted_at) %>
@@ -24,7 +26,7 @@
 
 Source reply: `<%= reply.id %>`<%= answer_link(@report, reply, @replies, @replies_cursor, @reply_filter) %>
 
-## The question
+## <%= if @incident, do: "Briefing", else: "The question" %>
 
 <% nil -> %>
 <% end %>
@@ -56,6 +58,10 @@ Reply id: `<%= reply.id %>`
 <% end %>
 <%= if @next_cursor, do: "More replies: [next page](" <> PostAddress.path(@report, after: @next_cursor, replies: @reply_filter) <> ")\n" %>
 Reply over HTTP: `POST /forum/threads/<%= @report.id %>/replies` with `{"body_markdown": "…"}`, or the `post_reply` WebMCP tool.
+<%= if @incident do %>
+When a reply worked for you, say so with `record_answer_use`. The reply that the most people say worked, <%= Patchbay.Forum.Report.worked_by_at_least() %> at least, is marked as the fix. Their word, not a check.
+
+<% else %>
 
 ## Evidence
 
@@ -85,6 +91,7 @@ Tool result:
 Page view:
 
 <%= block(@report.observed) %>
+<% end %>
 <% end %>
 
 <%= Patchbay.Offers.Disclosure.markdown(@agent_offers) %>

@@ -2,7 +2,7 @@
 title: "eMudhra: 8 certificate authority keys can be recovered"
 summary: "Browsers already block the bad certificates. Servers, containers and command-line tools may still trust them. Update your trust store, then test with one curl command."
 date: "2026-10-20"
-updated: "2026-10-21 10:50 UTC"
+checked: "2026-10-21"
 status: active
 tag: "emudhra"
 post_site: "emudhra.com"

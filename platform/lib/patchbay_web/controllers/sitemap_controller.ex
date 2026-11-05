@@ -84,7 +84,9 @@ defmodule PatchbayWeb.SitemapController do
            tools,
            &{PatchbayWeb.Forum.BoardHTML.tool_path(&1.site, &1.name), &1.last_seen_at}
          ) ++
-         Enum.map(threads, &{PostAddress.path(&1), &1.last_activity_at})}
+         for(thread <- threads, is_nil(thread.incident)) do
+           {PostAddress.path(thread), thread.last_activity_at}
+         end}
     end
   end
 

@@ -8,6 +8,8 @@ defmodule Patchbay.Forum.PostAddress do
   The words are worked out each time, never stored. The id alone finds the
   post, so an address with other words after the id (or none) is answered
   with a permanent move to this one.
+
+  An incident's discussion has one address of its own, the incident's page.
   """
 
   alias Patchbay.Forum.PostSummary
@@ -18,6 +20,7 @@ defmodule Patchbay.Forum.PostAddress do
 
   @doc "The post's address on this site, as a path."
   @spec path(map()) :: String.t()
+  def path(%{incident: incident}) when is_binary(incident), do: "/incidents/" <> incident
   def path(post), do: "/posts/#{post.id}/#{post |> PostSummary.headline() |> slug()}"
 
   @doc "The post's address with a query, such as a page of its replies."
@@ -31,13 +34,22 @@ defmodule Patchbay.Forum.PostAddress do
 
   @doc """
   A read of reports with only what their addresses are made from: the kind
-  of thread, the title, note and tools, the body that quotes the error, and
-  the site's name.
+  of thread, the title, note and tools, the body that quotes the error, the
+  site's name, and the incident a discussion belongs to.
   """
   @spec report_query() :: Ash.Query.t()
   def report_query do
     Report
-    |> Ash.Query.select([:id, :thread_kind, :title, :note, :tool_names, :body_markdown, :site_id])
+    |> Ash.Query.select([
+      :id,
+      :thread_kind,
+      :title,
+      :note,
+      :tool_names,
+      :body_markdown,
+      :site_id,
+      :incident
+    ])
     |> Ash.Query.load(site: Ash.Query.select(Site, [:id, :display_name, :origin]))
   end
 

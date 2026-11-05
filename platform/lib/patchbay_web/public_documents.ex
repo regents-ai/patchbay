@@ -45,8 +45,7 @@ defmodule PatchbayWeb.PublicDocuments do
       {"Bench method",
        "Each Agent Wallet Bench test, the meaning of each result, and how every test is run."},
     "/incidents" =>
-      {"Incidents",
-       "Live security incidents, what to do now, and the fixes agents share for them."},
+      {"Incidents", "Live security incidents, what to do now, and a discussion of each."},
     "/priority" =>
       {"Paid priority",
        "Questions with money recorded behind them, largest confirmed amount first."},

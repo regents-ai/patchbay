@@ -1,9 +1,9 @@
 defmodule PatchbayWeb.IncidentControllerTest do
   @moduledoc """
-  The incident pages: each one's own account and the fixes agents posted
-  under its tag, the list of them, and the home page's badge while any is
-  live. Tests read the repository's incidents and a closed one kept with the
-  tests (`test/support/incidents`).
+  The incident pages: each one is its own discussion with the briefing as the
+  opening post, at one address; the list of them; and the home page's badge
+  while any is live. Tests read the repository's incidents and a closed one
+  kept with the tests (`test/support/incidents`).
   """
 
   # The sitemap reads the shared Wallet Bench, one reading for the whole run.
@@ -12,42 +12,60 @@ defmodule PatchbayWeb.IncidentControllerTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.PostAddress
   alias Patchbay.Incidents
+  alias Patchbay.Incidents.Discussion
 
   # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
-  defp ask!(site, title, tags) do
-    Forum.ask_question!(
+  defp reply!(thread, note) do
+    Forum.add_reply!(
       %{
-        site_id: site.id,
+        report_id: thread.id,
         browser_session_id: Ash.UUID.generate(),
-        title: title,
-        thread_kind: :help_needed,
-        body_markdown: "What I changed and how I tested it.",
-        topic_tags: tags
+        verdict: :unknown,
+        note: note
       },
       authorize?: false
     )
   end
 
-  test "an incident's page shows its account and only the threads with its tag", %{conn: conn} do
-    site = Forum.register_site!("nodejs.org")
-    fix = ask!(site, "Node 24 refuses the eMudhra test host after an update", ["emudhra"])
-    other = ask!(site, "Node 24 streams stop after a minute", ["streams"])
+  defp person!(subject) do
+    Patchbay.Identity.upsert_from_privy!(%{
+      privy_user_id: "did:privy:" <> subject,
+      wallet_address: "0x" <> String.duplicate(subject, 40)
+    })
+  end
 
+  defp signed_in(conn, profile) do
+    conn
+    |> Plug.Test.init_test_session(%{})
+    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
+  end
+
+  defp say_worked(conn, thread, reply, person, wanted \\ "true") do
+    conn
+    |> signed_in(person)
+    |> post(~p"/posts/#{thread.id}/worked", %{"reply_id" => reply.id, "worked" => wanted})
+  end
+
+  test "an incident's page is one discussion, opening with its briefing", %{conn: conn} do
     emudhra = Incidents.get("emudhra")
-    html = conn |> get(~p"/incidents/emudhra") |> html_response(200)
 
+    html = conn |> get(~p"/incidents/emudhra") |> html_response(200)
     assert html =~ emudhra.title
     assert html =~ "Actions"
-    assert html =~ ~s(href="#{PostAddress.path(fix)}")
-    refute html =~ ~s(href="#{PostAddress.path(other)}")
+
+    # A second read finds the same thread.
+    {:ok, thread} = Forum.get_incident_discussion("emudhra")
+    conn |> get(~p"/incidents/emudhra") |> html_response(200)
+    assert {:ok, %{id: same}} = Discussion.open(emudhra)
+    assert same == thread.id
+    assert thread.body_markdown == emudhra.body
+    assert thread.topic_tags == [emudhra.tag]
 
     markdown = conn |> get("/incidents/emudhra.md") |> response(200)
     assert markdown =~ "# #{emudhra.title}"
     assert markdown =~ "## Actions"
-    assert markdown =~ "(#{PostAddress.path(fix)})"
-    refute markdown =~ "(#{PostAddress.path(other)})"
+    assert markdown =~ "/forum/threads/#{thread.id}/replies"
 
     asked =
       conn
@@ -56,38 +74,142 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     assert [type] = get_resp_header(asked, "content-type")
     assert type =~ "text/markdown"
-    assert response(asked, 200) == markdown
   end
 
-  test "Share a fix opens the home form with the incident's site and tag, and leaves the list whole",
-       %{conn: conn} do
-    site = Forum.register_site!("nodejs.org")
-    untagged = ask!(site, "Node 24 streams stop after a minute", [])
+  test "a discussion has one address, the incident's page", %{conn: conn} do
+    {:ok, thread} = Discussion.open(Incidents.get("emudhra"))
+
+    assert conn |> get(~p"/posts/#{thread.id}") |> redirected_to(301) == "/incidents/emudhra"
+
+    assert conn |> get(~p"/posts/#{thread.id}/some-words") |> redirected_to(301) ==
+             "/incidents/emudhra"
+
+    # A person's reply lands back on the page, with the reply on it.
+    response =
+      conn
+      |> signed_in(person!("a"))
+      |> post(~p"/threads/#{thread.id}/replies", %{
+        "reply" => %{"body_markdown" => "Updating the trust store fixed it"}
+      })
+
+    landed = redirected_to(response)
+    assert landed =~ "/incidents/emudhra"
+    assert conn |> get(landed) |> html_response(200) =~ "Updating the trust store fixed it"
+  end
+
+  test "a new file changes the opening post, and the replies stay", %{conn: conn} do
+    emudhra = Incidents.get("emudhra")
+    {:ok, thread} = Discussion.open(emudhra)
+    reply!(thread, "Still seeing this on Node 24")
+
+    {:ok, _stale} =
+      Forum.refresh_incident_briefing(thread, %{
+        title: "An earlier title",
+        body_markdown: "Earlier words"
+      })
 
     html = conn |> get(~p"/incidents/emudhra") |> html_response(200)
+    assert html =~ emudhra.title
+    refute html =~ "Earlier words"
+    assert html =~ "Still seeing this on Node 24"
+    assert {:ok, %{id: same}} = Forum.get_incident_discussion("emudhra")
+    assert same == thread.id
+  end
 
-    [share] =
-      Regex.run(~r{href="(/\?[^"]*topic_tags=emudhra[^"]*)"}, html, capture: :all_but_first)
+  test "the reply enough people say worked is marked as the fix, and a later one can pass it",
+       %{conn: conn} do
+    {:ok, thread} = Discussion.open(Incidents.get("emudhra"))
+    first = reply!(thread, "Update the trust store")
+    later = reply!(thread, "Update the trust store and restart the service")
+    [a, b, c] = Enum.map(~w(a b c), &person!/1)
 
-    share = String.replace(share, "&amp;", "&")
-    assert share == "/?site_url=emudhra.com&topic_tags=emudhra#pb-hero"
+    say_worked(conn, thread, first, a)
+    assert {:ok, %{solution_reply_id: nil}} = Forum.get_incident_discussion("emudhra")
 
-    home = conn |> get(share) |> html_response(200) |> LazyHTML.from_document()
+    # Saying it twice is one person's word.
+    say_worked(conn, thread, first, a)
+    assert {:ok, %{solution_reply_id: nil}} = Forum.get_incident_discussion("emudhra")
 
-    assert ["emudhra"] =
-             home
-             |> LazyHTML.query(~s(input[name="ask[topic_tags]"]))
-             |> LazyHTML.attribute("value")
+    say_worked(conn, thread, first, b)
+    assert {:ok, %{solution_reply_id: marked}} = Forum.get_incident_discussion("emudhra")
+    assert marked == first.id
 
-    assert ["emudhra.com"] =
-             home
-             |> LazyHTML.query(~s(input[name="ask[site_url]"]))
-             |> LazyHTML.attribute("value")
+    assert conn |> get(~p"/incidents/emudhra") |> html_response(200) =~ "id=\"pb-fix\""
 
-    assert [_open] = home |> LazyHTML.query("#pb-hero-details[open]") |> Enum.to_list()
+    # Level does not take over; ahead does.
+    say_worked(conn, thread, later, a)
+    say_worked(conn, thread, later, b)
+    assert {:ok, %{solution_reply_id: ^marked}} = Forum.get_incident_discussion("emudhra")
 
-    # The tag fills the form only: the questions below are not narrowed to it.
-    assert LazyHTML.to_html(home) =~ ~s(href="#{PostAddress.path(untagged)}")
+    say_worked(conn, thread, later, c)
+    assert {:ok, %{solution_reply_id: now}} = Forum.get_incident_discussion("emudhra")
+    assert now == later.id
+  end
+
+  test "a reader's press shows on their next read and can be taken back", %{conn: conn} do
+    {:ok, thread} = Discussion.open(Incidents.get("emudhra"))
+    reply = reply!(thread, "Update the trust store")
+    person = person!("a")
+
+    pressed = fn ->
+      conn
+      |> signed_in(person)
+      |> get(~p"/incidents/emudhra")
+      |> html_response(200)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query(~s(form[action="/posts/#{thread.id}/worked"] button))
+      |> LazyHTML.attribute("aria-pressed")
+    end
+
+    assert pressed.() == ["false"]
+    assert redirected_to(say_worked(conn, thread, reply, person)) =~ "/incidents/emudhra"
+    assert pressed.() == ["true"]
+    assert redirected_to(say_worked(conn, thread, reply, person, "false")) =~ "/incidents/emudhra"
+    assert pressed.() == ["false"]
+  end
+
+  test "a reader who is not signed in is told to, and nothing is saved", %{conn: conn} do
+    {:ok, thread} = Discussion.open(Incidents.get("emudhra"))
+    reply = reply!(thread, "Update the trust store")
+
+    response =
+      post(conn, ~p"/posts/#{thread.id}/worked", %{"reply_id" => reply.id, "worked" => "true"})
+
+    assert redirected_to(response) =~ "/incidents/emudhra"
+    assert Forum.get_reply!(reply.id, load: [:worked_for_others]).worked_for_others == 0
+  end
+
+  test "an ordinary thread offers no Worked button and keeps its asker's mark", %{conn: conn} do
+    site = Forum.register_site!("nodejs.org")
+
+    thread =
+      Forum.ask_question!(
+        %{
+          site_id: site.id,
+          browser_session_id: Ash.UUID.generate(),
+          title: "Node 24 streams stop after a minute",
+          thread_kind: :help_needed,
+          body_markdown: "What I changed and how I tested it."
+        },
+        authorize?: false
+      )
+
+    reply = reply!(thread, "Set a longer timeout")
+
+    html =
+      conn
+      |> signed_in(person!("a"))
+      |> get(Patchbay.Forum.PostAddress.path(thread))
+      |> html_response(200)
+
+    refute html =~ "/posts/#{thread.id}/worked"
+
+    for subject <- ~w(a b) do
+      say_worked(conn, thread, reply, person!(subject))
+    end
+
+    assert Forum.get_reply!(reply.id, load: [:worked_for_others]).worked_for_others == 2
+    assert %{solution_reply_id: nil} = Forum.get_report!(thread.id)
   end
 
   test "a name with no incident file is a missing page", %{conn: conn} do
@@ -95,26 +217,24 @@ defmodule PatchbayWeb.IncidentControllerTest do
     assert conn |> get("/incidents/no-such-incident.md") |> response(404)
   end
 
-  test "the list shows each incident, live ones first, with its tagged threads counted",
+  test "the list shows each incident, live ones first, with its checked day and replies",
        %{conn: conn} do
-    site = Forum.register_site!("nodejs.org")
-    ask!(site, "Node 24 refuses the eMudhra test host after an update", ["emudhra"])
-    ask!(site, "Node 24 streams stop after a minute", ["streams"])
+    {:ok, thread} = Discussion.open(Incidents.get("emudhra"))
+    reply!(thread, "Update the trust store")
 
     html = conn |> get(~p"/incidents") |> html_response(200)
     rows = html |> LazyHTML.from_document() |> LazyHTML.query(".pb-incident-row")
-
     texts = Enum.map(rows, &(&1 |> LazyHTML.text() |> String.split() |> Enum.join(" ")))
 
-    title = Incidents.get("emudhra").title
+    emudhra = Incidents.get("emudhra")
+    day = PatchbayWeb.IncidentHTML.day(emudhra.checked)
 
-    assert [_php, emudhra, _pingcap, drill] = texts
-    assert emudhra =~ "#{title} Live 20 October 2026 1 thread"
-    assert drill =~ "A closed drill Closed 15 January 2026 0 threads"
+    assert Enum.any?(texts, &(&1 =~ "#{emudhra.title} Live Checked #{day} 1 reply"))
+    assert List.last(texts) =~ "A closed drill Closed Checked 16 January 2026 0 replies"
 
     markdown = conn |> get("/incidents.md") |> response(200)
-    assert markdown =~ "[#{title}](/incidents/emudhra.md) — Live"
-    assert markdown =~ "1 thread"
+    assert markdown =~ "[#{emudhra.title}](/incidents/emudhra.md) — Live"
+    assert markdown =~ "1 reply"
 
     # A closed incident keeps its page.
     assert conn |> get(~p"/incidents/drill") |> html_response(200) =~ "Closed"
@@ -157,11 +277,14 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
   test "the sitemap lists the incidents and each one's page", %{conn: conn} do
     PatchbayTest.SharedBench.share!()
+    {:ok, _thread} = Discussion.open(Incidents.get("emudhra"))
     xml = conn |> get(~p"/sitemap.xml") |> response(200)
 
-    for path <-
-          ~w(/incidents /incidents/emudhra /incidents/php-cve-2026-109618 /incidents/pingcap-tidb-cloud /incidents/drill) do
-      assert xml =~ "<loc>#{PatchbayWeb.Endpoint.url()}#{path}</loc>"
+    paths = ["/incidents" | Enum.map(Incidents.all(), &("/incidents/" <> &1.name))]
+
+    for path <- paths do
+      entry = "<loc>#{PatchbayWeb.Endpoint.url()}#{path}</loc>"
+      assert [_before, _after] = String.split(xml, entry)
     end
   end
 end

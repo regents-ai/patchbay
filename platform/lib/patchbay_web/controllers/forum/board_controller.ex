@@ -33,6 +33,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.SiteDirectory
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Incidents
+  alias Patchbay.Incidents.Discussion
   alias PatchbayWeb.BusyPage
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.AgentPages
@@ -401,6 +402,36 @@ defmodule PatchbayWeb.Forum.BoardController do
         conn
         |> put_flash(:error, solution_words(Participation.solution_refusal(failure)))
         |> redirect(to: PostAddress.path(report))
+    end
+  end
+
+  @doc """
+  A signed-in reader says a reply in an incident's discussion worked for them,
+  or takes that back, and comes back to where they pressed. The same word the
+  record_answer_use tool gives, under the reader's own name.
+  """
+  def worked(%{assigns: %{current_profile: nil}} = conn, %{"id" => id} = params) do
+    conn
+    |> put_flash(:error, "Sign in at the top of the page to say a reply worked.")
+    |> redirect(to: liked_path(fetch_report!(id), params))
+  end
+
+  def worked(conn, %{"id" => id, "reply_id" => reply_id, "worked" => wanted} = params)
+      when wanted in ["true", "false"] do
+    report = fetch_report!(id)
+    outcome = if wanted == "true", do: "worked", else: "not_tried"
+
+    case Participation.record_answer_use(conn.assigns.current_profile, reply_id, %{
+           "outcome" => outcome,
+           "task_token" => "page"
+         }) do
+      {:ok, _use} ->
+        redirect(conn, to: liked_path(report, params))
+
+      {:error, _refused} ->
+        conn
+        |> put_flash(:error, "That could not be saved. Reload the page and try again.")
+        |> redirect(to: liked_path(report, params))
     end
   end
 
@@ -1225,6 +1256,30 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp refund_refusal(_failure), do: "That money could not be taken back."
 
   @doc """
+  An incident's page: its one discussion, shown as any post is, with its
+  briefing as the opening post (`Patchbay.Incidents.Discussion`).
+  """
+  def incident(%{private: %{incident: name}} = conn, params) do
+    case Discussion.open(Incidents.get(name)) do
+      {:ok, thread} ->
+        report = fetch_report!(thread.id)
+        :ok = Board.record_view(report, conn.assigns)
+        show_report(conn, report, params, [])
+
+      {:error, failure} ->
+        raise failure
+    end
+  end
+
+  @doc "An incident's page as Markdown, at its own address ending in .md."
+  def incident_md(conn, params) do
+    conn
+    |> put_format("md")
+    |> put_resp_content_type("text/markdown")
+    |> incident(params)
+  end
+
+  @doc """
   One person's reply, written in the form on the report page.
 
   The page is the only way a person can reply, and a person replies under their
@@ -1367,9 +1422,14 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     with {:ok, keyset} <- ReplyCursor.verify(report.id, params["after"]),
          {:ok, replies, next_cursor} <- Board.replies(report, keyset, filter) do
+      incident = report.incident && Incidents.get(report.incident)
+
       render(conn, :report,
         page_title: PostSummary.title(report),
-        page_description: PostSummary.description(report),
+        page_description:
+          if(incident, do: incident.summary, else: PostSummary.description(report)),
+        incident: incident,
+        said_worked: Board.said_worked(report, replies, conn.assigns.current_profile),
         # Also shown in answer to a reply or refund form, whose address is not the post's.
         canonical_path: PostAddress.path(report),
         page_data: [PatchbayWeb.Forum.BoardHTML.thread_data(report, replies)],

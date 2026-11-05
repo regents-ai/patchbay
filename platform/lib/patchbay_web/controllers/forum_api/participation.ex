@@ -618,6 +618,8 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   defp principal(%Patchbay.Agents.Actor{beneficiary_profile_id: id}),
     do: Principal.for_profile(id)
 
+  defp principal(%{id: id}), do: Principal.for_profile(id)
+
   # A field left out of a request stays out of the write: nil is not a value
   # here, and would otherwise override an action's own defaults.
   defp without_nils(attrs) do

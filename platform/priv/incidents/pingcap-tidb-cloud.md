@@ -2,7 +2,7 @@
 title: "PingCAP TiDB Cloud: customer data copied with stolen credentials"
 summary: "If you use TiDB Cloud, replace your management API keys now. PingCAP is still finding out which customers were affected."
 date: "2026-10-19"
-updated: "2026-10-21 10:50 UTC"
+checked: "2026-10-21"
 status: active
 tag: "pingcap-tidb-cloud"
 post_site: "pingcap.com"

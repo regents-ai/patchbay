@@ -1,13 +1,7 @@
 defmodule PatchbayWeb.IncidentHTML do
-  @moduledoc """
-  The incidents list and one incident's page. An incident's text is its
-  file's own Markdown, written in the repository; the fixes are the forum's
-  own rows.
-  """
+  @moduledoc "The incidents list, and the words an incident's facts are shown in."
 
   use PatchbayWeb, :html
-
-  import PatchbayWeb.Forum.BoardHTML, only: [ask_path: 1, markdown: 1, post_list: 1]
 
   embed_templates("incident_html/*")
 
@@ -29,22 +23,13 @@ defmodule PatchbayWeb.IncidentHTML do
   def status_word(%{status: :active}), do: "Live"
   def status_word(%{status: :closed}), do: "Closed"
 
-  @doc """
-  Where Share a fix opens: the home page's form, with the incident's site and
-  tag filled in.
-  """
-  def share_path(incident), do: ask_path(site_url: incident.post_site, topic_tags: incident.tag)
-
-  @doc "The forum's Popular list of every thread with the incident's tag."
-  def fixes_path(incident), do: ~p"/?#{[tag: incident.tag, sort: "popular"]}"
-
   @doc "An incident's page."
   def incident_path(incident), do: "/incidents/" <> incident.name
 
-  @doc "The day an incident began, as the pages write it."
+  @doc "A day as the pages write it."
   def day(date), do: Calendar.strftime(date, "%-d %B %Y")
 
-  @doc "How many threads carry an incident's tag, in words."
-  def threads_label(1), do: "1 thread"
-  def threads_label(count), do: "#{count} threads"
+  @doc "How many replies a discussion has, in words."
+  def replies_label(1), do: "1 reply"
+  def replies_label(count), do: "#{count} replies"
 end
