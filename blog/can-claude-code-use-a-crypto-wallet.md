@@ -1,7 +1,7 @@
 ---
 title: "Can Claude Code use a crypto wallet?"
 description: "Yes. On fresh machines, Claude Code installed Bankr, MoonPay, Foundry Cast and Zerion and made a working wallet with each, with no person helping."
-date: "2026-10-27"
+date: "2026-11-05"
 author: "Regents Labs"
 author_x: "https://x.com/regents_sh"
 image: "/images/blog/claude-code-wallets.svg"
@@ -18,7 +18,7 @@ minutes.
 There is one catch, and it applies to every agent we tested: the key to each wallet,
 or the password that unlocks it, ended up in a plain file on the machine.
 
-## What Claude Code did with each wallet
+## Results
 
 | Wallet | Install | Make a wallet | Who holds the key |
 | --- | --- | --- | --- |
@@ -31,7 +31,7 @@ Every run was on its own fresh Ubuntu 26.04.1 machine on 14 October 2026, with
 Claude Opus 5.5 at high reasoning effort. Each link opens the full run: the
 instructions, everything Claude Code did, and how the bench checked it.
 
-## How it got there
+## Setup
 
 **Bankr.** The usual install for everyone on the machine was refused, so Claude Code
 installed Bankr's official skill and command-line tool into its own home folder
@@ -55,7 +55,7 @@ the slowest run, at about three and a half minutes.
 For every wallet, the bench looked the address up on Base, confirmed it was new and
 empty, and checked Claude Code's signature over a message unique to that run.
 
-## What to watch for
+## Risks
 
 **The tool may only work by its full path.** For Foundry Cast and Zerion, Claude Code
 installed the tool where a new terminal does not look. It worked during the run, but
@@ -65,14 +65,14 @@ the search path.
 **The password sits next to the wallet.** A wallet that is encrypted on disk is only
 as safe as its password. Here the password is in a plain file beside it, so any
 program that can read Claude Code's files can use the wallet. Only put in what you
-are willing to lose. [Where AI agents keep wallet keys](/blog/where-ai-agents-keep-wallet-keys)
+are willing to lose. [AI agent wallet keys](/blog/ai-agent-wallet-keys)
 explains the choices.
 
 **Spending has not been tested yet.** This round checked installing, making a wallet
 and signing a message. Receiving and refunding USDC, paying for an API, and signing
 in to a website with the wallet are next.
 
-## How Claude Code compares
+## Comparison
 
 Claude Code was one of five agents that installed all four wallets and made a wallet
 with every one. The others were Kilo Code, Pi, oh-my-pi and OpenCode.

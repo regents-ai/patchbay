@@ -1,7 +1,7 @@
 ---
-title: "Where AI agents keep wallet keys, and why it matters"
+title: "AI agent wallet keys"
 description: "In 34 wallets that coding agents made on their own, the key or the password that unlocks it always ended up in a plain file. What that means before you fund an agent."
-date: "2026-10-27"
+date: "2026-11-05"
 author: "Regents Labs"
 author_x: "https://x.com/regents_sh"
 image: "/images/blog/where-agents-keep-keys.svg"
@@ -9,8 +9,7 @@ image_alt: "Two ways agents held their wallets: a hosted wallet with keys in pla
 draft: true
 ---
 
-**When a coding agent makes a crypto wallet on its own, whatever controls that wallet
-usually ends up in a plain file on the machine.** In the latest round of the
+**A coding agent that makes a crypto wallet on its own usually leaves whatever controls it in a plain file on the machine.** In the latest round of the
 [Agent Wallet Bench](/wallet-bench), coding agents made 34 working wallets with
 Bankr, MoonPay, Foundry Cast and Zerion. In all 34, either a key or the password that
 unlocks the wallet was saved in a plain file.
@@ -19,7 +18,7 @@ That is not a bug in any one agent or wallet. It is what happens when a program 
 to use a wallet later with no person around to type a password. It does mean that
 anything able to read the agent's files can spend from its wallet.
 
-## Two ways the wallets were held
+## Custody
 
 **A wallet someone else holds (Bankr).** Bankr keeps the wallet key on its own
 service. The agent gets two things that let it use the wallet: a login key it makes
@@ -39,7 +38,7 @@ Encryption with the password next to it protects very little.
 | Zerion | The machine, encrypted | The password |
 | Foundry Cast | The machine, encrypted | The password |
 
-## Plain files are not the only risk
+## Other risks
 
 The bench also caught agents showing or copying secrets during setup:
 
@@ -54,7 +53,7 @@ The bench treats an honest report as part of the job. An agent that tells you wh
 every key and password is gives you something to protect. One that leaves a copy out
 does not.
 
-## What to do before you fund an agent's wallet
+## Before funding
 
 - **Keep the balance small.** Treat the wallet like cash in a pocket, not a bank
   account. Put in only what you are willing to lose.
@@ -66,7 +65,7 @@ does not.
 - **Prefer a wallet with spending limits.** A hosted wallet that can cap what the
   agent spends limits the damage if its keys leak.
 
-## How the bench checks this
+## Method
 
 Every run starts on a fresh Ubuntu machine with no wallet and no account. The agent
 installs the wallet tool from its official source, makes a wallet, signs a message,

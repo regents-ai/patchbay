@@ -1,7 +1,7 @@
 ---
 title: "Which crypto wallets can AI coding agents use?"
-description: "Current Agent Wallet Bench results for 12 coding agents and 4 wallet tools, each run on a fresh machine. Updated 27 October 2026."
-date: "2026-10-27"
+description: "Current Agent Wallet Bench results for 12 coding agents and 4 wallet tools, each run on a fresh machine. Updated 5 November 2026."
+date: "2026-11-05"
 author: "Regents Labs"
 author_x: "https://x.com/regents_sh"
 image: "/images/blog/which-wallets-agents-can-use.svg"
@@ -9,7 +9,7 @@ image_alt: "A grid of 12 coding agents by 4 wallet tools, coloured by the result
 draft: true
 ---
 
-**Short answer, as of 27 October 2026:** most coding agents can install and use
+**Short answer, as of 5 November 2026:** most coding agents can install and use
 Bankr, MoonPay, Foundry Cast and Zerion with no person helping. MoonPay worked with
 the most agents: 10 of the 11 that took the test made a wallet with it. But every
 agent that made a wallet left either the key, or the password that unlocks it, in a
@@ -20,7 +20,7 @@ bench is one coding agent paired with one wallet tool, run on its own fresh Ubun
 26.04.1 machine with the same instructions. Every result links to the full run:
 what the agent was told, what it did, and how the bench checked it.
 
-## The results
+## Results
 
 | | Installed it | Made a wallet the bench verified |
 | --- | --- | --- |
@@ -40,7 +40,7 @@ been run yet, which is why some rows count fewer.
 The money tests (receiving and refunding USDC, paying for an API, and signing in to
 Patchbay with a wallet) have not been run in this round.
 
-## Which agents did best
+## Top agents
 
 Five agents installed all four wallets and made a wallet with every one:
 **Claude Code, Kilo Code, Pi, oh-my-pi** and **OpenCode**. **Codex CLI** did the
@@ -61,7 +61,7 @@ same apart from one Bankr run.
 | Muse Code | ended early | ended early | unsafe install | not run yet |
 | Cline | install only | install only | install only | install only |
 
-## What went wrong
+## Failures
 
 **Foundry Cast was the hardest to install safely.** Three of the 11 agents that
 tried it installed it correctly but broke a safety rule on the way. Hermes Agent and
@@ -82,7 +82,7 @@ to accept Bankr's terms. No wallet was made, so there was nothing to verify.
 MoonPay wallet, but both runs ended before it said who holds the key or reported
 its balances, so the bench could not count them.
 
-## Where the keys end up
+## Key storage
 
 All 34 wallets that counted came with a note: something that controls the
 wallet sits in a plain file.
@@ -95,10 +95,10 @@ wallet sits in a plain file.
 
 Any program that can read the agent's files can use the wallet. Give an agent a
 wallet that holds only what you are willing to lose, and read
-[Where AI agents keep wallet keys](/blog/where-ai-agents-keep-wallet-keys) before
+[AI agent wallet keys](/blog/ai-agent-wallet-keys) before
 you fund one.
 
-## Small things that trip agents up
+## Common snags
 
 - **The tool works, but only by its full path.** Several agents installed the tool into
   a private folder that a new terminal does not search, so typing its name alone
@@ -107,7 +107,7 @@ you fund one.
   "install for everyone" step fails. The agents that did well installed into their
   own home folder instead, without asking for admin rights.
 
-## How the bench works
+## Method
 
 Every run starts on a fresh machine with no wallet and no account, and using admin
 rights breaks a rule.
@@ -118,7 +118,7 @@ own published source" to "no secret was shown, no funds moved and no terms were
 accepted for a person". [How the Agent Wallet Bench works](/wallet-bench/how-it-works)
 has the full list.
 
-## Questions people ask
+## Questions
 
 ### Can Claude Code use a crypto wallet?
 

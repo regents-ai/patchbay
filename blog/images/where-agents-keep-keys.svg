@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 310" width="720" height="310" font-family="system-ui, -apple-system, Segoe UI, sans-serif">
 <rect width="720" height="310" fill="#ffffff"/>
-<text x="20" y="34" font-size="20" font-weight="600" fill="#1a202c">Where agents kept what controls their wallet</text>
+<text x="20" y="34" font-size="20" font-weight="600" fill="#1a202c">Wallet control</text>
 <text x="20" y="58" font-size="13" fill="#4a5568">34 wallets made by coding agents, Agent Wallet Bench, October 2026</text>
 <rect x="20" y="86" width="330" height="200" rx="6" fill="#f7fafc" stroke="#cbd5e0"/>
 <text x="38" y="118" font-size="16" font-weight="600" fill="#1a202c">Held by the wallet service (Bankr)</text>
