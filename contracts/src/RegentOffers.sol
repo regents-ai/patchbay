@@ -7,21 +7,6 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
-/// @notice The EIP-3009 function of USDC (FiatTokenV2_2) a bid is funded through.
-/// @dev USDC accepts a `ReceiveWithAuthorization` only from its `to`, so only this contract can
-///      use a bidder's signature. The `bytes` form checks contract wallets through ERC-1271.
-interface IUSDCReceiveWithAuthorization {
-    function receiveWithAuthorization(
-        address from,
-        address to,
-        uint256 value,
-        uint256 validAfter,
-        uint256 validBefore,
-        bytes32 nonce,
-        bytes calldata signature
-    ) external;
-}
-
 /// @notice The one function of the REGENT revenue staking contract the protocol share is paid into.
 interface IRegentRevenueStaking {
     /// @notice Pulls `amount` USDC from the caller and credits it to REGENT stakers as revenue.
@@ -36,9 +21,9 @@ interface IRegentRevenueStaking {
 ///      winners; a separate moderator, set by the owner, removes placements for policy; this
 ///      contract keeps the money under fixed rules. Because a removal pays the whole bid, the
 ///      operator can never remove, so a stolen operator key can charge at most one placement per
-///      slot at a time, for the time it shows. A bid is a USDC authorization
-///      signed by the bidder, bound to the bid's exact terms through its nonce and submitted by
-///      anyone, so a bidder needs no ETH. Bid money leaves only as a return of a bid never placed
+///      slot at a time, for the time it shows. A bidder approves this contract for the amount
+///      and calls `bid` from their own account, which takes the amount from that account and
+///      from no other. Bid money leaves only as a return of a bid never placed
 ///      (or the unused time of a placement replaced by a newer one), or as payment for its
 ///      placement, split between REGENT staking and the venue's payout wallet. Nothing is paid out
 ///      inline: every end records what is owed and `payOut` sends it, so an address USDC refuses
@@ -69,7 +54,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         Removed
     }
 
-    /// @notice What a bidder signs for. Its hash is the USDC authorization's nonce.
+    /// @notice What a bidder bids for. With the bidder's address it gives the bid's id.
     /// @param venue The venue's id, such as `keccak256("patchbay.help")`.
     /// @param slot The slot's id within the venue, chosen by the venue (for Patchbay, a forum's
     ///        market and slot number).
@@ -78,7 +63,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     /// @param amount USDC base units committed.
     /// @param length The venue's placement length in seconds, which must match its current terms.
     /// @param placeBy After this time the bid can no longer be placed and anyone may withdraw it.
-    /// @param salt The bidder's own value, so two equal bids have different nonces.
+    /// @param salt The bidder's own value, so two otherwise equal bids have different ids.
     struct Terms {
         bytes32 venue;
         bytes32 slot;
@@ -190,8 +175,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         bytes32 wordingHash,
         uint96 amount,
         uint32 length,
-        uint64 placeBy,
-        bytes32 nonce
+        uint64 placeBy
     );
     event BidReturned(bytes32 indexed bidId, address indexed bidder, uint256 amount);
     event BidWithdrawn(bytes32 indexed bidId, address indexed bidder, uint256 amount);
@@ -324,32 +308,18 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
 
     // ----------------------------------------------------------------- bids
 
-    /// @notice The USDC authorization nonce a bidder signs for `terms`.
-    function nonceOf(Terms calldata terms) public pure returns (bytes32) {
-        return keccak256(abi.encode(terms));
-    }
-
     /// @notice The id a bid by `bidder` on `terms` is held under.
     function bidIdOf(address bidder, Terms calldata terms) public pure returns (bytes32) {
-        return keccak256(abi.encode(bidder, nonceOf(terms)));
+        return keccak256(abi.encode(bidder, terms));
     }
 
-    /// @notice Holds a bid, funded by the bidder's signed USDC `ReceiveWithAuthorization` to this
-    ///         contract for `terms.amount`, whose nonce is `nonceOf(terms)`. Anyone may submit it.
+    /// @notice Holds a bid by the caller, taking `terms.amount` USDC from the caller's own
+    ///         account, which must first approve this contract for it.
     // Balances are read on either side of the USDC call on purpose, to check the exact amount moved.
-    // USDC asks a contract wallet about its signature with a read-only call, and every function that
-    // changes state holds the same guard, so nothing re-enters.
+    // Every function that changes state holds the same guard, so nothing re-enters.
     // slither-disable-next-line reentrancy-balance,timestamp
-    function bid(
-        Terms calldata terms,
-        address bidder,
-        uint256 validAfter,
-        uint256 validBefore,
-        bytes calldata signature
-    ) external nonReentrant returns (bytes32 bidId) {
+    function bid(Terms calldata terms) external nonReentrant returns (bytes32 bidId) {
         if (paused) revert BidsPaused();
-        if (bidder == address(0)) revert ZeroAddress();
-        if (bidder == address(this)) revert ContractIsParty();
         if (terms.slot == bytes32(0)) revert ZeroValue();
         Venue storage v = _venue(terms.venue);
         if (terms.amount < v.minimum) revert BelowMinimum();
@@ -360,12 +330,11 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         // forge-lint: disable-next-line(block-timestamp)
         if (terms.placeBy > block.timestamp + MAX_WAIT) revert PlaceByTooFar();
 
-        bytes32 nonce = nonceOf(terms);
-        bidId = keccak256(abi.encode(bidder, nonce));
+        bidId = bidIdOf(msg.sender, terms);
         if (bids[bidId].status != Status.None) revert BidExists();
 
         bids[bidId] = Bid({
-            bidder: bidder,
+            bidder: msg.sender,
             amount: terms.amount,
             venue: terms.venue,
             slot: terms.slot,
@@ -377,11 +346,20 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         });
         totalCommitted += terms.amount;
 
-        _emitBidPlaced(bidId, terms, bidder, nonce);
+        emit BidPlaced(
+            bidId,
+            terms.venue,
+            terms.slot,
+            msg.sender,
+            terms.lane,
+            terms.wordingHash,
+            terms.amount,
+            terms.length,
+            terms.placeBy
+        );
 
         uint256 before = usdc.balanceOf(address(this));
-        IUSDCReceiveWithAuthorization(address(usdc))
-            .receiveWithAuthorization(bidder, address(this), terms.amount, validAfter, validBefore, nonce, signature);
+        usdc.safeTransferFrom(msg.sender, address(this), terms.amount);
         // USDC moves the exact amount; anything else means the token changed and the bid must fail.
         // forge-lint: disable-next-line(incorrect-strict-equality)
         if (usdc.balanceOf(address(this)) - before != terms.amount) revert AmountNotReceived();
@@ -523,21 +501,6 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         revenueOwed += protocolShare;
 
         emit Ended(bidId, reason, paid, returned, protocolShare, venueShare, payout);
-    }
-
-    function _emitBidPlaced(bytes32 bidId, Terms calldata terms, address bidder, bytes32 nonce) private {
-        emit BidPlaced(
-            bidId,
-            terms.venue,
-            terms.slot,
-            bidder,
-            terms.lane,
-            terms.wordingHash,
-            terms.amount,
-            terms.length,
-            terms.placeBy,
-            nonce
-        );
     }
 
     function _giveBack(Bid storage b) private {

@@ -142,7 +142,7 @@ contract RegentOffersKeysTest is OffersSetUp {
         bytes32 one = bidOn(SLOT, 100_000_000);
         RegentOffers.Terms memory t = terms(SLOT, 300_000_000);
         t.venue = OTHER;
-        bytes32 two = submit(t, sign(bidderKey, bidder, t));
+        bytes32 two = bidAs(bidder, t);
 
         bytes32[2] memory venueIds = [VENUE, OTHER];
         bytes32[2] memory ids = [one, two];

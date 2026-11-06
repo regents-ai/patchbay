@@ -3,33 +3,19 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {IRegentRevenueStaking} from "../src/RegentOffers.sol";
 
-/// @notice Stands in for USDC v2.2 as RegentOffers uses it: six decimals, EIP-3009
-///         `receiveWithAuthorization` with a `bytes` signature checked for accounts and ERC-1271
-///         wallets, one use per nonce and payer, only `to` may submit, and addresses that may
-///         not receive USDC. It can be made to deliver less than a signed amount, as a changed
-///         token would.
-contract OffersTestUSDC is ERC20, EIP712 {
-    bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH = keccak256(
-        "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
-    );
-
-    mapping(address => mapping(bytes32 => bool)) public authorizationState;
+/// @notice Stands in for USDC v2.2 as RegentOffers uses it: six decimals, approve then
+///         `transferFrom`, and addresses that may not send or receive USDC. It can be made to
+///         deliver less than a `transferFrom` asks for, as a changed token would.
+contract OffersTestUSDC is ERC20 {
     mapping(address => bool) public blocked;
     uint256 public shortBy;
 
-    constructor() ERC20("USD Coin", "USDC") EIP712("USD Coin", "2") {}
+    constructor() ERC20("USD Coin", "USDC") {}
 
     function decimals() public pure override returns (uint8) {
         return 6;
-    }
-
-    // forge-lint: disable-next-line(mixed-case-function)
-    function DOMAIN_SEPARATOR() external view returns (bytes32) {
-        return _domainSeparatorV4();
     }
 
     function mint(address to, uint256 amount) external {
@@ -40,30 +26,15 @@ contract OffersTestUSDC is ERC20, EIP712 {
         blocked[account] = blocked_;
     }
 
-    /// @notice Makes the next authorizations deliver `shortBy_` less than signed.
+    /// @notice Makes the next `transferFrom` calls deliver `shortBy_` less than asked.
     function setShortBy(uint256 shortBy_) external {
         shortBy = shortBy_;
     }
 
-    function receiveWithAuthorization(
-        address from,
-        address to,
-        uint256 value,
-        uint256 validAfter,
-        uint256 validBefore,
-        bytes32 nonce,
-        bytes calldata signature
-    ) external {
-        require(to == msg.sender, "FiatTokenV2: caller must be the payee");
-        require(block.timestamp > validAfter, "FiatTokenV2: authorization is not yet valid");
-        require(block.timestamp < validBefore, "FiatTokenV2: authorization is expired");
-        require(!authorizationState[from][nonce], "FiatTokenV2: authorization is used or canceled");
-        bytes32 digest = _hashTypedDataV4(
-            keccak256(abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce))
-        );
-        require(SignatureChecker.isValidSignatureNow(from, digest, signature), "FiatTokenV2: invalid signature");
-        authorizationState[from][nonce] = true;
+    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
+        _spendAllowance(from, msg.sender, value);
         _transfer(from, to, value - shortBy);
+        return true;
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
@@ -101,15 +72,22 @@ contract OffersTestStaking is IRegentRevenueStaking {
     }
 }
 
-/// @notice A contract wallet that accepts any signature its owner key made over a digest (ERC-1271).
-contract OffersTestWallet {
-    address internal immutable signer;
+/// @notice A minimal contract account: its owner has it call anything.
+contract OffersTestAccount {
+    address internal immutable owner;
 
-    constructor(address signer_) {
-        signer = signer_;
+    constructor(address owner_) {
+        owner = owner_;
     }
 
-    function isValidSignature(bytes32 digest, bytes calldata signature) external view returns (bytes4) {
-        return SignatureChecker.isValidSignatureNow(signer, digest, signature) ? bytes4(0x1626ba7e) : bytes4(0xffffffff);
+    function execute(address to, bytes calldata data) external returns (bytes memory) {
+        require(msg.sender == owner, "NOT_OWNER");
+        (bool ok, bytes memory answer) = to.call(data);
+        if (!ok) {
+            assembly ("memory-safe") {
+                revert(add(answer, 0x20), mload(answer))
+            }
+        }
+        return answer;
     }
 }

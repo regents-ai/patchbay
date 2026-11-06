@@ -3,14 +3,14 @@ pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20Errors} from "@openzeppelin/contracts/interfaces/draft-IERC6093.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
-import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {RegentOffers, IRegentRevenueStaking} from "../src/RegentOffers.sol";
-import {OffersTestUSDC, OffersTestStaking, OffersTestWallet} from "./OffersTestTokens.sol";
+import {OffersTestUSDC, OffersTestStaking, OffersTestAccount} from "./OffersTestTokens.sol";
 
-/// @notice Shared set-up: a venue, a second venue to add, a bidder key and a way to sign a bid's
-///         USDC authorization.
+/// @notice Shared set-up: a venue, a second venue to add, a bidder, and a bid made the one way
+///         there is: the bidder approves this contract, then calls `bid` from their own account.
 abstract contract OffersSetUp is Test {
     OffersTestUSDC internal usdc;
     OffersTestStaking internal staking;
@@ -29,8 +29,7 @@ abstract contract OffersSetUp is Test {
     address internal moderator2 = makeAddr("moderator 2");
     address internal payout2 = makeAddr("payout 2");
 
-    uint256 internal bidderKey = 0xB1D;
-    address internal bidder;
+    address internal bidder = makeAddr("bidder");
 
     bytes32 internal constant VENUE = keccak256("patchbay.help");
     bytes32 internal constant SLOT = keccak256("keyfleet.ai#1");
@@ -38,15 +37,10 @@ abstract contract OffersSetUp is Test {
     uint32 internal constant LENGTH = 72 hours;
     uint256 internal constant PROTOCOL_BPS = 1000;
 
-    bytes32 internal constant RECEIVE_TYPEHASH = keccak256(
-        "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
-    );
-
     uint256 internal salts;
 
     function setUp() public virtual {
         vm.warp(1_800_000_000);
-        bidder = vm.addr(bidderKey);
         usdc = new OffersTestUSDC();
         staking = new OffersTestStaking(usdc);
         offers = new RegentOffers(usdc, staking, PROTOCOL_BPS, owner);
@@ -68,32 +62,26 @@ abstract contract OffersSetUp is Test {
         });
     }
 
-    function sign(uint256 key, address from, RegentOffers.Terms memory t) internal view returns (bytes memory) {
-        bytes32 nonce = keccak256(abi.encode(t));
-        bytes32 structHash = keccak256(
-            abi.encode(
-                RECEIVE_TYPEHASH,
-                from,
-                address(offers),
-                t.amount,
-                uint256(0),
-                vm.getBlockTimestamp() + 10 minutes,
-                nonce
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", usdc.DOMAIN_SEPARATOR(), structHash));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(key, digest);
-        return abi.encodePacked(r, s, v);
+    /// @dev `from` approves the amount, then bids from its own account.
+    function bidAs(address from, RegentOffers.Terms memory t) internal returns (bytes32 id) {
+        vm.startPrank(from);
+        usdc.approve(address(offers), t.amount);
+        id = offers.bid(t);
+        vm.stopPrank();
     }
 
-    function submit(RegentOffers.Terms memory t, bytes memory signature) internal returns (bytes32) {
-        vm.prank(operator);
-        return offers.bid(t, bidder, 0, vm.getBlockTimestamp() + 10 minutes, signature);
+    /// @dev The bidder approves the amount, then its bid is refused with `why`.
+    function refused(RegentOffers.Terms memory t, bytes4 why) internal {
+        vm.startPrank(bidder);
+        usdc.approve(address(offers), t.amount);
+        vm.expectRevert(why);
+        offers.bid(t);
+        vm.stopPrank();
     }
 
     function bidOn(bytes32 slot, uint96 amount) internal returns (bytes32) {
         RegentOffers.Terms memory t = terms(slot, amount);
-        return submit(t, sign(bidderKey, bidder, t));
+        return bidAs(bidder, t);
     }
 
     function placed(bytes32 slot, uint96 amount) internal returns (bytes32 id) {
@@ -124,9 +112,10 @@ abstract contract OffersSetUp is Test {
 }
 
 /// @title RegentOffersTest
-/// @notice A signature funds only the exact bid it names, once; bid money leaves only back to its
-///         bidder or as payment for its placement, split as the constructor set; the operator cannot
-///         set a start time or keep two placements in a slot; and ending never depends on paying.
+/// @notice A bid is its caller's own and takes money only from its caller; bid money leaves only
+///         back to its bidder or as payment for its placement, split as the constructor set; the
+///         operator cannot set a start time or keep two placements in a slot; and ending never
+///         depends on paying.
 contract RegentOffersTest is OffersSetUp {
     // ------------------------------------------------------------ bidding
 
@@ -137,37 +126,29 @@ contract RegentOffersTest is OffersSetUp {
         assertEq(usdc.balanceOf(address(offers)), 5_000_000);
         assertEq(offers.totalCommitted(), 5_000_000);
         assertEq(uint8(status(id)), uint8(RegentOffers.Status.Held));
+        assertEq(record(id).bidder, bidder);
     }
 
-    function test_bid_id_and_nonce_are_what_the_contract_says() public {
+    function test_bid_id_is_what_the_contract_says() public {
         RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
-        bytes32 id = submit(t, sign(bidderKey, bidder, t));
+        bytes32 id = bidAs(bidder, t);
         assertEq(id, offers.bidIdOf(bidder, t));
-        assertEq(offers.nonceOf(t), keccak256(abi.encode(t)));
+        assertEq(id, keccak256(abi.encode(bidder, t)));
     }
 
-    function test_anyone_may_submit_a_signed_bid() public {
+    function test_the_same_terms_twice_are_one_bid() public {
         RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
-        bytes memory signature = sign(bidderKey, bidder, t);
-        vm.prank(stranger);
-        bytes32 id = offers.bid(t, bidder, 0, vm.getBlockTimestamp() + 10 minutes, signature);
-        assertEq(uint8(status(id)), uint8(RegentOffers.Status.Held));
+        bidAs(bidder, t);
+        refused(t, RegentOffers.BidExists.selector);
     }
 
-    function test_a_signature_funds_its_bid_once() public {
-        RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
-        bytes memory signature = sign(bidderKey, bidder, t);
-        submit(t, signature);
-        vm.expectRevert(RegentOffers.BidExists.selector);
-        submit(t, signature);
-    }
-
-    /// Any change to any term gives another nonce, which the bidder never signed.
-    function testFuzz_a_signature_funds_only_its_exact_terms(uint8 field, uint96 delta) public {
+    /// Any change to any term, or another bidder, gives another bid id.
+    function testFuzz_a_bid_id_names_its_bidder_and_exact_terms(uint8 field, uint96 delta) public {
         RegentOffers.Terms memory t = terms(SLOT, 10_000_000);
-        bytes memory signature = sign(bidderKey, bidder, t);
+        bytes32 id = offers.bidIdOf(bidder, t);
+        assertTrue(offers.bidIdOf(stranger, t) != id);
         delta = uint96(bound(delta, 1, 1_000_000));
-        field = uint8(bound(field, 0, 6));
+        field = uint8(bound(field, 0, 7));
         if (field == 0) t.slot = keccak256("another slot");
         if (field == 1) t.lane = 1;
         if (field == 2) t.wordingHash = keccak256("other wording");
@@ -175,71 +156,95 @@ contract RegentOffersTest is OffersSetUp {
         if (field == 4) t.placeBy += 1;
         if (field == 5) t.salt = keccak256("other salt");
         if (field == 6) t.amount -= delta;
-        vm.expectRevert(bytes("FiatTokenV2: invalid signature"));
-        submit(t, signature);
+        if (field == 7) t.venue = OTHER;
+        assertTrue(offers.bidIdOf(bidder, t) != id);
     }
 
-    function test_a_signature_is_bidders_own() public {
+    function test_a_bid_needs_the_bidders_approval() public {
         RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
-        bytes memory signature = sign(0xBAD, vm.addr(0xBAD), t);
-        vm.expectRevert(bytes("FiatTokenV2: invalid signature"));
-        submit(t, signature);
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(offers), 0, MINIMUM)
+        );
+        vm.prank(bidder);
+        offers.bid(t);
+
+        vm.startPrank(bidder);
+        usdc.approve(address(offers), MINIMUM - 1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IERC20Errors.ERC20InsufficientAllowance.selector, address(offers), MINIMUM - 1, MINIMUM
+            )
+        );
+        offers.bid(t);
+        vm.stopPrank();
     }
 
-    function test_a_contract_wallet_bids_through_erc1271() public {
-        OffersTestWallet wallet = new OffersTestWallet(bidder);
-        usdc.mint(address(wallet), 10_000_000);
+    /// Anyone may bid, and a bid is always its caller's: an approval someone else gave is never
+    /// spent, even when that someone started the transaction.
+    function test_bid_money_comes_only_from_its_caller() public {
+        vm.prank(bidder);
+        usdc.approve(address(offers), type(uint256).max);
+        uint256 before = usdc.balanceOf(bidder);
+
         RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
-        bytes memory signature = sign(bidderKey, address(wallet), t);
-        vm.prank(operator);
-        bytes32 id = offers.bid(t, address(wallet), 0, vm.getBlockTimestamp() + 10 minutes, signature);
-        assertEq(record(id).bidder, address(wallet));
+        vm.expectRevert(
+            abi.encodeWithSelector(IERC20Errors.ERC20InsufficientAllowance.selector, address(offers), 0, MINIMUM)
+        );
+        vm.prank(stranger, bidder);
+        offers.bid(t);
+
+        usdc.mint(stranger, MINIMUM);
+        bytes32 id = bidAs(stranger, t);
+        assertEq(record(id).bidder, stranger);
+        assertEq(id, offers.bidIdOf(stranger, t));
+        assertEq(usdc.balanceOf(stranger), 0);
+        assertEq(usdc.balanceOf(bidder), before);
+    }
+
+    /// A contract account bids from itself the same way and is the bidder.
+    function test_a_contract_account_bids_from_itself() public {
+        OffersTestAccount account = new OffersTestAccount(bidder);
+        usdc.mint(address(account), MINIMUM);
+        RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
+        vm.startPrank(bidder);
+        account.execute(address(usdc), abi.encodeCall(IERC20.approve, (address(offers), MINIMUM)));
+        bytes memory answer = account.execute(address(offers), abi.encodeCall(RegentOffers.bid, (t)));
+        vm.stopPrank();
+        bytes32 id = abi.decode(answer, (bytes32));
+        assertEq(record(id).bidder, address(account));
+        assertEq(usdc.balanceOf(address(account)), 0);
     }
 
     function test_bid_refusals() public {
         RegentOffers.Terms memory t = terms(SLOT, MINIMUM - 1);
-        bytes memory signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.BelowMinimum.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.BelowMinimum.selector);
 
         t = terms(SLOT, MINIMUM);
         t.length = LENGTH + 1;
-        signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.LengthMismatch.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.LengthMismatch.selector);
 
         t = terms(SLOT, MINIMUM);
         t.placeBy = uint64(vm.getBlockTimestamp());
-        signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.PlaceByPassed.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.PlaceByPassed.selector);
 
         t = terms(SLOT, MINIMUM);
         t.placeBy = uint64(vm.getBlockTimestamp() + offers.MAX_WAIT() + 1);
-        signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.PlaceByTooFar.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.PlaceByTooFar.selector);
 
         t = terms(SLOT, MINIMUM);
         t.venue = keccak256("unknown venue");
-        signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.VenueNotFound.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.VenueNotFound.selector);
 
         t = terms(bytes32(0), MINIMUM);
-        signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.ZeroValue.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.ZeroValue.selector);
     }
 
-    /// A bid can wait at most MAX_WAIT for the operator. A signature the site chose not to use,
-    /// submitted by a stranger, comes back to its bidder by then without the operator.
+    /// A bid can wait at most MAX_WAIT for the operator. A bid the site chose not to place comes
+    /// back to its bidder by then without the operator.
     function test_a_bid_waits_at_most_max_wait_then_anyone_hands_it_back() public {
         RegentOffers.Terms memory t = terms(SLOT, 100_000_000);
         t.placeBy = uint64(vm.getBlockTimestamp() + offers.MAX_WAIT());
-        bytes memory signature = sign(bidderKey, bidder, t);
-        vm.prank(stranger);
-        bytes32 id = offers.bid(t, bidder, 0, vm.getBlockTimestamp() + 10 minutes, signature);
+        bytes32 id = bidAs(bidder, t);
 
         vm.warp(vm.getBlockTimestamp() + offers.MAX_WAIT() - 1);
         vm.expectRevert(RegentOffers.PlaceByNotPassed.selector);
@@ -250,16 +255,11 @@ contract RegentOffersTest is OffersSetUp {
         assertEq(offers.owed(bidder), 100_000_000);
     }
 
-    /// The contract is never a bidder, and a token that delivers less than the bid is refused.
-    function test_the_contract_is_never_a_bidder_and_a_short_delivery_is_refused() public {
+    /// A token that delivers less than the bid is refused.
+    function test_a_short_delivery_is_refused() public {
         RegentOffers.Terms memory t = terms(SLOT, 10_000_000);
-        vm.expectRevert(RegentOffers.ContractIsParty.selector);
-        offers.bid(t, address(offers), 0, vm.getBlockTimestamp() + 10 minutes, "");
-
         usdc.setShortBy(1);
-        bytes memory signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.AmountNotReceived.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.AmountNotReceived.selector);
     }
 
     /// Every forum's slots take bids with no listing step.
@@ -280,9 +280,7 @@ contract RegentOffersTest is OffersSetUp {
         offers.setPaused(true);
 
         RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
-        bytes memory signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.BidsPaused.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.BidsPaused.selector);
 
         vm.startPrank(operator);
         offers.place(heldId);
@@ -593,14 +591,11 @@ contract RegentOffersTest is OffersSetUp {
         usdc.setBlocked(bidder, true);
         vm.warp(vm.getBlockTimestamp() + 1 hours);
 
-        address other = vm.addr(0xC0FFEE);
+        address other = makeAddr("other bidder");
         usdc.mint(other, 50_000_000);
-        RegentOffers.Terms memory t = terms(SLOT, 20_000_000);
-        bytes memory signature = sign(0xC0FFEE, other, t);
-        vm.startPrank(operator);
-        bytes32 second = offers.bid(t, other, 0, vm.getBlockTimestamp() + 10 minutes, signature);
+        bytes32 second = bidAs(other, terms(SLOT, 20_000_000));
+        vm.prank(operator);
         offers.place(second);
-        vm.stopPrank();
 
         assertEq(uint8(status(first)), uint8(RegentOffers.Status.Ended));
         assertEq(offers.live(VENUE, SLOT), second);
@@ -774,19 +769,15 @@ contract RegentOffersTest is OffersSetUp {
         offers.setTerms(VENUE, 5_000_000, 24 hours);
 
         RegentOffers.Terms memory t = terms(SLOT, 10_000_000); // still the old 72 h
-        bytes memory signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.LengthMismatch.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.LengthMismatch.selector);
 
         t = terms(SLOT, 4_999_999);
         t.length = 24 hours;
-        signature = sign(bidderKey, bidder, t);
-        vm.expectRevert(RegentOffers.BelowMinimum.selector);
-        submit(t, signature);
+        refused(t, RegentOffers.BelowMinimum.selector);
 
         t = terms(SLOT, 5_000_000);
         t.length = 24 hours;
-        bytes32 id = submit(t, sign(bidderKey, bidder, t));
+        bytes32 id = bidAs(bidder, t);
         vm.prank(operator);
         offers.place(id);
         vm.warp(vm.getBlockTimestamp() + 24 hours);
@@ -823,7 +814,7 @@ contract RegentOffersTest is OffersSetUp {
         bytes32 mine = bidOn(SLOT, 10_000_000);
         RegentOffers.Terms memory t = terms(SLOT, 30_000_000);
         t.venue = OTHER;
-        bytes32 theirs = submit(t, sign(bidderKey, bidder, t));
+        bytes32 theirs = bidAs(bidder, t);
 
         vm.startPrank(operator);
         vm.expectRevert(RegentOffers.NotOperator.selector);
@@ -855,16 +846,6 @@ contract RegentOffersTest is OffersSetUp {
         assertEq(offers.owed(payout), 9_000_000);
         assertEq(offers.owed(payout2), 27_000_000);
         assertEq(offers.revenueOwed(), 4_000_000);
-    }
-
-    /// A signature for one site's slot cannot fund the same slot on another site.
-    function test_a_signature_is_bound_to_its_venue() public {
-        addOther();
-        RegentOffers.Terms memory t = terms(SLOT, 10_000_000);
-        bytes memory signature = sign(bidderKey, bidder, t);
-        t.venue = OTHER;
-        vm.expectRevert(bytes("FiatTokenV2: invalid signature"));
-        submit(t, signature);
     }
 
     // ---------------------------------------------------------- re-entry
@@ -914,22 +895,6 @@ contract RegentOffersTest is OffersSetUp {
         assertEq(evil.refused(), 9);
         assertEq(offers.owed(bidder), 0);
         assertEq(usdc.balanceOf(address(offers)), offers.totalCommitted() + offers.totalOwed());
-    }
-
-    /// USDC asks a contract wallet about its signature with a read-only call, so a wallet that
-    /// tries to take money while it is asked cannot.
-    function test_a_contract_wallet_asked_about_its_signature_cannot_reenter() public {
-        bytes32 first = bidOn(SLOT, 10_000_000);
-        vm.prank(operator);
-        offers.returnBid(first);
-        ReenteringWallet wallet = new ReenteringWallet(bidder, offers, bidder);
-        usdc.mint(address(wallet), 10_000_000);
-        RegentOffers.Terms memory t = terms(keccak256("slot 2"), MINIMUM);
-        bytes memory signature = sign(bidderKey, address(wallet), t);
-        bytes32 id = offers.bid(t, address(wallet), 0, vm.getBlockTimestamp() + 10 minutes, signature);
-        assertEq(uint8(status(id)), uint8(RegentOffers.Status.Held));
-        assertEq(offers.owed(bidder), 10_000_000);
-        assertEq(usdc.balanceOf(bidder), 1_000_000_000_000 - 10_000_000);
     }
 
     function test_constructor_refuses_a_share_over_the_whole() public {
@@ -994,26 +959,5 @@ contract ReenteringUSDC is OffersTestUSDC {
     function _count(bytes memory data) internal {
         (bool ok, bytes memory why) = address(target).call(data);
         if (!ok && bytes4(why) == ReentrancyGuardTransient.ReentrancyGuardReentrantCall.selector) ++refused;
-    }
-}
-
-/// @notice A contract wallet that accepts its owner key's signatures and, while asked, tries to
-///         pay out another account's money.
-contract ReenteringWallet {
-    address internal immutable signer;
-    RegentOffers internal immutable target;
-    address internal immutable victim;
-
-    constructor(address signer_, RegentOffers target_, address victim_) {
-        signer = signer_;
-        target = target_;
-        victim = victim_;
-    }
-
-    function isValidSignature(bytes32 digest, bytes calldata signature) external returns (bytes4) {
-        try target.payOut(victim) {
-            return bytes4(0xffffffff);
-        } catch {}
-        return SignatureChecker.isValidSignatureNow(signer, digest, signature) ? bytes4(0x1626ba7e) : bytes4(0xffffffff);
     }
 }
