@@ -29,6 +29,8 @@ config :regent_points,
   starts_at: nil,
   approved_rules: [],
   adapters: %{
+    "account.activated" => Patchbay.Points.AccountActivated,
+    "agent.activated" => Patchbay.Points.PairedAgent,
     "credits.purchase_settled" => Patchbay.Points.CreditsPurchase,
     "patchbay.report_published" => Patchbay.Points.Post,
     "patchbay.first_report" => Patchbay.Points.Post,
