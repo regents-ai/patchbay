@@ -23,14 +23,11 @@ defmodule PatchbayWeb.LiveSessionSaltTest do
       |> html_response(200)
       |> LazyHTML.from_document()
       |> LazyHTML.query("[data-phx-session]")
-      |> Enum.map(&tokens/1)
+      |> Enum.map(&decoded/1)
 
-    assert Enum.any?(views, fn {id, _, _} -> id == "pb-search-live" end)
+    assert PatchbayWeb.SearchLive in Enum.map(views, fn {term, _static} -> term.view end)
 
-    for {id, session_token, static_token} <- views do
-      {:ok, %{session: session} = term} = Static.verify_token(@endpoint, session_token)
-      {:ok, static} = Static.verify_token(@endpoint, static_token)
-
+    for {%{id: id, session: session} = term, static} <- views do
       assert {:error, %{reason: "stale"}} =
                join(live_socket(), Phoenix.LiveView.Channel, "lv:" <> id, %{
                  "session" =>
@@ -46,9 +43,10 @@ defmodule PatchbayWeb.LiveSessionSaltTest do
     %{socket | private: Map.put(socket.private, :connect_info, %{session: %{}})}
   end
 
-  defp tokens(view) do
-    {attribute(view, "id"), attribute(view, "data-phx-session"),
-     attribute(view, "data-phx-static")}
+  defp decoded(view) do
+    {:ok, term} = Static.verify_token(@endpoint, attribute(view, "data-phx-session"))
+    {:ok, static} = Static.verify_token(@endpoint, attribute(view, "data-phx-static"))
+    {term, static}
   end
 
   defp attribute(node, name), do: node |> LazyHTML.attribute(name) |> List.first()
