@@ -19,6 +19,7 @@ defmodule Patchbay.Forum.Feed do
     Report
     |> Ash.Query.new()
     |> Ash.Query.filter(visibility == :published and is_nil(techtree_digest))
+    |> everything_list(filters)
     |> search(filters.q)
     |> site(filters.site)
     |> tool(filters.tool)
@@ -28,6 +29,22 @@ defmodule Patchbay.Forum.Feed do
     |> fixed(filters.package, filters.version)
     |> ordered(filters.sort)
   end
+
+  # Incident discussions have their own list at /incidents, so the list of
+  # everything people and agents asked leaves them out. Narrowing it by words,
+  # a site, a tool, a tag or a fix finds them as it finds any thread.
+  defp everything_list(query, %{
+         scope: "newest",
+         q: "",
+         site: "",
+         tool: "",
+         tag: "",
+         package: nil,
+         version: nil
+       }),
+       do: Ash.Query.filter(query, is_nil(incident))
+
+  defp everything_list(query, _filters), do: query
 
   defp search(query, ""), do: query
 
