@@ -39,15 +39,41 @@ interface IRegentRevenueStaking {
 ///      venue's admin or its operator, so the key that places, and the key that names who
 ///      places, can never remove: a stolen operator or admin key can charge at most one
 ///      placement per slot at a time, for the time it shows, paid to the venue. Regents Labs
-///      holds the moderator key in a hardware wallet or a Safe.
+///      holds the moderator key in a hardware wallet or a Safe. Only that separation is
+///      enforced: an admin can block the owner's choice of moderator by naming that address
+///      operator first, and the owner then picks another key.
+///
+///      A venue's admin sets its terms for new bids. A stolen admin key can stop every new bid
+///      with a minimum nobody meets, or set a one-second length, so a bid signed at that length
+///      is charged in full a second after it is placed. A signature made at the old length
+///      names it, and is refused at the new one.
 ///
 ///      A bid is one USDC `ReceiveWithAuthorization` signed by the bidder, for the bid's amount,
-///      to this contract, with the hash of the bid's terms as its nonce. Anyone may submit it,
+///      to this contract, with the hash of this market's address and the bid's terms as its
+///      nonce, so equal terms on another deployment are a different signature. Anyone may submit it,
 ///      the venue's site or the bidder, with the gas paid by the site's paymaster: the signature
 ///      names the bidder, the amount and every term, so a submitter can only make the exact bid
 ///      the bidder signed, with the bidder's own money, once. USDC checks the signature, its time window and its nonce: an
 ///      account with no code by its key, and a contract wallet or an EIP-7702 account through
 ///      ERC-1271. Until it is used, the bidder can cancel it with USDC's `cancelAuthorization`.
+///
+///      What the signature covers, and what it leaves to the site and the wallet:
+///      - A bid is refused when its signature is good for more than `MAX_SIGNATURE_WINDOW` (one
+///        hour) after it is submitted. The contract cannot tell when a signature was made, so a
+///        signature with a far deadline still becomes usable in its last hour: the site always
+///        asks for a deadline within the hour, and the bidder sees it in the wallet prompt.
+///      - The wallet prompt shows this market, the amount, the window and the nonce, a 32-byte
+///        number. The venue, slot, wording, length and place-by are inside the nonce and cannot
+///        be read there, so the site shows them beside the prompt.
+///      - The signature names the bidder's side only. The payout wallet and moderator a bid
+///        records are its venue's when the bid is submitted, not when it was signed.
+///      - USDC decides whose signature is good. A wallet whose `isValidSignature` accepts
+///        anything can be bid for by anyone, on any terms, with its own USDC.
+///      - An EIP-7702 account whose delegate has no `isValidSignature` cannot bid, and a
+///        signature it made before upgrading is refused once it has upgraded. Nothing is
+///        charged.
+///      - A bidder cannot take back a held bid before its place-by; the operator can return it,
+///        and anyone can withdraw it once place-by has passed.
 ///
 ///      Bid money leaves only as a return of a bid never placed (or the unused time of a
 ///      placement replaced by a newer one), or as payment for its placement, split between
@@ -70,9 +96,15 @@ interface IRegentRevenueStaking {
 ///      never by removal: a removal pays the whole bid to the wallet stored with it, while a
 ///      replacement pays only the time shown and returns the rest to its bidder.
 ///
-///      USDC sent to this contract other than through a bid is in no record and never leaves.
+///      USDC sent to this contract other than through a bid is in no record. Only the owner can
+///      send it on, with `recoverSurplus`, which pays out the balance above everything owed and so
+///      never moves a bidder's, venue's or staking's money.
+///
 ///      There is no upgrade: a new market is a new contract, and pausing this one stops new bids
-///      only.
+///      only. Bids already held can still be placed, replace what is showing, be returned or
+///      withdrawn, and placements can still be removed and finished. A pause does stop the
+///      clean-up bid a replacement needs from being made: while paused, a placement that should
+///      not be showing can be replaced only with a bid already held.
 contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
@@ -153,6 +185,11 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     ///         money waits on the operator longer than that.
     uint256 public constant MAX_WAIT = 72 hours;
 
+    /// @notice The latest a bid's signature may still be good, counted from when it is submitted.
+    ///         A bid whose `validBefore` is further away is refused, so a signature submitted now
+    ///         is spent or dead within this time.
+    uint256 public constant MAX_SIGNATURE_WINDOW = 1 hours;
+
     /// @notice Tag the protocol share is deposited into REGENT staking under.
     // casting to bytes32 is safe because the 13-byte literal fits
     // forge-lint: disable-next-line(unsafe-typecast)
@@ -172,7 +209,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
     uint256 public immutable protocolBps;
 
-    /// @notice While true, new bids are refused. Nothing else ever pauses.
+    /// @notice While true, new bids are refused. Placing, replacing, returning, withdrawing,
+    ///         removing, finishing and payouts never pause.
     bool public paused;
 
     mapping(bytes32 venue => Venue) public venues;
@@ -234,6 +272,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     event PaidOut(address indexed account, address indexed caller, uint256 amount);
     event RevenuePushed(address indexed caller, uint256 amount);
     event PausedSet(bool paused);
+    event SurplusRecovered(address indexed to, uint256 amount);
 
     error ZeroAddress();
     error ZeroValue();
@@ -251,6 +290,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     error PlaceByPassed();
     error PlaceByNotPassed();
     error PlaceByTooFar();
+    error SignatureWindowTooLong();
     error BidExists();
     error AmountNotReceived();
     error NotHeld();
@@ -258,6 +298,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     error NotFinished();
     error NothingOwed();
     error OwnerRequired();
+    error NoSurplus();
 
     constructor(IERC20 usdc_, IRegentRevenueStaking staking_, uint256 protocolBps_, address owner_) Ownable(owner_) {
         if (address(usdc_) == address(0) || address(staking_) == address(0)) revert ZeroAddress();
@@ -317,11 +358,24 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         emit PayoutChanged(venue, payout);
     }
 
-    /// @notice Stops or restarts new bids. Placing, returns, withdrawals, finishing and payouts
-    ///         never pause, so money already in can always leave.
+    /// @notice Stops or restarts new bids. Placing, replacing with a bid already held, returns,
+    ///         withdrawals, removals, finishing and payouts never pause, so money already in keeps
+    ///         every way out it had.
     function setPaused(bool paused_) external onlyOwner {
         paused = paused_;
         emit PausedSet(paused_);
+    }
+
+    /// @notice Sends `to` the USDC this contract holds above everything it owes: bids held and
+    ///         placed, every account's `owed` and the protocol share. That surplus is only USDC
+    ///         that arrived other than through a bid, so no bidder's, venue's or staking's money
+    ///         can move.
+    function recoverSurplus(address to) external onlyOwner nonReentrant returns (uint256 amount) {
+        _checkPayout(to);
+        amount = usdc.balanceOf(address(this)) - (totalCommitted + totalOwed + revenueOwed);
+        if (amount == 0) revert NoSurplus();
+        emit SurplusRecovered(to, amount);
+        usdc.safeTransfer(to, amount);
     }
 
     /// @notice Ownership can be handed on but never given up, so a pause always has someone to lift it.
@@ -353,9 +407,10 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
 
     // ----------------------------------------------------------------- bids
 
-    /// @notice The USDC authorization nonce a bidder signs for `terms`.
-    function nonceOf(Terms calldata terms) public pure returns (bytes32) {
-        return keccak256(abi.encode(terms));
+    /// @notice The USDC authorization nonce a bidder signs for `terms` on this market. It names
+    ///         this contract, so the same terms on another deployment have another nonce.
+    function nonceOf(Terms calldata terms) public view returns (bytes32) {
+        return keccak256(abi.encode(address(this), terms));
     }
 
     /// @notice The id a bid by `bidder` on `terms` is held under.
@@ -366,7 +421,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     /// @notice Holds a bid by `bidder`, funded by the bidder's signed USDC
     ///         `ReceiveWithAuthorization` to this contract for `terms.amount`, valid after
     ///         `validAfter` and before `validBefore`, whose nonce is `nonceOf(terms)`. Anyone may
-    ///         submit it. USDC refuses a signature that is not the bidder's, so a zero bidder and
+    ///         submit it while `validBefore` is at most `MAX_SIGNATURE_WINDOW` away. USDC refuses a signature that is not the bidder's, so a zero bidder and
     ///         this contract as the bidder are refused there.
     // slither-disable-next-line timestamp
     function bid(
@@ -386,6 +441,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         if (terms.placeBy <= block.timestamp) revert PlaceByPassed();
         // forge-lint: disable-next-line(block-timestamp)
         if (terms.placeBy > block.timestamp + MAX_WAIT) revert PlaceByTooFar();
+        // forge-lint: disable-next-line(block-timestamp)
+        if (validBefore > block.timestamp + MAX_SIGNATURE_WINDOW) revert SignatureWindowTooLong();
 
         bidId = bidIdOf(bidder, terms);
         if (bids[bidId].status != Status.None) revert BidExists();
