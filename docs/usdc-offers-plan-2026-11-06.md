@@ -76,7 +76,7 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
   submits `bid(terms, bidder, validAfter, validBefore, signature)`: the site, or the bidder.
   - `terms` holds the site, slot, lane, wording hash, amount, placement length, `placeBy`
     and the bidder's salt.
-  - The authorization's nonce is `nonceOf(terms)`, `keccak256(abi.encode(terms))`, and the
+  - The authorization's nonce is `nonceOf(terms)`, `keccak256(abi.encode(market, terms))`, and the
     contract recomputes it from the call. A signature funds only that exact bid: any other
     site, slot, lane, wording, amount, length, deadline or salt gives a different nonce,
     and USDC refuses it.
@@ -132,7 +132,9 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
     blocked bidder would jam their slot, because nothing could end the placement and
     nothing could be placed after it. Patchbay's server calls `payOut` after each end, so
     people are paid at once.
-  - There is no sweep, no owner withdrawal and no ETH.
+  - USDC sent to the contract other than through a bid can be sent on only by the owner,
+    with `recoverSurplus`, which pays the balance above every liability and nothing else.
+    There is no other owner withdrawal and no ETH.
 - **Pause, no upgrade.** The owner can pause new bids. Placing, returns, withdrawals,
   removals, finishing and payouts never pause. A new version is a new contract that sites
   move to, with this one paused (Sean, 8 a).
@@ -392,8 +394,13 @@ in the contract's own notes.
 - **F5 Staking share.** The protocol share waits in the contract for as long as the staking
   contract refuses deposits, and anyone pushes it once staking takes deposits again. The
   staking contract is fixed at deploy, so the share has no other way out.
-- **F6 Stray USDC.** USDC sent to the contract other than through a bid is in no record and
-  never leaves. There is no sweep, so no key can take money out.
+- **F6 Stray USDC.** USDC sent to the contract other than through a bid is in no record. Only
+  the owner can send it on, with `recoverSurplus`, which pays out only the balance above
+  everything held and owed (review 3, F18).
+- **Review 3.** Its six lows and twelve notes are written into the contract's header and
+  `contracts/README.md`. In code, round 5: a signature is good for at most an hour after it is
+  submitted (F12), the nonce names the market (F16), and the owner can recover surplus USDC
+  (F18). A pause already stopped new bids only (F1).
 
 ## Decisions
 

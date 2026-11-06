@@ -29,15 +29,22 @@ is `docs/usdc-offers-plan-2026-11-06.md` at the repository root.
 - **The owner must be a multi-owner Safe.** There is no timelock: one stolen owner key can name
   its own payout wallet, admin, operator and moderator, and take 90% of every bid made after that,
   in the bid's own block. Bids made before it still pay the wallets stored with them.
+- The owner never names a venue's payout wallet as its moderator. The contract checks only that
+  the moderator is apart from the admin and the operator; a moderator that is also the payout
+  wallet would be paid 90% of every bid it removes.
 
 ### Money
 
 - A bid is one USDC `ReceiveWithAuthorization` signed by the bidder, for the bid's amount, to
-  this contract, with `nonceOf(terms)` (the hash of the terms) as its nonce. Anyone may submit it
+  this contract, with `nonceOf(terms)` (the hash of this market's address and the terms) as its
+  nonce, so equal terms on another deployment are a separate signature. Anyone may submit it
   with `bid(terms, bidder, validAfter, validBefore, signature)`: the venue's site or the bidder,
   with the gas paid by the site's paymaster. A submitter can make only the exact bid that was
   signed, with the bidder's money, once; a second submission is refused. The contract checks that
   exactly the amount arrived.
+- A bid is refused when its signature is good for more than `MAX_SIGNATURE_WINDOW` (one hour)
+  after it is submitted. The contract cannot tell when a signature was made, so one with a far
+  deadline still works in its last hour: the site always asks for a deadline within the hour.
 - USDC checks the signature, its time window and its nonce. Until the bid is made, the bidder can
   cancel the signature with USDC's `cancelAuthorization`.
 - Each bid stores the payout wallet its venue named when it was made, and is paid to that wallet
@@ -51,7 +58,34 @@ is `docs/usdc-offers-plan-2026-11-06.md` at the repository root.
   stored with it.
 - Ending a bid never sends USDC. It records what is owed, and anyone may call `payOut(account)` to
   send it and `pushRevenue()` to send the protocol share to staking.
-- Pausing stops new bids only. There is no upgrade, no sweep and no owner withdrawal.
+- Pausing stops new bids only. Held bids can still be placed, replace what is showing, be
+  returned or withdrawn, and placements can still be removed and finished. While paused, a
+  placement that should not be showing can be replaced only with a bid already held, because no
+  new clean-up bid can be made until the pause lifts.
+- USDC sent here other than through a bid is in no record. The owner can send it on with
+  `recoverSurplus(to)`, which pays only the balance above every bid held or placed, everything
+  owed and the protocol share. There is no upgrade and no other owner withdrawal.
+
+### Site rules
+
+The contract leaves these to the site:
+
+- **Deadlines.** Every signature the site asks for ends within the hour.
+- **The wallet prompt.** It shows this market, the amount, the window and the nonce, a 32-byte
+  number. The venue, slot, wording, length and place-by are inside the nonce, so the site shows
+  them beside the prompt.
+- **Only the receive form.** The site never asks a bidder for the transfer form of the USDC
+  signature (`TransferWithAuthorization`, the form x402 uses) naming this contract. Anyone holding
+  one could move the money in with no bid; it would wait as surplus until the owner sends it back.
+- **The paymaster.** It sponsors only bids submitted from the site's own Privy wallets, and
+  simulates each one first. A hostile contract wallet can still answer yes when simulated and no
+  when the transaction lands, wasting the gas; no bid is made and no money moves.
+- **Unsigned venue side.** The signature names the bidder's side only. The payout wallet and the
+  moderator a bid records are the venue's when it is submitted, not when it was signed.
+- **Leaving a held bid.** A bidder cannot take back a held bid before its place-by. The operator
+  returns it on request, and anyone can withdraw it once place-by has passed.
+- **Careless wallets.** USDC decides whose signature is good. A contract wallet whose
+  `isValidSignature` accepts anything can be bid for by anyone, with its own USDC.
 
 ### Bidders
 
@@ -60,6 +94,9 @@ is `docs/usdc-offers-plan-2026-11-06.md` at the repository root.
 | Plain account | by its key | fork test on Base USDC |
 | EIP-7702 account | through its delegate's `isValidSignature` (ERC-1271) | fork test, with a delegate that accepts a plain signature by the account's own key over the exact digest |
 | Contract wallet | through its `isValidSignature` (ERC-1271) | fork test on Base USDC |
+
+An EIP-7702 account whose delegate has no `isValidSignature` cannot bid, and a signature it made
+before upgrading is refused once it has upgraded. Nothing is charged.
 
 **Not proven:** Privy's own 7702 delegate, and the form of signature its `isValidSignature`
 accepts, are not documented. A Privy wallet stays unproven until a real one signs a bid on a lab
