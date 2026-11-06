@@ -4,9 +4,9 @@ defmodule Patchbay.MixProject do
   # Shared Regent libraries, each pinned to one published commit. To move a pin,
   # change its ref and run `mix deps.update <name>`.
   @elixir_utils "https://github.com/regents-ai/elixir-utils.git"
-  @elixir_utils_ref "4e5279759859f9e35e070789fe6b7fcdb78c47c3"
+  @elixir_utils_ref "f8801d79228282459ede9421a51260c3bd292f44"
   @design_system "https://github.com/regents-ai/design-system.git"
-  @design_system_ref "768719f37773b27b4d6a4ec04781b3dc262df0ba"
+  @design_system_ref "d3845c6d9fe34b7131937bafa051e6e04c9b09dd"
 
   def project do
     [
@@ -60,12 +60,12 @@ defmodule Patchbay.MixProject do
       # regent_payments pins its own elixir-utils commit; this pin replaces it.
       {:regent_format,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "format", override: true},
-      # regent_credits names regent_chain by a sibling path; this pin replaces it.
+      # regent_payments names regent_chain by a sibling path; this pin replaces it.
       {:regent_chain,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain", override: true},
-      # regent_payments names regent_credits by a sibling path; this pin replaces it.
-      {:regent_credits,
-       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credits", override: true},
+      # The Offer bid path holds its bids in Regent Credits until the offers
+      # contract replaces it (Patchbay.Offers.Holds).
+      {:regent_credits, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credits"},
       {:regent_points, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "points"},
       {:regent_http, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "http"},
       # regent_mcp_agents names regent_agent_access by a sibling path; this pin replaces it.

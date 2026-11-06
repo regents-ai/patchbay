@@ -14,7 +14,6 @@
 @import "./agent_pages.css";
 @import "./troubleshooting.css";
 @import "./incidents.css";
-@import "./credits.css";
 @import "./account.css";
 @import "./site_directory.css";
 @import "./animations.css";
@@ -850,10 +849,8 @@ a.pb-badge-name:hover bdi { text-decoration: underline; text-underline-offset: 2
 .pb-header-tools { display: flex; flex: 1 1 auto; align-items: center; gap: var(--space-2); }
 /* As the window narrows, the header gives up words before it gives up a line:
    first "a question"; then the wordmark's name and the signed-in name, leaving
-   the picture that opens the account menu; then the search's word; then the word
-   "Credits" beside the balance; on a phone the places to go and Ask move into the
-   Menu and the theme switch is left off; on the narrowest phones the balance
-   itself goes, which the account menu then shows. */
+   the picture that opens the account menu; then the search's word; on a phone the
+   places to go and Ask move into the Menu and the theme switch is left off. */
 body { container: pb-page / inline-size; }
 @container pb-page (max-width: 1439px) {
   .pb-ask-button__more { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

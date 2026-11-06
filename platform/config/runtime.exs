@@ -186,11 +186,10 @@ config :regent_payments, RegentPayments.Facilitator,
 if config_env() != :test do
   config :regent_payments, base_rpc_url: System.get_env("BASE_RPC_URL")
 
-  # Credits purchases are checked through the same Base node when it is set, and
-  # through PATCHBAY_ETHEREUM_NODE_URL on Ethereum; otherwise through the public
-  # addresses in config/config.exs.
+  # Regent Points reads NFTs through the same Base node when it is set;
+  # otherwise through the public address in config/config.exs.
   node_overrides =
-    for {chain_id, setting} <- [{8453, "BASE_RPC_URL"}, {1, "PATCHBAY_ETHEREUM_NODE_URL"}],
+    for {chain_id, setting} <- [{8453, "BASE_RPC_URL"}],
         node_url = System.get_env(setting),
         into: %{} do
       case URI.new(node_url) do
@@ -223,10 +222,11 @@ if config_env() != :test do
   end
 end
 
-# The Privy accounts that may give Credits and handle refunds, comma separated.
+# The Privy accounts that run this site, comma separated (config/config.exs).
 if admins = System.get_env("REGENT_CREDITS_ADMINS") do
-  config :regent_credits,
-    admins: admins |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+  admins = admins |> String.split(",", trim: true) |> Enum.map(&String.trim/1)
+  config :patchbay, :admins, admins
+  config :regent_agents, admins: admins
 end
 
 # Paid priority reports. ESCROW_CONTRACT_ADDRESS is the PatchbayEscrow

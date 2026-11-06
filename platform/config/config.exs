@@ -27,16 +27,15 @@ config :regent_points,
   chain_client: Patchbay.ChainClient,
   program_id: "regents-points-v1",
   starts_at: nil,
-  approved_rules: [],
-  adapters: %{"credits.purchase_settled" => Patchbay.Points.CreditsPurchase}
+  approved_rules: []
 
-# Regent Credits: one prepaid balance per Privy account, shared by every Regent
-# site. Credits are the private currency XRC, kept to the millionth. The ledger
-# lives in the shared `regent_credits` schema, which `bin/migrate-shared` applies; Patchbay
-# reads and writes it through its own Repo, so an Offer bid and its Credits
-# commit together. Admins come from REGENT_CREDITS_ADMINS at runtime. Balance
-# changes from every site reach Patchbay's PubSub. Credits signals reach
-# `Patchbay.Points.Award`; while Points is off, nothing is queued.
+# The Offer bid path's ledger: a bid's Credits are held, carried over and
+# settled in Regent Credits until the offers contract replaces it
+# (`Patchbay.Offers.Holds`). Credits are the private currency XRC, kept to the
+# millionth. The ledger lives in the shared `regent_credits` schema, which
+# `bin/migrate-shared` applies; Patchbay reads and writes it through its own
+# Repo, so an Offer bid and its Credits commit together. Balance changes reach
+# the Offer pages through Patchbay's PubSub.
 config :ex_money,
   custom_currencies: [{:XRC, name: "Credits", digits: 6}],
   auto_start_exchange_rate_service: false
@@ -45,22 +44,18 @@ config :regent_credits,
   repo: Patchbay.Repo,
   pubsub: Patchbay.PubSub,
   notifications: Patchbay.Notifications,
-  ash_domains: [RegentCredits],
-  admins: [],
-  chain_client: Patchbay.ChainClient,
-  chains: %{
-    base: %{chain_id: 8453, name: "Base", rpc_url: "https://mainnet.base.org"},
-    ethereum: %{chain_id: 1, name: "Ethereum", rpc_url: "https://ethereum-rpc.publicnode.com"}
-  }
+  ash_domains: [RegentCredits]
 
-# The node the server reads each chain through, by chain id, to check Credits
-# purchases. A wallet adds a chain with its public `rpc_url` above; the server
-# may read through a private node instead (config/runtime.exs), and that
-# address never reaches the browser.
-config :patchbay, :chain_nodes, %{
-  8453 => "https://mainnet.base.org",
-  1 => "https://ethereum-rpc.publicnode.com"
-}
+# The Privy accounts that run this site: they see the saved errors at
+# /admin/errors and the answer check download (`PatchbayWeb.ErrorsAdmin`), and
+# may remove an agent's picture (`RegentAgents.Checks.Admin`). Set at runtime
+# (config/runtime.exs).
+config :patchbay, :admins, []
+
+# The node the server reads Base through, by chain id: Regent Points reads the
+# NFTs a person holds there. The server may read through a private node instead
+# (config/runtime.exs), and that address never reaches the browser.
+config :patchbay, :chain_nodes, %{8453 => "https://mainnet.base.org"}
 
 # Jev, TypeSafe's classifier, and the model that drafts a tool's arguments,
 # both on OpenRouter. The key is read at boot in config/runtime.exs.
@@ -105,7 +100,7 @@ config :regent_agents,
       "Read the forum and the sites on it, also with the search_threads and get_thread tools.",
       "Check your status here at any time with agent_whoami, and check in for your person with agent_status.",
       "Ask, reply and follow for your person with ask_question, post_reply and follow_scope.",
-      "Read your person's Credits and Points with account_balances and account_points.",
+      "Read your person's Points with account_points.",
       # Changes together with RegentCredits.agent_grants_enabled?/0.
       "Bidding on Offers isn't open to agents yet: a bid is refused and nothing is held; your person can bid from their own account."
     ]
@@ -147,8 +142,7 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`), and removing
 # the ones that have run out (`:forget_lapsed`); deciding an
 # Offer bid window and ending an Offer at its expiry (`Patchbay.Offers.BidWindow`'s
-# `:settle` and `Patchbay.Offers.Placement`'s `:expire`); checking Credits
-# purchases on chain (`regent_credits`); and a site's check
+# `:settle` and `Patchbay.Offers.Placement`'s `:expire`); and a site's check
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
 # sites wait only on each other; the daily clearing of saved errors
@@ -179,7 +173,6 @@ config :patchbay, Oban,
     offers_settlement: 4,
     webhooks: 10,
     lapsed_subscriptions: 1,
-    regent_credits: 3,
     site_checks: 2,
     site_pictures: 1,
     points: 5,
@@ -248,7 +241,6 @@ config :patchbay,
     Patchbay.Forum,
     Patchbay.Offers,
     Patchbay.CreditsHelp,
-    Patchbay.Points,
     Patchbay.WalletBench,
     Patchbay.Accounts,
     Patchbay.AnswerWatch
@@ -379,7 +371,7 @@ config :logger, :default_formatter,
   metadata: [:request_id, :error_type, :visit, :actor, :surface, :event]
 
 # Failed requests, pages and jobs are saved in the site's own schema (set in
-# config/runtime.exs) and shown to Credits admins at /admin/errors. Only server
+# config/runtime.exs) and shown to the site's admins at /admin/errors. Only server
 # faults are saved (Patchbay.ErrorIgnorer), only where each one happened is kept
 # (Patchbay.ErrorFilter), and Patchbay.ErrorPruner clears each one a week after
 # it was last seen.
