@@ -41,7 +41,7 @@ contract RegentOffersKeysTest is OffersSetUp {
         vm.startPrank(operator);
         offers.place(a);
         offers.returnBid(b);
-        vm.expectRevert(RegentOffers.NotVenueAdmin.selector);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, operator));
         offers.setPayout(VENUE, operator);
         vm.expectRevert(RegentOffers.NotVenueAdmin.selector);
         offers.setOperator(VENUE, thief);
@@ -102,17 +102,20 @@ contract RegentOffersKeysTest is OffersSetUp {
 
     // ------------------------------------------------------------ venue admin
 
-    /// A stolen venue admin key can name its own operator and payout wallet, but bids made before
-    /// that keep paying the site's wallet, and it can neither remove nor name the moderator.
+    /// A stolen venue admin key can name its own operator, but never the payout wallet, the
+    /// moderator or itself as moderator, so it can neither remove nor be paid.
     function test_a_stolen_admin_key_takes_nothing_already_bid() public {
         bytes32 waiting = bidOn(SLOT, 100_000_000);
         bytes32 showing = placed(keccak256("slot 2"), 200_000_000);
 
         vm.startPrank(admin);
         offers.setOperator(VENUE, thief);
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, admin));
         offers.setPayout(VENUE, thief);
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, admin));
         offers.setModerator(VENUE, thiefModerator);
+        vm.expectRevert(RegentOffers.ModeratorNotSeparate.selector);
+        offers.setOperator(VENUE, moderator);
         vm.stopPrank();
 
         vm.startPrank(thief);
@@ -130,6 +133,32 @@ contract RegentOffersKeysTest is OffersSetUp {
         assertEq(offers.owed(payout), 270_000_000);
         vm.expectRevert(RegentOffers.NothingOwed.selector);
         offers.payOut(thief);
+    }
+
+    /// Bids made after an admin key is stolen still pay the site: the key places them, at any
+    /// length it sets, and each runs to the end, credited to the site's wallet and staking.
+    function testFuzz_a_stolen_admin_key_takes_nothing_of_later_bids(uint32 length) public {
+        length = uint32(bound(length, 1, LENGTH));
+        vm.startPrank(admin);
+        offers.setOperator(VENUE, thief);
+        offers.setTerms(VENUE, MINIMUM, length);
+        vm.stopPrank();
+
+        RegentOffers.Terms memory t = terms(SLOT, 100_000_000);
+        t.length = length;
+        bytes32 id = bidAs(bidder, t);
+        vm.startPrank(thief);
+        offers.place(id);
+        vm.expectRevert(RegentOffers.NotModerator.selector);
+        offers.remove(id);
+        vm.stopPrank();
+        vm.warp(vm.getBlockTimestamp() + length);
+        offers.finish(id);
+
+        assertEq(record(id).payout, payout);
+        assertEq(offers.owed(thief), 0);
+        assertEq(offers.owed(payout), 90_000_000);
+        assertEq(offers.revenueOwed(), 10_000_000);
     }
 
     // ------------------------------------------------------------ owner
@@ -150,11 +179,10 @@ contract RegentOffersKeysTest is OffersSetUp {
             vm.startPrank(owner);
             offers.setVenueAdmin(venueIds[i], thief);
             offers.setModerator(venueIds[i], thiefModerator);
-            vm.stopPrank();
-            vm.startPrank(thief);
-            offers.setOperator(venueIds[i], thiefOperator);
             offers.setPayout(venueIds[i], thief);
             vm.stopPrank();
+            vm.prank(thief);
+            offers.setOperator(venueIds[i], thiefOperator);
             vm.prank(thiefOperator);
             offers.place(ids[i]);
             vm.prank(thiefModerator);
@@ -164,6 +192,59 @@ contract RegentOffersKeysTest is OffersSetUp {
         assertEq(offers.owed(payout), 90_000_000);
         assertEq(offers.owed(payout2), 270_000_000);
         assertEq(offers.revenueOwed(), 40_000_000);
+    }
+
+    /// Why the owner must be a multi-owner Safe: one stolen owner key names its own wallet, admin,
+    /// operator and moderator, and takes 90% of a bid made after that in the bid's own block.
+    /// There is no timelock (HQ, 6 Nov 2026: accepted, not fixed in code).
+    function test_a_stolen_owner_key_takes_90_percent_of_a_later_bid_at_once() public {
+        vm.startPrank(owner);
+        offers.setVenueAdmin(VENUE, thief);
+        offers.setModerator(VENUE, thiefModerator);
+        offers.setPayout(VENUE, thief);
+        vm.stopPrank();
+        vm.prank(thief);
+        offers.setOperator(VENUE, thiefOperator);
+
+        uint256 t0 = vm.getBlockTimestamp();
+        bytes32 id = bidOn(SLOT, 100_000_000);
+        vm.prank(thiefOperator);
+        offers.place(id);
+        vm.prank(thiefModerator);
+        offers.remove(id);
+        offers.payOut(thief);
+        assertEq(vm.getBlockTimestamp(), t0);
+        assertEq(usdc.balanceOf(thief), 90_000_000);
+        assertEq(offers.owed(bidder), 0);
+    }
+
+    /// A placement made while a key was stolen is cleaned up by replacing it, never by removal.
+    /// Once the owner puts the wallet and keys right, a one-USDC bid of the site's own replaces
+    /// the thief's placement and its bidder gets the unused time back; only the hour it showed
+    /// pays the wallet stored with it. A removal would have paid that wallet the whole bid.
+    function test_a_bad_placement_is_cleaned_up_by_replacing_it() public {
+        vm.prank(owner);
+        offers.setPayout(VENUE, thief);
+        bytes32 id = bidOn(SLOT, 72_000_000);
+        vm.prank(operator);
+        offers.place(id);
+        assertEq(record(id).payout, thief);
+
+        vm.warp(vm.getBlockTimestamp() + 1 hours);
+        vm.prank(owner);
+        offers.setPayout(VENUE, payout);
+        bytes32 own = bidOn(SLOT, MINIMUM);
+        vm.prank(operator);
+        offers.place(own);
+
+        assertEq(uint8(status(id)), uint8(RegentOffers.Status.Ended));
+        assertEq(offers.live(VENUE, SLOT), own);
+        assertEq(offers.owed(bidder), 71_000_000);
+        assertEq(offers.owed(thief), 900_000);
+        (uint256 paidIfRemoved,,, uint256 thiefIfRemoved) =
+            offers.split(72_000_000, 0, LENGTH, 1 hours, RegentOffers.EndReason.Removed);
+        assertEq(paidIfRemoved, 72_000_000);
+        assertEq(thiefIfRemoved, 64_800_000);
     }
 
     /// No key reaches money already owed or the staking share, and pausing stops neither.
@@ -181,12 +262,11 @@ contract RegentOffersKeysTest is OffersSetUp {
         vm.startPrank(owner);
         offers.setVenueAdmin(VENUE, thief);
         offers.setModerator(VENUE, thiefModerator);
+        offers.setPayout(VENUE, thief);
         offers.setPaused(true);
         vm.stopPrank();
-        vm.startPrank(thief);
+        vm.prank(thief);
         offers.setOperator(VENUE, thiefOperator);
-        offers.setPayout(VENUE, thief);
-        vm.stopPrank();
         vm.prank(thiefModerator);
         vm.expectRevert(RegentOffers.NotPlaced.selector);
         offers.remove(first);

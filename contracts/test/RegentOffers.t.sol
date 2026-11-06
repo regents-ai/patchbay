@@ -129,11 +129,36 @@ contract RegentOffersTest is OffersSetUp {
         assertEq(record(id).bidder, bidder);
     }
 
-    function test_bid_id_is_what_the_contract_says() public {
+    /// A bid id hashes one address word and eight fixed-size words, so no two different bidder and
+    /// terms pairs share an encoding; a call whose words carry bits above their type is refused.
+    function test_a_bid_id_is_fixed_width_and_dirty_words_are_refused() public {
         RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
-        bytes32 id = bidAs(bidder, t);
-        assertEq(id, offers.bidIdOf(bidder, t));
-        assertEq(id, keccak256(abi.encode(bidder, t)));
+        assertEq(abi.encode(bidder, t).length, 9 * 32);
+        vm.startPrank(bidder);
+        usdc.approve(address(offers), type(uint256).max);
+        bytes memory good = abi.encodeCall(RegentOffers.bid, (t));
+        // Word 2 is the lane (uint8), 4 the amount (uint96), 5 the length (uint32), 6 placeBy (uint64).
+        uint256[4] memory words = [uint256(2), 4, 5, 6];
+        uint256[4] memory bits = [uint256(1) << 8, uint256(1) << 96, uint256(1) << 32, uint256(1) << 64];
+        for (uint256 i; i < 4; ++i) {
+            bytes memory dirty = bytes.concat(good);
+            uint256 at = 4 + 32 * words[i];
+            uint256 word;
+            assembly ("memory-safe") {
+                word := mload(add(add(dirty, 0x20), at))
+            }
+            word |= bits[i];
+            assembly ("memory-safe") {
+                mstore(add(add(dirty, 0x20), at), word)
+            }
+            (bool ok,) = address(offers).call(dirty);
+            assertFalse(ok, "a dirty word is refused");
+        }
+        (bool fine, bytes memory answer) = address(offers).call(good);
+        vm.stopPrank();
+        assertTrue(fine);
+        assertEq(abi.decode(answer, (bytes32)), offers.bidIdOf(bidder, t));
+        assertEq(offers.totalCommitted(), MINIMUM);
     }
 
     function test_the_same_terms_twice_are_one_bid() public {
@@ -275,10 +300,10 @@ contract RegentOffersTest is OffersSetUp {
         bytes32 heldId = bidOn(SLOT, MINIMUM);
         bytes32 showing = placed(keccak256("slot 2"), 2_000_000);
         bytes32 waiting = bidOn(keccak256("slot 3"), 3_000_000);
-
+        bytes32 late = bidOn(keccak256("slot 4"), 4_000_000);
+        bytes32 removed = placed(keccak256("slot 5"), 5_000_000);
         vm.prank(owner);
         offers.setPaused(true);
-
         RegentOffers.Terms memory t = terms(SLOT, MINIMUM);
         refused(t, RegentOffers.BidsPaused.selector);
 
@@ -286,9 +311,13 @@ contract RegentOffersTest is OffersSetUp {
         offers.place(heldId);
         offers.returnBid(waiting);
         vm.stopPrank();
+        vm.prank(moderator);
+        offers.remove(removed);
         vm.warp(vm.getBlockTimestamp() + LENGTH);
+        offers.withdraw(late);
         offers.finish(showing);
         offers.finish(heldId);
+        assertEq(uint8(status(late)), uint8(RegentOffers.Status.Withdrawn));
         offers.payOut(bidder);
         offers.payOut(payout);
         offers.pushRevenue();
@@ -323,44 +352,6 @@ contract RegentOffersTest is OffersSetUp {
         vm.expectRevert(RegentOffers.NotOperator.selector);
         offers.returnBid(id);
         vm.stopPrank();
-    }
-
-    /// A removal pays the whole bid, so the key that places can never remove.
-    function test_only_the_moderator_removes() public {
-        bytes32 id = placed(SLOT, MINIMUM);
-        vm.expectRevert(RegentOffers.NotModerator.selector);
-        vm.prank(operator);
-        offers.remove(id);
-        vm.expectRevert(RegentOffers.NotModerator.selector);
-        vm.prank(stranger);
-        offers.remove(id);
-        vm.prank(moderator);
-        offers.remove(id);
-    }
-
-    function test_the_moderator_is_never_the_operator() public {
-        vm.startPrank(owner);
-        vm.expectRevert(RegentOffers.ModeratorIsOperator.selector);
-        offers.addVenue(keccak256("other"), admin, operator, operator, payout, MINIMUM, LENGTH);
-        vm.expectRevert(RegentOffers.ModeratorIsOperator.selector);
-        offers.setModerator(VENUE, operator);
-        vm.stopPrank();
-
-        vm.expectRevert(RegentOffers.ModeratorIsOperator.selector);
-        vm.prank(admin);
-        offers.setOperator(VENUE, moderator);
-    }
-
-    function test_only_the_owner_sets_the_moderator() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, admin));
-        vm.prank(admin);
-        offers.setModerator(VENUE, admin);
-
-        address fresh = makeAddr("fresh moderator");
-        vm.prank(owner);
-        offers.setModerator(VENUE, fresh);
-        (,, address mod,,,) = offers.venues(VENUE);
-        assertEq(mod, fresh);
     }
 
     /// The most a stolen operator key can charge: every slot shows one placement at a time, and a
@@ -583,6 +574,63 @@ contract RegentOffersTest is OffersSetUp {
         if (reason != uint8(RegentOffers.EndReason.Replaced) || shown >= length) assertEq(paid, amount);
     }
 
+    /// The site's reader builds its tables from events, so each event carries the bid's own
+    /// values: its bidder, its amount, and the payout wallet it was made under.
+    function test_events_carry_the_bids_own_values() public {
+        address fresh = makeAddr("fresh payout");
+        RegentOffers.Terms memory t = terms(SLOT, 72_000_000);
+        t.lane = 2;
+        vm.startPrank(bidder);
+        usdc.approve(address(offers), t.amount);
+        vm.expectEmit(address(offers));
+        emit RegentOffers.BidPlaced(
+            offers.bidIdOf(bidder, t), VENUE, SLOT, bidder, 2, t.wordingHash, 72_000_000, LENGTH, t.placeBy
+        );
+        bytes32 id = offers.bid(t);
+        vm.stopPrank();
+
+        uint64 start = uint64(vm.getBlockTimestamp());
+        vm.expectEmit(address(offers));
+        emit RegentOffers.Placed(id, VENUE, SLOT, start, start + LENGTH);
+        vm.prank(operator);
+        offers.place(id);
+
+        vm.prank(owner);
+        offers.setPayout(VENUE, fresh);
+        vm.warp(vm.getBlockTimestamp() + 1 hours);
+        bytes32 next = bidOn(SLOT, 10_000_000);
+        vm.expectEmit(address(offers));
+        emit RegentOffers.Ended(id, RegentOffers.EndReason.Replaced, 1_000_000, 71_000_000, 100_000, 900_000, payout);
+        vm.prank(operator);
+        offers.place(next);
+
+        vm.expectEmit(address(offers));
+        emit RegentOffers.Ended(next, RegentOffers.EndReason.Removed, 10_000_000, 0, 1_000_000, 9_000_000, fresh);
+        vm.prank(moderator);
+        offers.remove(next);
+
+        bytes32 back = bidOn(SLOT, 3_000_000);
+        vm.expectEmit(address(offers));
+        emit RegentOffers.BidReturned(back, bidder, 3_000_000);
+        vm.prank(operator);
+        offers.returnBid(back);
+
+        bytes32 late = bidOn(SLOT, 4_000_000);
+        vm.warp(vm.getBlockTimestamp() + 1 hours);
+        vm.expectEmit(address(offers));
+        emit RegentOffers.BidWithdrawn(late, bidder, 4_000_000);
+        offers.withdraw(late);
+
+        vm.expectEmit(address(offers));
+        emit RegentOffers.PaidOut(bidder, stranger, 78_000_000);
+        vm.prank(stranger);
+        offers.payOut(bidder);
+        vm.expectEmit(address(offers));
+        emit RegentOffers.RevenuePushed(stranger, 1_100_000);
+        vm.prank(stranger);
+        offers.pushRevenue();
+    }
+
     // ------------------------------------------------------------- payouts
 
     /// An address USDC will not pay never stops its placement ending or the slot moving on.
@@ -599,10 +647,13 @@ contract RegentOffersTest is OffersSetUp {
 
         assertEq(uint8(status(first)), uint8(RegentOffers.Status.Ended));
         assertEq(offers.live(VENUE, SLOT), second);
-        vm.expectRevert(bytes("Blacklistable: account is blacklisted"));
+        uint256 owedBack = offers.owed(bidder);
+        assertGt(owedBack, 0);
+        vm.expectRevert(abi.encodeWithSelector(OffersTestUSDC.AccountBlocked.selector, bidder));
         offers.payOut(bidder);
+        assertEq(offers.owed(bidder), owedBack);
         offers.payOut(payout);
-        assertGt(offers.owed(bidder), 0);
+        assertEq(offers.owed(payout), 0);
     }
 
     function test_pay_out_pays_only_the_named_account_once() public {
@@ -621,7 +672,7 @@ contract RegentOffersTest is OffersSetUp {
         vm.warp(vm.getBlockTimestamp() + LENGTH);
         offers.finish(id);
         staking.setPaused(true);
-        vm.expectRevert(bytes("PAUSED"));
+        vm.expectRevert(OffersTestStaking.StakingPaused.selector);
         offers.pushRevenue();
         assertEq(offers.revenueOwed(), 1_000_000);
         offers.payOut(payout);
@@ -632,6 +683,7 @@ contract RegentOffersTest is OffersSetUp {
         assertEq(usdc.balanceOf(address(staking)), 1_000_000);
         assertEq(staking.lastSourceTag(), offers.SOURCE_TAG());
         assertEq(usdc.balanceOf(address(offers)), 0);
+        assertEq(usdc.allowance(address(offers), address(staking)), 0, "no approval left with staking");
     }
 
     function test_revenue_push_refuses_a_staking_contract_that_pulls_short() public {
@@ -653,9 +705,9 @@ contract RegentOffersTest is OffersSetUp {
         usdc.setBlocked(payout, true);
 
         address fresh = makeAddr("fresh payout");
-        vm.prank(admin);
+        vm.prank(owner);
         offers.setPayout(VENUE, fresh);
-        vm.expectRevert(bytes("Blacklistable: account is blacklisted"));
+        vm.expectRevert(abi.encodeWithSelector(OffersTestUSDC.AccountBlocked.selector, payout));
         offers.payOut(payout);
         assertEq(offers.owed(payout), 90_000_000);
         assertEq(offers.owed(fresh), 0);
@@ -671,8 +723,9 @@ contract RegentOffersTest is OffersSetUp {
         vm.warp(vm.getBlockTimestamp() + LENGTH);
         offers.finish(id);
         usdc.setBlocked(address(staking), true);
-        vm.expectRevert(bytes("Blacklistable: account is blacklisted"));
+        vm.expectRevert(abi.encodeWithSelector(OffersTestUSDC.AccountBlocked.selector, address(staking)));
         offers.pushRevenue();
+        assertEq(usdc.allowance(address(offers), address(staking)), 0);
         offers.payOut(payout);
         assertEq(usdc.balanceOf(address(offers)), offers.revenueOwed());
         assertEq(offers.revenueOwed(), 10_000_000);
@@ -703,7 +756,7 @@ contract RegentOffersTest is OffersSetUp {
         bytes32 showing = placed(SLOT, 10_000_000);
         bytes32 waiting = bidOn(keccak256("slot 2"), 20_000_000);
         address fresh = makeAddr("fresh payout");
-        vm.prank(admin);
+        vm.prank(owner);
         offers.setPayout(VENUE, fresh);
         bytes32 later = bidOn(keccak256("slot 3"), 40_000_000);
         assertEq(record(waiting).payout, payout);
@@ -726,7 +779,7 @@ contract RegentOffersTest is OffersSetUp {
     function test_neither_the_contract_nor_usdc_nor_staking_is_a_payout_wallet() public {
         address[3] memory refused = [address(offers), address(usdc), address(staking)];
         for (uint256 i; i < refused.length; ++i) {
-            vm.prank(admin);
+            vm.prank(owner);
             vm.expectRevert(RegentOffers.ContractIsParty.selector);
             offers.setPayout(VENUE, refused[i]);
             vm.prank(owner);
@@ -736,31 +789,21 @@ contract RegentOffersTest is OffersSetUp {
         vm.prank(owner);
         vm.expectRevert(RegentOffers.ZeroAddress.selector);
         offers.addVenue(OTHER, admin2, operator2, moderator2, address(0), MINIMUM, LENGTH);
+        vm.prank(owner);
+        vm.expectRevert(RegentOffers.ZeroAddress.selector);
+        offers.setPayout(VENUE, address(0));
+        (,,, address now_,,) = offers.venues(VENUE);
+        assertEq(now_, payout);
     }
 
     // ---------------------------------------------------------- venue admin
 
-    function test_only_the_owner_adds_venues_and_only_its_admin_changes_one() public {
-        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
-        vm.prank(stranger);
-        offers.addVenue(keccak256("other"), admin, operator, moderator, payout, MINIMUM, LENGTH);
-
+    function test_a_venue_is_added_once() public {
         vm.expectRevert(RegentOffers.VenueExists.selector);
         vm.prank(owner);
-        offers.addVenue(VENUE, admin, operator, moderator, payout, MINIMUM, LENGTH);
-
-        vm.startPrank(stranger);
-        vm.expectRevert(RegentOffers.NotVenueAdmin.selector);
-        offers.setOperator(VENUE, stranger);
-        vm.expectRevert(RegentOffers.NotVenueAdmin.selector);
-        offers.setPayout(VENUE, stranger);
-        vm.expectRevert(RegentOffers.NotVenueAdmin.selector);
-        offers.setTerms(VENUE, 1, 1);
-        vm.stopPrank();
-
-        vm.expectRevert(RegentOffers.ContractIsParty.selector);
-        vm.prank(admin);
-        offers.setPayout(VENUE, address(offers));
+        offers.addVenue(VENUE, admin2, operator2, moderator2, payout2, MINIMUM, LENGTH);
+        (address a,,,,,) = offers.venues(VENUE);
+        assertEq(a, admin);
     }
 
     /// New terms bind new bids: the old length is refused, the new minimum applies.
@@ -824,8 +867,6 @@ contract RegentOffersTest is OffersSetUp {
         offers.place(mine);
         vm.stopPrank();
         vm.startPrank(admin);
-        vm.expectRevert(RegentOffers.NotVenueAdmin.selector);
-        offers.setPayout(OTHER, admin);
         vm.expectRevert(RegentOffers.NotVenueAdmin.selector);
         offers.setOperator(OTHER, admin);
         vm.expectRevert(RegentOffers.NotVenueAdmin.selector);

@@ -7,8 +7,8 @@ live contract for the offers (designed for patchbay.help but extensible to more 
 the future, serving as a marketplace for offer inventory and demand)".
 
 This is a design note on a branch. It deploys no contract and touches no production data.
-The contract it describes is `RegentOffers` at commit `ded38356` on
-`pb/regent-offers-moderator-1106`. Every Credits balance and every open Credits bid stays
+The contract it describes is `RegentOffers` on `pb/regent-offers-moderator-1106`, with
+the fixes from the second review (HQ, 18:22Z). Every Credits balance and every open Credits bid stays
 exactly as it is until the cutover release. Building the contract, the reader and the
 pages is ordinary work on side branches. The contract deploy, its owner, operator and
 moderator wallets, the new tables in the shared production database, and the cutover
@@ -61,10 +61,12 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
 - **Sites (venues).** The owner adds a site: its id (`keccak256("patchbay.help")`), its
   admin, its operator (the site's server key), its moderator, its payout wallet, its
   opening minimum in USDC base units and its placement length (72 hours on Patchbay).
-  - The site's admin can replace its operator and its payout wallet, and change its
-    minimum and length for new bids.
-  - The owner replaces a site's admin and sets its moderator, which can never be the
-    operator.
+  - The site's admin can replace its operator, and change its minimum and length for new
+    bids.
+  - Only the owner replaces a site's admin, sets its moderator and names its payout wallet.
+    A site's admin can no longer point the site's money at a new wallet.
+  - The moderator is never the site's admin or its operator. Every function that sets one of
+    the three refuses a moderator equal to either of the other two.
 - **Slots.** Every site with a forum gets three Offer slots on each forum (Sean, 5). There
   is no listing step: any slot id of a site takes bids, and which forum and slot number
   it means is Patchbay's, kept in the slot id.
@@ -82,8 +84,9 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
     the length is not the site's length, after `placeBy`, when `placeBy` is more than
     `MAX_WAIT` (72 hours) away, or while new bids are paused.
   - Each bid keeps the payout wallet its site named when it was made. A later payout
-    change, even one made with a stolen admin or owner key, is paid only for bids made
-    after it.
+    change, even one made with a stolen owner key, is paid only for bids made after it.
+    Bids already made pay the wallet stored with them, even when the site has had to leave
+    that wallet.
   - It works the same for a card buyer, an outside wallet, a contract account and an
     agent with its own wallet.
 - **Operator steps.** Each step is bounded by the contract:
@@ -95,8 +98,9 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
     buyout is atomic (decision 13).
   - `returnBid(bidId)` gives a held bid back in full.
 - **Moderator step.** `remove(bidId)` ends a showing placement for policy, and the whole
-  bid is paid, with nothing back (Sean, 4 b). Only the site's moderator may remove, so the
-  key that places can never also charge a bid in full.
+  bid is paid, with nothing back (Sean, 4 b). Only the site's moderator may remove, and it
+  is never the operator or the admin, so neither the key that places nor the key that names
+  who places can also charge a bid in full.
 - **Steps anyone may take.** Each of these pays only the people the bid names, so nobody
   depends on Patchbay running:
   - `withdraw(bidId)` gives back a bid never placed, once its `placeBy` has passed;
@@ -132,6 +136,13 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
   the bid's payout wallet, never to the thief.
 - **Stolen moderator key.** A thief can remove showing placements, which charges those
   bids in full, paid to their payout wallets, never to the thief (decision 15).
+- **Stolen admin key.** A thief can name its own operator and change the terms, and so
+  place bids, but it cannot name the payout wallet or the moderator, so every bid it places
+  still pays the site, before or after the theft.
+- **Stolen owner key.** A thief can name its own payout wallet, admin, operator and
+  moderator, and then take 90% of every bid made after that, in the bid's own block. There
+  is no timelock, so **the owner must be a multi-owner Safe**. Bids made before the theft
+  still pay the wallets stored with them.
 - **Events.** One event per change:
   - `VenueAdded`, `VenueAdminChanged`, `OperatorChanged`, `ModeratorChanged`,
     `PayoutChanged`, `VenueTermsChanged`;
@@ -140,7 +151,7 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
   - `PaidOut`, `RevenuePushed`, `PausedSet`.
 - **Checks.**
   - `make check-contracts`: `forge fmt --check`, `forge build` and the offline tests.
-  - Unit, fuzz and stolen-key tests, every bid made as approve then bid from the bidder.
+  - Unit, fuzz, role and stolen-key tests, every bid made as approve then bid from the bidder.
   - Invariants over two sites and random steps: the contract's USDC always equals what is
     held and placed, plus what is owed, plus the revenue owed, plus any USDC sent to it
     directly; every account is credited what an independent book says; a slot never has
@@ -149,9 +160,13 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
   - `make check-contracts-fork`: tests on the real Base USDC and REGENT staking on a local
     fork, never broadcast, for a plain account, an account upgraded with EIP-7702 (one
     batched call, and two plain calls) and a contract account, each through to payment.
-  - Broken copies of the contract (money taken from someone other than the caller, the
-    received-amount check removed, the re-entry guard removed, the 72-hour cap removed)
-    each turn the tests red.
+  - Broken copies of the contract each turn the offline tests red. The break runner,
+    `uv run --no-project contracts/test/breaks/breaks.py`, holds every break: the second
+    review's eighteen (role checks, zero values and addresses in every setter, the events
+    carrying the bid's own values, the approval left with staking), the owner-only payout
+    wallet, the moderator kept apart in each setter, and the earlier ones (money taken from
+    someone other than the caller, the received-amount check, the re-entry guard, the
+    72-hour cap).
 
 ### Funding
 
@@ -304,13 +319,15 @@ branch takes that change once it lands.
 ## Order
 
 1. **Contract.** RegentOffers and its checks on a side branch, with an adversarial review
-   by a separate agent given the code and the question. Done through `ded38356`.
+   by a separate agent given the code and the question. Two reviews are done, and the
+   second review's fixes are in.
 2. **Reader.** The reading job, the tables and their notices, run against a local Base
    fork (anvil) with the contract deployed there.
 3. **Pages and agent surfaces.** Approve, Bid, Withdraw, Add USDC and USDC Balance on the
    five surfaces, walked at 320, 390 and 1280.
-4. **Sean's go.** On his named go: deploy the contract, set the owner Safe, the operator
-   and moderator keys, Patchbay as a site, and add the tables to production.
+4. **Sean's go.** On his named go: deploy the contract, set the owner Safe (a multi-owner
+   Safe Sean names), the operator and moderator keys, Patchbay as a site, and add the tables
+   to production.
 5. **Cutover release.** One release closes Credits bidding, removes the Credits code above
    and opens Offers on USDC.
 
@@ -339,9 +356,18 @@ Signed bids went, and approve then bid replaced them (HQ engineering ruling, 17:
 
 ## Accepted limits
 
-These came out of the review of the contract and are accepted as they are, each stated in
-the contract's own notes.
+These came out of the two reviews of the contract and are accepted as they are, each stated
+in the contract's own notes.
 
+- **N1c Owner key.** One stolen owner key takes 90% of every later bid at once. There is no
+  timelock; the owner must be a multi-owner Safe, and which Safe is Sean's to name with the
+  deploy decision.
+- **N1d Clean-up by replacement.** A placement that should not be showing, such as one
+  placed while a key was stolen, is cleaned up by replacing it with another bid, which
+  returns its unused time. Never by removal, which pays the whole bid to the wallet stored
+  with it.
+- **N2 Stored wallet.** Bids already made pay the payout wallet stored with them, even after
+  the site names a new one because it had to leave the old one.
 - **F4 Blocked payout wallet.** Money owed to an address Circle has blocked waits until
   USDC will pay it. Nothing can send it elsewhere: a way to pay to another address would
   only help a blocked wallet route around Circle's block.
@@ -373,11 +399,16 @@ Given on 6 Nov 2026, recorded as given:
 ### HQ rulings
 
 - The payout wallet is kept per bid (F2, F3).
-- The moderator is set by the owner and is never the operator.
+- The moderator is set by the owner and is never the operator or the admin.
 - The USDC token and the staking contract are refused as payout wallets (F4 b).
 - `MAX_WAIT` is 72 hours, one placement length (F7).
 - F4, F5 and F6 are accepted, as above.
 - One bid path: approve then bid from the bidder's own account (17:20Z).
+- After the second review (18:22Z): only the owner names a site's payout wallet (N1a, N1b);
+  the owner must be a multi-owner Safe, with no timelock (N1c); clean-up is by replacement
+  (N1d); bids already made pay their stored wallet (N2); the moderator is never the admin or
+  the operator, checked in every function that sets one of them (N3). A removal still
+  charges the whole bid (F1).
 
 ### Open
 

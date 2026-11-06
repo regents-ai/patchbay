@@ -158,7 +158,7 @@ contract OffersHandler is Test {
         venue %= 2;
         // accounts[3] is the contract-wallet bidder, so a payout wallet can also be a bidder.
         payouts[venue] = accounts[3 + (k % 4)];
-        vm.prank(admins[venue]);
+        vm.prank(owner);
         offers.setPayout(venueIds[venue], payouts[venue]);
     }
 
@@ -307,6 +307,7 @@ contract RegentOffersInvariantTest is Test {
         assertEq(owedSum, offers.totalOwed(), "sum of owed");
         assertEq(offers.revenueOwed() + handler.pushed(), handler.expectedRevenue(), "staking share");
         assertEq(usdc.balanceOf(address(staking)), handler.pushed(), "staking received");
+        assertEq(usdc.allowance(address(offers), address(staking)), 0, "no approval left with staking");
         assertEq(
             handler.deposited(),
             offers.totalCommitted() + offers.totalOwed() + offers.revenueOwed() + paidSum + handler.pushed(),

@@ -18,22 +18,36 @@ interface IRegentRevenueStaking {
 ///         has its slots (inventory) with no listing step, and bidders commit USDC to them (demand).
 ///         Patchbay.help is the first venue.
 /// @dev The venue's server (its operator) screens wordings, keeps the slot order and chooses
-///      winners; a separate moderator, set by the owner, removes placements for policy; this
-///      contract keeps the money under fixed rules. Because a removal pays the whole bid, the
-///      operator can never remove, so a stolen operator key can charge at most one placement per
-///      slot at a time, for the time it shows. A bidder approves this contract for the amount
-///      and calls `bid` from their own account, which takes the amount from that account and
-///      from no other. Bid money leaves only as a return of a bid never placed
-///      (or the unused time of a placement replaced by a newer one), or as payment for its
-///      placement, split between REGENT staking and the venue's payout wallet. Nothing is paid out
-///      inline: every end records what is owed and `payOut` sends it, so an address USDC refuses
-///      to pay can never stop a slot from ending or being replaced. Each bid keeps the payout
-///      wallet its venue named when it was made, so a changed payout wallet, even one set with a
-///      stolen key, is paid only for bids made after the change. Nothing can move money already
-///      owed to another account: what is owed to an address USDC has blocked waits for USDC to
-///      pay it. USDC sent to this contract other than through a bid is in no record and never
-///      leaves. There is no upgrade: a new market is a new contract, and pausing this one stops
-///      new bids only.
+///      winners; a separate moderator removes placements for policy; this contract keeps the
+///      money under fixed rules. Because a removal pays the whole bid, the moderator is never the
+///      venue's admin or its operator, so the key that places, and the key that names who
+///      places, can never remove: a stolen operator or admin key can charge at most one
+///      placement per slot at a time, for the time it shows, paid to the venue. A bidder
+///      approves this contract for the amount and calls `bid` from their own account, which
+///      takes the amount from that account and from no other. Bid money leaves only as a return
+///      of a bid never placed (or the unused time of a placement replaced by a newer one), or as
+///      payment for its placement, split between REGENT staking and the venue's payout wallet.
+///      Nothing is paid out inline: every end records what is owed and `payOut` sends it, so an
+///      address USDC refuses to pay can never stop a slot from ending or being replaced.
+///
+///      Only the owner names a venue's payout wallet, admin and moderator. Each bid keeps the
+///      payout wallet its venue named when it was made: a new payout wallet is paid only for
+///      bids made after the change, and bids already made pay the wallet stored with them, even
+///      when the venue has had to leave it. Nothing can move money already owed to another
+///      account: what is owed to an address USDC has blocked waits for USDC to pay it.
+///
+///      The owner must be a multi-owner Safe. There is no timelock: one stolen owner key can name
+///      its own payout wallet, admin, operator and moderator, and take 90% of every bid made
+///      after that, in the bid's own block. Bids made before it are paid to the wallets stored
+///      with them.
+///
+///      A placement that should not be showing is cleaned up by replacing it with another bid,
+///      never by removal: a removal pays the whole bid to the wallet stored with it, while a
+///      replacement pays only the time shown and returns the rest to its bidder.
+///
+///      USDC sent to this contract other than through a bid is in no record and never leaves.
+///      There is no upgrade: a new market is a new contract, and pausing this one stops new bids
+///      only.
 contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
@@ -76,8 +90,10 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice A venue whose forums carry slots. A zero admin means the venue was never added.
-    /// @param operator The venue's server key: places and returns bids.
-    /// @param moderator Removes placements for policy; never the operator.
+    /// @param admin Names the operator and sets the terms; never the moderator.
+    /// @param operator The venue's server key: places and returns bids; never the moderator.
+    /// @param moderator Removes placements for policy.
+    /// @param payout The wallet paid the venue's share of bids made while it is named.
     /// @param minimum The least bid, in USDC base units, on any of its slots.
     /// @param length How long a placement runs, in seconds.
     struct Venue {
@@ -202,7 +218,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     error NotVenueAdmin();
     error NotOperator();
     error NotModerator();
-    error ModeratorIsOperator();
+    error ModeratorNotSeparate();
     error BidsPaused();
     error BelowMinimum();
     error LengthMismatch();
@@ -240,7 +256,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         if (venue == bytes32(0) || minimum == 0 || length == 0) revert ZeroValue();
         if (venues[venue].admin != address(0)) revert VenueExists();
         if (admin == address(0) || operator == address(0) || moderator == address(0)) revert ZeroAddress();
-        if (moderator == operator) revert ModeratorIsOperator();
+        _checkSeparate(moderator, admin, operator);
         _checkPayout(payout);
         venues[venue] = Venue({
             admin: admin, operator: operator, moderator: moderator, payout: payout, minimum: minimum, length: length
@@ -252,17 +268,27 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     function setModerator(bytes32 venue, address moderator) external onlyOwner {
         Venue storage v = _venue(venue);
         if (moderator == address(0)) revert ZeroAddress();
-        if (moderator == v.operator) revert ModeratorIsOperator();
+        _checkSeparate(moderator, v.admin, v.operator);
         v.moderator = moderator;
         emit ModeratorChanged(venue, moderator);
     }
 
     /// @notice Replaces a venue's admin, for when its key is lost or leaked.
     function setVenueAdmin(bytes32 venue, address admin) external onlyOwner {
-        _venue(venue);
+        Venue storage v = _venue(venue);
         if (admin == address(0)) revert ZeroAddress();
-        venues[venue].admin = admin;
+        _checkSeparate(v.moderator, admin, v.operator);
+        v.admin = admin;
         emit VenueAdminChanged(venue, admin);
+    }
+
+    /// @notice Names the wallet paid the venue's share of bids made from now on. Bids already
+    ///         made keep paying the wallet named when they were made.
+    function setPayout(bytes32 venue, address payout) external onlyOwner {
+        Venue storage v = _venue(venue);
+        _checkPayout(payout);
+        v.payout = payout;
+        emit PayoutChanged(venue, payout);
     }
 
     /// @notice Stops or restarts new bids. Placing, returns, withdrawals, finishing and payouts
@@ -279,21 +305,14 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
 
     // ---------------------------------------------------------- venue admin
 
+    /// @notice Replaces the venue's server key.
     function setOperator(bytes32 venue, address operator) external {
         _onlyVenueAdmin(venue);
         if (operator == address(0)) revert ZeroAddress();
-        if (operator == venues[venue].moderator) revert ModeratorIsOperator();
-        venues[venue].operator = operator;
+        Venue storage v = venues[venue];
+        _checkSeparate(v.moderator, v.admin, operator);
+        v.operator = operator;
         emit OperatorChanged(venue, operator);
-    }
-
-    /// @notice Names the wallet paid the venue's share of bids made from now on. Bids already
-    ///         made keep paying the wallet named when they were made.
-    function setPayout(bytes32 venue, address payout) external {
-        _onlyVenueAdmin(venue);
-        _checkPayout(payout);
-        venues[venue].payout = payout;
-        emit PayoutChanged(venue, payout);
     }
 
     /// @notice Changes the least bid and the placement length for bids from now on. A bid already
@@ -520,6 +539,11 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
 
     function _onlyOperator(bytes32 venue) private view {
         if (msg.sender != venues[venue].operator) revert NotOperator();
+    }
+
+    /// @dev The moderator charges a bid in full, so it is never a key that places or names who places.
+    function _checkSeparate(address moderator, address admin, address operator) private pure {
+        if (moderator == admin || moderator == operator) revert ModeratorNotSeparate();
     }
 
     /// @dev USDC refuses to pay its own address, and the staking contract's share is pushed, never

@@ -79,6 +79,10 @@ contract RegentOffersForkTest is Test {
         return _bidAs(bidder, _terms(slot, amount));
     }
 
+    function _status(bytes32 id) internal view returns (RegentOffers.Status s) {
+        (,,,,,,,, s) = offers.bids(id);
+    }
+
     function _bidder(bytes32 id) internal view returns (address who) {
         (who,,,,,,,,) = offers.bids(id);
     }
@@ -214,12 +218,18 @@ contract RegentOffersForkTest is Test {
         offers.place(waiting); // replaces `showing`
         offers.returnBid(other);
         vm.stopPrank();
-        vm.expectRevert(bytes("Pausable: paused"));
+        uint256 owedBack = offers.owed(bidder);
+        assertGt(owedBack, 0);
+        vm.expectRevert();
         offers.payOut(bidder);
+        assertEq(offers.owed(bidder), owedBack, "a payment USDC refused leaves the debt as it was");
         RegentOffers.Terms memory t = _terms(keccak256("forum#3"), 1_000_000);
-        vm.expectRevert(bytes("Pausable: paused"));
+        uint256 committed = offers.totalCommitted();
+        vm.expectRevert();
         vm.prank(bidder);
         offers.bid(t);
+        assertEq(offers.totalCommitted(), committed, "a bid USDC refused records nothing");
+        assertEq(uint8(_status(offers.bidIdOf(bidder, t))), uint8(RegentOffers.Status.None));
         vm.prank(USDC.pauser());
         USDC.unpause();
 
@@ -227,8 +237,10 @@ contract RegentOffersForkTest is Test {
         USDC.blacklist(bidder);
         vm.warp(vm.getBlockTimestamp() + LENGTH);
         offers.finish(waiting);
-        vm.expectRevert(bytes("Blacklistable: account is blacklisted"));
+        owedBack = offers.owed(bidder);
+        vm.expectRevert();
         offers.payOut(bidder);
+        assertEq(offers.owed(bidder), owedBack, "a blocked bidder's money stays owed to it");
         offers.payOut(payout);
         offers.pushRevenue();
         assertEq(USDC.balanceOf(address(offers)), offers.owed(bidder));
@@ -242,7 +254,7 @@ contract RegentOffersForkTest is Test {
 
     /// The real token and the real staking contract are never payout wallets.
     function test_fork_usdc_and_staking_are_never_payout_wallets() public {
-        vm.startPrank(admin);
+        vm.startPrank(owner);
         vm.expectRevert(RegentOffers.ContractIsParty.selector);
         offers.setPayout(VENUE, address(USDC));
         vm.expectRevert(RegentOffers.ContractIsParty.selector);
@@ -265,8 +277,10 @@ contract RegentOffersForkTest is Test {
         address stakingOwner = IRealStaking(STAKING).owner();
         vm.prank(stakingOwner);
         IRealStaking(STAKING).setPaused(true);
-        vm.expectRevert(bytes("PAUSED"));
+        vm.expectRevert();
         offers.pushRevenue();
+        assertEq(offers.revenueOwed(), 1, "a refused push leaves the share owed");
+        assertEq(USDC.allowance(address(offers), STAKING), 0);
         offers.payOut(bidder);
         offers.payOut(payout);
         vm.prank(stakingOwner);

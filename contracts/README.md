@@ -1,4 +1,68 @@
-# PatchbayEscrow
+# Contracts
+
+Two contracts on Base mainnet, in USDC:
+
+- `RegentOffers`: the market for Agent Offer slots on Regent sites. Not deployed.
+- `PatchbayEscrow`: the escrow for Patchbay's paid priority reports, at
+  `0xfa9c4de927b8fc62e87b9e48b1e29a205c25adfe`.
+
+## RegentOffers
+
+A market for Agent Offer slots on Regent sites (venues). Every forum a venue runs has slots, with
+no listing step, and bidders commit USDC to them. Patchbay.help is the first venue. The design note
+is `docs/usdc-offers-plan-2026-11-06.md` at the repository root.
+
+### Keys
+
+| Key | Set by | Can |
+| --- | --- | --- |
+| Owner | itself, handed on in two steps | add a venue; name a venue's admin, moderator and payout wallet; pause new bids |
+| Venue admin | the owner | name the venue's operator; set its minimum bid and placement length for new bids |
+| Operator | the venue admin | place a held bid, which replaces what the slot shows; return a held bid in full |
+| Moderator | the owner | remove a showing placement for policy, which pays the whole bid |
+
+- The moderator is never the venue's admin or its operator. Every function that sets one of the
+  three refuses a moderator equal to either of the other two.
+- Only the owner names the payout wallet. A venue admin cannot point a venue's money at a new
+  wallet.
+- **The owner must be a multi-owner Safe.** There is no timelock: one stolen owner key can name
+  its own payout wallet, admin, operator and moderator, and take 90% of every bid made after that,
+  in the bid's own block. Bids made before it still pay the wallets stored with them.
+
+### Money
+
+- A bidder approves the contract for the amount, then calls `bid(terms)` from their own account.
+  The amount comes from the caller and no one else, and the contract checks that exactly that
+  amount arrived.
+- Each bid stores the payout wallet its venue named when it was made, and is paid to that wallet
+  however it ends. Bids already made keep paying the stored wallet even after the venue names a new
+  one, including when the venue has had to leave the old one.
+- A replaced placement pays for the time it showed and returns the rest to its bidder. A finished
+  or removed placement pays the whole bid. Of what is paid, the protocol share (10%) goes to REGENT
+  staking and the rest to the bid's payout wallet.
+- A placement that should not be showing is cleaned up by replacing it with another bid, never by
+  removal: a replacement returns the unused time, while a removal pays the whole bid to the wallet
+  stored with it.
+- Ending a bid never sends USDC. It records what is owed, and anyone may call `payOut(account)` to
+  send it and `pushRevenue()` to send the protocol share to staking.
+- Pausing stops new bids only. There is no upgrade, no sweep and no owner withdrawal.
+
+### Checks
+
+From the repository root:
+
+```sh
+make check-contracts       # format, build and the offline tests
+make check-contracts-fork  # against the real Base USDC and REGENT staking on a local fork
+uv run --no-project contracts/test/breaks/breaks.py
+```
+
+`contracts/test/breaks/breaks.py` breaks a copy of `RegentOffers` in a temporary folder, one break
+at a time, and runs the offline tests against each; it exits non-zero if any break goes uncaught.
+Add a break there for each new rule. `script/OffersSanity.s.sol` walks bids through on a local
+fork of Base and is never broadcast.
+
+## PatchbayEscrow
 
 A single USDC escrow contract on Base mainnet for Patchbay's pay-to-special forum posts.
 
@@ -15,7 +79,7 @@ stakers, by the staked share of the total supply, and its treasury.
 The revenue is kept and pushed separately so that a paused staking contract never holds up a
 winner or an asker: while it is paused only the push waits.
 
-## The operator model
+### The operator model
 
 The contract does not decide anything. It is a ledger with an immutable split, and it trusts one
 address — the operator, which is the Patchbay server.
@@ -56,7 +120,7 @@ USDC that arrives without an x402 flow behind it, or an overpayment, simply sits
 unattributed balance. It is recoverable the same way as anything else: the operator credits it to a
 fresh post id with the sender as payer, and thirty days later that post can be refunded.
 
-## Deploy
+### Deploy
 
 Set the environment first:
 
@@ -80,7 +144,7 @@ Add the sender the deployment should be signed by, for example `--ledger` for a 
 `OWNER` equals the signer. The script prints the deployed address along with the token, staking
 contract, operator and owner it was given. `OWNER` is the owner from construction.
 
-## What the server calls
+### What the server calls
 
 `credit` and `release` are operator-only and revert with `NotOperator()` for anyone else; `refund`
 is open to any caller once the delay has passed, and `pushRevenue` is open to any caller. Amounts are
@@ -151,7 +215,7 @@ Revert reasons the server should recognise:
 | `RefundTooEarly()`       | Fewer than thirty days have passed since the deposit was recorded.  |
 | `NothingOwed()`          | A push found no revenue owed.                                       |
 
-## Checks
+### Checks
 
 ```sh
 forge build

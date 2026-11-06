@@ -9,6 +9,8 @@ import {IRegentRevenueStaking} from "../src/RegentOffers.sol";
 ///         `transferFrom`, and addresses that may not send or receive USDC. It can be made to
 ///         deliver less than a `transferFrom` asks for, as a changed token would.
 contract OffersTestUSDC is ERC20 {
+    error AccountBlocked(address account);
+
     mapping(address => bool) public blocked;
     uint256 public shortBy;
 
@@ -38,7 +40,8 @@ contract OffersTestUSDC is ERC20 {
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
-        require(!blocked[from] && !blocked[to], "Blacklistable: account is blacklisted");
+        if (blocked[from]) revert AccountBlocked(from);
+        if (blocked[to]) revert AccountBlocked(to);
         super._update(from, to, value);
     }
 }
@@ -46,6 +49,8 @@ contract OffersTestUSDC is ERC20 {
 /// @notice Stands in for the REGENT revenue staking contract: pulls the deposit, can be paused,
 ///         and can be made to pull short.
 contract OffersTestStaking is IRegentRevenueStaking {
+    error StakingPaused();
+
     IERC20 internal immutable usdc;
     bool public paused;
     uint256 public shortBy;
@@ -65,7 +70,7 @@ contract OffersTestStaking is IRegentRevenueStaking {
     }
 
     function depositUSDC(uint256 amount, bytes32 sourceTag, bytes32) external returns (uint256) {
-        require(!paused, "PAUSED");
+        if (paused) revert StakingPaused();
         lastSourceTag = sourceTag;
         require(usdc.transferFrom(msg.sender, address(this), amount - shortBy), "PULL_FAILED");
         return amount;
