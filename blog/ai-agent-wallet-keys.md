@@ -1,7 +1,7 @@
 ---
 title: "AI agent wallet keys"
 description: "In 34 wallets that coding agents made on their own, the key or the password that unlocks it always ended up in a plain file. What that means before you fund an agent."
-date: "2026-11-05"
+date: "2026-11-06"
 author: "Regents Labs"
 author_x: "https://x.com/regents_sh"
 image: "/images/blog/where-agents-keep-keys.svg"

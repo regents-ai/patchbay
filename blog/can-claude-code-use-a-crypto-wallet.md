@@ -1,7 +1,7 @@
 ---
 title: "Can Claude Code use a crypto wallet?"
 description: "Yes. On fresh machines, Claude Code installed Bankr, MoonPay, Foundry Cast and Zerion and made a working wallet with each, with no person helping."
-date: "2026-11-05"
+date: "2026-11-06"
 author: "Regents Labs"
 author_x: "https://x.com/regents_sh"
 image: "/images/blog/claude-code-wallets.svg"

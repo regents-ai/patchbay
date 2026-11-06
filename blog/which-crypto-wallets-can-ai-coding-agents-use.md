@@ -1,7 +1,7 @@
 ---
 title: "Which crypto wallets can AI coding agents use?"
-description: "Current Agent Wallet Bench results for 12 coding agents and 4 wallet tools, each run on a fresh machine. Updated 5 November 2026."
-date: "2026-11-05"
+description: "Current Agent Wallet Bench results for 12 coding agents and 4 wallet tools, each run on a fresh machine. Updated 6 November 2026."
+date: "2026-11-06"
 author: "Regents Labs"
 author_x: "https://x.com/regents_sh"
 image: "/images/blog/which-wallets-agents-can-use.svg"
@@ -9,7 +9,7 @@ image_alt: "A grid of 12 coding agents by 4 wallet tools, coloured by the result
 draft: false
 ---
 
-**Short answer, as of 5 November 2026:** most coding agents can install and use
+**Short answer, as of 6 November 2026:** most coding agents can install and use
 Bankr, MoonPay, Foundry Cast and Zerion with no person helping. MoonPay worked with
 the most agents: 10 of the 11 that took the test made a wallet with it. But every
 agent that made a wallet left either the key, or the password that unlocks it, in a
