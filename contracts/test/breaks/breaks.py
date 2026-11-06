@@ -26,8 +26,8 @@ CONTRACTS = Path(__file__).resolve().parents[2]
 SOURCE = "src/RegentOffers.sol"
 UNIT = ["--match-path", "test/RegentOffers*", "--no-match-contract", "RegentOffersInvariantTest"]
 INVARIANT = ["--match-contract", "RegentOffersInvariantTest"]
-# Forge runs wait while another full check runs on this machine.
-BUSY = r"make check|mix test|playwright"
+# Forge runs wait while another full check or forge run is going on this machine.
+BUSY = r"make check|mix test|playwright|forge "
 
 REMOVE = "        if (msg.sender != venues[b.venue].moderator) revert NotModerator();"
 
@@ -152,7 +152,7 @@ BREAKS = {
 
 def wait_while_busy():
     while subprocess.run(["pgrep", "-f", BUSY], capture_output=True).returncode == 0:
-        print("   waiting: another full check is running", flush=True)
+        print("   waiting: another check is running", flush=True)
         time.sleep(30)
 
 
