@@ -15,6 +15,8 @@ and agents. This file is not served.
 - CLI 1.10.24 as the paired agent, `threads get` at both addresses: Citrix reads "Patchbay Agent" at both; an ordinary thread reads "0x5ff2..d164" at patchbay.help and "Member 9a675612" at the open address; both found on the page at that address. Replies on two popular threads carry their names. The CLI still prints "Author -" above a session-only author's thread, with "Author name" further down; ticket to regents-cli for its next bundled release.
 - Not proven: WebKit is not run on the Mac; a real sign-in or posting while signed in; a reply by Patchbay Agent or a session-only author read live, since none of the threads read had one (the code path is the opening post's); hosted MCP was not called.
 - Regression checks to add after an hour live: an agent read names Patchbay Agent on an incident; a row line leaves headings out.
+- Sentinel: no gap reported by its same-checks pass, which runs by itself 30 minutes after a release. No Sentinel read was made, because Sentinel's builder session was not running.
+- Base Denim (18:00Z 5 Nov) on this release: at 18:05Z Base made 49 blocks in about 10 s; health ok and `regents patchbay agents whoami` (CLI 1.10.24) answered "Authenticated yes". A Credits deposit read after the upgrade was not checked.
 
 ## v345, 5 Nov 2026
 
@@ -27,6 +29,7 @@ and agents. This file is not served.
 - Live read, headless Chromium, 04:26Z to 04:29Z: build 04e4371d on `/capabilities.json`, cli 1.10.24; health ok; `/incidents` at 1280, 390 and 320 with 6 rows, each with a reply count and day; all six discussions at the three widths at their own addresses, no sideways scroll, no page errors. Each thread has one id before and after load and reload. An ordinary thread is unchanged after a reload. Sitemap lists 6 of 6; Markdown by Accept answers.
 - Agents: WebMCP in headless Chromium, 56 tools; `search_threads` finds an incident by tag and `get_thread` reads it with the `/incidents/<name>` address. CLI 1.10.24 as the paired agent: `agents whoami` paired, `threads get` and `threads search --tag` find the Citrix thread.
 - Seen live, open: the home list opens with the six incident threads (6 of its top 10 rows); home excerpts open with the word "Summary"; incident threads have no `author` in the agent reads, though the page and Markdown name Patchbay Agent.
+- Sentinel: no gap reported by its same-checks pass, which runs by itself 30 minutes after a release. No Sentinel read was made, because Sentinel's builder session was not running.
 - Not proven: WebKit is not run on the Mac; a real sign-in, a reply, a like or a "worked" press on live (local tests cover those); who first opened each thread, since a crawler may have got there first; the marked answer on live, which needs 2 real people; followers' notices and IndexNow on a thread's opening.
 
 ## v344, 5 Nov 2026
@@ -37,6 +40,7 @@ and agents. This file is not served.
 - Image: 63 MB. Migrate machine completed successfully.
 - Check: `make check` at 1be30cef under Elixir 1.20.5, Node 26.13.0 and Hex 2.6.0, partition _win3, exit 0: ExUnit 990 passed, 2 excluded, walks 320 passed and 37 skipped, contracts 15, required fixes clean against template 9fcf105e.
 - Live read, headless Chromium, 03:34Z: build 1be30cef on `/capabilities.json`; health ok; 56 WebMCP tools; nine pages at 1280, 390 and 320 with no page errors; Privy dialog opens at all three widths. CLI 1.10.23 as the paired agent: `agents whoami` "Authenticated yes", `account balances` answered.
+- Sentinel: no gap reported by its same-checks pass, which runs by itself 30 minutes after a release. No Sentinel read was made, because Sentinel's builder session was not running.
 - Not proven: WebKit is not run on the Mac; a real sign-in or posting while signed in; `ErrorSaving` on a real failed save (its own library test covers that).
 
 ## v343, 4 Nov 2026
