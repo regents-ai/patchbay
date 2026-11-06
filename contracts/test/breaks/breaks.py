@@ -30,6 +30,9 @@ INVARIANT = ["--match-contract", "RegentOffersInvariantTest"]
 BUSY = r"make check|mix test|playwright|forge "
 
 REMOVE = "        if (msg.sender != venues[b.venue].moderator) revert NotModerator();"
+PLACE_CHECKS = "        if (block.timestamp >= b.placeBy) revert PlaceByPassed();"
+RETURN_CHECKS = "        _onlyOperator(b.venue);\n        b.status = Status.Returned;"
+SURPLUS = "amount = usdc.balanceOf(address(this)) - (totalCommitted + totalOwed + revenueOwed);"
 
 # id -> (what the break does, [(text, replacement, times it must appear)])
 BREAKS = {
@@ -125,7 +128,7 @@ BREAKS = {
         ("if (usdc.balanceOf(address(this)) - before != terms.amount) revert AmountNotReceived();", "before;", 1),
     ]),
     "A4": ("the re-entry guard is off everywhere", [
-        (" nonReentrant", "", 8),
+        (" nonReentrant", "", 9),
     ]),
     "A5": ("the 72-hour cap on placeBy is off", [
         ("        if (terms.placeBy > block.timestamp + MAX_WAIT) revert PlaceByTooFar();\n", "", 1),
@@ -154,11 +157,11 @@ BREAKS = {
         ("return keccak256(abi.encode(bidder, terms));", "return keccak256(abi.encode(terms));", 1),
     ]),
     "S4": ("the nonce leaves out the wording", [
-        ("        return keccak256(abi.encode(terms));\n",
-         "        return keccak256(\n            abi.encode(terms.venue, terms.slot, terms.lane, terms.amount, terms.length, terms.placeBy, terms.salt)\n        );\n", 1),
+        ("        return keccak256(abi.encode(address(this), terms));\n",
+         "        return keccak256(\n            abi.encode(address(this), terms.venue, terms.slot, terms.lane, terms.amount, terms.length, terms.placeBy, terms.salt)\n        );\n", 1),
     ]),
     "S5": ("the nonce is the bidder's salt alone", [
-        ("        return keccak256(abi.encode(terms));\n", "        return terms.salt;\n", 1),
+        ("        return keccak256(abi.encode(address(this), terms));\n", "        return terms.salt;\n", 1),
     ]),
     "S6": ("the bidder's time window is swapped for an open one", [
         ("terms.amount, validAfter, validBefore, nonceOf(terms), signature",
@@ -167,6 +170,48 @@ BREAKS = {
     "S7": ("only the venue's operator may submit a bid", [
         ("        Venue storage v = _venue(terms.venue);\n        if (terms.amount < v.minimum) revert BelowMinimum();",
          "        Venue storage v = _venue(terms.venue);\n        _onlyOperator(terms.venue);\n        if (terms.amount < v.minimum) revert BelowMinimum();", 1),
+    ]),
+    # Round 5: the pause stops new bids only.
+    "P1": ("a pause also stops placing and replacing", [
+        (PLACE_CHECKS, PLACE_CHECKS + "\n        if (paused) revert BidsPaused();", 1),
+    ]),
+    "P2": ("a pause also stops returns", [
+        (RETURN_CHECKS, RETURN_CHECKS + "\n        if (paused) revert BidsPaused();", 1),
+    ]),
+    "P3": ("a pause also stops removals", [
+        (REMOVE, REMOVE + "\n        if (paused) revert BidsPaused();", 1),
+    ]),
+    # Round 5: a signature is good for at most an hour after it is submitted.
+    "W1": ("the one-hour cap on a signature's window is off", [
+        ("        if (validBefore > block.timestamp + MAX_SIGNATURE_WINDOW) revert SignatureWindowTooLong();\n", "", 1),
+    ]),
+    "W2": ("the cap on a signature's window is two hours", [
+        ("validBefore > block.timestamp + MAX_SIGNATURE_WINDOW",
+         "validBefore > block.timestamp + 2 * MAX_SIGNATURE_WINDOW", 1),
+    ]),
+    # Round 5: the nonce names the market.
+    "N4": ("the nonce leaves out the market", [
+        ("        return keccak256(abi.encode(address(this), terms));\n", "        return keccak256(abi.encode(terms));\n", 1),
+    ]),
+    # Round 5: recoverSurplus moves only what is above every liability, for the owner, to a wallet.
+    "R1": ("recoverSurplus pays out the whole balance", [
+        (SURPLUS, "amount = usdc.balanceOf(address(this));", 1),
+    ]),
+    "R2": ("recoverSurplus leaves out the bids held and placed", [
+        (SURPLUS, "amount = usdc.balanceOf(address(this)) - (totalOwed + revenueOwed);", 1),
+    ]),
+    "R3": ("recoverSurplus leaves out what accounts are owed", [
+        (SURPLUS, "amount = usdc.balanceOf(address(this)) - (totalCommitted + revenueOwed);", 1),
+    ]),
+    "R4": ("recoverSurplus leaves out the staking share", [
+        (SURPLUS, "amount = usdc.balanceOf(address(this)) - (totalCommitted + totalOwed);", 1),
+    ]),
+    "R5": ("anyone may recover the surplus", [
+        ("function recoverSurplus(address to) external onlyOwner nonReentrant",
+         "function recoverSurplus(address to) external nonReentrant", 1),
+    ]),
+    "R6": ("the surplus may go to the zero address or a party", [
+        ("        _checkPayout(to);\n        amount = usdc", "        amount = usdc", 1),
     ]),
 }
 
