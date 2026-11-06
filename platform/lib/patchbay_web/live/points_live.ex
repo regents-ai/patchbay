@@ -13,7 +13,7 @@ defmodule PatchbayWeb.PointsLive do
 
   use PatchbayWeb, :live_view
 
-  alias PatchbayWeb.{CreditsLimit, Read}
+  alias PatchbayWeb.Read
   alias RegentPoints.{Amount, Rules}
 
   @impl true
@@ -70,7 +70,7 @@ defmodule PatchbayWeb.PointsLive do
   defp read_points(socket), do: socket
 
   # The NFT tier is read from Base once per page open, never on each award
-  # notice, against the same allowance as the Buy panel's reads. While earning
+  # notice, against the wallet-read allowance (`Patchbay.Limits`). While earning
   # is off there is no period to add a bonus to, so nothing is read.
   defp read_bonus(%{assigns: %{earning: []}} = socket), do: socket
 
@@ -78,7 +78,7 @@ defmodule PatchbayWeb.PointsLive do
     profile_id = socket.assigns.current_profile.id
 
     Read.start(socket, :bonus, id, fn ->
-      case CreditsLimit.spend(:wallet_read, profile_id) do
+      case Patchbay.Limits.spend(:wallet_read, {:profile, profile_id}) do
         :ok -> RegentPoints.Bonus.current(id)
         :limited -> {:error, :limited}
       end
@@ -302,16 +302,10 @@ defmodule PatchbayWeb.PointsLive do
     """
   end
 
-  defp daily(rules), do: Enum.filter(rules, &(&1["category"] in ["credits", "activity"]))
+  defp daily(rules), do: Enum.filter(rules, &(&1["category"] == "activity"))
   defp once(rules), do: Enum.filter(rules, &(&1["category"] == "milestone"))
 
-  defp points(%{"category" => "credits", "micro_points_per_atomic_usdc" => rate}),
-    do: "#{whole(rate * 1_000_000)} per USDC"
-
   defp points(%{"points" => points}), do: points
-
-  defp limit(%{"category" => "credits", "daily_caps_micro" => caps}),
-    do: "Up to #{whole(caps["credits"])} a day"
 
   defp limit(%{"count" => 1}), do: "Once a day"
   defp limit(%{"count" => 2}), do: "Twice a day"
@@ -351,5 +345,4 @@ defmodule PatchbayWeb.PointsLive do
   defp summary_state(state), do: state
 
   defp scope_name("activity:account"), do: "You and your agents"
-  defp scope_name("credits"), do: "Credits purchases"
 end

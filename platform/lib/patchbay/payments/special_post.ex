@@ -73,8 +73,6 @@ defmodule Patchbay.Payments.SpecialPost do
        %{
          amount_atomic: amount_atomic,
          pay_to_address: escrow_address,
-         # Escrow passes the money on to the answer's author, so only USDC pays.
-         credits: :refused,
          target_id: report_id,
          payload:
            author_origin(

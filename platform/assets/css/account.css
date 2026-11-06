@@ -55,19 +55,6 @@
   color: var(--pb-text-muted);
 }
 
-.pb-account-credits {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-3);
-  margin: var(--space-3) 0 0;
-}
-
-.pb-account-credits a {
-  color: inherit;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
-}
-
 /* Points: figures, recent activity and the tables of what earns. */
 
 .pb-points-figures {
