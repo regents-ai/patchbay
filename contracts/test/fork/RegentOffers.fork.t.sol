@@ -109,7 +109,7 @@ contract RegentOffersForkTest is Test {
     function _digest(address from, RegentOffers.Terms memory t, uint256 validBefore) internal view returns (bytes32) {
         bytes32 structHash = keccak256(
             abi.encode(
-                RECEIVE_TYPEHASH, from, address(offers), t.amount, uint256(0), validBefore, keccak256(abi.encode(t))
+                RECEIVE_TYPEHASH, from, address(offers), t.amount, uint256(0), validBefore, keccak256(abi.encode(address(offers), t))
             )
         );
         return keccak256(abi.encodePacked("\x19\x01", USDC.DOMAIN_SEPARATOR(), structHash));
@@ -182,7 +182,7 @@ contract RegentOffersForkTest is Test {
         uint256 validBefore = vm.getBlockTimestamp() + WINDOW;
         bytes memory signature = _sign(bidderKey, bidder, t, validBefore);
         bytes32 nonce = offers.nonceOf(t);
-        assertEq(nonce, keccak256(abi.encode(t)));
+        assertEq(nonce, keccak256(abi.encode(address(offers), t)));
         uint256 balance = USDC.balanceOf(bidder);
 
         // A stranger cannot pull the money to the market without recording the bid, nor through

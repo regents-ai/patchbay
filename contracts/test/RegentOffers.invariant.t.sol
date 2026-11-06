@@ -40,7 +40,11 @@ contract OffersHandler is Test {
     mapping(address => uint256) public paidTo;
     uint256 public expectedRevenue;
     uint256 public pushed;
+    /// @dev USDC sent in other than through a bid and not yet recovered.
     uint256 public strayIn;
+    uint256 public strayTotal;
+    uint256 public recovered;
+    address public rescuer = makeAddr("rescuer");
     uint256 public deposited;
 
     constructor(OffersTestUSDC usdc_, OffersTestStaking staking_, RegentOffers offers_, address owner_) {
@@ -189,6 +193,16 @@ contract OffersHandler is Test {
         amount = uint96(bound(amount, 1, 1_000_000_000));
         usdc.mint(address(offers), amount);
         strayIn += amount;
+        strayTotal += amount;
+    }
+
+    function recoverSurplus() external {
+        if (strayIn == 0) return;
+        vm.prank(owner);
+        uint256 got = offers.recoverSurplus(rescuer);
+        assertEq(got, strayIn, "only the stray USDC is surplus");
+        recovered += got;
+        strayIn = 0;
     }
 
     function wait(uint32 seconds_, uint8 dice) external {
@@ -250,7 +264,7 @@ contract OffersHandler is Test {
                 t.amount,
                 uint256(0),
                 validBefore,
-                keccak256(abi.encode(t))
+                keccak256(abi.encode(address(offers), t))
             )
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(
@@ -299,6 +313,17 @@ contract RegentOffersInvariantTest is Test {
         assertEq(
             usdc.balanceOf(address(offers)),
             offers.totalCommitted() + offers.totalOwed() + offers.revenueOwed() + handler.strayIn()
+        );
+    }
+
+    /// forge-config: default.invariant.fail-on-revert = true
+    function invariant_recovering_the_surplus_never_moves_owed_money() public view {
+        assertEq(handler.recovered() + handler.strayIn(), handler.strayTotal(), "only stray USDC was recovered");
+        assertEq(usdc.balanceOf(handler.rescuer()), handler.recovered(), "the rescuer got only what was recovered");
+        assertGe(
+            usdc.balanceOf(address(offers)),
+            offers.totalCommitted() + offers.totalOwed() + offers.revenueOwed(),
+            "every liability is still held"
         );
     }
 
