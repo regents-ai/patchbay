@@ -207,7 +207,7 @@ BREAKS = {
         (SURPLUS, "amount = usdc.balanceOf(address(this)) - (totalCommitted + totalOwed);", 1),
     ]),
     "R5": ("anyone may recover the surplus", [
-        ("function recoverSurplus(address to) external onlyOwner nonReentrant",
+        ("function recoverSurplus(address to) external nonReentrant onlyOwner",
          "function recoverSurplus(address to) external nonReentrant", 1),
     ]),
     "R6": ("the surplus may go to the zero address or a party", [

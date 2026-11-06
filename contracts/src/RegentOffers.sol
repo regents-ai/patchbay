@@ -370,9 +370,12 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     ///         placed, every account's `owed` and the protocol share. That surplus is only USDC
     ///         that arrived other than through a bid, so no bidder's, venue's or staking's money
     ///         can move.
-    function recoverSurplus(address to) external onlyOwner nonReentrant returns (uint256 amount) {
+    function recoverSurplus(address to) external nonReentrant onlyOwner returns (uint256 amount) {
         _checkPayout(to);
         amount = usdc.balanceOf(address(this)) - (totalCommitted + totalOwed + revenueOwed);
+        // Exactly zero means nothing above the liabilities; any other amount is surplus to send. No
+        // time is read here.
+        // slither-disable-next-line incorrect-equality,timestamp
         if (amount == 0) revert NoSurplus();
         emit SurplusRecovered(to, amount);
         usdc.safeTransfer(to, amount);
