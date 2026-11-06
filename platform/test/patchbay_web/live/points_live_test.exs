@@ -42,15 +42,13 @@ defmodule PatchbayWeb.PointsLiveTest do
 
     Application.put_env(:regent_points, :starts_at, DateTime.add(DateTime.utc_now(), -1, :day))
     Application.put_env(:regent_points, :approved_rules, [rule])
-
-    Application.put_env(
-      :regent_points,
-      :adapters,
-      Map.put(config[:adapters], rule, Patchbay.Points.CreditsPurchase)
-    )
+    Application.put_env(:regent_points, :adapters, %{rule => __MODULE__})
 
     on_exit(fn ->
-      Enum.each(config, fn {key, value} -> Application.put_env(:regent_points, key, value) end)
+      for {key, _value} <- Application.get_all_env(:regent_points),
+          do: Application.delete_env(:regent_points, key)
+
+      for {key, value} <- config, do: Application.put_env(:regent_points, key, value)
     end)
   end
 end

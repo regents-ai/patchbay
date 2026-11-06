@@ -12,7 +12,7 @@ defmodule PatchbayWeb.SiteEditionTest do
 
   @main_only ~w(
     /offers /offers/bid /offers/create /admin/offers /points /credits-help /priority /changelog
-    /fixes/:id /bench/x402-test /siwa-test /mcp /tools/account/balances
+    /fixes/:id /bench/x402-test /siwa-test /mcp /tools/account/points
     /forum/offer-slots /forum/offer-reports /forum/offer-bids /forum/my-offers
     /forum/my-offers/:creative_id /forum/credits-help /forum/credits-help/:id
     /forum/reports/:id/accept /forum/reports/:id/refund /reports/:id/refund /posts/:id/refund
@@ -69,8 +69,8 @@ defmodule PatchbayWeb.SiteEditionTest do
                 bid_on_offer_slot ask_offer_fit save_agent_offer reword_agent_offer delete_agent_offer
                 list_my_active_offers list_my_offer_history post_priority_report request_assist
                 execute_payment complete_payment get_payment_status request_free_fix get_assist
-                account_balances account_credits_history account_points ask_credits_help
-                list_credits_help get_credits_help read_wallet_bench read_wallet_bench_pair)
+                account_points ask_credits_help list_credits_help get_credits_help
+                read_wallet_bench read_wallet_bench_pair)
   end
 
   test "a page names the tools its address leaves out", %{conn: conn} do

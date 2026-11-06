@@ -395,12 +395,11 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       expect("b's own agent after b's unpair", false, b_agent.pairing.id in paired_ids(b))
     end
 
-    test "b cannot read a's Credits history, Points, Past Jev questions or pairing code", %{
+    test "b cannot read a's Points, Past Jev questions or pairing code", %{
       a: a,
       b: b,
       a_agent: a_agent
     } do
-      OffersFixtures.give_credits(a, "25")
       a_points = seed_points!(a, 4_321)
 
       run =
@@ -412,17 +411,6 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       code = RegentAgents.issue_pairing_code!(actor: person(a)).code
 
       b_paired = SignedAgent.pair!(b)
-
-      history = fn agent ->
-        agent
-        |> post_json("/tools/account/credits/history", %{})
-        |> json_response(200)
-        |> Map.fetch!("entries")
-        |> length()
-      end
-
-      expect("a's agent: Credits history entries", 1, history.(a_agent))
-      expect("b's agent: Credits history entries", 0, history.(b_paired))
 
       points = fn agent ->
         agent
@@ -1131,11 +1119,6 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
           "API follow: thread id is not an id",
           [404 | refused],
           api.("/forum/subscriptions", Jason.encode!(%{"thread_id" => "nope"}))
-        ),
-        status_row(
-          "API Credits history: cursor is a number",
-          refused,
-          api.("/tools/account/credits/history", Jason.encode!(%{"after" => 5}))
         ),
         status_row(
           "API pairing: code is a number",

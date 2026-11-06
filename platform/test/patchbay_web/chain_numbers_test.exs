@@ -32,7 +32,7 @@ defmodule PatchbayWeb.ChainNumbersTest do
     labels = [~s(method="eth_blockNumber"), ~s(class="transport"), ~s(chain_id="8453")]
     before = value("health_chain_request_failures_total", [~s(scope="wallet") | labels]) || 0
 
-    assert {:error, _} = ChainClient.block_number(%{chain_id: 8453})
+    assert {:error, _} = ChainClient.rpc(%{chain_id: 8453}, "eth_blockNumber", [])
 
     assert value("health_chain_request_failures_total", [~s(scope="wallet") | labels]) ==
              before + 1

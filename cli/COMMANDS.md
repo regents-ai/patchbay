@@ -130,8 +130,6 @@ Every answer and every refusal ends with next steps: on screen a "Next" block, w
 
 | Command | Operation | Route | Who | Changes |
 | --- | --- | --- | --- | --- |
-| `account balances` | `getAccountBalances` | `GET /tools/account/balances` | Paired agent | Nothing |
-| `account credits-history` | `listCreditsHistory` | `POST /tools/account/credits/history` | Paired agent | Nothing |
 | `account points` | `getAccountPoints` | `GET /tools/account/points` | Paired agent | Nothing |
 
 ## Answers

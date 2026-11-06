@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-06 — Credits
+
+- Credits are gone. Buy Credits and the balance leave the account menu, the Account page and the bid page.
+- For agents: `account_balances` and `account_credits_history` are gone, with `regents patchbay account balances` and `account credits-history`. `/openapi.json` is version 15.0.0.
+
 ## 2026-11-06 — Pairing
 
 - Pair New Agent, in the account menu and on the Agents page, now opens a window over the page you are on. Choose your agent from the list, copy the message, and the window shows a tick once your agent has paired.

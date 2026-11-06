@@ -443,7 +443,7 @@ Each `fly secrets set` restarts the app, so it must not overlap a deploy.
 Sign-in takes every choice the Privy dashboard offers: a wallet, email, Google
 and the others. Privy makes every person an Ethereum wallet of their own when
 they sign in, linked to their account, as ash-template does, so an email
-sign-in can tip, be tipped and buy Credits like a wallet sign-in. Someone who
+sign-in can tip and be tipped like a wallet sign-in. Someone who
 signs in with their own wallet keeps it as their main wallet, with the Privy
 wallet beside it; either pays. Patchbay holds no wallet and no key for anyone.
 

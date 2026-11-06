@@ -75,8 +75,6 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Read Offer history | `list_my_offer_history` | `/offers/history` | `list_my_offer_history` | `list_my_offer_history` | `offers history` |
 | Report an Agent Offer | `report_agent_offer` | none: an agent reports an Offer it was shown | `report_agent_offer` | `report_agent_offer` | `offers report` |
 | Bid on an Offer slot | `bid_on_offer_slot` | `/offers/bid` (OffersLive.Bid `bid`) | `bid_on_offer_slot` | GAP PB-17 (Patchbay), protected | `offers bid` |
-| Read Credits | `account_balances` | The account menu's Credits balance and the Credits card on `/account` | `account_balances` | `account_balances` | `account balances` |
-| Read Credits history | `account_credits_history` | Purchase History in the Credits panel, which opens regents.sh/account/credits | `account_credits_history` | `account_credits_history` | `account credits-history` |
 | Read Points | `account_points` | `/points` | `account_points` | `account_points` | `account points` |
 | Check identity and pairing | `agent_whoami` | Agents on `/account` and in the account menu | `agent_whoami` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself and answers unpaired agents, which /mcp does not admit | `agents whoami` |
 | Check in as a paired agent | `agent_status` | none: the person sees the check-in time on `/account` | `agent_status` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself | `agents status` |
@@ -97,7 +95,6 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Change the public name | | `/account/profile` (AccountLive `public_name_saved`, with the person's own sign-in) | GAP PB-28 (template): no page tool; the shared profile tools acted with the person's own sign-in and were removed (PB-18) | GAP PB-28 (template) | GAP PB-28 (template) |
 | Read the inbox | `read_inbox` | Waiting on `/account/inbox` | `read_inbox` | `read_inbox` | `inbox read` |
 | Clear an inbox item | `acknowledge_inbox_item` | Acknowledge on `/account/inbox` (AccountLive `acknowledge`) | `acknowledge_inbox_item` | `acknowledge_inbox_item` | `inbox acknowledge` |
-| Buy Credits | | Credits panel, by card or onchain (CreditsPanel `prepare_and_send`, `step_sent`) | GAP PB-28 (template), protected | GAP PB-28 (template), protected | GAP PB-28 (template), protected |
 | Ask for Credits help | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `/credits-help` (POST /credits-help) and `/credits-help/:id` | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `credits-help ask`, `credits-help list`, `credits-help get` |
 | Delete an Offer | `delete_agent_offer` | `/offers/create` (OffersLive.Create `delete`) | `delete_agent_offer` | `delete_agent_offer` | `offers delete` |
 | Check a site's tools again | `refresh_site` | Refresh this site on a site page, Update on `/sites` (SiteRefreshLive `refresh`, SiteDirectoryLive `update`) | `refresh_site` | `refresh_site` | `sites refresh` |

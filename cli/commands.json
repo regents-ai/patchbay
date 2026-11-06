@@ -992,34 +992,6 @@
       "effect": "read"
     },
     {
-      "command": "account balances",
-      "description": "Read your person's Credits balance and this pairing's spending grant. Changes nothing.",
-      "operation_id": "getAccountBalances",
-      "webmcp": "account_balances",
-      "method": "GET",
-      "path": "/tools/account/balances",
-      "authority": "paired_agent",
-      "effect": "read"
-    },
-    {
-      "command": "account credits-history",
-      "description": "Read your person's Credits history, 50 entries a page. Changes nothing.",
-      "operation_id": "listCreditsHistory",
-      "webmcp": "account_credits_history",
-      "method": "POST",
-      "path": "/tools/account/credits/history",
-      "authority": "paired_agent",
-      "effect": "read",
-      "stdin_fields": [
-        {
-          "field": "after",
-          "type": "string",
-          "required": false,
-          "description": "Previous pagination.next_cursor unchanged, at most 2048 characters. Omit for the first page or when null; do not send null."
-        }
-      ]
-    },
-    {
       "command": "account points",
       "description": "Read your person's Points, today's total and recent entries. Changes nothing.",
       "operation_id": "getAccountPoints",

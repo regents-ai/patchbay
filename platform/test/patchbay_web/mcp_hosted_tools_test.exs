@@ -209,9 +209,6 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
          "verdict" => "verified_success",
          "client_request_id" => Ecto.UUID.generate()
        }, :ok},
-      {"account_balances", %{}, {:http, :answer, :get, "/tools/account/balances"}},
-      {"account_credits_history", %{},
-       {:http, :answer, :post, "/tools/account/credits/history", %{}}},
       {"account_points", %{}, {:http, :answer, :get, "/tools/account/points"}},
       {"get_offer_bid_options", %{"slot" => 1},
        {:http, :answer, :post, "/forum/offer-bid-options", %{"slot" => 1}}},

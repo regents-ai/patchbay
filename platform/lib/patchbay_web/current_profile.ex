@@ -121,7 +121,7 @@ defmodule PatchbayWeb.CurrentProfile do
     |> put_private(:current_profile_hooks, true)
   end
 
-  # The nested Credits header has no router and receives no handle_params.
+  # The nested account header has no router and receives no handle_params.
   defp check_navigation(%{router: nil} = socket, _claim), do: socket
 
   defp check_navigation(socket, claim) do

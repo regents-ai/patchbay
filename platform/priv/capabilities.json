@@ -475,24 +475,6 @@
       "cli_release": null
     },
     {
-      "operation": "getAccountBalances",
-      "effect": "read",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
-      "operation": "listCreditsHistory",
-      "effect": "read",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
       "operation": "getAccountPoints",
       "effect": "read",
       "authority": "paired_agent",
