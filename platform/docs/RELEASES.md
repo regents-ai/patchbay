@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v349, 6 Nov 2026
+
+- Commit: bbbd72dfb393fc82d64eff21010363919650cb3e (image `bbbd72d`), on main directly above the v348 record fc70f16b. Fly CreatedAt 2026-11-06T17:29:37Z. One machine in iad (84ed23dc9e3d68), check passing. Rollback: v348, image `0febf64`. No schema change.
+- Crash fix (Sentinel, first seen 16:41Z): `KeyError` for "site_edition" in `PatchbayWeb.SiteEdition.on_mount/4` under `HeaderAccountLive`, and in `SearchLive.mount/3`. A tab opened before 29 Oct held a LiveView session signed before `VisitLog.session/1` carried "site_edition" (9e8d2090); on reconnect it mounted without it. The LiveView signing salt in `platform/config/config.exs` is new, so those old sessions no longer verify: LiveView answers "stale" and the tab reloads once into a fresh session. Every tab open before this release reloads once; nothing is lost. `SiteEdition` still requires the key, with no fallback.
+- Image: 63 MB. Migrate machine completed successfully.
+- Check: `make check` at bbbd72df, partition _win3, in HQ's slot from 17:19Z, exit 0: ExUnit 998 passed, 2 excluded, walks 354 passed and 37 skipped, contracts 15, required fixes clean against template ff186cf9. Before it, a local proof: a session signed with another salt is refused (`:invalid`, which LiveView answers "stale"), and every session `/` renders carries "site_edition".
+- Live read, headless Chromium, 17:31Z: build bbbd72df on `/capabilities.json`; health 200; `/`, `/hermes` and `/pair` 200 at 1280 and 390 with every LiveView connected, `SearchLive` (the search window) among them signed out, no sideways scroll, no page errors. Fly logs from the release to 17:32Z show no `KeyError`.
+- Not proven: WebKit is not run on the Mac; `HeaderAccountLive` signed in on live (it renders only for a Privy sign-in; the signed-in walks in the check mount it locally); a real pre-29-Oct tab reloading, which only Sentinel's crash count can show.
+- Regression checks to add after an hour live: a LiveView session token signed with a salt other than the endpoint's answers "stale" on join and reloads, not a crash.
+
 ## v348, 6 Nov 2026
 
 - Commit: 0febf6434a9d086203c7c09d52e298dff85f7a0c (image `0febf64`), branch pb/lucide-pairing-1106 fast-forwarded onto main above 63dc4049, ahead of Points. Fly CreatedAt 2026-11-06T13:36:29Z. One machine in iad (87d346c05e1408), check passing. Rollback: v347, image `dab42c3`. No schema change.
