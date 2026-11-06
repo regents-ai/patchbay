@@ -90,7 +90,9 @@ abstract contract OffersSetUp is Test {
         uint256 validBefore
     ) internal view returns (bytes32) {
         bytes32 structHash = keccak256(
-            abi.encode(RECEIVE_TYPEHASH, from, market, t.amount, validAfter, validBefore, keccak256(abi.encode(market, t)))
+            abi.encode(
+                RECEIVE_TYPEHASH, from, market, t.amount, validAfter, validBefore, keccak256(abi.encode(market, t))
+            )
         );
         return keccak256(abi.encodePacked("\x19\x01", usdc.DOMAIN_SEPARATOR(), structHash));
     }

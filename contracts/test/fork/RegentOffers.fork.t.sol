@@ -109,7 +109,13 @@ contract RegentOffersForkTest is Test {
     function _digest(address from, RegentOffers.Terms memory t, uint256 validBefore) internal view returns (bytes32) {
         bytes32 structHash = keccak256(
             abi.encode(
-                RECEIVE_TYPEHASH, from, address(offers), t.amount, uint256(0), validBefore, keccak256(abi.encode(address(offers), t))
+                RECEIVE_TYPEHASH,
+                from,
+                address(offers),
+                t.amount,
+                uint256(0),
+                validBefore,
+                keccak256(abi.encode(address(offers), t))
             )
         );
         return keccak256(abi.encodePacked("\x19\x01", USDC.DOMAIN_SEPARATOR(), structHash));

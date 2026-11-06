@@ -72,7 +72,8 @@ contract Review3ForkTest is Review3Entry {
         deal(address(usdc), from, usdc.balanceOf(from) + amount);
         uint256 validBefore = _now() + WINDOW;
         bool ok;
-        (ok, id,) = _submit(relayer, t, from, 0, validBefore, _signBid(keyOf[from], from, address(offers), t, 0, validBefore));
+        (ok, id,) =
+            _submit(relayer, t, from, 0, validBefore, _signBid(keyOf[from], from, address(offers), t, 0, validBefore));
         require(ok, "bid refused");
     }
 
@@ -145,9 +146,13 @@ contract Review3ForkTest is Review3Entry {
         return abi.decode(abi.encode(t), (RegentOffers.Terms));
     }
 
-    function _refused(RegentOffers.Terms memory t, address from, uint256 validAfter, uint256 validBefore, bytes memory signature)
-        internal
-    {
+    function _refused(
+        RegentOffers.Terms memory t,
+        address from,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes memory signature
+    ) internal {
         (bool ok,,) = _submit(relayer, t, from, validAfter, validBefore, signature);
         assertFalse(ok, "an altered bid was taken");
         assertEq(uint8(_status(offers.bidIdOf(from, t))), uint8(RegentOffers.Status.None));
@@ -159,8 +164,9 @@ contract Review3ForkTest is Review3Entry {
         RegentOffers.Terms memory t = _fresh(SLOT, AMOUNT);
         uint256 validBefore = _now() + WINDOW;
         deal(address(usdc), bidder, AMOUNT);
-        bytes32 digest =
-            _digest(address(usdc), RECEIVE_TYPEHASH, bidder, address(offers), AMOUNT, 0, validBefore, offers.nonceOf(t));
+        bytes32 digest = _digest(
+            address(usdc), RECEIVE_TYPEHASH, bidder, address(offers), AMOUNT, 0, validBefore, offers.nonceOf(t)
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(keyOf[bidder], digest);
         uint256 n = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141;
         bytes32 otherS = bytes32(n - uint256(s));
@@ -297,7 +303,8 @@ contract Review3ForkTest is Review3Entry {
         RegentOffers.Terms memory t2 = _fresh(SLOT, AMOUNT);
         bytes32 nonce = second.nonceOf(t2);
         bytes memory transferForm = _sig(
-            keyOf[bidder], _digest(address(usdc), TRANSFER_TYPEHASH, bidder, address(second), AMOUNT, 0, validBefore, nonce)
+            keyOf[bidder],
+            _digest(address(usdc), TRANSFER_TYPEHASH, bidder, address(second), AMOUNT, 0, validBefore, nonce)
         );
         vm.prank(stranger);
         usdc.transferWithAuthorization(bidder, address(second), AMOUNT, 0, validBefore, nonce, transferForm);

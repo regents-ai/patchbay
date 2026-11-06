@@ -278,7 +278,9 @@ abstract contract Review3InvariantBase is Test {
             (, uint96 amount, bytes32 venue, bytes32 slot, address payout,,,, RegentOffers.Status s) = offers.bids(id);
             assertEq(payout, handler.payoutOf(id), "a bid keeps the wallet it was made under");
             if (s == RegentOffers.Status.Held || s == RegentOffers.Status.Placed) committed += amount;
-            if (s == RegentOffers.Status.Placed) assertEq(offers.live(venue, slot), id, "a showing bid is the live one");
+            if (s == RegentOffers.Status.Placed) {
+                assertEq(offers.live(venue, slot), id, "a showing bid is the live one");
+            }
         }
         assertEq(committed, offers.totalCommitted(), "committed");
 

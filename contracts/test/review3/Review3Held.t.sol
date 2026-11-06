@@ -206,8 +206,8 @@ contract Review3HeldTest is Review3Base {
                 expected = next != address(0) && next != v.moderator;
             } else {
                 data = abi.encodeCall(RegentOffers.setPayout, (VENUE, next));
-                expected = next != address(0) && next != address(offers) && next != address(usdc)
-                    && next != address(staking);
+                expected =
+                    next != address(0) && next != address(offers) && next != address(usdc) && next != address(staking);
             }
             vm.prank(caller);
             (bool ok,) = address(offers).call(data);
@@ -381,9 +381,7 @@ contract Review3HeldTest is Review3Base {
         assertEq(greedy.refusedByGuard(), 7, "every way back in was refused");
         assertEq(hook.balanceOf(address(greedy)), 90_000_000);
         assertEq(uint8(_status(held)), uint8(RegentOffers.Status.Held));
-        assertEq(
-            hook.balanceOf(address(offers)), offers.totalCommitted() + offers.totalOwed() + offers.revenueOwed()
-        );
+        assertEq(hook.balanceOf(address(offers)), offers.totalCommitted() + offers.totalOwed() + offers.revenueOwed());
     }
 }
 

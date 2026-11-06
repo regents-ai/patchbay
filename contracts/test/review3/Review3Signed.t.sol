@@ -136,9 +136,8 @@ contract Review3SignedTest is Review3Base {
 
         // Another market with the same venue id.
         vm.prank(relayer);
-        (bool ok,) = address(other).call(
-            abi.encodeCall(RegentOffers.bid, (s.t, s.from, s.validAfter, s.validBefore, s.signature))
-        );
+        (bool ok,) = address(other)
+            .call(abi.encodeCall(RegentOffers.bid, (s.t, s.from, s.validAfter, s.validBefore, s.signature)));
         assertFalse(ok, "another market took the signature");
         assertEq(usdc.balanceOf(address(other)), 0);
 
@@ -450,9 +449,7 @@ contract Review3SignedTest is Review3Base {
         assertEq(insider.refusedByGuard(), 8, "every call during the payment was refused");
         assertTrue(insider.sawHalfMade(), "the bid was already written while its money was still outside");
         assertEq(uint8(_status(s.id)), uint8(RegentOffers.Status.Held));
-        assertEq(
-            usdc.balanceOf(address(offers)), offers.totalCommitted() + offers.totalOwed() + offers.revenueOwed()
-        );
+        assertEq(usdc.balanceOf(address(offers)), offers.totalCommitted() + offers.totalOwed() + offers.revenueOwed());
     }
 
     // ------------------------------------------------------------- d) contract wallets

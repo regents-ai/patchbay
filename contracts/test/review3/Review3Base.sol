@@ -122,7 +122,9 @@ contract R3USDC is ERC20 {
         require(block.timestamp > validAfter, "FiatTokenV2: authorization is not yet valid");
         require(block.timestamp < validBefore, "FiatTokenV2: authorization is expired");
         require(!authorizationState[from][nonce], "FiatTokenV2: authorization is used or canceled");
-        _requireSigned(from, keccak256(abi.encode(typeHash, from, to, value, validAfter, validBefore, nonce)), signature);
+        _requireSigned(
+            from, keccak256(abi.encode(typeHash, from, to, value, validAfter, validBefore, nonce)), signature
+        );
         authorizationState[from][nonce] = true;
         _transfer(from, to, value);
     }
@@ -231,11 +233,16 @@ abstract contract Review3Entry is Test {
         });
     }
 
-    function _digest(address token, bytes32 typeHash, address from, address to, uint256 value, uint256 validAfter, uint256 validBefore, bytes32 nonce)
-        internal
-        view
-        returns (bytes32)
-    {
+    function _digest(
+        address token,
+        bytes32 typeHash,
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce
+    ) internal view returns (bytes32) {
         (bool ok, bytes memory answer) = token.staticcall(abi.encodeWithSignature("DOMAIN_SEPARATOR()"));
         require(ok, "no domain separator");
         return keccak256(
@@ -261,25 +268,42 @@ abstract contract Review3Entry is Test {
     }
 
     /// @dev `from`'s signature for a bid on `t` in the market `market`, valid in the given window.
-    function _signBid(uint256 key, address from, address market, RegentOffers.Terms memory t, uint256 validAfter, uint256 validBefore)
-        internal
-        view
-        returns (bytes memory)
-    {
+    function _signBid(
+        uint256 key,
+        address from,
+        address market,
+        RegentOffers.Terms memory t,
+        uint256 validAfter,
+        uint256 validBefore
+    ) internal view returns (bytes memory) {
         return _sig(
             key,
-            _digest(address(usdc), RECEIVE_TYPEHASH, from, market, t.amount, validAfter, validBefore, keccak256(abi.encode(market, t)))
+            _digest(
+                address(usdc),
+                RECEIVE_TYPEHASH,
+                from,
+                market,
+                t.amount,
+                validAfter,
+                validBefore,
+                keccak256(abi.encode(market, t))
+            )
         );
     }
 
     /// @dev Submits a signed bid from `submitter`. Never reverts.
-    function _submit(address submitter, RegentOffers.Terms memory t, address from, uint256 validAfter, uint256 validBefore, bytes memory signature)
-        internal
-        returns (bool ok, bytes32 id, bytes memory why)
-    {
+    function _submit(
+        address submitter,
+        RegentOffers.Terms memory t,
+        address from,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes memory signature
+    ) internal returns (bool ok, bytes32 id, bytes memory why) {
         bytes memory answer;
         vm.prank(submitter);
-        (ok, answer) = address(offers).call(abi.encodeCall(RegentOffers.bid, (t, from, validAfter, validBefore, signature)));
+        (ok, answer) =
+            address(offers).call(abi.encodeCall(RegentOffers.bid, (t, from, validAfter, validBefore, signature)));
         if (ok) id = abi.decode(answer, (bytes32));
         else why = answer;
     }

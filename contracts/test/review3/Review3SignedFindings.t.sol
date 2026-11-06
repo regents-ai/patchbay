@@ -151,7 +151,8 @@ contract Review3SignedFindingsTest is Review3Base {
         RegentOffers.Terms memory t =
             _terms(VENUE, SLOT, 500_000_000, LENGTH, uint64(_now() + 72 hours), bytes32(++salts));
         vm.prank(thief);
-        bytes32 id = offers.bid(t, address(wallet), 0, type(uint256).max, "");
+        // Round 5: the window is at most an hour; the careless wallet still accepts anything.
+        bytes32 id = offers.bid(t, address(wallet), 0, _now() + WINDOW, "");
         assertEq(usdc.balanceOf(address(wallet)), 0, "a stranger moved all of the wallet's USDC into a bid");
         assertEq(_rec(id).bidder, address(wallet));
         // Left alone it comes back, to the wallet only, after the longest wait.
@@ -193,9 +194,11 @@ contract Review3SignedFindingsTest is Review3Base {
     ///         32-byte number the wallet cannot explain. Two very different bids look the same.
     function test_R3_F17_the_wallet_prompt_cannot_show_what_is_being_bid_on() public view {
         uint256 validBefore = _now() + WINDOW;
-        RegentOffers.Terms memory shown = _terms(VENUE, SLOT, AMOUNT, LENGTH, uint64(_now() + 1 hours), bytes32(uint256(1)));
-        RegentOffers.Terms memory signedInstead =
-            _terms(VENUE, keccak256("a slot nobody reads"), AMOUNT, LENGTH, uint64(_now() + 72 hours), bytes32(uint256(1)));
+        RegentOffers.Terms memory shown =
+            _terms(VENUE, SLOT, AMOUNT, LENGTH, uint64(_now() + 1 hours), bytes32(uint256(1)));
+        RegentOffers.Terms memory signedInstead = _terms(
+            VENUE, keccak256("a slot nobody reads"), AMOUNT, LENGTH, uint64(_now() + 72 hours), bytes32(uint256(1))
+        );
         signedInstead.wordingHash = keccak256("wording the bidder never saw");
         // The six fields of the message the wallet displays: from, to, value, validAfter, validBefore, nonce.
         bytes memory a = abi.encode(bidder, address(offers), shown.amount, uint256(0), validBefore);
