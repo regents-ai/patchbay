@@ -1,16 +1,18 @@
 defmodule PatchbayWeb.PairingBox do
   @moduledoc """
-  Pairing an agent (`RegentAgents`), under "Pair New Agent" on the Agents page
-  (`#account-pairing`), in the shared pairing box (`Regent.Account.pairing`), as
-  in the Regent template: the message to paste with its code in a short box with icons
-  to copy it and make a new code, then the ten agents in
-  `RegentAgents.Harness.featured/0` to choose from by their pictures. Each agent
+  Pairing an agent (`RegentAgents`) in the shared pairing box
+  (`Regent.Account.pairing`), as in the Regent template: the pairing window
+  (`#pb-pairing`) and the `/pair` page hold it. The ten agents in
+  `RegentAgents.Harness.featured/0` come first to choose from, then the message
+  to paste with its code, then a tick once the agent uses the code. Each agent
   keeps its own code until it expires, so choosing another agent and coming back
-  shows the same message. Once the agent uses the code, the box names it.
+  shows the same message.
 
   The parent passes `profile` (signed in with Privy), its `session_lease` as
-  `lease`, `id` and its `site_edition`, whose address the message names, and sends `agents_changed: true` when an agent pairs, checks
-  in or is unpaired anywhere.
+  `lease`, `id`, its `site_edition`, whose address the message names, and
+  optionally `start`, the page the message sends the agent to once paired. It
+  sends `agents_changed: true` when an agent pairs, checks in or is unpaired
+  anywhere.
   """
   use PatchbayWeb, :live_component
 
@@ -30,10 +32,15 @@ defmodule PatchbayWeb.PairingBox do
   @impl true
   def update(%{agents_changed: true}, socket), do: {:ok, after_pairing(socket)}
 
-  def update(%{profile: profile, id: id, lease: lease, site_edition: site_edition}, socket),
-    do:
-      {:ok,
-       socket |> assign(id: id, lease: lease, site_edition: site_edition) |> take_profile(profile)}
+  def update(
+        %{profile: profile, id: id, lease: lease, site_edition: site_edition} = assigns,
+        socket
+      ),
+      do:
+        {:ok,
+         socket
+         |> assign(id: id, lease: lease, site_edition: site_edition, start: assigns[:start])
+         |> take_profile(profile)}
 
   # The profile as the page gave it, or as it reads now before each event
   # (`CurrentProfile.check_component_lease/2`).
@@ -63,11 +70,10 @@ defmodule PatchbayWeb.PairingBox do
       <Regent.Account.pairing
         id={@id}
         harnesses={choices()}
-        layout={:icons}
         phx-change="choose_agent"
         phx-submit="new_pairing_code"
         phx-target={@myself}
-        {pairing(@chosen, @codes[@chosen], @site_edition)}
+        {pairing(@chosen, @codes[@chosen], @site_edition, @start)}
       />
     </div>
     """
@@ -86,20 +92,23 @@ defmodule PatchbayWeb.PairingBox do
   defp label(harness), do: Harness.label(harness)
 
   # The pairing box's state; the box keeps one size whatever it holds.
-  defp pairing(nil, nil, _site_edition), do: %{}
+  defp pairing(nil, nil, _site_edition, _start), do: %{}
 
-  defp pairing(harness, %PairingCode.Issued{} = code, site_edition),
+  defp pairing(harness, %PairingCode.Issued{} = code, site_edition, start),
     do: %{
       chosen: to_string(harness),
-      message: PairingMessage.text(code.code, PatchbayWeb.SiteEdition.url(site_edition), harness),
+      message:
+        PairingMessage.text(code.code, PatchbayWeb.SiteEdition.url(site_edition), harness,
+          start: start
+        ),
       expires_iso: DateTime.to_iso8601(code.expires_at),
       expires: Calendar.strftime(code.expires_at, "%H:%M UTC")
     }
 
-  defp pairing(harness, {:paired, agent}, _site_edition),
+  defp pairing(harness, {:paired, agent}, _site_edition, _start),
     do: %{chosen: to_string(harness), outcome: {:paired, agent.name}}
 
-  defp pairing(harness, :unavailable, _site_edition),
+  defp pairing(harness, :unavailable, _site_edition, _start),
     do: %{chosen: to_string(harness), outcome: :unavailable}
 
   defp with_offered(socket, harness, then) do

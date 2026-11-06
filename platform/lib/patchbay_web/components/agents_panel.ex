@@ -1,9 +1,8 @@
 defmodule PatchbayWeb.AgentsPanel do
   @moduledoc """
   The agents a person has paired with their account (`RegentAgents`), on the
-  Agents page, with Unpair for each and Pair New Agent leading to the page's
-  pairing box (`PatchbayWeb.PairingBox`, `#account-pairing`), as in the Regent
-  template.
+  Agents page, with Unpair for each and Pair New Agent opening the pairing
+  window (`PatchbayWeb.PairingBox`, `#pb-pairing`), as in the Regent template.
 
   Pairing lets an agent act for the person on Patchbay, each thing it does
   marked as its own. It never touches their wallet. Pairing is shared by every
@@ -85,9 +84,16 @@ defmodule PatchbayWeb.AgentsPanel do
           </P.button>
         </:actions>
         <:footer>
-          <a href="#account-pairing" class="rg-button rg-button--secondary rg-button--no-arrow">
-            <span class="rg-button__label">Pair New Agent</span>
-          </a>
+          <P.button
+            type="button"
+            variant="secondary"
+            arrow={false}
+            aria-haspopup="dialog"
+            aria-controls="pb-pairing"
+            data-pair-open
+          >
+            Pair New Agent
+          </P.button>
         </:footer>
       </Regent.Account.agents>
     </div>

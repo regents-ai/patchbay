@@ -52,6 +52,7 @@ import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountWebMCPStatus} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
 import {installAccountMenu} from "./account_menu.ts"
+import {installEscape} from "./escape.ts"
 import {installNavMenu} from "./nav_menu.ts"
 import topbar from "../vendor/topbar.js"
 
@@ -99,6 +100,7 @@ liveSocket.connect()
 // One listener serves every copy button on every page, live or not.
 installCopyButtons()
 installAccountMenu()
+installEscape()
 installNavMenu()
 
 // The account strip, the report board tools and the standard motion all

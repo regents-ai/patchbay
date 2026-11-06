@@ -33,7 +33,7 @@
         <div>
           <h3>{step.title}</h3>
           <p>{step.text}</p>
-          <.link :if={step.pair?} href={"#{~p"/account/agents"}#account-pairing"}>Pair New Agent</.link>
+          <.link :if={step.pair?} href={~p"/pair"}>Pair New Agent</.link>
         </div>
       </li>
     </ol>

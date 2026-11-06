@@ -154,6 +154,10 @@ test.describe("a site page's post window", () => {
     const problems = watch(page)
     const postWindow = await openWindow(page)
     await fillDraft(postWindow.locator("#pb-hero-form"))
+    // The first Escape closes the window's open More section, the next the window.
+    await page.keyboard.press("Escape")
+    await expect(postWindow.locator("#pb-hero-details")).not.toHaveAttribute("open", "")
+    await expect(postWindow).toBeVisible()
     await page.keyboard.press("Escape")
     await expect(postWindow).toBeHidden()
     const signIn = page.locator("[data-account-target='sign-in']").filter({visible: true})

@@ -29,23 +29,23 @@
           aria-label="Manage your Offers"
           title="Manage your Offers"
         >
-          <.bid_icon kind={:edit} />
+          <Regent.Icons.icon name="pencil" class="pb-bid-icon" />
         </.link>
       </header>
 
       <%= case @turn do %>
         <% {:waiting, for_sale} -> %>
           <div class="pb-bid-empty" id="pb-offers-bid-waiting">
-            <.bid_icon kind={:clock} />
+            <Regent.Icons.icon name="clock" class="pb-bid-icon" />
             <p>Opens when slot {for_sale} is taken</p>
             <p class="patchbay-muted">One slot is for sale at a time.</p>
             <.link patch={bid_path(@site, for_sale)} class="rg-button rg-button--secondary">Bid for slot {for_sale}
-            <.bid_icon kind={:arrow} /></.link>
+            <Regent.Icons.icon name="arrow-right" class="pb-bid-icon" /></.link>
           </div>
         <% _turn -> %>
           <%= if @current_profile do %>
             <div class="pb-bid-wallet" id="pb-offers-bid-balance">
-              <.bid_icon kind={:wallet} />
+              <Regent.Icons.icon name="wallet" class="pb-bid-icon" />
               <div>
                 <strong>{RegentCredits.Amount.format(@balance.available)}</strong><span>available</span>
               </div>
@@ -87,7 +87,7 @@
                         value="immediate"
                         checked={@lane == :immediate}
                       />
-                      <.bid_icon kind={:bolt} />
+                      <Regent.Icons.icon name="zap" class="pb-bid-icon" />
                       <span>{if @showing, do: "Replace now", else: "Start now"}</span>
                     </label>
                     <label :if={@showing}>
@@ -97,7 +97,7 @@
                         value="next_period"
                         checked={@lane == :next_period}
                       />
-                      <.bid_icon kind={:clock} /> <span>Next 72h</span>
+                      <Regent.Icons.icon name="clock" class="pb-bid-icon" /> <span>Next 72h</span>
                     </label>
                   </div>
                 </fieldset>
@@ -115,9 +115,10 @@
                         value={wording.version.id}
                         checked={@version_id == wording.version.id}
                       />
-                      <span class="pb-bid-offer-heading"><strong>{wording.creative.label}</strong><.bid_icon kind={
-                        :check
-                      } /></span>
+                      <span class="pb-bid-offer-heading"><strong>{wording.creative.label}</strong><Regent.Icons.icon
+                        name="check"
+                        class="pb-bid-icon"
+                      /></span>
                       <span class="pb-bid-offer-copy">{wording.version.text}</span>
                     </label>
                   </div>
@@ -148,13 +149,15 @@
                     class="patchbay-button"
                   >
                     <span class="pb-action-label" data-press-label>Bid &amp; hold Credits
-                    <.bid_icon kind={:arrow} /></span>
+                    <Regent.Icons.icon name="arrow-right" class="pb-bid-icon" /></span>
                   </Regent.Primitives.button>
                   <p id="pb-offers-bid-hold">{held_words(@amount)}</p>
                 </div>
 
                 <details class="pb-bid-details" id="pb-offers-bid-terms">
-                  <summary><.bid_icon kind={:info} /> Bid terms</summary>
+                  <summary>
+                    <Regent.Icons.icon name="info" class="pb-bid-icon" /> Bid terms
+                  </summary>
                   <div class="pb-bid-terms-body">
                     <div
                       :if={@terms.next_period}
@@ -178,7 +181,7 @@
 
             <%= if !Enum.any?(@wordings, & &1.eligible?) do %>
               <div class="pb-bid-empty">
-                <.bid_icon kind={:edit} />
+                <Regent.Icons.icon name="pencil" class="pb-bid-icon" />
                 <p id="pb-offers-bid-none">
                   {if @wordings == [],
                     do: "Write an Offer to begin.",
@@ -186,7 +189,7 @@
                 </p>
                 <p class="patchbay-muted">An approved Offer unlocks bidding.</p>
                 <.link navigate={~p"/offers/create"} class="rg-button rg-button--secondary">Write an Offer
-                <.bid_icon kind={:arrow} /></.link>
+                <Regent.Icons.icon name="arrow-right" class="pb-bid-icon" /></.link>
                 <Regent.Primitives.button
                   type="button"
                   disabled
@@ -196,7 +199,8 @@
             <% end %>
 
             <p :if={@screening_paused?} class="pb-bid-paused" role="status">
-              <.bid_icon kind={:clock} /> Screening paused in this preview
+              <Regent.Icons.icon name="clock" class="pb-bid-icon" />
+              Screening paused in this preview
               <Regent.Primitives.tip id="pb-bid-paused-info" label="About paused screening">
                 Saved Offers wait until automatic screening resumes. Waiting for approval holds no Credits.
               </Regent.Primitives.tip>
@@ -222,7 +226,8 @@
                         phx-click="ask_fit"
                         phx-value-version_id={wording.version.id}
                       >
-                        Check site fit <.bid_icon kind={:arrow} />
+                        Check site fit
+                        <Regent.Icons.icon name="arrow-right" class="pb-bid-icon" />
                       </Regent.Primitives.button>
                     <% @site -> %>
                       <p class="patchbay-muted">Safety approval first, then site fit.</p>
@@ -234,7 +239,7 @@
             </details>
           <% else %>
             <div class="pb-bid-empty">
-              <.bid_icon kind={:wallet} />
+              <Regent.Icons.icon name="wallet" class="pb-bid-icon" />
               <p>Sign in to bid</p>
               <p class="patchbay-muted">Use the account button at the top of the page.</p>
             </div>
@@ -249,7 +254,10 @@
       aria-labelledby="pb-offers-bid-mine"
     >
       <header class="pb-bid-card-head">
-        <h2 id="pb-offers-bid-mine">Your activity</h2><.bid_icon kind={:chart} />
+        <h2 id="pb-offers-bid-mine">Your activity</h2><Regent.Icons.icon
+          name="chart-column"
+          class="pb-bid-icon"
+        />
       </header>
       <ol id="pb-offers-bid-mine-list" class="pb-bid-activity-list">
         <li :for={bid <- @bids} id={"pb-offers-bid-#{bid.id}"}>

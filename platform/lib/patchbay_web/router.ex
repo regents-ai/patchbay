@@ -412,6 +412,7 @@ defmodule PatchbayWeb.Router do
       live "/account/agents", AccountLive, :agents
       live "/account/inbox", AccountLive, :inbox
       live "/account/profile", AccountLive, :profile
+      live "/pair", PairLive, :show
     end
   end
 

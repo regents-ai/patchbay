@@ -458,7 +458,14 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
       expect("a opening a's Jev question", :ok, elem(live(as(a), ~p"/fixes/#{run.id}"), 0))
 
-      for path <- [~p"/account", ~p"/account/agents", ~p"/account/profile", ~p"/points", ~p"/"] do
+      for path <- [
+            ~p"/account",
+            ~p"/account/agents",
+            ~p"/account/profile",
+            ~p"/pair",
+            ~p"/points",
+            ~p"/"
+          ] do
         {_status, conn} = outcome(fn -> get(as(b), path) end)
         expect_absent("b's #{path} shows a's pairing code", conn.resp_body, code)
       end
