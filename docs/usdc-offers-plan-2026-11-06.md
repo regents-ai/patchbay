@@ -47,7 +47,11 @@ marketplace with two sides:
 - **Inventory**: the slots a site lists.
 - **Demand**: the bids that pay for them.
 
-Patchbay.help is its first site, and other Regent sites can list into it later.
+Patchbay.help is its first site, and other Regent sites join it later.
+
+The contract is written and checked on the side branch `pb/regent-offers-contract-1106`
+(`f9dd89c0`): `contracts/src/RegentOffers.sol`, its tests in `contracts/test/` and a fork walk
+in `contracts/script/OffersSanity.s.sol`. Nothing is deployed.
 
 Patchbay keeps what it is good at: screening wordings, the slot order, the two-second
 windows and choosing winners, all of which are tested today. The contract keeps the money,
@@ -56,12 +60,15 @@ under rules a stolen key cannot bend.
 ### Contract (Foundry, `contracts/` beside `PatchbayEscrow`)
 
 - **Sites (venues).** The owner adds a site: its id (`keccak256("patchbay.help")`), its
-  admin, its operator (the site's server key) and its payout wallet. A site's admin can
-  replace its operator and payout wallet, and the owner can replace a site's admin.
-- **Inventory.** A site's admin lists slots, and every listing is an event. Each slot
-  carries its opening minimum in USDC base units and its placement length (72 hours on
-  Patchbay). Which market a slot belongs to (a site market or Global) is Patchbay's, kept
-  in the slot id.
+  admin, its operator (the site's server key), its payout wallet, its opening minimum in
+  USDC base units and its placement length (72 hours on Patchbay). A site's admin can
+  replace its operator and payout wallet and change the minimum and length for bids from
+  then on; the owner can replace a site's admin.
+- **Inventory comes with the forum** (Sean, 6 Nov: "All sites that have a forum
+  automatically get 3 offer slots, so all sites"). There is no listing step. Every forum a
+  site runs has three slots, and Patchbay has three Global slots as well. The slot id is
+  Patchbay's (the forum's market and slot number), and the bidder signs it, so a bid can
+  only ever be placed in the slot it was made for.
 - **Demand: a bid is signed, not sent.** The bidder signs one USDC EIP-3009
   `ReceiveWithAuthorization` with `to` set to RegentOffers. Anyone then submits
   `bid(terms, bidder, validAfter, validBefore, signature)`; Patchbay's operator does, and
@@ -77,8 +84,8 @@ under rules a stolen key cannot bend.
     turned into a plain transfer.
   - A bid's id is `keccak256(bidder, nonce)`, so nobody can take another bidder's id first
     by copying their terms.
-  - `bid` is refused below the slot's opening minimum, for an unlisted site or slot, when
-    the length is not the slot's length, after `placeBy`, or while new bids are paused.
+  - `bid` is refused below the site's opening minimum, for an unknown site, when the length
+    is not the site's length, after `placeBy`, or while new bids are paused.
   - Contract wallets sign through the `bytes` signature form that USDC v2.2 checks with
     ERC-1271.
   - This is the same signature tips, assists and priority reports already ask for through
@@ -91,8 +98,8 @@ under rules a stolen key cannot bend.
     ends that placement in the same call, as replaced, and its unused time goes back, so a
     buyout is atomic.
   - `returnBid(bidId)` gives a held bid back in full.
-  - `remove(bidId)` ends a placement for policy, and its unused time goes back (decision 4
-    may change this).
+  - `remove(bidId)` ends a placement for policy, and the whole bid is paid (Sean, 4 b:
+    "we are removing refunds entirely").
 - **Steps anyone may take.** Each of these pays only the people the bid names, so no
   bidder needs ETH and nobody depends on Patchbay running:
   - `withdraw(bidId)` gives back a bid never placed, once its `placeBy` has passed;
@@ -100,50 +107,67 @@ under rules a stolen key cannot bend.
   - `payOut(account)` sends an account everything it is owed;
   - `pushRevenue()` sends the protocol share to REGENT staking.
 - **Money rules the contract enforces, whatever the operator does.**
-  - Bid money leaves only two ways: back to its bidder, or as payment for time the
-    placement actually showed.
-  - Used time is `amount × shown ÷ length`, rounded down, and the bidder gets the
-    remainder, so returned plus used is always the bid.
-  - Used time divides by a protocol share. The share and the staking contract are
-    constructor values until Sean answers decision 3. The protocol share goes to REGENT
-    staking through `depositUSDC`, and the rest goes to the site's payout wallet.
+  - Bid money leaves only two ways: back to its bidder, or as payment for its placement.
+  - A bid never placed comes back in full.
+  - A placement that runs its length, or is removed for policy, pays the whole bid.
+  - A placement replaced by a newer one pays `amount × shown ÷ length`, rounded down, and
+    the bidder gets the remainder, so returned plus paid is always the bid.
+  - What is paid divides 10% to REGENT staking through `depositUSDC` and 90% to the site's
+    payout wallet (Sean, 3 a). The share and the staking contract are fixed at deploy.
   - Ending a bid never sends USDC. Everything owed is recorded first, and `payOut` sends it
     afterwards. Circle can block an address from receiving USDC, and with a direct send a
     blocked bidder would jam their slot, because nothing could end the placement and
     nothing could be placed after it. Patchbay's server calls `payOut` after each end, so
     people are paid at once.
   - There is no sweep, no owner withdrawal and no ETH.
-- **Stolen operator key.** A thief can do three things, and cannot take any money:
+- **Stolen operator key.** A thief cannot take any money; every payment goes to the
+  bidder or to the site's payout wallet and REGENT staking, never to the thief. A thief can:
   - return bids;
-  - place one bid per slot at a time, which charges only for time actually shown,
-    starting now;
-  - replace a placement, which pays back its unused time.
+  - place a bid in the slot it was made for, starting now;
+  - replace a placement, which pays back its unused time;
+  - remove a placement, which pays the whole bid (4 b).
 
-  Holding a slot for a full 72 hours charges one bidder for 72 hours of showing, paid to
-  the site's payout wallet, never to the thief.
+  So a thief can charge every held bid in full, one after another: place it, then remove it.
+  The money lands in the site's own payout wallet and REGENT staking, so it can be handed
+  back by the team, but the contract cannot undo it. Before 4 b the cap was one placement
+  per slot for time actually shown.
 - **Events.** One event per change:
-  - `SiteAdded`, `SiteAdminChanged`, `OperatorChanged`, `PayoutChanged`;
-  - `SlotListed`, `SlotDelisted`;
+  - `VenueAdded`, `VenueAdminChanged`, `OperatorChanged`, `PayoutChanged`,
+    `VenueTermsChanged`;
   - `BidPlaced`, `BidReturned`, `BidWithdrawn`;
   - `Placed`, `Ended` (with the reason, used, returned and each share);
   - `PaidOut`, `RevenuePushed`, `PausedSet`.
-- **Checks.**
-  - `forge build`, `forge fmt --check` and `forge test`.
-  - Fuzzed splits: returned plus used is always the bid, for every time and amount.
-  - Invariants: the contract's USDC always equals what is held and placed, plus what is
-    owed, plus the revenue owed, plus any USDC sent to it directly; and a slot never has
-    two live placements.
-  - Tests for the operator's limits: no start time, and one live placement per slot.
-  - `slither`.
-  - A fork script on real Base USDC that is never broadcast, as `Sanity.s.sol` does.
+- **Checks, run on `f9dd89c0`.**
+  - `forge fmt`, `forge lint` (no warnings left; each deliberate one is explained beside
+    its line) and `slither` (0 findings).
+  - `forge test`: 47 tests, 0 failed. Of these, 31 are Offers unit and fuzz tests:
+    - a signature funds only its exact terms, once;
+    - paid plus returned is always the bid, and the shares are always what was paid;
+    - pause stops new bids only;
+    - a placement starts at the block time, and a slot has one live placement;
+    - a removal pays the whole bid;
+    - a blocked bidder never jams a slot;
+    - revenue waits out a paused staking contract and refuses one that takes too little;
+    - smart-wallet bids through ERC-1271.
+  - Three invariants over 256 runs of 500 random calls each (bids, places, returns,
+    removals, withdrawals, finishes, payouts, pushes, stray USDC and time):
+    - the contract's USDC always equals what is held and placed, plus what is owed, plus
+      the revenue owed, plus USDC sent to it directly;
+    - what is held equals the sum of held and placed bids;
+    - a slot never shows two placements.
+  - `OffersSanity.s.sol` on a fork of Base mainnet, never broadcast: two signed bids
+    through real USDC, a replacement after an hour, a full run, a bid returned after its
+    deadline, payouts, and the protocol share into the real REGENT staking contract.
 
 ### Funding a wallet (the onramp and deposit path)
 
 - **A person** pays from their own Privy wallet. Its **USDC Balance** is read live and is
-  shown in the account menu where Credits sit today. Add USDC opens two ways:
+  shown in the account menu where Credits sit today. Add USDC opens two ways now (Sean, 6
+  a then b):
   - **Card**: Privy's card window, already live, puts USDC on Base into that wallet.
   - **Send**: the wallet's full address, with a copy icon and a QR code, for USDC on Base
     from an exchange or another wallet.
+  - **Later**: Coinbase Onramp as a second card provider, in its own change.
 - **An agent with its own wallet** is funded by its person, or by anyone, sending USDC on
   Base to its address. Card purchases need a person in the browser, so an agent cannot buy
   by card for itself.
@@ -211,10 +235,9 @@ Bid follows `onchain-buttons` and `payments`, as a signature:
 - A repeat press signs with a new salt, so a duplicate bid is an accepted outcome, and the
   server returns the extra in full.
 - Bid is disabled only when the chain makes it certain to fail, read at the latest block:
-  - "Below the slot minimum";
+  - "Below the minimum";
   - "Not enough USDC";
-  - "Bids paused";
-  - "Slot not listed".
+  - "Bids paused".
 - The 110% replacement rule and the wording screen are Patchbay's server rules, not the
   chain's. A bid under them lands, is returned in full, and the page says why.
 - An authorization stays good for ten minutes (`validBefore`). Patchbay submits it at
@@ -231,7 +254,7 @@ Every action reaches one server door, through five surfaces:
 - the regents CLI.
 
 Each surface carries the same words and refusals. Steps the operator signs (place, return,
-remove, finish, pay out, list) are the site's server, not an account owner's action.
+remove, finish, pay out) are the site's server, not an account owner's action.
 
 | Action | Website | WebMCP | /mcp | HTTP | CLI |
 | --- | --- | --- | --- | --- | --- |
@@ -308,6 +331,11 @@ The design holds. These limits came out of the check:
 - **New smart wallets.** A smart-contract wallet that has not been deployed yet cannot sign
   for USDC: USDC checks ERC-1271 and not ERC-6492. This is the same limit x402 has today.
   Privy's embedded wallets are ordinary accounts and are not affected.
+- **Upgraded accounts.** An ordinary account that has been upgraded to a smart account
+  (EIP-7702) has code, and USDC then asks that code to approve the signature instead of
+  checking the key. Such a wallet can bid only if its account code approves signatures.
+  The fork walk met this: the test tool's public sample address has been upgraded on Base,
+  and real USDC refused its signature. x402 payments have the same limit today.
 - **Gas spam.** Signed bids cost Patchbay's operator gas to submit and to pay back.
   - Each bid commits at least the slot's minimum of real USDC.
   - Patchbay keeps its request limits on the prepare and submit doors.
@@ -316,18 +344,39 @@ The design holds. These limits came out of the check:
 
 ## Decisions
 
-### Ruled by HQ (15:58Z, engineering)
+### Sean's answers (6 Nov, 16:04Z)
 
-- 1 Custody: in the contract from bid to settlement.
-- 2 Funding: one signature per bid, with no balance kept by Regents.
-- 5 Listing: owner-added sites only.
-- 6 Onramp: Privy's card window plus send to address, with no second provider now.
-- 7 Gas: closed by signed bids, with no sponsorship.
-- 10 Auction rules: on Patchbay's server, with the operator bounded as above.
+"1. a 2. a 3. a 4. b - we are removing refunds entirely 5. All sites that have a forum
+automatically get 3 offer slots, so all sites. 6. a and then b 7. a - paymaster on Base 8.
+a - I think we would install a new auction contract instead of upgrading it, through a pause
+function 9. a 10. a 11. b 12. a"
 
-### For Sean
+- 1 a Custody: in the contract from bid to settlement.
+- 2 a Funding: one signature per bid, with no balance kept by Regents.
+- 3 a Fees: 10% to REGENT staking, 90% to the site's payout wallet, fixed at deploy.
+- 4 b Removal for policy: the whole bid is paid. Open: how far "removing refunds
+  entirely" reaches (below).
+- 5 Slots: every forum on every site gets three slots, with no listing step; the owner adds
+  each site.
+- 6 a then b: Privy's card window and send to address now, Coinbase Onramp later.
+- 7 a Paymaster on Base. Open: with one signature per bid nobody needs ETH (below).
+- 8 a No upgrade: pause stops new bids only, and a new version is a new contract.
+- 9 a The owner is Sean's Safe; the operator is a new key used only for Offers.
+- 10 a Auction rules on Patchbay's server, with the operator bounded as above.
+- 11 b and 12 a: below.
 
-3. **Fees and their receivers.** How the money for shown time divides.
+### Open with Sean
+
+- **Refunds.** The contract today: a bid never placed comes back in full; a placement
+  replaced by a higher bid returns its unused time; a removal for policy pays the whole bid.
+  The question is whether a replaced placement should also keep nothing back.
+- **Paymaster.** Bidding is one signature and Patchbay sends every transaction, so no
+  bidder ever needs ETH and a paymaster has nothing to pay for. The question is whether to
+  keep it that way or add one anyway.
+
+### Answered earlier, kept for the record
+
+3. **Fees and their receivers** (answered: a). How the money for shown time divides.
    - a) 10% to REGENT staking and 90% to the site's payout wallet (for patchbay.help, the
      Regents Labs treasury Safe), fixed at deploy.
    - b) All of it to REGENT staking.
@@ -335,20 +384,20 @@ The design holds. These limits came out of the check:
    - Recommendation: a. It matches the priority-report escrow's 90/10, and it gives a
      future site a reason to list. The contract takes the share and receivers at deploy,
      so any letter works.
-4. **Unused time on a removal for policy.**
+4. **Unused time on a removal for policy** (answered: b).
    - a) It goes back to the bidder. Disputes are handled by the team off the chain and paid
      from the treasury, and the contract never reverses a payment.
    - b) It is forfeited to the site, as today.
    - Recommendation: a. Real USDC taken by an operator's removal invites disputes, and with
      a) a stolen operator key cannot cost a bidder anything but shown time.
-8. **Upgrades and pause.** Whether the contract can be upgraded or paused.
+8. **Upgrades and pause** (answered: a). Whether the contract can be upgraded or paused.
    - a) No upgrade. The owner Safe can pause new bids and new listings only; placing,
      returns, withdrawals, finishing and payouts never pause.
    - b) Fully fixed, with no pause, like `PatchbayEscrow`.
    - c) An upgradeable proxy.
    - Recommendation: a. It can stop new money coming in during an incident without ever
      trapping money already in, and a new version is a new contract that sites move to.
-9. **Owner and operator keys.**
+9. **Owner and operator keys** (answered: a).
    - a) The owner is Sean's Safe, and the operator is a new key used only for Offers.
    - b) The operator reuses the escrow's operator key.
    - Recommendation: a. One key per contract keeps a leak to one market.
@@ -359,11 +408,11 @@ The live count found five Credits purchases, all credited on Base, by three acco
 USDC in all (7 to 26 Oct). There have been no gifts, no refunds and no holds of any status
 on any site: no Credit has ever been held or spent on a bid.
 
-- **11 Cutover.** There are no open Credits bids or showing Credits placements, so there is
-  nothing to cut over. The cutover release closes Credits bidding. A Credits bid placed
-  between now and then is given back in full, and nothing more is kept.
-- **12 Leftover balances.** HQ puts one item to Sean: pay the three buyers back their 70
-  USDC, then close Credits. Credits help goes with it.
+- **11 b Cutover.** A Credits bid made before the cutover runs its course on Credits. The
+  count found none open or showing, so in practice nothing carries over; the cutover
+  release closes Credits bidding.
+- **12 a Leftover balances.** The three buyers are paid back their 70 USDC one for one,
+  then Credits close and Credits help goes with them. HQ runs the payback.
 
 ## Not decided here
 
