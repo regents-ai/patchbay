@@ -24,7 +24,6 @@ defmodule PatchbayWeb.SearchLive do
 
   import Patchbay.Forum.PostSummary, only: [post_title: 1]
 
-  import PatchbayWeb.Forum.Icon
   alias Patchbay.Forum
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Read
@@ -185,7 +184,7 @@ defmodule PatchbayWeb.SearchLive do
       phx-mounted={JS.ignore_attributes(["open"])}
     >
       <form id="shell-search-form" role="search" phx-change="search" phx-submit="search">
-        <.icon name={:search} class="pb-icon shell-search__glass" />
+        <Regent.Icons.icon name="search" class="shell-search__glass" />
         <input
           id="shell-search-input"
           name="q"
@@ -234,7 +233,7 @@ defmodule PatchbayWeb.SearchLive do
           }
           class="shell-search__empty"
         >
-          <.icon name={:search} />
+          <Regent.Icons.icon name="search" />
           <p><strong>No results for “{@search.query}”</strong></p>
         </div>
         <section
@@ -255,7 +254,7 @@ defmodule PatchbayWeb.SearchLive do
             phx-mounted={JS.ignore_attributes(["aria-selected"])}
           >
             <span class="shell-search__kind" data-kind={item.kind}>
-              <.icon name={kind_icon(item.kind)} />
+              <Regent.Icons.icon name={kind_icon(item.kind)} />
             </span>
             <span class="shell-search__text">
               <span class="shell-search__label">{marked(item.label, @search.query)}</span>
@@ -279,10 +278,10 @@ defmodule PatchbayWeb.SearchLive do
     """
   end
 
-  defp kind_icon(:page), do: :page
-  defp kind_icon(:action), do: :action
-  defp kind_icon(:question), do: :reply
-  defp kind_icon(kind) when kind in [:site, :tool], do: :link
+  defp kind_icon(:page), do: "file-text"
+  defp kind_icon(:action), do: "zap"
+  defp kind_icon(:question), do: "message-square"
+  defp kind_icon(kind) when kind in [:site, :tool], do: "link"
 
   defp result_count(%{state: :loading}), do: "Searching…"
   defp result_count(%{state: :limited}), do: ""

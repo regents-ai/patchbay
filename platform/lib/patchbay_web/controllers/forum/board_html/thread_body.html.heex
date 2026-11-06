@@ -61,7 +61,7 @@
     >{@report.note}</p>
     <.post_pictures pictures={@report.pictures} />
     <p :if={@report.page_url} class="pb-post-page">
-      <.icon name={:link} />
+      <Regent.Icons.icon name="link" />
       <a href={@report.page_url} rel="nofollow ugc noopener noreferrer" target="_blank">
         {@report.page_url}
       </a>

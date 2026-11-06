@@ -113,7 +113,7 @@
 .pb-thread-navigation button[aria-pressed="true"] { background: var(--pb-accent-wash); }
 .pb-follow-bell { display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.05rem; }
 .pb-follow-bell[aria-pressed="true"] { color: var(--pb-agent-edge); }
-.pb-follow-bell[aria-pressed="true"] .pb-icon { fill: currentColor; }
+.pb-follow-bell[aria-pressed="true"] .rg-icon { fill: currentColor; }
 .pb-agent-intro { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: center; gap: 3rem; padding: 1.5rem 0; border-bottom: 1px solid var(--pb-line); }
 .pb-agent-intro h1 { max-width: 19ch; margin: 0; justify-self: center; text-align: center; font-family: var(--font-family-title); font-size: clamp(2rem, 3vw, 2.75rem); font-weight: 400; line-height: 1.12; text-wrap: balance; }
 .pb-agent-handoff { padding: 1rem 1.5rem; min-width: 0; }

@@ -10,7 +10,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   use PatchbayWeb, :html
 
   import PatchbayWeb.Forum.Face
-  import PatchbayWeb.Forum.Icon
   import PatchbayWeb.Forum.Nameplate
   import Patchbay.Forum.PostSummary, only: [post_title: 1]
 
@@ -367,7 +366,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         aria-label="Search"
         aria-keyshortcuts="Meta+K Control+K"
       >
-        <.icon name={:search} class="pb-header-search__icon" />
+        <Regent.Icons.icon name="search" class="pb-header-search__icon" />
         <span class="pb-header-search__prompt">Search</span>
         <kbd
           id="shell-search-keys"
@@ -1191,7 +1190,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             class={["pb-row-replies", post.solved && "is-solved"]}
             title={count_words(post.reply_count, "reply", "replies")}
           >
-            <.icon name={:reply} />
+            <Regent.Icons.icon name="message-square" />
             <strong>{post.reply_count}</strong>
             <span class="visually-hidden">
               {if post.reply_count == 1, do: "reply", else: "replies"}{if post.solved,
@@ -1896,7 +1895,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <input :if={@cursor} type="hidden" name="after" value={@cursor} />
           <input type="hidden" name="replies" value={@reply_filter} />
           <button type="submit" class="pb-quiet-button" aria-pressed={to_string(@said_worked)}>
-            <span class="pb-action-label" data-press-label><.icon name={:check} /> Worked</span>
+            <span class="pb-action-label" data-press-label><Regent.Icons.icon name="check" /> Worked</span>
           </button>
         </form>
         <form
@@ -1908,7 +1907,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <input type="hidden" name="reply_id" value={@reply.id} />
           <button type="submit" class="pb-quiet-button">
-            <span class="pb-action-label" data-press-label><.icon name={:check} /> This answered it</span>
+            <span class="pb-action-label" data-press-label><Regent.Icons.icon name="check" />
+            This answered it</span>
           </button>
         </form>
         <form
@@ -1920,7 +1920,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
           <input type="hidden" name="reply_id" value={@reply.id} />
           <button type="submit" class="pb-quiet-button">
-            <span class="pb-action-label" data-press-label><.icon name={:check} /> Accept and pay</span>
+            <span class="pb-action-label" data-press-label><Regent.Icons.icon name="check" />
+            Accept and pay</span>
           </button>
         </form>
         <.like_button
@@ -2023,7 +2024,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <section id="pb-fix" class="pb-fix-card" aria-labelledby="pb-fix-title">
       <header class="pb-fix-head">
         <h2 id="pb-fix-title">
-          <.icon name={:check} /> {if @fix, do: "The fix", else: "The answer"}
+          <Regent.Icons.icon name="check" /> {if @fix, do: "The fix", else: "The answer"}
         </h2>
         <p :if={worked_line(@reply)} class="pb-fix-worked">{worked_line(@reply)}</p>
       </header>

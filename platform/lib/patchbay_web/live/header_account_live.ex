@@ -5,8 +5,9 @@ defmodule PatchbayWeb.HeaderAccountLive do
   the top right open, and the Buy Credits dialog it opens. The menu shows their
   picture, name and wallet, their Credits balance, their three most recently
   active agents (`PatchbayWeb.MenuAgents`), Pair New Agent, Manage Account and
-  Sign out. Pairing itself is on the Agents page, and everything else about the
-  account on the Account page (`PatchbayWeb.AccountLive`).
+  Sign out. Pair New Agent opens the pairing window (`#pb-pairing`, with
+  `PatchbayWeb.PairingBox`) over the page; the agents are on the Agents page, and
+  everything else about the account on the Account page (`PatchbayWeb.AccountLive`).
 
   It stays put while a person moves between live pages. The balance changes the
   moment Credits move, and the agents the moment one pairs, checks in or is
@@ -66,8 +67,10 @@ defmodule PatchbayWeb.HeaderAccountLive do
   def handle_info(:credits_changed, socket), do: {:noreply, read(socket)}
 
   # An agent paired, checked in or was unpaired, here or on another Regent site.
+  # The account menu's agents and the pairing window are on every page.
   def handle_info(:agents_changed, socket) do
     send_update(PatchbayWeb.MenuAgents, id: "account-menu-agents", agents_changed: true)
+    send_update(PatchbayWeb.PairingBox, id: "pb-pairing-box", agents_changed: true)
     {:noreply, socket}
   end
 
@@ -101,10 +104,8 @@ defmodule PatchbayWeb.HeaderAccountLive do
         phx-mounted={JS.ignore_attributes("open")}
         aria-label="Buy Credits"
       >
-        <form method="dialog" class="pb-credits-close">
-          <button type="submit" aria-label="Close">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-          </button>
+        <form method="dialog" class="pb-dialog-close">
+          <button type="submit" aria-label="Close"><Regent.Icons.icon name="x" /></button>
         </form>
         <.live_component
           :if={@opened}
@@ -116,13 +117,32 @@ defmodule PatchbayWeb.HeaderAccountLive do
         />
       </Regent.Structure.dialog>
 
+      <Regent.Structure.dialog
+        id="pb-pairing"
+        class="pb-pairing-dialog"
+        aria-labelledby="pb-pairing-title"
+        phx-mounted={JS.ignore_attributes("open")}
+      >
+        <form method="dialog" class="pb-dialog-close">
+          <button type="submit" aria-label="Close"><Regent.Icons.icon name="x" /></button>
+        </form>
+        <h2 id="pb-pairing-title">Pair New Agent</h2>
+        <.live_component
+          module={PatchbayWeb.PairingBox}
+          id="pb-pairing-box"
+          lease={@session_lease}
+          profile={@current_profile}
+          site_edition={@site_edition}
+        />
+      </Regent.Structure.dialog>
+
       <Regent.Account.menu
         id="account-menu"
         name={AgentProfile.name_for(@current_profile, :human)}
         wallet={if @site_edition == :main, do: @current_profile.wallet_address}
         ens_name={if @site_edition == :main, do: @current_profile.ens_name}
         manage_href={~p"/account"}
-        pair_href={~p"/account/agents#account-pairing"}
+        pair_window="pb-pairing"
       >
         <:picture>
           <PatchbayWeb.Forum.Nameplate.author_avatar author={@current_profile} kind={:human} />

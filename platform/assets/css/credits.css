@@ -1,6 +1,6 @@
 /* Regent Credits: the account menu's balance row, the Buy Credits dialog it
    opens and the panel inside it, as in the Regent template, in Patchbay's own
-   tokens. */
+   tokens. The pairing window and the /pair page share the dialog's frame. */
 
 .pb-credits {
   display: contents;
@@ -13,33 +13,34 @@
   display: block;
 }
 
-/* The shared window frame (Regent.Structure.dialog) draws the box, its corners
-   and the dim behind it; its inner area scrolls. */
-.pb-credits-dialog {
-  --pb-credits-pad-top: var(--space-4);
-  --pb-credits-pad-side: var(--space-4);
+/* The Buy Credits and pairing windows. The shared window frame
+   (Regent.Structure.dialog) draws the box, its corners and the dim behind it;
+   its inner area scrolls. */
+:is(.pb-credits-dialog, .pb-pairing-dialog) {
+  --pb-dialog-pad-top: var(--space-4);
+  --pb-dialog-pad-side: var(--space-4);
   --rg-dialog-size: 30rem;
   max-block-size: calc(100dvh - 4rem);
 }
 
-.pb-credits-dialog .rg-dialog__body {
-  padding: var(--pb-credits-pad-top) var(--pb-credits-pad-side) var(--space-3);
+:is(.pb-credits-dialog, .pb-pairing-dialog) .rg-dialog__body {
+  padding: var(--pb-dialog-pad-top) var(--pb-dialog-pad-side) var(--space-3);
 }
 
-/* The close button sits in the dialog's top right corner and stays there while
-   the dialog scrolls. Its row takes no height, so the panel keeps its place. */
-.pb-credits-close {
+/* The close button sits in the window's top right corner and stays there while
+   the window scrolls. Its row takes no height, so the panel keeps its place. */
+.pb-dialog-close {
   position: sticky;
-  inset-block-start: calc(-1 * var(--pb-credits-pad-top));
+  inset-block-start: calc(-1 * var(--pb-dialog-pad-top));
   z-index: var(--rg-layer-card);
   display: flex;
   justify-content: flex-end;
   height: 0;
-  margin-block: calc(-1 * var(--pb-credits-pad-top)) var(--pb-credits-pad-top);
-  margin-inline-end: calc(-1 * var(--pb-credits-pad-side));
+  margin-block: calc(-1 * var(--pb-dialog-pad-top)) var(--pb-dialog-pad-top);
+  margin-inline-end: calc(-1 * var(--pb-dialog-pad-side));
 }
 
-.pb-credits-close button {
+.pb-dialog-close button {
   display: grid;
   flex: none;
   place-items: center;
@@ -52,23 +53,33 @@
   cursor: pointer;
 }
 
-.pb-credits-close svg {
-  width: 1.5rem;
-  height: 1.5rem;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
+.pb-dialog-close .rg-icon {
+  font-size: 1.5rem;
 }
 
 @media (hover: hover) {
-  .pb-credits-close button:hover {
+  .pb-dialog-close button:hover {
     background: var(--pb-surface-sunk);
   }
 }
 
 .pb-credits-dialog .credits-panel__head {
   padding-inline-end: 3rem;
+}
+
+.pb-pairing-dialog h2 {
+  margin: 0 0 var(--space-3);
+  padding-inline-end: 3rem;
+  font-family: var(--font-family-ui);
+  font-size: var(--type-headline-size);
+}
+
+.pair-page .rg-account__pair {
+  max-inline-size: 27rem;
+}
+
+.pair-page #pair-start {
+  overflow-wrap: anywhere;
 }
 
 /* The panel. */
@@ -301,13 +312,13 @@
 }
 
 @media (max-width: 47.99rem) {
-  .pb-credits-dialog {
-    --pb-credits-pad-top: var(--space-3);
-    --pb-credits-pad-side: var(--space-2);
+  :is(.pb-credits-dialog, .pb-pairing-dialog) {
+    --pb-dialog-pad-top: var(--space-3);
+    --pb-dialog-pad-side: var(--space-2);
     max-block-size: calc(100dvh - 1rem);
   }
 
-  .pb-credits-dialog .rg-dialog__body {
+  :is(.pb-credits-dialog, .pb-pairing-dialog) .rg-dialog__body {
     padding-block-end: var(--space-2);
   }
 

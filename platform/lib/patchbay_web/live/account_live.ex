@@ -6,9 +6,8 @@ defmodule PatchbayWeb.AccountLive do
   - Account (`/account`): who Patchbay knows them as, their wallet with its
     ENS name when it has one, their Credits and their Profile on every Regent
     site, in the layout every Regent site shares (`Regent.Account.layout`).
-  - Agents (`/account/agents`): the agents they paired and pairing a new one
-    (`#account-pairing`), in the layout every Regent site's Agents page shares
-    (`Regent.Account.agents_layout`).
+  - Agents (`/account/agents`): the agents they paired, whose Pair New Agent
+    opens the pairing window (`PatchbayWeb.HeaderAccountLive`).
   - Inbox (`/account/inbox`): what happened on the sites, tools and threads
     they follow, and what they follow. It reads this browser's own follows
     too, so it works before signing in.
@@ -196,10 +195,8 @@ defmodule PatchbayWeb.AccountLive do
   def handle_info(:credits_changed, socket), do: {:noreply, read_credits(socket)}
 
   def handle_info(:agents_changed, socket) do
-    if socket.assigns.live_action == :agents do
-      send_update(PatchbayWeb.AgentsPanel, id: "account-agents", agents_changed: true)
-      send_update(PatchbayWeb.PairingBox, id: "account-pairing-box", agents_changed: true)
-    end
+    if socket.assigns.live_action == :agents,
+      do: send_update(PatchbayWeb.AgentsPanel, id: "account-agents", agents_changed: true)
 
     {:noreply, socket}
   end
@@ -324,31 +321,15 @@ defmodule PatchbayWeb.AccountLive do
     """
   end
 
-  # The layout every Regent site's Agents page shares (`Regent.Account.agents_layout`):
-  # the agents across the top, then pairing a new one. Pair New Agent is
-  # `#account-pairing`.
   defp agents(assigns) do
     ~H"""
-    <Regent.Account.agents_layout id="account">
-      <:agents>
-        <.live_component
-          module={PatchbayWeb.AgentsPanel}
-          id="account-agents"
-          profile={@current_profile}
-          lease={@session_lease}
-          site_edition={@site_edition}
-        />
-      </:agents>
-      <:pairing>
-        <.live_component
-          module={PatchbayWeb.PairingBox}
-          id="account-pairing-box"
-          profile={@current_profile}
-          lease={@session_lease}
-          site_edition={@site_edition}
-        />
-      </:pairing>
-    </Regent.Account.agents_layout>
+    <.live_component
+      module={PatchbayWeb.AgentsPanel}
+      id="account-agents"
+      profile={@current_profile}
+      lease={@session_lease}
+      site_edition={@site_edition}
+    />
     """
   end
 

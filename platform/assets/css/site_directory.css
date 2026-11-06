@@ -87,7 +87,7 @@
 .pb-directory-url { display: flex; align-items: center; gap: .25rem; min-width: 0; min-height: 32px; color: var(--pb-text-muted); font-size: .72rem; }
 .pb-directory-url > a { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pb-directory-refresh { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; flex: 0 0 32px; }
-.pb-directory-refresh svg { display: block; width: 16px; height: 16px; }
+.pb-directory-refresh .rg-icon { display: block; font-size: 16px; }
 .pb-directory-refresh--busy { cursor: default; }
 .pb-directory-refresh--busy svg { animation: pb-directory-spin .8s linear infinite; }
 .pb-directory-count { display: inline-flex; flex-direction: column; align-items: end; justify-content: center; min-width: 44px; min-height: 34px; padding: 0; }

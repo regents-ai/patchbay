@@ -291,7 +291,10 @@ defmodule PatchbayWeb.OffersLive.Bid do
         <div class="pb-bid-owner">
           <.link navigate={Patchbay.Identity.AgentProfile.profile_url(@showing.owner)}>{@showing.owner.agent_name}</.link>
           <span title={"Ends #{moment(@showing.expires_at)}"}>
-            <.bid_icon kind={:clock} /> {time_left(@showing.expires_at, @now)}
+            <Regent.Icons.icon name="clock" class="pb-bid-icon" /> {time_left(
+              @showing.expires_at,
+              @now
+            )}
           </span>
         </div>
         <dl class="pb-bid-facts">
@@ -313,7 +316,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
           </div>
         </dl>
         <div class="pb-bid-next-summary">
-          <.bid_icon kind={:clock} />
+          <Regent.Icons.icon name="clock" class="pb-bid-icon" />
           <div>
             <strong>Next 72h</strong><span>Starts in {hours_until(@showing.expires_at, @now)}</span>
           </div>
@@ -341,46 +344,12 @@ defmodule PatchbayWeb.OffersLive.Bid do
         </details>
       <% else %>
         <div class="pb-bid-open-slot">
-          <.bid_icon kind={:edit} /><p>Your Offer could be here.</p><span>72 hours · from {credits(
+          <Regent.Icons.icon name="pencil" class="pb-bid-icon" /><p>Your Offer could be here.</p><span>72 hours · from {credits(
             @opening
           )}</span>
         </div>
       <% end %>
     </Regent.Structure.panel>
-    """
-  end
-
-  # Small, decorative symbols for the bid controls; names stay in their labels.
-  @bid_icons %{
-    back: "M19 12H5m7-7-7 7 7 7",
-    arrow: "M5 12h14m-7-7 7 7-7 7",
-    bolt: "m13 2-9 12h7l-1 8 10-12h-7z",
-    clock: "M12 8v4l3 2M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0",
-    wallet: "M20 8V5H4v14h16v-5m0-6h-6v6h6zM16 11h.01",
-    edit: "m16 3 5 5-12 12H4v-5zM13 6l5 5",
-    check: "m5 12 4 4L19 6",
-    chart: "M4 4v16h16M8 15v-3m5 3V8m5 7V5",
-    info: "M12 11v6m0-10h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0"
-  }
-
-  attr(:kind, :atom, required: true)
-
-  defp bid_icon(assigns) do
-    assigns = assign(assigns, path: Map.fetch!(@bid_icons, assigns.kind))
-
-    ~H"""
-    <svg
-      class="pb-bid-icon"
-      width="18"
-      height="18"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      stroke-width="1.6"
-      stroke-linecap="round"
-      stroke-linejoin="round"
-      aria-hidden="true"
-    ><path d={@path} /></svg>
     """
   end
 

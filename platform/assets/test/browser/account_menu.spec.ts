@@ -145,34 +145,26 @@ test("Manage Account opens this site's Account page and the menu closes", async 
   await problems.expect()
 })
 
-test("Pair New Agent in the menu lands on the Agents page's pairing box", async ({page}) => {
+test("Pair New Agent in the menu opens the pairing window over the page", async ({page}) => {
   const problems = watch(page)
   await page.goto("/about")
   await ready(page)
   await openMenu(page)
-  await menu(page).getByRole("link", {name: "Pair New Agent"}).click()
-  await expect(page).toHaveURL(/\/account\/agents#account-pairing$/)
+  await menu(page).getByRole("button", {name: "Pair New Agent"}).click()
   await expect(menu(page)).toBeHidden()
-  const pairing = page.locator("#account-pairing")
-  await expect(pairing).toBeInViewport()
-  // The keyboard starts on the agent choice.
-  await expect(pairing.getByRole("radio").first()).toBeFocused()
+  const pairing = page.locator("#pb-pairing")
+  await expect(pairing).toBeVisible()
+  await expect(page).toHaveURL(/\/about$/)
+  // The keyboard starts in the window, on the agent dropdown.
+  await expect(pairing.locator("summary")).toBeFocused()
 
-  // Pressed again from the same address after scrolling away, it moves there again.
-  await page.evaluate(() => window.scrollTo({top: 0}))
-  await expect(pairing.getByRole("heading", {name: "Pair New Agent"})).not.toBeInViewport()
-  await ready(page)
+  // Closed, focus goes back to the account button; pressed again, it opens again.
+  await pairing.getByRole("button", {name: "Close"}).click()
+  await expect(pairing).toBeHidden()
+  await expect(chip(page)).toBeFocused()
   await openMenu(page)
-  await menu(page).getByRole("link", {name: "Pair New Agent"}).click()
-  await expect(menu(page)).toBeHidden()
-  await expect(pairing).toBeInViewport()
-  await expect(pairing.getByRole("radio").first()).toBeFocused()
-
-  // The Agents page's own Pair New Agent, under the agents, goes to the same box.
-  await page.evaluate(() => window.scrollTo({top: 0}))
-  await page.locator("#account-agents").getByRole("link", {name: "Pair New Agent"}).click()
-  await expect(pairing).toBeInViewport()
-  await expect(pairing.getByRole("radio").first()).toBeFocused()
+  await menu(page).getByRole("button", {name: "Pair New Agent"}).click()
+  await expect(pairing).toBeVisible()
   await problems.expect()
 })
 

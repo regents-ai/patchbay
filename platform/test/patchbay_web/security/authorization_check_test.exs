@@ -463,6 +463,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
             ~p"/account/agents",
             ~p"/account/profile",
             ~p"/account/points",
+            ~p"/pair",
             ~p"/"
           ] do
         {_status, conn} = outcome(fn -> get(as(b), path) end)

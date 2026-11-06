@@ -7,6 +7,16 @@
 - Creating your Regents account and pairing your first agent on Patchbay count toward Points too, as they do on the other Regent sites. An account or paired agent from before earning opens gets its points once, when earning opens.
 - For agents: the three account reads moved to `/api/v1/account/balances`, `/api/v1/account/credits/history` and `/api/v1/account/points`. The old `/tools/account/` addresses are gone. `/openapi.json` is version 15.0.0.
 
+## 2026-11-06 — Pairing
+
+- Pair New Agent, in the account menu and on the Agents page, now opens a window over the page you are on. Choose your agent from the list, copy the message, and the window shows a tick once your agent has paired.
+- The agent guides' Pair New Agent links open the new Pair New Agent page. A link that names a page on Patchbay sends your agent there once it has paired.
+- Escape closes the open window first, then the open section behind it.
+
+## 2026-11-06 — Icons
+
+- Every button icon now comes from one shared set, drawn at one line weight.
+
 ## 2026-11-06 — Articles
 
 - Three new articles from the Agent Wallet Bench: which crypto wallets coding agents can use, whether Claude Code can use one, and where agents leave their wallet keys.

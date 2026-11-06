@@ -4,9 +4,11 @@ import {expect, signedIn, test} from "./support/test"
 // Patchbay's own words never open a heading, label, tab, link, button, table head,
 // summary, page title or description with who, what, where, why or when; that reads
 // as AI writing (founder, 28 Oct 2026). Headings, labels, legends and tabs are one or
-// two words. Run at 1280 over every fixed page the sitemap lists, one site, one tool
-// and one thread, and the signed-in pages. Writing by strangers and by the blog's
-// authors is theirs: a post's or reply's words, a thread's title and an article.
+// two words, but for Pair New Agent, a fixed label kept word for word, which heads
+// the pairing window on every signed-in page. Run at 1280 over every fixed page the
+// sitemap lists, one site, one tool and one thread, and the signed-in pages. Writing
+// by strangers and by the blog's authors is theirs: a post's or reply's words, a
+// thread's title and an article.
 //
 // Left out until their owners change them, each named in the hand-off:
 // - /privacy and /terms, which are versioned and change only on Sean's go;
@@ -20,10 +22,11 @@ const content =
   ".rg-discussion__body, .rg-discussion__title, .rg-blog, .pb-incident-head h1, .pb-changelog__release"
 
 const wWord = /^\s*(who|what|where|why|when)\b/i
+const fixedLabels = ["Pair New Agent"]
 
 async function copyProblems(page: Page) {
   return page.evaluate(
-    ({content, wWord}) => {
+    ({content, wWord, fixedLabels}) => {
       const opening = new RegExp(wWord, "i")
       const problems: string[] = []
       const words = (element: Element) => {
@@ -39,7 +42,7 @@ async function copyProblems(page: Page) {
         if (!text) continue
         if (opening.test(text)) problems.push(`${element.tagName.toLowerCase()} opens "${text.slice(0, 60)}"`)
         const named = element.matches("h1, h2, h3, h4, h5, h6, label, legend, [role=tab]")
-        if (named && text.split(" ").length > 2) problems.push(`${element.tagName.toLowerCase()} "${text.slice(0, 60)}" is over two words`)
+        if (named && !fixedLabels.includes(text) && text.split(" ").length > 2) problems.push(`${element.tagName.toLowerCase()} "${text.slice(0, 60)}" is over two words`)
       }
       for (const element of document.querySelectorAll("[aria-label], [title], [placeholder]")) {
         if (element.closest(content)) continue
@@ -53,7 +56,7 @@ async function copyProblems(page: Page) {
         if (opening.test(value)) problems.push(`page ${name} opens "${value.slice(0, 60)}"`)
       return problems
     },
-    {content, wWord: wWord.source},
+    {content, wWord: wWord.source, fixedLabels},
   )
 }
 

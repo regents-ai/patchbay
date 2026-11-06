@@ -56,7 +56,7 @@
 .pb-hero-details > summary::-webkit-details-marker { display: none; }
 .pb-hero-details > summary:hover { background: var(--pb-accent-wash); }
 .pb-hero-details > summary:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
-.pb-ask-more-chevron { flex: none; width: 12px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: transform 180ms ease; }
+.pb-ask-more-chevron { transition: transform 180ms ease; }
 .pb-hero-details[open] > summary .pb-ask-more-chevron { transform: rotate(180deg); }
 .pb-hero-details[open] { border: 1px solid var(--pb-text); }
 .pb-hero-details[open] > summary { border-width: 0 0 1px; }

@@ -70,9 +70,10 @@ defmodule PatchbayWeb.AccountLiveTest do
     page = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
 
     # The wallet's own link opens it on the chain's explorer; every other link
-    # stays on this site, in this tab.
+    # stays on this site, in this tab. Pair New Agent is a button that opens the
+    # pairing window.
     links = page |> LazyHTML.query(~s(#account-menu a[href^="/"])) |> LazyHTML.attribute("href")
-    assert length(links) == 3
+    assert length(links) == 2
     assert page |> LazyHTML.query(~s(#account-menu a[href^="/"][target])) |> Enum.empty?()
 
     for link <- links do
