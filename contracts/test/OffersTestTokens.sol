@@ -3,21 +3,42 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {SignatureChecker} from "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
 import {IRegentRevenueStaking} from "../src/RegentOffers.sol";
 
-/// @notice Stands in for USDC v2.2 as RegentOffers uses it: six decimals, approve then
-///         `transferFrom`, and addresses that may not send or receive USDC. It can be made to
-///         deliver less than a `transferFrom` asks for, as a changed token would.
-contract OffersTestUSDC is ERC20 {
-    error AccountBlocked(address account);
+/// @notice Stands in for USDC v2.2 as RegentOffers uses it: six decimals, EIP-3009
+///         `receiveWithAuthorization` and `cancelAuthorization` with a `bytes` signature, checked
+///         by key for an account with no code and through ERC-1271 for one with code; one use per
+///         nonce and payer; only `to` may submit; and addresses that may not send or receive USDC.
+///         It can be made to deliver less than a signed amount, as a changed token would.
+contract OffersTestUSDC is ERC20, EIP712 {
+    bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH = keccak256(
+        "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
+    );
+    bytes32 public constant CANCEL_AUTHORIZATION_TYPEHASH =
+        keccak256("CancelAuthorization(address authorizer,bytes32 nonce)");
 
+    error AccountBlocked(address account);
+    error CallerNotPayee();
+    error AuthorizationNotYetValid();
+    error AuthorizationExpired();
+    error AuthorizationUsed();
+    error InvalidSignature();
+
+    mapping(address => mapping(bytes32 => bool)) public authorizationState;
     mapping(address => bool) public blocked;
     uint256 public shortBy;
 
-    constructor() ERC20("USD Coin", "USDC") {}
+    constructor() ERC20("USD Coin", "USDC") EIP712("USD Coin", "2") {}
 
     function decimals() public pure override returns (uint8) {
         return 6;
+    }
+
+    // forge-lint: disable-next-line(mixed-case-function)
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return _domainSeparatorV4();
     }
 
     function mint(address to, uint256 amount) external {
@@ -28,15 +49,37 @@ contract OffersTestUSDC is ERC20 {
         blocked[account] = blocked_;
     }
 
-    /// @notice Makes the next `transferFrom` calls deliver `shortBy_` less than asked.
+    /// @notice Makes the next authorizations deliver `shortBy_` less than signed.
     function setShortBy(uint256 shortBy_) external {
         shortBy = shortBy_;
     }
 
-    function transferFrom(address from, address to, uint256 value) public override returns (bool) {
-        _spendAllowance(from, msg.sender, value);
+    function receiveWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes calldata signature
+    ) external {
+        if (to != msg.sender) revert CallerNotPayee();
+        if (block.timestamp <= validAfter) revert AuthorizationNotYetValid();
+        if (block.timestamp >= validBefore) revert AuthorizationExpired();
+        if (authorizationState[from][nonce]) revert AuthorizationUsed();
+        bytes32 digest = _hashTypedDataV4(
+            keccak256(abi.encode(RECEIVE_WITH_AUTHORIZATION_TYPEHASH, from, to, value, validAfter, validBefore, nonce))
+        );
+        if (!SignatureChecker.isValidSignatureNow(from, digest, signature)) revert InvalidSignature();
+        authorizationState[from][nonce] = true;
         _transfer(from, to, value - shortBy);
-        return true;
+    }
+
+    function cancelAuthorization(address authorizer, bytes32 nonce, bytes calldata signature) external {
+        if (authorizationState[authorizer][nonce]) revert AuthorizationUsed();
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(CANCEL_AUTHORIZATION_TYPEHASH, authorizer, nonce)));
+        if (!SignatureChecker.isValidSignatureNow(authorizer, digest, signature)) revert InvalidSignature();
+        authorizationState[authorizer][nonce] = true;
     }
 
     function _update(address from, address to, uint256 value) internal virtual override {
@@ -77,22 +120,15 @@ contract OffersTestStaking is IRegentRevenueStaking {
     }
 }
 
-/// @notice A minimal contract account: its owner has it call anything.
-contract OffersTestAccount {
-    address internal immutable owner;
+/// @notice A contract wallet that accepts any signature its owner key made over a digest (ERC-1271).
+contract OffersTestWallet {
+    address internal immutable signer;
 
-    constructor(address owner_) {
-        owner = owner_;
+    constructor(address signer_) {
+        signer = signer_;
     }
 
-    function execute(address to, bytes calldata data) external returns (bytes memory) {
-        require(msg.sender == owner, "NOT_OWNER");
-        (bool ok, bytes memory answer) = to.call(data);
-        if (!ok) {
-            assembly ("memory-safe") {
-                revert(add(answer, 0x20), mload(answer))
-            }
-        }
-        return answer;
+    function isValidSignature(bytes32 digest, bytes calldata signature) external view returns (bytes4) {
+        return SignatureChecker.isValidSignatureNow(signer, digest, signature) ? bytes4(0x1626ba7e) : bytes4(0xffffffff);
     }
 }

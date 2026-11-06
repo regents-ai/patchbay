@@ -8,7 +8,7 @@ the future, serving as a marketplace for offer inventory and demand)".
 
 This is a design note on a branch. It deploys no contract and touches no production data.
 The contract it describes is `RegentOffers` on `pb/regent-offers-moderator-1106`, with
-the fixes from the second review (HQ, 18:22Z). Every Credits balance and every open Credits bid stays
+the fixes from the second and third reviews and Sean's letters 13 a, 14 b and 15 a. Every Credits balance and every open Credits bid stays
 exactly as it is until the cutover release. Building the contract, the reader and the
 pages is ordinary work on side branches. The contract deploy, its owner, operator and
 moderator wallets, the new tables in the shared production database, and the cutover
@@ -66,20 +66,30 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
   - Only the owner replaces a site's admin, sets its moderator and names its payout wallet.
     A site's admin can no longer point the site's money at a new wallet.
   - The moderator is never the site's admin or its operator. Every function that sets one of
-    the three refuses a moderator equal to either of the other two.
+    the three refuses a moderator equal to either of the other two. Regents Labs holds the
+    moderator key in a hardware wallet or a Safe (Sean, 15 a).
 - **Slots.** Every site with a forum gets three Offer slots on each forum (Sean, 5). There
   is no listing step: any slot id of a site takes bids, and which forum and slot number
   it means is Patchbay's, kept in the slot id.
-- **Demand: the bidder's own account bids.** One bid path only (HQ engineering ruling,
-  17:20Z): the bidder's account sends `approve` on USDC for the amount, then calls
-  `bid(terms)`.
+- **Demand: a bid is signed, not sent** (Sean, 14 b). One bid path only: the bidder signs
+  one USDC EIP-3009 `ReceiveWithAuthorization` with `to` set to RegentOffers, and anyone
+  submits `bid(terms, bidder, validAfter, validBefore, signature)`: the site, or the bidder.
   - `terms` holds the site, slot, lane, wording hash, amount, placement length, `placeBy`
     and the bidder's salt.
-  - The bidder is always the caller. The amount is taken from the caller's own account,
-    and the contract checks that exactly that amount arrived. An approval someone gave is
-    spent only by that same account's own bid.
-  - A bid's id is `keccak256(bidder, terms)`. The same bidder sending the same terms twice
-    is refused, and someone copying another bidder's terms makes a bid of their own.
+  - The authorization's nonce is `nonceOf(terms)`, `keccak256(abi.encode(terms))`, and the
+    contract recomputes it from the call. A signature funds only that exact bid: any other
+    site, slot, lane, wording, amount, length, deadline or salt gives a different nonce,
+    and USDC refuses it.
+  - Only the contract can use the signature, because USDC accepts a
+    `ReceiveWithAuthorization` only from its `to`. A copy seen in the mempool cannot be
+    turned into a plain transfer.
+  - USDC checks the signature, its time window and its nonce: an account with no code by
+    its key, and a contract wallet or an EIP-7702 account through ERC-1271 (the `bytes`
+    form). The contract checks that exactly the amount arrived.
+  - A bid's id is `bidIdOf(bidder, terms)`, `keccak256(bidder, terms)`. Whoever submits a
+    signature first makes the bidder's own bid; a second submission is refused, and someone
+    copying another bidder's terms needs their own signature for a bid of their own.
+  - Until it is used, the bidder can cancel a signature with USDC's `cancelAuthorization`.
   - `bid` is refused below the site's minimum, for an unknown site, for a zero slot, when
     the length is not the site's length, after `placeBy`, when `placeBy` is more than
     `MAX_WAIT` (72 hours) away, or while new bids are paused.
@@ -87,8 +97,8 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
     change, even one made with a stolen owner key, is paid only for bids made after it.
     Bids already made pay the wallet stored with them, even when the site has had to leave
     that wallet.
-  - It works the same for a card buyer, an outside wallet, a contract account and an
-    agent with its own wallet.
+  - It works the same for a card buyer, an outside wallet, a contract wallet and an agent
+    with its own wallet.
 - **Operator steps.** Each step is bounded by the contract:
   - `place(bidId)` turns a held bid into the slot's placement, starting at the block's own
     time. There is no start time to pass, so nothing can be backdated or set ahead. It is
@@ -151,22 +161,28 @@ Foundry, in `contracts/` beside `PatchbayEscrow`.
   - `PaidOut`, `RevenuePushed`, `PausedSet`.
 - **Checks.**
   - `make check-contracts`: `forge fmt --check`, `forge build` and the offline tests.
-  - Unit, fuzz, role and stolen-key tests, every bid made as approve then bid from the bidder.
+  - Unit, fuzz, role and stolen-key tests, every bid a signature submitted by someone else:
+    a wrong signer, changed terms under a valid signature, another market, the time window,
+    a used or cancelled nonce, a front-run, and a contract wallet through ERC-1271.
   - Invariants over two sites and random steps: the contract's USDC always equals what is
     held and placed, plus what is owed, plus the revenue owed, plus any USDC sent to it
     directly; every account is credited what an independent book says; a slot never has
     two live placements.
   - `slither` and `forge lint`, both clean.
   - `make check-contracts-fork`: tests on the real Base USDC and REGENT staking on a local
-    fork, never broadcast, for a plain account, an account upgraded with EIP-7702 (one
-    batched call, and two plain calls) and a contract account, each through to payment.
+    fork, never broadcast, for three bidders, each through to payment: a plain account; an
+    EIP-7702 account whose delegate answers `isValidSignature`, accepting a plain 65-byte
+    signature by the account's own key over the exact EIP-712 digest (a delegate without
+    it is refused); and a contract wallet.
   - Broken copies of the contract each turn the offline tests red. The break runner,
     `uv run --no-project contracts/test/breaks/breaks.py`, holds every break: the second
     review's eighteen (role checks, zero values and addresses in every setter, the events
     carrying the bid's own values, the approval left with staking), the owner-only payout
-    wallet, the moderator kept apart in each setter, and the earlier ones (money taken from
-    someone other than the caller, the received-amount check, the re-entry guard, the
-    72-hour cap).
+    wallet, the moderator kept apart in each setter, the signature checks (the submitter
+    taken as the bidder, money taken from the submitter, the id leaving out the bidder, the
+    nonce leaving out a term or being the salt alone, the time window dropped, submitting
+    limited to the operator), the pause, and the earlier ones (the received-amount check,
+    the re-entry guard, the 72-hour cap).
 
 ### Funding
 
@@ -183,11 +199,10 @@ The onramp and deposit path.
   by card for itself.
   - The agent reads its USDC Balance through `account_balances`, which gains a `usdc`
     field.
-  - Its own key sends Approve and Bid. The site builds both steps and never holds the key.
-- **Gas.** Approve and Bid from a Privy wallet are both paid for by the Base paymaster
-  (Sean, 7 a), so a card buyer can bid straight away with no ETH. An agent that owns a Privy
-  account is sponsored the same way. Outside wallet apps, and an agent's own key outside
-  Privy, pay their own Base gas.
+  - Its own key signs each bid. The site builds what to sign and never holds the key.
+- **Gas.** Signing needs no ETH. A signed bid is submitted by the site or by the bidder,
+  and the Base paymaster (Sean, 7 a) covers it, so a card buyer can bid straight away with
+  no ETH. An agent that owns a Privy account is sponsored the same way.
 - **No balance is kept by Regents.** Money sits in the wallet until a bid commits it to the
   contract. Committed money is shown apart, as "In Offers", beside the USDC Balance.
 
@@ -232,9 +247,9 @@ The `chain-events` pattern.
   record is over 3,000 blocks behind it.
 - **Model.** The model is Keyfleet's reader. Patchbay's escrow reads (`Patchbay.Escrow.Watch`,
   per-report polling) stay as they are.
-- **Jobs after the chain.** Patchbay's own steps (`place`, `returnBid`, `withdraw` after
-  `placeBy`, `finish`, `payOut` after each end) are Oban jobs sent with the operator key,
-  and `remove` is sent with the moderator key.
+- **Jobs after the chain.** Patchbay's own steps (submitting a signed bid, `place`,
+  `returnBid`, `withdraw` after `placeBy`, `finish`, `payOut` after each end) are Oban jobs
+  sent with the operator key, and `remove` is sent with the moderator key.
   - Each job is unique by bid.
   - Each step is safe to repeat, because the contract refuses a second one.
   - A job reads the chain, sends, then writes, and never sends inside a database
@@ -242,20 +257,16 @@ The `chain-events` pattern.
 
 ### Buttons
 
-Approve and Bid follow `onchain-buttons` and `payments`:
+Bid follows `onchain-buttons` and `payments`, as a signature:
 
-- The server builds both steps: the USDC approval for the bid's amount, and the `bid` call
-  with its terms. The browser never encodes a transaction.
-- Approve is its own step. Bid appears as soon as the approval is sent, and nothing waits
-  for it to land before the next press can reach the wallet. Approve and Bid are the same
-  size, and Approve turns grey with a green border once its transaction succeeds, still
-  pressable.
-- Every press reaches the wallet, including a repeat press while one is pending. A repeat
-  Bid uses a new salt, so a duplicate bid is an accepted outcome, and the server returns
-  the extra in full.
+- The server builds the typed data. The browser never encodes a transaction.
+- Every press reaches the wallet as a signature request, including a repeat press while
+  one is pending. A repeat press signs with a new salt, so a duplicate bid is an accepted
+  outcome, and the server returns the extra in full.
+- A signature stays good for ten minutes (`validBefore`). The site submits it at once;
+  until then the bidder can submit it themselves.
 - Bid is disabled only by the chain's own state at the latest block, with these words
   beside it, and comes back once that state changes:
-  - "Approve first", only while the chain shows no allowance for the amount;
   - "Below the minimum";
   - "Not enough USDC";
   - "Bids paused".
@@ -283,22 +294,22 @@ action.
 | Read USDC Balance and In Offers | account menu, `/account` | `account_balances` | `account_balances` | `GET /tools/account/balances` | `account balances` |
 | Add USDC | Add USDC: card window, or address and QR code | `get_funding_address` | `get_funding_address` | `GET /tools/account/funding` | `account funding` |
 | Read slots and bid options | `/offers`, `/offers/bid` | `list_offer_slots`, `get_offer_bid_options` | same | same routes | `offers slots`, `offers bid-options` |
-| Build Approve and Bid | `/offers/bid` Approve, Bid | `prepare_offer_bid` | `prepare_offer_bid` | `POST /forum/offer-bids/prepare` | `offers bid` (sends both from the agent's wallet) |
-| Check a sent step | the hook reports the hash | `check_offer_step` | `check_offer_step` | `POST /forum/offer-bids/check` | `offers bid` |
+| Prepare a bid (what to sign) | `/offers/bid` Bid | `prepare_offer_bid` | `prepare_offer_bid` | `POST /forum/offer-bids/prepare` | `offers bid` (signs with the agent's key) |
+| Submit a signed bid | the hook sends the signature | `submit_offer_bid` | `submit_offer_bid` | `POST /forum/offer-bids` | `offers bid` |
 | Withdraw a bid never placed | `/offers/active` Withdraw | `withdraw_offer_bid` | `withdraw_offer_bid` | `POST /forum/offer-bids/withdraw` | `offers withdraw` |
 | Read active Offers and history | `/offers/active`, `/offers/history` | `list_my_active_offers`, `list_my_offer_history` | same | same routes | `offers active`, `offers history` |
 
-- **New names.** `get_funding_address`, `prepare_offer_bid`, `check_offer_step`,
+- **New names.** `get_funding_address`, `prepare_offer_bid`, `submit_offer_bid`,
   `withdraw_offer_bid`, their routes, and `offers withdraw` and `account funding` are
-  proposed names. `bid_on_offer_slot` gives way to the prepare and check pair.
+  proposed names. `bid_on_offer_slot` gives way to the prepare and submit pair.
 - **Withdraw.** Withdraw asks Patchbay to send `withdraw` after `placeBy`. Patchbay also
   sends it for every unplaced bid on its own, and anyone may send it.
 - **Card.** "Add USDC" by card is a person's step in Privy's window. The agent row is the
   address path, so this is not a person-only action.
 - **Agent spending switch.** It goes away, because an agent spends its own wallet's USDC
   with its own key and never its person's.
-- **Paid tools.** A bid is an ordinary approve and bid from the bidder's own wallet, not an
-  x402 payment. Paid tools keep x402.
+- **Paid tools.** A bid is a signed USDC authorization, as x402 payments are, but it is
+  submitted to the contract, not to a facilitator. Paid tools keep x402.
 
 ## Credits removal
 
@@ -323,7 +334,7 @@ branch takes that change once it lands.
    second review's fixes are in.
 2. **Reader.** The reading job, the tables and their notices, run against a local Base
    fork (anvil) with the contract deployed there.
-3. **Pages and agent surfaces.** Approve, Bid, Withdraw, Add USDC and USDC Balance on the
+3. **Pages and agent surfaces.** Bid, Withdraw, Add USDC and USDC Balance on the
    five surfaces, walked at 320, 390 and 1280.
 4. **Sean's go.** On his named go: deploy the contract, set the owner Safe (a multi-owner
    Safe Sean names), the operator and moderator keys, Patchbay as a site, and add the tables
@@ -333,26 +344,33 @@ branch takes that change once it lands.
 
 ## Bid path
 
-Signed bids went, and approve then bid replaced them (HQ engineering ruling, 17:20Z).
+Signed bids are the one bid path (Sean, 14 b), replacing approve then bid, with no second
+path kept.
 
-- **The reason.** The first contract took a USDC `ReceiveWithAuthorization` signed by the
-  bidder and sent by anyone. USDC checks the signature of an account upgraded with
-  EIP-7702 through ERC-1271, and Privy's upgraded wallets need an undocumented ERC-1271
-  signature form, so a signed bid from them could not be relied on.
-  Approve and bid are ordinary calls that any account able to send a transaction can make.
-- **Gaps that went with it.** The signature never covered the payout wallet; there is no
-  signature now, and the payout wallet is read in the same call that takes the money.
-  The holder of a signature chose the moment to send it, and a bidder could cancel one
-  before it landed; neither applies to a bid the bidder sends.
-- **Anyone may bid.** Bidding was never limited to the operator, and opening it to every
-  caller opens nothing new:
-  - a bid spends only its caller's own money;
-  - a spam bid locks only the spammer's own USDC, at least the site's minimum each;
-  - the operator can hand any held bid back, anyone can after `placeBy`, and `placeBy` is
-    at most 72 hours away, so no bid waits longer than that.
-- **Paymaster cost.** Sponsored gas for a spam bid is bounded the same way: each bid
-  commits at least the minimum of real USDC, and Patchbay keeps its request limits on the
-  doors that build the steps.
+- **Checked again.** Each check approve then bid had dropped was looked at again for the
+  signed path:
+  - a zero bidder can never pass USDC's signature check, so it needs no check of its own;
+  - the contract as bidder has no `isValidSignature`, so USDC refuses it;
+  - the received-amount check stays;
+  - a front-run makes the same bid for the same bidder, and the second submission is
+    refused;
+  - a used or cancelled authorization is refused by USDC.
+- **The submitter controls timing.** Whoever holds a signature chooses when to submit it,
+  until `validBefore`, ten minutes. The terms cannot change, because the nonce binds them.
+  The payout wallet is the one the site names when the bid is made, and only the owner
+  names it.
+- **Cancelling a signature.** A bidder may cancel a signature before it lands, and the
+  submission then fails. That is an accepted outcome.
+- **New smart wallets.** A smart-contract wallet that has not been deployed yet cannot sign
+  for USDC: USDC checks ERC-1271 and not ERC-6492. This is the same limit x402 has today.
+- **Not proven: Privy wallets.** Privy's own EIP-7702 delegate, and the form of signature
+  its `isValidSignature` accepts, are not documented. The fork tests prove a 7702 account
+  whose delegate accepts a plain signature by the account's own key. A Privy wallet stays
+  unproven until a real one signs a bid on a lab chain.
+- **Spam.** Each bid commits at least the site's minimum of real USDC, so a spam bid locks
+  only the spammer's own money, and no bid waits longer than `placeBy`, at most 72 hours.
+  Patchbay keeps its request limits on the prepare and submit doors, which bounds the
+  sponsored gas.
 
 ## Accepted limits
 
@@ -395,6 +413,11 @@ Given on 6 Nov 2026, recorded as given:
 - 10 Auction rules: a.
 - 11 Cutover: b.
 - 12 Leftover balances: a.
+- 13 Unused time on a buyout: a. A replaced placement's unused time goes back to its
+  bidder, as the contract has it.
+- 14 Bid path: b. Signed bids submitted by anyone, replacing approve then bid.
+- 15 F1 Full charge on removal: a. A removal charges the whole bid, and Regents Labs holds
+  the moderator key in a hardware wallet or a Safe.
 
 ### HQ rulings
 
@@ -403,31 +426,11 @@ Given on 6 Nov 2026, recorded as given:
 - The USDC token and the staking contract are refused as payout wallets (F4 b).
 - `MAX_WAIT` is 72 hours, one placement length (F7).
 - F4, F5 and F6 are accepted, as above.
-- One bid path: approve then bid from the bidder's own account (17:20Z).
 - After the second review (18:22Z): only the owner names a site's payout wallet (N1a, N1b);
   the owner must be a multi-owner Safe, with no timelock (N1c); clean-up is by replacement
   (N1d); bids already made pay their stored wallet (N2); the moderator is never the admin or
   the operator, checked in every function that sets one of them (N3). A removal still
   charges the whole bid (F1).
-
-### Open
-
-13. **Unused time on a buyout.** A placement replaced by a newer bid, before its time is up.
-    - a) Its unused time goes back to its bidder, as the contract does today.
-    - b) It pays the whole bid, as a removal does.
-    - Recommendation: a. The replaced bidder broke no rule and lost the slot to a higher
-      bid; with b, a new bid could cut short a placement its bidder had paid for in full.
-14. **Bid path.** HQ ruled approve then bid; Sean may override.
-    - a) Keep approve then bid from the bidder's own account, sponsored by the paymaster.
-    - b) Return to signed bids sent by anyone.
-    - Recommendation: a. Privy's upgraded wallets cannot be relied on to sign USDC
-      authorizations, and the paymaster already covers the gas.
-15. **F1 Full charge on removal.** A removal for policy charges the whole bid (Sean, 4 b),
-    so a stolen moderator key can charge every showing bid in full, paid to the sites,
-    never to the thief.
-    - a) Keep it, with the moderator as a key apart from the operator.
-    - b) A removal pays only the time shown, and the rest goes back.
-    - Recommendation: a. It is Sean's 4 b, and the money still goes only to the sites.
 
 ## Later
 

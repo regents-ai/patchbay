@@ -3,11 +3,11 @@ pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
 import {RegentOffers} from "../src/RegentOffers.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {OffersTestUSDC, OffersTestStaking, OffersTestAccount} from "./OffersTestTokens.sol";
+import {OffersTestUSDC, OffersTestStaking, OffersTestWallet} from "./OffersTestTokens.sol";
 
 /// @notice Drives RegentOffers through random bids, placements, endings, payouts and time on two
-///         venues that share slot ids, with a contract-account bidder, payout wallets that rotate
+///         venues that share slot ids, every bid a signed USDC authorization submitted by a
+///         relayer with no role, with an ERC-1271 contract-wallet bidder, payout wallets that rotate
 ///         (one of them is also a bidder), operators that rotate, changing terms (lengths of 1 s,
 ///         60 s and 72 h), pausing, blocked addresses and waits of zero seconds. It keeps its own
 ///         book of what every account should have been credited, worked out apart from the
@@ -28,7 +28,8 @@ contract OffersHandler is Test {
     address[2] internal payouts;
 
     address[4] internal bidders;
-    OffersTestAccount internal account;
+    uint256[3] internal keys;
+    address internal relayer = makeAddr("relayer");
     address[] public accounts;
 
     bytes32[] public ids;
@@ -47,11 +48,11 @@ contract OffersHandler is Test {
         staking = staking_;
         offers = offers_;
         owner = owner_;
-        bidders[0] = makeAddr("bidder a");
-        bidders[1] = makeAddr("bidder b");
-        bidders[2] = makeAddr("bidder c");
-        account = new OffersTestAccount(address(this));
-        bidders[3] = address(account);
+        (bidders[0], keys[0]) = makeAddrAndKey("bidder a");
+        (bidders[1], keys[1]) = makeAddrAndKey("bidder b");
+        (bidders[2], keys[2]) = makeAddrAndKey("bidder c");
+        // The contract wallet accepts bidder a's key.
+        bidders[3] = address(new OffersTestWallet(bidders[0]));
         for (uint256 i; i < 4; ++i) {
             usdc.mint(bidders[i], type(uint96).max);
             accounts.push(bidders[i]);
@@ -236,18 +237,27 @@ contract OffersHandler is Test {
         });
     }
 
-    /// @dev The bidder approves the amount, then bids from its own account; the contract account
-    ///      does both as calls its owner has it make.
+    /// @dev The bidder signs the bid's USDC authorization and the relayer submits it; the contract
+    ///      wallet's signature is made by bidder a's key.
     function _bidAs(uint256 who, RegentOffers.Terms memory t) internal returns (bytes32) {
-        if (who == 3) {
-            account.execute(address(usdc), abi.encodeCall(IERC20.approve, (address(offers), t.amount)));
-            return abi.decode(account.execute(address(offers), abi.encodeCall(RegentOffers.bid, (t))), (bytes32));
-        }
-        vm.startPrank(bidders[who]);
-        usdc.approve(address(offers), t.amount);
-        bytes32 id = offers.bid(t);
-        vm.stopPrank();
-        return id;
+        address from = bidders[who];
+        uint256 validBefore = vm.getBlockTimestamp() + 10 minutes;
+        bytes32 structHash = keccak256(
+            abi.encode(
+                usdc.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                from,
+                address(offers),
+                t.amount,
+                uint256(0),
+                validBefore,
+                keccak256(abi.encode(t))
+            )
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(
+            keys[who == 3 ? 0 : who], keccak256(abi.encodePacked("\x19\x01", usdc.DOMAIN_SEPARATOR(), structHash))
+        );
+        vm.prank(relayer);
+        return offers.bid(t, from, 0, validBefore, abi.encodePacked(r, s, v));
     }
 
     /// @dev A bid's getter answer is the struct's own encoding, so it decodes straight into one.

@@ -4,15 +4,82 @@ pragma solidity 0.8.24;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {RegentOffers} from "../src/RegentOffers.sol";
 import {OffersSetUp} from "./RegentOffers.t.sol";
+import {OffersTestUSDC} from "./OffersTestTokens.sol";
 
 /// @title RegentOffersKeysTest
-/// @notice What each key can do if it is stolen. No key can send a bid's money anywhere but back
-///         to its bidder, to the payout wallet named when the bid was made, or to staking; no key
+/// @notice What each key can do if it is stolen. Holding a bidder's signature makes only the bid
+///         it signed. No key can send a bid's money anywhere but back to its bidder, to the payout wallet named when the bid was made, or to staking; no key
 ///         can touch money already owed; and a replaced key stops working at once.
 contract RegentOffersKeysTest is OffersSetUp {
     address internal thief = makeAddr("thief");
     address internal thiefOperator = makeAddr("thief operator");
     address internal thiefModerator = makeAddr("thief moderator");
+
+    // ------------------------------------------------- the site's signatures
+
+    /// Whoever holds a bidder's signature, such as the site's server, can make only the bid the
+    /// bidder signed: another amount, slot, lane, wording, place-by time, venue or bidder is
+    /// refused by USDC, and the bid made is the bidder's, with the bidder's money.
+    function test_a_stolen_site_key_makes_only_the_bids_that_were_signed() public {
+        addOther();
+        RegentOffers.Terms memory t = terms(SLOT, 50_000_000);
+        bytes memory signature = sign(bidder, t);
+        uint256 validBefore = vm.getBlockTimestamp() + WINDOW;
+        usdc.mint(thief, 100_000_000);
+
+        RegentOffers.Terms[6] memory changed;
+        for (uint256 i; i < 6; ++i) {
+            changed[i] =
+                RegentOffers.Terms(t.venue, t.slot, t.lane, t.wordingHash, t.amount, t.length, t.placeBy, t.salt);
+        }
+        changed[0].amount = 100_000_000;
+        changed[1].slot = keccak256("the thief's slot");
+        changed[2].lane = 1;
+        changed[3].wordingHash = keccak256("the thief's wording");
+        changed[4].placeBy = t.placeBy + 1 hours;
+        changed[5].venue = OTHER;
+        vm.startPrank(relayer);
+        for (uint256 i; i < 6; ++i) {
+            vm.expectRevert(OffersTestUSDC.InvalidSignature.selector);
+            offers.bid(changed[i], bidder, 0, validBefore, signature);
+        }
+        vm.expectRevert(OffersTestUSDC.InvalidSignature.selector);
+        offers.bid(t, thief, 0, validBefore, signature);
+        assertEq(offers.totalCommitted(), 0);
+
+        bytes32 id = offers.bid(t, bidder, 0, validBefore, signature);
+        vm.stopPrank();
+        assertEq(record(id).bidder, bidder);
+        assertEq(record(id).amount, 50_000_000);
+        assertEq(usdc.balanceOf(thief), 100_000_000);
+        assertEq(offers.totalCommitted(), 50_000_000);
+    }
+
+    /// Signatures a stolen site key holds but never submitted die with their time window, and one
+    /// it does submit late in its window still comes back to its bidder by its place-by time.
+    function test_signatures_a_stolen_site_key_holds_end_with_their_window() public {
+        RegentOffers.Terms memory held = terms(SLOT, 20_000_000);
+        RegentOffers.Terms memory late = terms(keccak256("slot 2"), 30_000_000);
+        bytes memory heldSignature = sign(bidder, held);
+        bytes memory lateSignature = sign(bidder, late);
+        uint256 validBefore = vm.getBlockTimestamp() + WINDOW;
+        uint256 balance = usdc.balanceOf(bidder);
+
+        vm.warp(validBefore - 1);
+        vm.prank(relayer);
+        bytes32 id = offers.bid(late, bidder, 0, validBefore, lateSignature);
+        vm.warp(validBefore);
+        vm.expectRevert(OffersTestUSDC.AuthorizationExpired.selector);
+        vm.prank(relayer);
+        offers.bid(held, bidder, 0, validBefore, heldSignature);
+
+        vm.warp(late.placeBy);
+        vm.prank(stranger);
+        offers.withdraw(id);
+        offers.payOut(bidder);
+        assertEq(usdc.balanceOf(bidder), balance);
+        assertEq(usdc.balanceOf(address(offers)), 0);
+    }
 
     // ------------------------------------------------------------ operator
 

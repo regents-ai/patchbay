@@ -121,14 +121,6 @@ BREAKS = {
         ("if (moderator == admin || moderator == operator) revert ModeratorNotSeparate();",
          "if (moderator == admin) revert ModeratorNotSeparate();", 1),
     ]),
-    "A1": ("the bid's money is pulled from tx.origin", [
-        ("usdc.safeTransferFrom(msg.sender, address(this), terms.amount);",
-         "usdc.safeTransferFrom(tx.origin, address(this), terms.amount);", 1),
-    ]),
-    "A2": ("tx.origin is recorded as the bidder", [
-        ("bidId = bidIdOf(msg.sender, terms);", "bidId = bidIdOf(tx.origin, terms);", 1),
-        ("            bidder: msg.sender,\n", "            bidder: tx.origin,\n", 1),
-    ]),
     "A3": ("the received-amount check is off", [
         ("if (usdc.balanceOf(address(this)) - before != terms.amount) revert AmountNotReceived();", "before;", 1),
     ]),
@@ -146,6 +138,35 @@ BREAKS = {
     ]),
     "A8": ("the operator may also remove", [
         (REMOVE, "        if (msg.sender != venues[b.venue].moderator && msg.sender != venues[b.venue].operator) revert NotModerator();", 1),
+    ]),
+    "A9": ("a pause no longer stops new bids", [
+        ("        if (paused) revert BidsPaused();\n", "", 1),
+    ]),
+    "S1": ("the submitter is recorded as the bidder", [
+        ("bidId = bidIdOf(bidder, terms);", "bidId = bidIdOf(msg.sender, terms);", 1),
+        ("            bidder: bidder,\n", "            bidder: msg.sender,\n", 1),
+    ]),
+    "S2": ("the money is taken from the submitter", [
+        ("                bidder, address(this), terms.amount, validAfter, validBefore, nonceOf(terms), signature",
+         "                msg.sender, address(this), terms.amount, validAfter, validBefore, nonceOf(terms), signature", 1),
+    ]),
+    "S3": ("the bid id leaves out the bidder", [
+        ("return keccak256(abi.encode(bidder, terms));", "return keccak256(abi.encode(terms));", 1),
+    ]),
+    "S4": ("the nonce leaves out the wording", [
+        ("        return keccak256(abi.encode(terms));\n",
+         "        return keccak256(\n            abi.encode(terms.venue, terms.slot, terms.lane, terms.amount, terms.length, terms.placeBy, terms.salt)\n        );\n", 1),
+    ]),
+    "S5": ("the nonce is the bidder's salt alone", [
+        ("        return keccak256(abi.encode(terms));\n", "        return terms.salt;\n", 1),
+    ]),
+    "S6": ("the bidder's time window is swapped for an open one", [
+        ("terms.amount, validAfter, validBefore, nonceOf(terms), signature",
+         "terms.amount, 0, type(uint256).max, nonceOf(terms), signature", 1),
+    ]),
+    "S7": ("only the venue's operator may submit a bid", [
+        ("        Venue storage v = _venue(terms.venue);\n        if (terms.amount < v.minimum) revert BelowMinimum();",
+         "        Venue storage v = _venue(terms.venue);\n        _onlyOperator(terms.venue);\n        if (terms.amount < v.minimum) revert BelowMinimum();", 1),
     ]),
 }
 

@@ -9,3 +9,6 @@
 
 # Private planning packages are not source or release inputs.
 /local-only-docs-and-specs/
+
+# Python bytecode from the contract break runner
+__pycache__/

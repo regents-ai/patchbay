@@ -22,7 +22,8 @@ is `docs/usdc-offers-plan-2026-11-06.md` at the repository root.
 | Moderator | the owner | remove a showing placement for policy, which pays the whole bid |
 
 - The moderator is never the venue's admin or its operator. Every function that sets one of the
-  three refuses a moderator equal to either of the other two.
+  three refuses a moderator equal to either of the other two. Regents Labs holds the moderator key
+  in a hardware wallet or a Safe.
 - Only the owner names the payout wallet. A venue admin cannot point a venue's money at a new
   wallet.
 - **The owner must be a multi-owner Safe.** There is no timelock: one stolen owner key can name
@@ -31,9 +32,14 @@ is `docs/usdc-offers-plan-2026-11-06.md` at the repository root.
 
 ### Money
 
-- A bidder approves the contract for the amount, then calls `bid(terms)` from their own account.
-  The amount comes from the caller and no one else, and the contract checks that exactly that
-  amount arrived.
+- A bid is one USDC `ReceiveWithAuthorization` signed by the bidder, for the bid's amount, to
+  this contract, with `nonceOf(terms)` (the hash of the terms) as its nonce. Anyone may submit it
+  with `bid(terms, bidder, validAfter, validBefore, signature)`: the venue's site or the bidder,
+  with the gas paid by the site's paymaster. A submitter can make only the exact bid that was
+  signed, with the bidder's money, once; a second submission is refused. The contract checks that
+  exactly the amount arrived.
+- USDC checks the signature, its time window and its nonce. Until the bid is made, the bidder can
+  cancel the signature with USDC's `cancelAuthorization`.
 - Each bid stores the payout wallet its venue named when it was made, and is paid to that wallet
   however it ends. Bids already made keep paying the stored wallet even after the venue names a new
   one, including when the venue has had to leave the old one.
@@ -46,6 +52,18 @@ is `docs/usdc-offers-plan-2026-11-06.md` at the repository root.
 - Ending a bid never sends USDC. It records what is owed, and anyone may call `payOut(account)` to
   send it and `pushRevenue()` to send the protocol share to staking.
 - Pausing stops new bids only. There is no upgrade, no sweep and no owner withdrawal.
+
+### Bidders
+
+| Bidder | How USDC checks the signature | Proven |
+| --- | --- | --- |
+| Plain account | by its key | fork test on Base USDC |
+| EIP-7702 account | through its delegate's `isValidSignature` (ERC-1271) | fork test, with a delegate that accepts a plain signature by the account's own key over the exact digest |
+| Contract wallet | through its `isValidSignature` (ERC-1271) | fork test on Base USDC |
+
+**Not proven:** Privy's own 7702 delegate, and the form of signature its `isValidSignature`
+accepts, are not documented. A Privy wallet stays unproven until a real one signs a bid on a lab
+chain.
 
 ### Checks
 

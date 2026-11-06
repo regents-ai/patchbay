@@ -7,6 +7,22 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ReentrancyGuardTransient} from "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 
+/// @notice The EIP-3009 function of USDC (FiatTokenV2_2) a bid is funded through.
+/// @dev USDC accepts a `ReceiveWithAuthorization` only from its `to`, so only this contract can
+///      use a bidder's signature. The `bytes` form checks an account with code, such as a contract
+///      wallet or an EIP-7702 account, through ERC-1271.
+interface IUSDCReceiveWithAuthorization {
+    function receiveWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes calldata signature
+    ) external;
+}
+
 /// @notice The one function of the REGENT revenue staking contract the protocol share is paid into.
 interface IRegentRevenueStaking {
     /// @notice Pulls `amount` USDC from the caller and credits it to REGENT stakers as revenue.
@@ -22,11 +38,20 @@ interface IRegentRevenueStaking {
 ///      money under fixed rules. Because a removal pays the whole bid, the moderator is never the
 ///      venue's admin or its operator, so the key that places, and the key that names who
 ///      places, can never remove: a stolen operator or admin key can charge at most one
-///      placement per slot at a time, for the time it shows, paid to the venue. A bidder
-///      approves this contract for the amount and calls `bid` from their own account, which
-///      takes the amount from that account and from no other. Bid money leaves only as a return
-///      of a bid never placed (or the unused time of a placement replaced by a newer one), or as
-///      payment for its placement, split between REGENT staking and the venue's payout wallet.
+///      placement per slot at a time, for the time it shows, paid to the venue. Regents Labs
+///      holds the moderator key in a hardware wallet or a Safe.
+///
+///      A bid is one USDC `ReceiveWithAuthorization` signed by the bidder, for the bid's amount,
+///      to this contract, with the hash of the bid's terms as its nonce. Anyone may submit it,
+///      the venue's site or the bidder, with the gas paid by the site's paymaster: the signature
+///      names the bidder, the amount and every term, so a submitter can only make the exact bid
+///      the bidder signed, with the bidder's own money, once. USDC checks the signature, its time window and its nonce: an
+///      account with no code by its key, and a contract wallet or an EIP-7702 account through
+///      ERC-1271. Until it is used, the bidder can cancel it with USDC's `cancelAuthorization`.
+///
+///      Bid money leaves only as a return of a bid never placed (or the unused time of a
+///      placement replaced by a newer one), or as payment for its placement, split between
+///      REGENT staking and the venue's payout wallet.
 ///      Nothing is paid out inline: every end records what is owed and `payOut` sends it, so an
 ///      address USDC refuses to pay can never stop a slot from ending or being replaced.
 ///
@@ -68,7 +93,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         Removed
     }
 
-    /// @notice What a bidder bids for. With the bidder's address it gives the bid's id.
+    /// @notice What a bidder signs for. Its hash is the USDC authorization's nonce; with the
+    ///         bidder's address it gives the bid's id.
     /// @param venue The venue's id, such as `keccak256("patchbay.help")`.
     /// @param slot The slot's id within the venue, chosen by the venue (for Patchbay, a forum's
     ///        market and slot number).
@@ -327,17 +353,29 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
 
     // ----------------------------------------------------------------- bids
 
+    /// @notice The USDC authorization nonce a bidder signs for `terms`.
+    function nonceOf(Terms calldata terms) public pure returns (bytes32) {
+        return keccak256(abi.encode(terms));
+    }
+
     /// @notice The id a bid by `bidder` on `terms` is held under.
     function bidIdOf(address bidder, Terms calldata terms) public pure returns (bytes32) {
         return keccak256(abi.encode(bidder, terms));
     }
 
-    /// @notice Holds a bid by the caller, taking `terms.amount` USDC from the caller's own
-    ///         account, which must first approve this contract for it.
-    // Balances are read on either side of the USDC call on purpose, to check the exact amount moved.
-    // Every function that changes state holds the same guard, so nothing re-enters.
-    // slither-disable-next-line reentrancy-balance,timestamp
-    function bid(Terms calldata terms) external nonReentrant returns (bytes32 bidId) {
+    /// @notice Holds a bid by `bidder`, funded by the bidder's signed USDC
+    ///         `ReceiveWithAuthorization` to this contract for `terms.amount`, valid after
+    ///         `validAfter` and before `validBefore`, whose nonce is `nonceOf(terms)`. Anyone may
+    ///         submit it. USDC refuses a signature that is not the bidder's, so a zero bidder and
+    ///         this contract as the bidder are refused there.
+    // slither-disable-next-line timestamp
+    function bid(
+        Terms calldata terms,
+        address bidder,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes calldata signature
+    ) external nonReentrant returns (bytes32 bidId) {
         if (paused) revert BidsPaused();
         if (terms.slot == bytes32(0)) revert ZeroValue();
         Venue storage v = _venue(terms.venue);
@@ -349,11 +387,11 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         // forge-lint: disable-next-line(block-timestamp)
         if (terms.placeBy > block.timestamp + MAX_WAIT) revert PlaceByTooFar();
 
-        bidId = bidIdOf(msg.sender, terms);
+        bidId = bidIdOf(bidder, terms);
         if (bids[bidId].status != Status.None) revert BidExists();
 
         bids[bidId] = Bid({
-            bidder: msg.sender,
+            bidder: bidder,
             amount: terms.amount,
             venue: terms.venue,
             slot: terms.slot,
@@ -365,23 +403,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         });
         totalCommitted += terms.amount;
 
-        emit BidPlaced(
-            bidId,
-            terms.venue,
-            terms.slot,
-            msg.sender,
-            terms.lane,
-            terms.wordingHash,
-            terms.amount,
-            terms.length,
-            terms.placeBy
-        );
-
-        uint256 before = usdc.balanceOf(address(this));
-        usdc.safeTransferFrom(msg.sender, address(this), terms.amount);
-        // USDC moves the exact amount; anything else means the token changed and the bid must fail.
-        // forge-lint: disable-next-line(incorrect-strict-equality)
-        if (usdc.balanceOf(address(this)) - before != terms.amount) revert AmountNotReceived();
+        _emitBidPlaced(bidId, terms, bidder);
+        _receive(terms, bidder, validAfter, validBefore, signature);
     }
 
     /// @notice Shows a held bid in its slot from this block's time. A placement already showing in
@@ -520,6 +543,42 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         revenueOwed += protocolShare;
 
         emit Ended(bidId, reason, paid, returned, protocolShare, venueShare, payout);
+    }
+
+    /// @dev Takes a bid's amount through its bidder's signed USDC authorization.
+    // Balances are read on either side of the USDC call on purpose, to check the exact amount moved.
+    // USDC asks an account with code about its signature with a read-only call, and every function
+    // that changes state holds the same guard, so nothing re-enters.
+    // slither-disable-next-line reentrancy-balance
+    function _receive(
+        Terms calldata terms,
+        address bidder,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes calldata signature
+    ) private {
+        uint256 before = usdc.balanceOf(address(this));
+        IUSDCReceiveWithAuthorization(address(usdc))
+            .receiveWithAuthorization(
+                bidder, address(this), terms.amount, validAfter, validBefore, nonceOf(terms), signature
+            );
+        // USDC moves the exact amount; anything else means the token changed and the bid must fail.
+        // forge-lint: disable-next-line(incorrect-strict-equality)
+        if (usdc.balanceOf(address(this)) - before != terms.amount) revert AmountNotReceived();
+    }
+
+    function _emitBidPlaced(bytes32 bidId, Terms calldata terms, address bidder) private {
+        emit BidPlaced(
+            bidId,
+            terms.venue,
+            terms.slot,
+            bidder,
+            terms.lane,
+            terms.wordingHash,
+            terms.amount,
+            terms.length,
+            terms.placeBy
+        );
     }
 
     function _giveBack(Bid storage b) private {
