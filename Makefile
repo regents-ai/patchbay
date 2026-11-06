@@ -37,11 +37,11 @@ check-siwa-latest:
 # The two contract libraries are pinned submodules; a fresh clone fetches them here.
 check-contracts:
 	git submodule update --init --depth 1 contracts/lib/forge-std contracts/lib/openzeppelin-contracts
-	cd contracts && forge fmt --check && forge build --offline && forge test --offline --no-match-path 'test/fork/*'
+	cd contracts && forge fmt --check && forge build --offline && forge test --offline --no-match-path 'test/{fork/*,review3/*Fork*}'
 # RegentOffers against the real Base USDC and REGENT staking on a local fork of the public
 # Base endpoint. It needs the network, so the offline gate above leaves it out. Nothing is broadcast.
 check-contracts-fork:
-	cd contracts && forge test --match-path 'test/fork/*'
+	cd contracts && forge test --match-path 'test/{fork/*,review3/*Fork*}'
 # The release checks and builds exactly the committed tree, so every change must
 # be committed first. A failing gate stops it before anything is built.
 release:
