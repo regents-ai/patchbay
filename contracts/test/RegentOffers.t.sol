@@ -15,6 +15,7 @@ abstract contract OffersSetUp is Test {
     address internal owner = makeAddr("owner");
     address internal admin = makeAddr("venue admin");
     address internal operator = makeAddr("operator");
+    address internal moderator = makeAddr("moderator");
     address internal payout = makeAddr("payout");
     address internal stranger = makeAddr("stranger");
 
@@ -40,7 +41,7 @@ abstract contract OffersSetUp is Test {
         staking = new OffersTestStaking(usdc);
         offers = new RegentOffers(usdc, staking, PROTOCOL_BPS, owner);
         vm.prank(owner);
-        offers.addVenue(VENUE, admin, operator, payout, MINIMUM, LENGTH);
+        offers.addVenue(VENUE, admin, operator, moderator, payout, MINIMUM, LENGTH);
         usdc.mint(bidder, 1_000_000_000_000);
     }
 
@@ -259,20 +260,72 @@ contract RegentOffersTest is OffersSetUp {
         assertEq(startsAt(id), vm.getBlockTimestamp());
     }
 
-    function test_only_the_operator_places_returns_and_removes() public {
+    function test_only_the_operator_places_and_returns() public {
         bytes32 id = bidOn(SLOT, MINIMUM);
-        vm.startPrank(stranger);
+        vm.startPrank(moderator);
         vm.expectRevert(RegentOffers.NotOperator.selector);
         offers.place(id);
         vm.expectRevert(RegentOffers.NotOperator.selector);
         offers.returnBid(id);
         vm.stopPrank();
+    }
 
+    /// A removal pays the whole bid, so the key that places can never remove.
+    function test_only_the_moderator_removes() public {
+        bytes32 id = placed(SLOT, MINIMUM);
+        vm.expectRevert(RegentOffers.NotModerator.selector);
         vm.prank(operator);
-        offers.place(id);
-        vm.expectRevert(RegentOffers.NotOperator.selector);
+        offers.remove(id);
+        vm.expectRevert(RegentOffers.NotModerator.selector);
         vm.prank(stranger);
         offers.remove(id);
+        vm.prank(moderator);
+        offers.remove(id);
+    }
+
+    function test_the_moderator_is_never_the_operator() public {
+        vm.startPrank(owner);
+        vm.expectRevert(RegentOffers.ModeratorIsOperator.selector);
+        offers.addVenue(keccak256("other"), admin, operator, operator, payout, MINIMUM, LENGTH);
+        vm.expectRevert(RegentOffers.ModeratorIsOperator.selector);
+        offers.setModerator(VENUE, operator);
+        vm.stopPrank();
+
+        vm.expectRevert(RegentOffers.ModeratorIsOperator.selector);
+        vm.prank(admin);
+        offers.setOperator(VENUE, moderator);
+    }
+
+    function test_only_the_owner_sets_the_moderator() public {
+        vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, admin));
+        vm.prank(admin);
+        offers.setModerator(VENUE, admin);
+
+        address fresh = makeAddr("fresh moderator");
+        vm.prank(owner);
+        offers.setModerator(VENUE, fresh);
+        (,, address mod,,,) = offers.venues(VENUE);
+        assertEq(mod, fresh);
+    }
+
+    /// The most a stolen operator key can charge: every slot shows one placement at a time, and a
+    /// bid it replaces pays only the time it showed. Over any stretch, what is paid from a slot is
+    /// at most what its placements showed, never more than the bids that ran their whole length.
+    function testFuzz_a_stolen_operator_key_charges_only_time_shown(uint8 rounds, uint32 gap) public {
+        rounds = uint8(bound(rounds, 1, 12));
+        gap = uint32(bound(gap, 0, LENGTH));
+        uint256 shownInAll;
+        uint64 start = uint64(vm.getBlockTimestamp());
+        for (uint256 i; i < rounds; ++i) {
+            bytes32 id = bidOn(SLOT, 10_000_000);
+            vm.prank(operator);
+            offers.place(id);
+            vm.warp(vm.getBlockTimestamp() + gap);
+        }
+        shownInAll = vm.getBlockTimestamp() - start;
+        uint256 paid = offers.owed(payout) + offers.revenueOwed();
+        // Each replaced placement pays its share of shown time; the last one is still showing.
+        assertLe(paid, (uint256(10_000_000) * shownInAll) / LENGTH);
     }
 
     function test_a_bid_cannot_be_placed_after_its_place_by() public {
@@ -379,7 +432,7 @@ contract RegentOffersTest is OffersSetUp {
         after_ = uint32(bound(after_, 0, LENGTH));
         bytes32 id = placed(SLOT, 10_000_000);
         vm.warp(vm.getBlockTimestamp() + after_);
-        vm.prank(operator);
+        vm.prank(moderator);
         offers.remove(id);
         assertEq(offers.owed(bidder), 0);
         assertEq(offers.owed(payout), 9_000_000);
@@ -469,11 +522,11 @@ contract RegentOffersTest is OffersSetUp {
     function test_only_the_owner_adds_venues_and_only_its_admin_changes_one() public {
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, stranger));
         vm.prank(stranger);
-        offers.addVenue(keccak256("other"), admin, operator, payout, MINIMUM, LENGTH);
+        offers.addVenue(keccak256("other"), admin, operator, moderator, payout, MINIMUM, LENGTH);
 
         vm.expectRevert(RegentOffers.VenueExists.selector);
         vm.prank(owner);
-        offers.addVenue(VENUE, admin, operator, payout, MINIMUM, LENGTH);
+        offers.addVenue(VENUE, admin, operator, moderator, payout, MINIMUM, LENGTH);
 
         vm.startPrank(stranger);
         vm.expectRevert(RegentOffers.NotVenueAdmin.selector);
@@ -506,7 +559,7 @@ contract RegentOffersTest is OffersSetUp {
         offers.setVenueAdmin(VENUE, fresh);
         vm.prank(fresh);
         offers.setOperator(VENUE, fresh);
-        (, address op,,,) = offers.venues(VENUE);
+        (, address op,,,,) = offers.venues(VENUE);
         assertEq(op, fresh);
     }
 

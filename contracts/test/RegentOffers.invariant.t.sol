@@ -11,6 +11,7 @@ contract OffersHandler is Test {
     OffersTestUSDC internal usdc;
     RegentOffers internal offers;
     address internal operator;
+    address internal moderator;
 
     bytes32 internal constant VENUE = keccak256("patchbay.help");
     uint32 internal constant LENGTH = 72 hours;
@@ -25,10 +26,11 @@ contract OffersHandler is Test {
     uint256 public strayIn;
     uint256 internal salt;
 
-    constructor(OffersTestUSDC usdc_, RegentOffers offers_, address operator_) {
+    constructor(OffersTestUSDC usdc_, RegentOffers offers_, address operator_, address moderator_) {
         usdc = usdc_;
         offers = offers_;
         operator = operator_;
+        moderator = moderator_;
         for (uint256 i; i < keys.length; ++i) {
             usdc.mint(vm.addr(keys[i]), type(uint96).max);
         }
@@ -86,7 +88,7 @@ contract OffersHandler is Test {
         if (ids.length == 0) return;
         bytes32 id = ids[i % ids.length];
         if (_status(id) != RegentOffers.Status.Placed) return;
-        vm.prank(operator);
+        vm.prank(moderator);
         offers.remove(id);
     }
 
@@ -128,7 +130,7 @@ contract OffersHandler is Test {
     }
 
     function _payout() internal view returns (address p) {
-        (,, p,,) = offers.venues(VENUE);
+        (,,, p,,) = offers.venues(VENUE);
     }
 
     function _status(bytes32 id) internal view returns (RegentOffers.Status s) {
@@ -154,14 +156,15 @@ contract RegentOffersInvariantTest is Test {
         vm.warp(1_800_000_000);
         address owner = makeAddr("owner");
         address operator = makeAddr("operator");
+        address moderator = makeAddr("moderator");
         usdc = new OffersTestUSDC();
         staking = new OffersTestStaking(usdc);
         offers = new RegentOffers(usdc, staking, 1000, owner);
         vm.prank(owner);
         offers.addVenue(
-            keccak256("patchbay.help"), makeAddr("admin"), operator, makeAddr("payout"), 1_000_000, 72 hours
+            keccak256("patchbay.help"), makeAddr("admin"), operator, moderator, makeAddr("payout"), 1_000_000, 72 hours
         );
-        handler = new OffersHandler(usdc, offers, operator);
+        handler = new OffersHandler(usdc, offers, operator, moderator);
         targetContract(address(handler));
     }
 

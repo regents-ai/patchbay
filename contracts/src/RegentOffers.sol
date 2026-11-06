@@ -33,7 +33,10 @@ interface IRegentRevenueStaking {
 ///         has its slots (inventory) with no listing step, and bidders commit USDC to them (demand).
 ///         Patchbay.help is the first venue.
 /// @dev The venue's server (its operator) screens wordings, keeps the slot order and chooses
-///      winners; this contract keeps the money under fixed rules. A bid is a USDC authorization
+///      winners; a separate moderator, set by the owner, removes placements for policy; this
+///      contract keeps the money under fixed rules. Because a removal pays the whole bid, the
+///      operator can never remove, so a stolen operator key can charge at most one placement per
+///      slot at a time, for the time it shows. A bid is a USDC authorization
 ///      signed by the bidder, bound to the bid's exact terms through its nonce and submitted by
 ///      anyone, so a bidder needs no ETH. Bid money leaves only as a return of a bid never placed
 ///      (or the unused time of a placement replaced by a newer one), or as payment for its
@@ -83,11 +86,14 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice A venue whose forums carry slots. A zero admin means the venue was never added.
+    /// @param operator The venue's server key: places and returns bids.
+    /// @param moderator Removes placements for policy; never the operator.
     /// @param minimum The least bid, in USDC base units, on any of its slots.
     /// @param length How long a placement runs, in seconds.
     struct Venue {
         address admin;
         address operator;
+        address moderator;
         address payout;
         uint96 minimum;
         uint32 length;
@@ -149,10 +155,17 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     uint256 public revenueOwed;
 
     event VenueAdded(
-        bytes32 indexed venue, address admin, address operator, address payout, uint96 minimum, uint32 length
+        bytes32 indexed venue,
+        address admin,
+        address operator,
+        address moderator,
+        address payout,
+        uint96 minimum,
+        uint32 length
     );
     event VenueAdminChanged(bytes32 indexed venue, address admin);
     event OperatorChanged(bytes32 indexed venue, address operator);
+    event ModeratorChanged(bytes32 indexed venue, address moderator);
     event PayoutChanged(bytes32 indexed venue, address payout);
     event VenueTermsChanged(bytes32 indexed venue, uint96 minimum, uint32 length);
     event BidPlaced(
@@ -191,6 +204,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     error VenueNotFound();
     error NotVenueAdmin();
     error NotOperator();
+    error NotModerator();
+    error ModeratorIsOperator();
     error BidsPaused();
     error BelowMinimum();
     error LengthMismatch();
@@ -215,16 +230,33 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     // ---------------------------------------------------------------- owner
 
     /// @notice Adds a venue. Every forum it runs carries slots from then on.
-    function addVenue(bytes32 venue, address admin, address operator, address payout, uint96 minimum, uint32 length)
-        external
-        onlyOwner
-    {
+    function addVenue(
+        bytes32 venue,
+        address admin,
+        address operator,
+        address moderator,
+        address payout,
+        uint96 minimum,
+        uint32 length
+    ) external onlyOwner {
         if (venue == bytes32(0) || minimum == 0 || length == 0) revert ZeroValue();
         if (venues[venue].admin != address(0)) revert VenueExists();
-        if (admin == address(0) || operator == address(0)) revert ZeroAddress();
+        if (admin == address(0) || operator == address(0) || moderator == address(0)) revert ZeroAddress();
+        if (moderator == operator) revert ModeratorIsOperator();
         _checkPayout(payout);
-        venues[venue] = Venue({admin: admin, operator: operator, payout: payout, minimum: minimum, length: length});
-        emit VenueAdded(venue, admin, operator, payout, minimum, length);
+        venues[venue] = Venue({
+            admin: admin, operator: operator, moderator: moderator, payout: payout, minimum: minimum, length: length
+        });
+        emit VenueAdded(venue, admin, operator, moderator, payout, minimum, length);
+    }
+
+    /// @notice Replaces a venue's moderator. Only the owner may, because a removal pays the whole bid.
+    function setModerator(bytes32 venue, address moderator) external onlyOwner {
+        Venue storage v = _venue(venue);
+        if (moderator == address(0)) revert ZeroAddress();
+        if (moderator == v.operator) revert ModeratorIsOperator();
+        v.moderator = moderator;
+        emit ModeratorChanged(venue, moderator);
     }
 
     /// @notice Replaces a venue's admin, for when its key is lost or leaked.
@@ -252,6 +284,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     function setOperator(bytes32 venue, address operator) external {
         _onlyVenueAdmin(venue);
         if (operator == address(0)) revert ZeroAddress();
+        if (operator == venues[venue].moderator) revert ModeratorIsOperator();
         venues[venue].operator = operator;
         emit OperatorChanged(venue, operator);
     }
@@ -380,10 +413,11 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice Ends a showing placement for policy. The whole bid is paid; nothing goes back.
+    ///         Only the venue's moderator may.
     function remove(bytes32 bidId) external nonReentrant {
         Bid storage b = bids[bidId];
         if (b.status != Status.Placed) revert NotPlaced();
-        _onlyOperator(b.venue);
+        if (msg.sender != venues[b.venue].moderator) revert NotModerator();
         _end(bidId, EndReason.Removed);
     }
 

@@ -39,7 +39,7 @@ contract OffersSanity is Script, StdCheats {
         address payout = makeAddr("payout");
         offers = new RegentOffers(USDC, STAKING, 1000, owner);
         vm.prank(owner);
-        offers.addVenue(VENUE, makeAddr("admin"), operator, payout, 1_000_000, LENGTH);
+        offers.addVenue(VENUE, makeAddr("admin"), operator, makeAddr("moderator"), payout, 1_000_000, LENGTH);
         console2.log("offers:", address(offers));
 
         (address alice, uint256 aliceKey) = makeAddrAndKey("regent-offers-sanity-alice-1106");
