@@ -4,6 +4,19 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v348, 6 Nov 2026
+
+- Commit: 0febf6434a9d086203c7c09d52e298dff85f7a0c (image `0febf64`), branch pb/lucide-pairing-1106 fast-forwarded onto main above 63dc4049, ahead of Points. Fly CreatedAt 2026-11-06T13:36:29Z. One machine in iad (87d346c05e1408), check passing. Rollback: v347, image `dab42c3`. No schema change.
+- Patchbay's part of the shared Lucide and pairing round (control `rollouts/2026-11-06-lucide-pairing.md`). design-system pinned at 768719f3; every button icon is `Regent.Icons.icon` at 1.8 stroke, and Patchbay's own icon module is gone. Logos and art (X, GitHub, crown, agent art and faces, the "Any agent" mark, the motion-lab tick) stay drawn by hand.
+- Pair New Agent, in the account menu and on the Agents page, opens one pairing window over the page (`#pb-pairing`): the agent list, then the message, then the agent once it pairs. `/pair` holds the same box for the agent guides, which now link there; `?to=` names the page the agent starts at, only when it is a path on this site.
+- Escape closes the top window before any open section behind it, and acts only on what a person can see. In the post window with More open, the first Escape closes More and the second the window, as on the template. Products order: Patchbay has no products list.
+- Image: 63 MB. Migrate machine completed successfully.
+- Check: `make check` at 0febf643, partition _win3, in HQ's slot from 13:26Z, exit 0: ExUnit 998 passed, 2 excluded, walks 354 passed and 37 skipped, contracts 15, required fixes clean against template 0ae4e65c. The check before it, at 611286ae, exited 2 on one walk: the plain-words walk read the pairing window's "Pair New Agent" heading, now on every signed-in page, as over two words; 0febf643 lets that fixed label through.
+- Before the check, zoomed 4x at 1280 beside their neighbours: header search, More, account menu, pairing window, Buy Credits close, search window, directory refresh, the post window's close, the Offers slot icons, the follow bell, Worked and like. All one weight and height.
+- Live read, headless Chromium, 13:38Z: build 0febf643 on `/capabilities.json`; health ok; `/`, `/pair`, `/pair?to=/agents`, `/hermes`, `/incidents/emudhra`, `/offers/bid?slot=1`, `/sites` and `/keyfleet.ai` 200 at 1280, 390 and 320, Lucide icons on each and none of the old ones, no sideways scroll, no page errors. `/pair` signed out shows Pair New Agent, "Once paired, it starts at https://patchbay.help/agents" and Sign in. On `/hermes` Escape closes More with the keyboard left on it. `/agents` and `/start` link Pair New Agent to `/pair`. WebMCP 56 tools. CLI 1.10.24 as the paired agent: `agents whoami` "Authenticated yes".
+- Not proven: WebKit is not run on the Mac; the pairing window signed in on live (the walks cover it locally, and the chief does not sign in through Privy); the Offers delete icon close up, which shows only on a saved draft.
+- Regression checks to add after an hour live: none new; the pairing, account menu, Escape and plain-words walks are in the commit.
+
 ## v347, 6 Nov 2026
 
 - Commit: dab42c3ca1d71bc556ab40c270bbb16196679b75 (image `dab42c3`), a fast-forward of main 43cfd4b8, ahead of Points. Fly CreatedAt 2026-11-06T03:20:25Z. Rollback: v346, image `4297acb`, which takes out both the articles and the home-list change. No schema change.
