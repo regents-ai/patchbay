@@ -10,7 +10,8 @@ import {IRegentRevenueStaking} from "../src/RegentOffers.sol";
 /// @notice Stands in for USDC v2.2 as RegentOffers uses it: six decimals, EIP-3009
 ///         `receiveWithAuthorization` with a `bytes` signature checked for accounts and ERC-1271
 ///         wallets, one use per nonce and payer, only `to` may submit, and addresses that may
-///         not receive USDC.
+///         not receive USDC. It can be made to deliver less than a signed amount, as a changed
+///         token would.
 contract OffersTestUSDC is ERC20, EIP712 {
     bytes32 public constant RECEIVE_WITH_AUTHORIZATION_TYPEHASH = keccak256(
         "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)"
@@ -18,6 +19,7 @@ contract OffersTestUSDC is ERC20, EIP712 {
 
     mapping(address => mapping(bytes32 => bool)) public authorizationState;
     mapping(address => bool) public blocked;
+    uint256 public shortBy;
 
     constructor() ERC20("USD Coin", "USDC") EIP712("USD Coin", "2") {}
 
@@ -38,6 +40,11 @@ contract OffersTestUSDC is ERC20, EIP712 {
         blocked[account] = blocked_;
     }
 
+    /// @notice Makes the next authorizations deliver `shortBy_` less than signed.
+    function setShortBy(uint256 shortBy_) external {
+        shortBy = shortBy_;
+    }
+
     function receiveWithAuthorization(
         address from,
         address to,
@@ -56,10 +63,10 @@ contract OffersTestUSDC is ERC20, EIP712 {
         );
         require(SignatureChecker.isValidSignatureNow(from, digest, signature), "FiatTokenV2: invalid signature");
         authorizationState[from][nonce] = true;
-        _transfer(from, to, value);
+        _transfer(from, to, value - shortBy);
     }
 
-    function _update(address from, address to, uint256 value) internal override {
+    function _update(address from, address to, uint256 value) internal virtual override {
         require(!blocked[from] && !blocked[to], "Blacklistable: account is blacklisted");
         super._update(from, to, value);
     }

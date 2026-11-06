@@ -42,8 +42,13 @@ interface IRegentRevenueStaking {
 ///      (or the unused time of a placement replaced by a newer one), or as payment for its
 ///      placement, split between REGENT staking and the venue's payout wallet. Nothing is paid out
 ///      inline: every end records what is owed and `payOut` sends it, so an address USDC refuses
-///      to pay can never stop a slot from ending or being replaced. There is no upgrade: a new
-///      market is a new contract, and pausing this one stops new bids only.
+///      to pay can never stop a slot from ending or being replaced. Each bid keeps the payout
+///      wallet its venue named when it was made, so a changed payout wallet, even one set with a
+///      stolen key, is paid only for bids made after the change. Nothing can move money already
+///      owed to another account: what is owed to an address USDC has blocked waits for USDC to
+///      pay it. USDC sent to this contract other than through a bid is in no record and never
+///      leaves. There is no upgrade: a new market is a new contract, and pausing this one stops
+///      new bids only.
 contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
@@ -100,11 +105,13 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     }
 
     /// @notice A bid, held until it is placed, returned or withdrawn.
+    /// @param payout The venue's payout wallet when the bid was made; it is paid the venue's share.
     struct Bid {
         address bidder;
         uint96 amount;
         bytes32 venue;
         bytes32 slot;
+        address payout;
         uint64 placeBy;
         uint64 startsAt;
         uint32 length;
@@ -113,6 +120,11 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
 
     /// @notice Basis-point denominator.
     uint256 public constant BPS = 10_000;
+
+    /// @notice The longest a bid may wait to be placed: one placement length today, so a bid made
+    ///         just after a placement starts can still be placed when it finishes, and no bidder's
+    ///         money waits on the operator longer than that.
+    uint256 public constant MAX_WAIT = 72 hours;
 
     /// @notice Tag the protocol share is deposited into REGENT staking under.
     // casting to bytes32 is safe because the 13-byte literal fits
@@ -123,7 +135,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
     IERC20 public immutable usdc;
 
-    /// @notice The REGENT revenue staking contract the protocol share is pushed into.
+    /// @notice The REGENT revenue staking contract the protocol share is pushed into. It is fixed:
+    ///         if it can never take a deposit again, the protocol share stays in this contract.
     // forge-lint: disable-next-line(screaming-snake-case-immutable)
     IRegentRevenueStaking public immutable staking;
 
@@ -211,6 +224,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     error LengthMismatch();
     error PlaceByPassed();
     error PlaceByNotPassed();
+    error PlaceByTooFar();
     error BidExists();
     error AmountNotReceived();
     error NotHeld();
@@ -289,6 +303,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         emit OperatorChanged(venue, operator);
     }
 
+    /// @notice Names the wallet paid the venue's share of bids made from now on. Bids already
+    ///         made keep paying the wallet named when they were made.
     function setPayout(bytes32 venue, address payout) external {
         _onlyVenueAdmin(venue);
         _checkPayout(payout);
@@ -341,6 +357,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         // Times here are hours apart; a block producer's few seconds of leeway changes nothing.
         // forge-lint: disable-next-line(block-timestamp)
         if (terms.placeBy <= block.timestamp) revert PlaceByPassed();
+        // forge-lint: disable-next-line(block-timestamp)
+        if (terms.placeBy > block.timestamp + MAX_WAIT) revert PlaceByTooFar();
 
         bytes32 nonce = nonceOf(terms);
         bidId = keccak256(abi.encode(bidder, nonce));
@@ -351,6 +369,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
             amount: terms.amount,
             venue: terms.venue,
             slot: terms.slot,
+            payout: v.payout,
             placeBy: terms.placeBy,
             startsAt: 0,
             length: terms.length,
@@ -434,6 +453,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
     // ------------------------------------------------------------- payouts
 
     /// @notice Sends `account` everything it is owed. Anyone may call it; only `account` is paid.
+    ///         Nothing else moves what is owed: while USDC refuses to pay `account`, it waits.
     function payOut(address account) external nonReentrant returns (uint256 amount) {
         amount = owed[account];
         if (amount == 0) revert NothingOwed();
@@ -443,7 +463,8 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         usdc.safeTransfer(account, amount);
     }
 
-    /// @notice Deposits the protocol share owed into REGENT staking. Anyone may call it.
+    /// @notice Deposits the protocol share owed into REGENT staking. Anyone may call it. While
+    ///         staking refuses deposits the share waits here; it has no other way out.
     // slither-disable-next-line reentrancy-balance
     function pushRevenue() external nonReentrant returns (uint256 amount) {
         amount = revenueOwed;
@@ -491,7 +512,7 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         Bid storage b = bids[bidId];
         (uint256 paid, uint256 returned, uint256 protocolShare, uint256 venueShare) =
             split(b.amount, b.startsAt, b.length, block.timestamp, reason);
-        address payout = venues[b.venue].payout;
+        address payout = b.payout;
 
         b.status = Status.Ended;
         live[b.venue][b.slot] = bytes32(0);
@@ -538,8 +559,12 @@ contract RegentOffers is Ownable2Step, ReentrancyGuardTransient {
         if (msg.sender != venues[venue].operator) revert NotOperator();
     }
 
+    /// @dev USDC refuses to pay its own address, and the staking contract's share is pushed, never
+    ///      paid out, so neither may be a payout wallet.
     function _checkPayout(address payout) private view {
         if (payout == address(0)) revert ZeroAddress();
-        if (payout == address(this)) revert ContractIsParty();
+        if (payout == address(this) || payout == address(usdc) || payout == address(staking)) {
+            revert ContractIsParty();
+        }
     }
 }
