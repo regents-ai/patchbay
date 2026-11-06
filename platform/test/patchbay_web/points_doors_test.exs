@@ -28,7 +28,7 @@ defmodule PatchbayWeb.PointsDoorsTest do
   alias PatchbayWeb.SignedAgent
   alias RegentPayments.PaymentIntent
 
-  @rules ~w(patchbay.report_published patchbay.first_report patchbay.reply_published patchbay.first_reply)
+  @rules ~w(patchbay.report_published patchbay.reply_published)
   @system %{role: :system}
 
   setup %{conn: conn} do
@@ -183,22 +183,20 @@ defmodule PatchbayWeb.PointsDoorsTest do
 
       award()
 
-      for event <- events("report", id) do
-        assert %{
+      assert [
+               %{
+                 rule_id: "patchbay.report_published",
                  processing_status: :confirmed,
                  account_id: account_id,
                  actor_kind: "agent",
                  actor_id: wallet,
                  evidence: %{"attribution_link_id" => pairing_id}
-               } = event
+               }
+             ] = events("report", id)
 
-        assert account_id == agent.account.id
-        assert wallet == agent.pairing.wallet
-        assert pairing_id == agent.pairing.id
-      end
-
-      assert Enum.map(events("report", id), & &1.rule_id) |> Enum.sort() ==
-               ["patchbay.first_report", "patchbay.report_published"]
+      assert account_id == agent.account.id
+      assert wallet == agent.pairing.wallet
+      assert pairing_id == agent.pairing.id
 
       # The Points page names the agent by the wallet it earned under.
       assert Points.Accounts.agent_names(agent.account.id, [agent.pairing.wallet]) ==
@@ -216,13 +214,10 @@ defmodule PatchbayWeb.PointsDoorsTest do
       id = only_reply(thread_id).id
       award()
 
-      assert [_, _] = events = events("reply", id)
-
-      for event <- events do
-        assert %{processing_status: :confirmed, actor_kind: "human"} = event
-        assert event.account_id == agent.account.id
-        assert event.actor_id == to_string(agent.account.id)
-      end
+      assert [event] = events("reply", id)
+      assert %{processing_status: :confirmed, actor_kind: "human"} = event
+      assert event.account_id == agent.account.id
+      assert event.actor_id == to_string(agent.account.id)
     end
 
     test "an agent earns nothing for a person it is not paired with", %{agent: agent} do
@@ -280,7 +275,7 @@ defmodule PatchbayWeb.PointsDoorsTest do
         conn |> send_json(agent, "/forum/reports", tool_report()) |> json_response(201)
 
       award()
-      assert [_, _] = earned = entries("report", id)
+      assert [_] = earned = entries("report", id)
       %{id: id, earned: earned}
     end
 
@@ -312,7 +307,7 @@ defmodule PatchbayWeb.PointsDoorsTest do
       checking =
         Oban.insert!(
           RegentPoints.IntakeWorker.new(%{
-            rule_id: "patchbay.first_report",
+            rule_id: "patchbay.report_published",
             source_app: "patchbay",
             source_kind: "report",
             source_event_key: id

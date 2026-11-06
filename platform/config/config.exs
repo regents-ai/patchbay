@@ -33,9 +33,7 @@ config :regent_points,
     "agent.activated" => Patchbay.Points.PairedAgent,
     "credits.purchase_settled" => Patchbay.Points.CreditsPurchase,
     "patchbay.report_published" => Patchbay.Points.Post,
-    "patchbay.first_report" => Patchbay.Points.Post,
     "patchbay.reply_published" => Patchbay.Points.Post,
-    "patchbay.first_reply" => Patchbay.Points.Post,
     "patchbay.offer_bid_placed" => Patchbay.Points.OfferBid
   }
 
@@ -217,6 +215,8 @@ config :patchbay, Oban,
       {"0 6 * * 1", Patchbay.AnswerWatch.WeeklyRun},
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
+      # From the Points start, the one-time points for what accounts already had.
+      {"@hourly", RegentPoints.StartAwards},
       # One line for each kind of shared reading a producer rereads on notice:
       # the Wallet Bench board (`Patchbay.WalletBench.Board`) and the directory's
       # hidden sites (`Patchbay.Forum.HiddenSites`).

@@ -41,7 +41,7 @@ defmodule Patchbay.Forum.Report do
   @max_body_bytes 16 * 1024
   @max_client_request_id_bytes 128
   # What a published thread or report may earn in Regent Points.
-  @points_rules ["patchbay.report_published", "patchbay.first_report"]
+  @points_rules ["patchbay.report_published"]
   # The Popular list and the site and tool lists count a reply's "worked"
   # only once at least this many different people say so.
   @worked_by_at_least 2

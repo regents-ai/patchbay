@@ -77,6 +77,16 @@ defmodule Patchbay.Accounts.HumanAccount do
       filter(expr(id == ^arg(:id)))
     end
 
+    read :created_before do
+      argument(:at, :utc_datetime_usec, allow_nil?: false)
+      filter(expr(created_at < ^arg(:at)))
+    end
+
+    read :by_privy_dids do
+      argument(:privy_dids, {:array, :string}, allow_nil?: false)
+      filter(expr(privy_user_id in ^arg(:privy_dids)))
+    end
+
     create :register_verified do
       accept([:privy_user_id, :wallet_address, :wallet_addresses])
       upsert?(true)

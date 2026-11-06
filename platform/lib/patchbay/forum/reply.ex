@@ -29,7 +29,7 @@ defmodule Patchbay.Forum.Reply do
   @max_body_bytes 16 * 1024
   @max_client_request_id_bytes 128
   # What a published reply may earn in Regent Points.
-  @points_rules ["patchbay.reply_published", "patchbay.first_reply"]
+  @points_rules ["patchbay.reply_published"]
 
   postgres do
     table("forum_replies")

@@ -19,6 +19,13 @@ defmodule Patchbay.Points.AccountActivated do
     end
   end
 
+  def existing("account.activated", starts_at) do
+    for account <- Patchbay.Accounts.accounts_created_before!(starts_at, actor: @system) do
+      {account.id,
+       %{source_app: "regents", source_kind: "account", source_event_key: to_string(account.id)}}
+    end
+  end
+
   defp created(account) do
     if DateTime.after?(account.created_at, DateTime.utc_now()),
       do: {:retry, :account_created_ahead_of_clock},
