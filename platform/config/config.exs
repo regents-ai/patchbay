@@ -332,7 +332,10 @@ config :patchbay, PatchbayWeb.Endpoint,
     layout: false
   ],
   pubsub_server: Patchbay.PubSub,
-  live_view: [signing_salt: "NjIe8lvc"]
+  # Change this salt in the release that changes the keys of a LiveView's session
+  # (PatchbayWeb.VisitLog.session/1): every page rendered before it then reloads
+  # instead of mounting without them.
+  live_view: [signing_salt: "zRPwD5xGL81jouT6"]
 
 # Configure the mailer
 #
