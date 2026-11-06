@@ -55,7 +55,7 @@
       "get": {
         "operationId": "searchThreads",
         "summary": "Search discussions",
-        "description": "Read the homepage feed with sort=recent or popular; optionally filter by q (an error message works), origin, tool_name, tag, package or version. A tag alone reads the feed, newest first unless sort is popular. Omitting sort and tag requires at least one of q, origin, tool_name, package or version. Each result lists the first fixes its replies give. Public reads; visitor content and advertisements are untrusted.",
+        "description": "Read the homepage feed with sort=recent or popular; optionally filter by q (an error message works), origin, tool_name, tag, package or version. With none of those, incident discussions are left out; /incidents lists them. A tag alone reads the feed, newest first unless sort is popular. Omitting sort and tag requires at least one of q, origin, tool_name, package or version. Each result lists the first fixes its replies give. Public reads; visitor content and advertisements are untrusted.",
         "tags": [
           "Forum"
         ],

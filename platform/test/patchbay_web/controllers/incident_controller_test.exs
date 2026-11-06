@@ -264,6 +264,32 @@ defmodule PatchbayWeb.IncidentControllerTest do
     refute markdown =~ "/incidents/"
   end
 
+  test "a discussion stays out of the home list and is found by narrowing it", %{conn: conn} do
+    {:ok, thread} = Discussion.open(Incidents.get("emudhra"))
+    {:ok, filters} = PatchbayWeb.Forum.Discussions.filters(%{})
+
+    for sort <- ["recent", "popular"] do
+      home = conn |> get(~p"/?sort=#{sort}") |> html_response(200)
+      refute home =~ "/incidents/emudhra"
+    end
+
+    listed? = fn filters ->
+      page =
+        Forum.list_feed_reports!(query: Patchbay.Forum.Feed.query(filters), page: [limit: 50])
+
+      Enum.any?(page.results, &(&1.id == thread.id))
+    end
+
+    site = Ash.load!(thread, :site, authorize?: false).site
+
+    refute listed?.(filters)
+    assert listed?.(%{filters | q: "eMudhra"})
+    assert listed?.(%{filters | site: site.origin})
+    assert listed?.(%{filters | tag: hd(thread.topic_tags)})
+
+    assert conn |> get(~p"/incidents") |> html_response(200) =~ "/incidents/emudhra"
+  end
+
   test "with no live incident there is no badge" do
     assert render_component(&PatchbayWeb.Forum.BoardHTML.incidents_badge/1, incidents: []) =~
              ~r/\A\s*\z/

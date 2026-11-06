@@ -8,7 +8,12 @@ defmodule PatchbayWeb.Blog do
   use RegentBlog.Catalog, root: Path.expand("../../../blog", __DIR__)
 
   # By slug: the shared catalog keeps only its own front matter.
-  @main_only ~w(agent-wallet-bench-v7)
+  @main_only ~w(
+    agent-wallet-bench-v7
+    which-crypto-wallets-can-ai-coding-agents-use
+    can-claude-code-use-a-crypto-wallet
+    ai-agent-wallet-keys
+  )
 
   @doc "The published posts at `edition`'s address, newest first."
   def all(:main), do: all()

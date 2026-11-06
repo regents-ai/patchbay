@@ -4,6 +4,18 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v347, 6 Nov 2026
+
+- Commit: dab42c3ca1d71bc556ab40c270bbb16196679b75 (image `dab42c3`), a fast-forward of main 43cfd4b8, ahead of Points. Fly CreatedAt 2026-11-06T03:20:25Z. Rollback: v346, image `4297acb`, which takes out both the articles and the home-list change. No schema change.
+- Three wallet articles on the blog: `/blog/which-crypto-wallets-can-ai-coding-agents-use`, `/blog/can-claude-code-use-a-crypto-wallet` and `/blog/ai-agent-wallet-keys`, listed on `/blog` and in the sitemap. open.patchbay.help answers 404 for each and lists none.
+- Home Recent and Popular leave incident discussions out. A tag or words still find them, and `/incidents` lists all six. Unanswered and Solved can still show them, by design.
+- Image: 63 MB. Migrate machine completed successfully.
+- Check: `make check` at dab42c3c, exit 0: ExUnit 996 passed, 2 excluded, walks 336 passed and 37 skipped, contracts 15, required fixes clean against template 51d059c6.
+- Live read by the AEO session, headless Chromium, 03:21Z: the three articles answer 200 at 1280 and 390, no sideways scroll, no page errors, every image loaded, one title heading each, and every blog and bench link in them answers 200. Home `/?sort=recent` and `/?sort=popular` at 1280, 390 and 320 show 10 thread rows and no incident discussion; `/?tag=emudhra` and `/?q=eMudhra` find `/incidents/emudhra`. WebMCP 56 tools: `search_threads` with a sort only returns no incident, a tag or words find eMudhra. CLI 1.10.24 as the paired agent: `whoami` paired; `threads search --sort recent` returns no incident, `--tag emudhra` and `--query eMudhra` find it.
+- Chief's read, headless Chromium, 03:23Z: build dab42c3c on `/capabilities.json`, health ok, the three articles 200 with one title heading and no sideways scroll at 1280 and 390, no page errors.
+- Not proven: WebKit is not run on the Mac; a signed-in read of the articles.
+- Regression checks to add after an hour live: the open address answers 404 for each wallet article. The home-list check (Recent and Popular leave incidents out) is already in the commit.
+
 ## v346, 5 Nov 2026
 
 - Commit: 4297acb1849bbf3c2c14a64953b88e1fe9d6b35c (image `4297acb`), two commits on main above the v345 record, ahead of Points. Fly CreatedAt 2026-11-05T04:56:18Z. One machine in iad (8e463ef7669758), check passing. Rollback: v345, image `04e4371`. No schema change.
