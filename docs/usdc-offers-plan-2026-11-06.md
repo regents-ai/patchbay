@@ -303,7 +303,7 @@ takes that change when it lands.
 3. **Pages and agent surfaces.** Bid, Withdraw, Add USDC and USDC Balance on the five
    surfaces, walked at 320, 390 and 1280.
 4. **Sean's go.** On his named go: deploy the contract, set the owner Safe, the operator
-   key, Patchbay as a site and its slots, and add the tables to production.
+   key and Patchbay as a site, and add the tables to production.
 5. **Cutover release.** One release closes Credits bidding, removes the Credits code above
    and opens Offers on USDC.
 
