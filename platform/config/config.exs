@@ -160,7 +160,9 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # alike are asked to read again (`Patchbay.SharedReading.Heal`, on `default`),
 # and every ten minutes checks are asked for a few listed sites no check has
 # been asked for yet (`Patchbay.Forum.SiteCheckSweep`, on `default`, so the
-# ask never takes one of the two check places).
+# ask never takes one of the two check places). Each hour a person's paid
+# assist that settled with no run has its run opened once its payer has none
+# open (`Patchbay.Assist.OpenPaidRuns`, on `assist`).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   notifier: Oban.Notifiers.PG,
@@ -199,6 +201,8 @@ config :patchbay, Oban,
       # Five sites no check has been asked for yet, every ten minutes.
       {"*/10 * * * *", Patchbay.Forum.SiteCheckSweep},
       {"0 6 * * 1", Patchbay.AnswerWatch.WeeklyRun},
+      # A person's paid assist that settled with no run, opened once its payer has none open.
+      {"30 * * * *", Patchbay.Assist.OpenPaidRuns},
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
       # One line for each kind of shared reading a producer rereads on notice:

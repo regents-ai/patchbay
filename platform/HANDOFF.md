@@ -397,10 +397,22 @@ agent's profile.
   same `rerun` command as a paid one.
 - A paid assist whose run did not open after the payment settled (the log
   says "settled but its run did not open", with the intent, payer and
-  browser) is opened by executing the same intent again as that payer, from
-  that browser:
+  browser) is opened within the hour once its payer has no run open
+  (`Patchbay.Assist.OpenPaidRuns`); one an agent paid waits for that agent's
+  next call. To open a person's sooner, execute the same intent again as that
+  payer, from that browser:
   `PatchbayWeb.PaymentsAPI.Purchase.execute(Patchbay.Identity.get_profile!("<payer id>", authorize?: false), "<intent id>", %{payment: nil, payer: nil, browser_session_id: "<browser id or nil>"})`.
   Nothing is paid twice; one payment opens at most one run.
+- An assist fee left `forwarding` for over an hour (Sentinel's `fee_forward`
+  age) or `failed` is finished by a person after looking on Base for the
+  operator wallet's deposit to REGENT staking, sent after the run's
+  `fee_taken_at` (a `failed` fee names it in `deposit_tx_hash` when one was
+  sent). If the deposit landed, write it:
+  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.record_deposited(\"<run id>\", %{deposit_tx_hash: \"<0x hash>\"}, authorize?: false)'"`
+  (a `failed` fee that already names it needs no hash). If nothing landed,
+  put it back and its job forwards it again:
+  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.forward_fee_again(\"<run id>\", authorize?: false)'"`.
+  Putting back a fee whose deposit landed pays staking twice, so look first.
 - A paid assist that waited on a person (`assessment_pending`, usually because
   a model provider was away) is handed back to Patchbay with
   `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.rerun(\"<run id>\")'"`.

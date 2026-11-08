@@ -16,7 +16,10 @@ defmodule Patchbay.Assist.Run do
   restart too, and on one node only. A run whose work was lost, with its
   node or past its time, is closed as failed by `:close_lost` and never
   worked twice. The fee goes on to the staking contract as a job of its own
-  (`:forward_fee`) once the run is answered.
+  (`:forward_fee`) once the run is answered. Each step of the fee names the
+  stored states it starts from, a forward left `forwarding` or `failed` is
+  finished by a person (`:record_deposited`, `:forward_fee_again`), and the
+  database keeps `deposit_status` and `deposit_tx_hash` in step.
   """
 
   use Ash.Resource,
@@ -36,6 +39,28 @@ defmodule Patchbay.Assist.Run do
   postgres do
     table("assist_runs")
     repo(Patchbay.Repo)
+
+    check_constraints do
+      # Only the fee's own states, whatever wrote the row.
+      check_constraint(:deposit_status, "assist_runs_deposit_status_known",
+        check: "deposit_status IN (#{Enum.map_join(DepositStatus.values(), ", ", &"'#{&1}'")})",
+        message: "is not a state an assist's fee can be in"
+      )
+
+      # A deposit's transaction is written only once one was sent: a deposited
+      # fee always names it, a failed one names it when it was sent, and a fee
+      # still waiting, being taken or free names none.
+      check_constraint(:deposit_tx_hash, "assist_runs_deposit_tx_hash_matches_status",
+        check: """
+        CASE deposit_status
+          WHEN 'deposited' THEN deposit_tx_hash IS NOT NULL
+          WHEN 'failed' THEN TRUE
+          ELSE deposit_tx_hash IS NULL
+        END
+        """,
+        message: "does not match where the fee stands"
+      )
+    end
 
     identity_wheres_to_sql(
       one_open_run_per_payer: "status IN ('paid', 'running')",
@@ -371,9 +396,19 @@ defmodule Patchbay.Assist.Run do
     end
 
     update :record_deposited do
-      description("The fee's deposit is on Base, in the transaction named.")
+      description("""
+      The fee's deposit is on Base, in the transaction named: written by the
+      fee's job from the chain's answer, or by a person who found a forward
+      left forwarding or failed deposited on the chain.
+      """)
+
       accept([:deposit_tx_hash])
-      validate(attribute_equals(:deposit_status, :forwarding), message: "is not being forwarded")
+      require_attributes([:deposit_tx_hash])
+
+      validate(attribute_in(:deposit_status, [:forwarding, :failed]),
+        message: "is not being forwarded or failed"
+      )
+
       change(set_attribute(:deposit_status, :deposited))
     end
 
@@ -391,7 +426,29 @@ defmodule Patchbay.Assist.Run do
     update :fee_not_forwarded do
       description("A fee whose forward sent nothing on every try, left for a person.")
       accept([])
+
+      validate(attribute_equals(:deposit_status, :pending),
+        message: "is not waiting to be forwarded"
+      )
+
       change(set_attribute(:deposit_status, :failed))
+    end
+
+    update :forward_fee_again do
+      description("""
+      A person puts back a fee left forwarding or failed, once the chain shows
+      no deposit of it landed, and its job forwards it again.
+      """)
+
+      accept([])
+
+      validate(attribute_in(:deposit_status, [:forwarding, :failed]),
+        message: "is not being forwarded or failed"
+      )
+
+      change(set_attribute(:deposit_status, :pending))
+      change(set_attribute(:deposit_tx_hash, nil))
+      change(run_oban_trigger(:forward_fee))
     end
 
     update :reopen do
@@ -437,8 +494,8 @@ defmodule Patchbay.Assist.Run do
     # opens for a SIWA-signed agent under the free fixes its wallet has left
     # right now and no other. The actions that move a run along (`work`,
     # `start`, `record_step`, `finish`, `interrupt`, the fee's `forward_fee`,
-    # `take_fee`, `release_fee`, `record_deposited`, `record_fee_failed` and
-    # `fee_not_forwarded`, and `reopen`) and
+    # `take_fee`, `release_fee`, `record_deposited`, `record_fee_failed`,
+    # `fee_not_forwarded` and `forward_fee_again`, and `reopen`) and
     # `save_to_payer` are named by no policy, so nothing that arrives over
     # HTTP can reach them; Patchbay's own jobs, sign-in, and a person at its
     # console are their only callers and say so by skipping authorization

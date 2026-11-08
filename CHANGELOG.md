@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-08 — Paid fixes
+
+- A paid fix that could not start because another of yours was still under way now starts by itself within an hour of that one ending. A paid fix your agent bought still starts on its next call.
+- Every paid fix's fee still reaches REGENT staking once. A fee whose sending stopped partway is now finished by a person who checks the chain first, and then either written as received or sent again.
+
 ## 2026-11-08 — Points
 
 - The Points page is redrawn as on every Regent site: your total with today and yesterday, your place, the actions left and the leaderboard, all as the page opens. A person with no name shows on the leaderboard by their ENS name or wallet, with its copy icon.
