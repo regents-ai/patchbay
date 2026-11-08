@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v351, 8 Nov 2026
+
+- Commit: cc425e5a (merge of Credits out 6422ef39798ee5527340e1e48bf8b64931a57d65 into main above the v350 record 488c22d4; the merge adds only that record). Image `cc425e5`. One machine in iad (48edd003fe95d8), check passing. Rollback: v350 (image `bbbd72d` with `PATCHBAY_MCP_IDENTITY_ENABLED=true`). No schema change; every regent_credits table stays until TABLE-DROP (question 97).
+- Credits out (control `rollouts/2026-11-06-credits-removal.md`, Sean's CREDITS-OUT): no Buy Credits, no balance in the header or account menu, no Credits panel or Credits account page; elixir-utils f8801d79, design-system d3845c6d. Offers bids (`offers/credit_amount.ex`, `credits_limit.ex`) and the Credits help desk (`/credits-help`, `ask_credits_help` and friends) stay until the offers contract and TABLE-DROP.
+- Points page rollout parts 2-5 and 7 ride in it: `Patchbay.Points.Board` (Oban heal each minute), `account_points` v5 with leaderboard `wallet` and `ens_name`, openapi 15.0.0. Earning is off (approved_rules [], starts_at unset) until POINTS-GO.
+- Pairing window styles moved to `platform/assets/css/pairing.css`; `.pb-account-header` is `display: contents`.
+- Gate APPROVED 6422ef39 (control eb94107b). Chief's fresh copy of 6422ef39: setup 0; ExUnit 997 passed, 2 excluded; walk 347 passed, 37 skipped; contracts 15; cli, SIWA-latest ok; required fixes ok against template 7c543dde, after ash-template 5a1ca3e4 put regent_credits back on the shared list (Patchbay's bid path still uses it).
+- Live read, headless Chromium, 16:05Z: `/`, `/points`, `/offers`, `/account` 200 at 390 and 1280, every LiveView connected, no sideways scroll, no page errors, no Credits in the header. `/account/credits` 404; `/credits-help` 200; openapi 15.0.0. The health check failed once during boot (16:00:45Z), then passed.
+- Not proven: WebKit is not run on the Mac; the signed-in account menu on live (walks cover it locally).
+
 ## v350, 8 Nov 2026
 
 - Settings change only: `PATCHBAY_MCP_IDENTITY_ENABLED=true` on the v349 image (commit bbbd72dfb393fc82d64eff21010363919650cb3e, image `bbbd72d`), on Sean's "94 a" at 14:33Z. Fly CreatedAt 2026-11-08T14:34:21Z. One machine in iad (d8d99221c94e28), check passing. Rollback: `fly secrets unset PATCHBAY_MCP_IDENTITY_ENABLED -a patchbay-regents`, which restarts the same image with the switch off. No schema change.
