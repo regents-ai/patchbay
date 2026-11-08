@@ -211,10 +211,10 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
     test "a refund the contract refused in its block writes nothing and leaves the money held",
          %{
-      conn: conn,
-      tool: tool,
-      node: node
-    } do
+           conn: conn,
+           tool: tool,
+           node: node
+         } do
       asker = profile("aaa")
       report = credited(tool, asker)
       conn |> signed_in(asker) |> post("/posts/#{report.id}/refund", %{}) |> html_response(200)
