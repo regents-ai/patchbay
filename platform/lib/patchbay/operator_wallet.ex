@@ -3,12 +3,14 @@ defmodule Patchbay.OperatorWallet do
   What the operator wallet's own sends leave waiting, for the chain numbers
   Sentinel reads (`PatchbayWeb.Telemetry`, the site poller).
 
-  The operator wallet sends two things whose answer the site waits for and
+  The operator wallet sends three things whose answer the site waits for and
   writes down: a paid priority report's escrow credit, `credit_submitted`
-  until `Patchbay.Escrow.Watch` reads it confirmed, and an assist fee's
-  deposit to REGENT staking, `forwarding` while its job waits for the chain
-  (`Patchbay.Assist.Forward`). The escrow's payouts, refunds and revenue
-  pushes are written down as soon as Base takes them, so the site keeps no
+  until `Patchbay.Escrow.Watch` reads it confirmed; a bounty's payout to its
+  accepted answer, `release_submitted` until the watch reads it paid; and an
+  assist fee's deposit to REGENT staking, `forwarding` while its job waits
+  for the chain (`Patchbay.Assist.Forward`). A refund the operator wallet
+  relays is the asker's request, written once its receipt is in, and a
+  revenue push is waited for by its own job, so the site keeps no
   unconfirmed state for them.
 
   Beside those ages are Patchbay's own two numbers: paid priority reports
@@ -37,8 +39,8 @@ defmodule Patchbay.OperatorWallet do
 
   @doc """
   Each sending flow with when its oldest unconfirmed send was signed, or nil
-  when nothing waits: an escrow credit from when it was taken to be handed to
-  Base, or last handed to it, a fee's forward from when it was taken.
+  when nothing waits: an escrow credit or payout from when it was handed to
+  Base, a fee's forward from when it was taken.
   """
   @spec unconfirmed_sends() :: [{String.t(), DateTime.t() | nil}]
   def unconfirmed_sends do
@@ -48,6 +50,10 @@ defmodule Patchbay.OperatorWallet do
        Report
        |> Ash.Query.filter(escrow_status == :credit_submitted)
        |> Ash.min!(:escrow_credit_sent_at, authorize?: false)},
+      {"escrow_release",
+       Report
+       |> Ash.Query.filter(escrow_status == :release_submitted)
+       |> Ash.min!(:escrow_release_sent_at, authorize?: false)},
       {"fee_forward",
        Run
        |> Ash.Query.filter(deposit_status == :forwarding)
@@ -57,8 +63,8 @@ defmodule Patchbay.OperatorWallet do
 
   @doc """
   Paid priority reports whose escrow credit the chain has not yet confirmed:
-  nobody has handed the credit over, Base has not confirmed it, or Base
-  would not take it. A report paid with Patchbay Credits, before every
+  its job has not handed the credit over yet, Base has not confirmed it, or
+  it did not go through. A report paid with Patchbay Credits, before every
   payment was USDC, was marked credited as it was filed, so none is left
   here.
   """

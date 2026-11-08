@@ -2289,14 +2289,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   @doc """
   Whether the asker may accept `reply` as the answer to a paid report from
-  the page: no answer is accepted yet, the money has not gone back, and the
-  reply is someone else's, written signed in. Anything else the board checks
-  when the button is pressed.
+  the page: no answer is accepted yet, the money is handed to Base and has
+  not gone back, and the reply is someone else's, written signed in.
+  Anything else the board checks when the button is pressed.
   """
   @spec can_accept?(map(), map(), map() | nil) :: boolean()
   def can_accept?(report, reply, profile) do
     is_integer(report.priority_amount_atomic) and is_nil(report.accepted_reply_id) and
-      report.escrow_status != :refunded and money_asker?(report, profile) and
+      report.escrow_status in [:credit_submitted, :credited] and money_asker?(report, profile) and
       is_binary(reply.author_profile_id) and person(reply) != person(report)
   end
 
@@ -2305,6 +2305,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp escrow_standing_said(%{escrow_status: :release_failed}),
     do: "An answer was accepted, but the payout has not gone through yet."
+
+  defp escrow_standing_said(%{escrow_status: :release_submitted}),
+    do:
+      "An answer was accepted. Its payout is sent to Base, and 90% goes to that answer's " <>
+        "author once Base confirms it."
 
   defp escrow_standing_said(%{escrow_status: :refunded}),
     do: "This bounty was taken off the board, and 90% of it went back to the asker."
@@ -2317,6 +2322,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
        do:
          "Sent to Base. Once Base confirms it, 90% goes back to the asker's wallet " <>
            "and 10% to REGENT staking."
+
+  defp escrow_standing_said(%{escrow_status: :credited, accepted_reply_id: accepted})
+       when is_binary(accepted),
+       do: "An answer was accepted, and its payout is being sent to Base."
+
+  defp escrow_standing_said(%{escrow_status: :credit_submitted, accepted_reply_id: accepted})
+       when is_binary(accepted),
+       do: "An answer was accepted. Its payout goes out once Base confirms the money is held."
 
   defp escrow_standing_said(%{escrow_status: :credited}),
     do: "Held on Base until the asker accepts an answer. 90% goes to that answer's author."

@@ -381,7 +381,13 @@ defmodule Patchbay.ReleaseTest do
             actor: asker
           )
 
-        {:ok, _claimed} = Patchbay.Forum.claim_escrow_credit(report, authorize?: false)
+        {:ok, _sent} =
+          Patchbay.Forum.record_escrow_credit(
+            report,
+            %{escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)},
+            authorize?: false
+          )
+
         report.inserted_at
       end)
 

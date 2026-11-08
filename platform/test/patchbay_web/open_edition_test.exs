@@ -91,6 +91,11 @@ defmodule PatchbayWeb.OpenEditionTest do
         },
         actor: asker
       )
+      # Held on Base, as the escrow's own job and watch write it.
+      |> Forum.record_escrow_credit!(%{escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)},
+        authorize?: false
+      )
+      |> Forum.confirm_escrow_credit!(%{escrow_funded_at: DateTime.utc_now()}, authorize?: false)
 
     answerer =
       Identity.upsert_from_privy!(%{

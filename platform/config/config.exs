@@ -139,9 +139,11 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # hear about new jobs through Erlang process groups. Each
 # queue is added here with the jobs it runs: a run of an assist, four at once
 # (`Patchbay.Assist.Run`'s `:work`); closing runs whose work was lost; a fee
-# forwarded to the staking contract, and the escrow's 10% pushed there, one at
-# a time so the operator wallet sends in order (`:forward_fee`, and
-# `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
+# forwarded to the staking contract, a paid report's money recorded in escrow
+# and paid to its accepted answer, and the escrow's 10% pushed to staking, one
+# at a time so the operator wallet sends in order (`:forward_fee`, and
+# `Patchbay.Forum.Report`'s `:send_escrow_credit`, `:send_escrow_release` and
+# `:push_escrow_revenue`); Jev's reading of a
 # priority report (`:read_by_jev`); the screening of an Offer's wording
 # (`Patchbay.Offers.Review`'s `:screen`); board events posted to MCP events
 # subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`), and removing
@@ -159,10 +161,10 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # Ethereum node holds up nothing else. Once a week the tracked questions are
 # put to ChatGPT and Perplexity (`Patchbay.AnswerWatch.WeeklyRun`), one
 # question at a time per engine (`Patchbay.AnswerWatch.Ask`), on a queue of
-# their own so a slow answer holds up nothing else. Base is asked whether each
-# bounty is confirmed and whether it has been refunded (`:read_escrow_credit`
-# and `:read_escrow_refund`) on a queue of their own, so a slow Base node holds
-# up nothing else. Each minute the producers of the figures every visitor sees
+# their own so a slow answer holds up nothing else. Base is asked what the
+# escrow did with each bounty (`:read_escrow_sent` and `:read_escrow_held`) on
+# a queue of their own, so a slow Base node holds up nothing else. Each minute
+# the producers of the figures every visitor sees
 # alike are asked to read again (`Patchbay.SharedReading.Heal`, on `default`),
 # and every ten minutes checks are asked for a few listed sites no check has
 # been asked for yet (`Patchbay.Forum.SiteCheckSweep`, on `default`, so the

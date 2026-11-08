@@ -112,50 +112,52 @@ defmodule PatchbayWeb.ChainNumbersTest do
     assert {"fee_forward", nil} =
              List.keyfind(OperatorWallet.unconfirmed_sends(), "fee_forward", 0)
 
+    assert {"escrow_release", nil} =
+             List.keyfind(OperatorWallet.unconfirmed_sends(), "escrow_release", 0)
+
     assert :ok = Telemetry.oldest_unconfirmed_sends({OperatorWallet, :unconfirmed_sends, []})
 
     assert value("health_wallet_unconfirmed_oldest_seconds", [~s(flow="escrow_credit")]) >= 120
     assert value("health_wallet_unconfirmed_oldest_seconds", [~s(flow="fee_forward")]) == 0
+    assert value("health_wallet_unconfirmed_oldest_seconds", [~s(flow="escrow_release")]) == 0
 
     # Once the chain confirms it, nothing of the flow waits.
-    {:ok, _} =
+    {:ok, credited} =
       Forum.confirm_escrow_credit(report, %{escrow_funded_at: DateTime.utc_now()},
         authorize?: false
       )
 
     assert :ok = Telemetry.oldest_unconfirmed_sends({OperatorWallet, :unconfirmed_sends, []})
     assert value("health_wallet_unconfirmed_oldest_seconds", [~s(flow="escrow_credit")]) == 0
+
+    # A payout handed to Base waits in its own flow until the chain says paid.
+    {:ok, sent} =
+      Forum.record_escrow_release(credited, %{escrow_release_tx_hash: hash()}, authorize?: false)
+
+    assert {"escrow_release", %DateTime{}} =
+             List.keyfind(OperatorWallet.unconfirmed_sends(), "escrow_release", 0)
+
+    {:ok, _paid} = Forum.confirm_escrow_release(sent, authorize?: false)
+
+    assert {"escrow_release", nil} =
+             List.keyfind(OperatorWallet.unconfirmed_sends(), "escrow_release", 0)
   end
 
   test "a credit sent again is aged from its second hand-over, not from the filing" do
     asker = profile("again")
     report = submitted(paid_report(asker), DateTime.add(DateTime.utc_now(), -2 * 86_400, :second))
 
-    {:ok, failed} =
-      Forum.record_escrow_credit(report, %{escrow_status: :credit_failed}, authorize?: false)
+    {:ok, failed} = Forum.fail_escrow_credit(report, authorize?: false)
+    {:ok, again} = Forum.retry_escrow_credit(failed, authorize?: false)
 
-    # What SpecialPost.credit_again/1 writes once Base takes the second hand-over.
+    # What the credit's job writes once Base takes the second hand-over.
     {:ok, _again} =
-      Forum.record_escrow_credit(
-        failed,
-        %{escrow_status: :credit_submitted, escrow_credit_tx_hash: hash()},
-        authorize?: false
-      )
+      Forum.record_escrow_credit(again, %{escrow_credit_tx_hash: hash()}, authorize?: false)
 
     {"escrow_credit", sent_at} =
       List.keyfind(OperatorWallet.unconfirmed_sends(), "escrow_credit", 0)
 
     assert DateTime.diff(DateTime.utc_now(), sent_at) < 60
-  end
-
-  test "a credit taken for hand-over and never sent, as by a stopped machine, still ages" do
-    {:ok, _claimed} =
-      Forum.claim_escrow_credit(paid_report(profile("stopped")), authorize?: false)
-
-    assert {"escrow_credit", %DateTime{} = claimed_at} =
-             List.keyfind(OperatorWallet.unconfirmed_sends(), "escrow_credit", 0)
-
-    assert DateTime.diff(DateTime.utc_now(), claimed_at) < 60
   end
 
   test "a send already waiting when the send times arrive is aged from its filing or taking" do
@@ -164,7 +166,7 @@ defmodule PatchbayWeb.ChainNumbersTest do
     Application.put_env(:patchbay, :assist, pay_to_address: "0x" <> String.duplicate("c", 40))
 
     asker = profile("before")
-    {:ok, claimed} = Forum.claim_escrow_credit(paid_report(asker), authorize?: false)
+    claimed = submitted(paid_report(asker), DateTime.utc_now())
     {:ok, taken} = Assist.take_fee(answered_run(), authorize?: false)
 
     # Confirmed already, so nothing waits on it and it is left as it is.
@@ -287,7 +289,7 @@ defmodule PatchbayWeb.ChainNumbersTest do
     {:ok, submitted} =
       Forum.record_escrow_credit(
         report,
-        %{escrow_status: :credit_submitted, escrow_credit_tx_hash: hash()},
+        %{escrow_credit_tx_hash: hash()},
         authorize?: false
       )
 

@@ -211,20 +211,23 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert agent.authentication_origin == :wallet
     assert String.downcase(agent.wallet_address) == String.downcase(c.address)
 
-    # Payment received and bounty confirmed are two facts: the credit was
-    # handed to Base, and nothing is confirmed until the contract says so.
-    assert report.escrow_status == :credit_submitted
+    # Payment received and bounty confirmed are two facts: the credit is
+    # queued, then handed to Base by its job, and nothing is confirmed until
+    # the contract says so.
+    assert report.escrow_status == nil
     assert paid["body"]["credit_confirmation"] == "pending"
     assert paid["body"]["next_action"] =~ "Do not pay again"
+    assert %{failure: 0} = credit_job()
+    assert Forum.get_report!(report.id).escrow_status == :credit_submitted
 
     # No post yet, then one for another amount: neither confirms this bounty.
-    assert %{failure: 0} = confirm_sweep()
+    assert %{failure: 0} = sent_sweep()
     Agent.update(c.chain, fn _ -> {c.address, 2_000_000, 1, @funded_at} end)
-    assert %{failure: 0} = confirm_sweep()
+    assert %{failure: 0} = sent_sweep()
     assert Forum.get_report!(report.id).escrow_status == :credit_submitted
 
     Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 1, @funded_at} end)
-    assert %{failure: 0} = confirm_sweep()
+    assert %{failure: 0} = sent_sweep()
     confirmed = Forum.get_report!(report.id)
     assert confirmed.escrow_status == :credited
     assert DateTime.to_unix(confirmed.escrow_funded_at) == @funded_at
@@ -282,7 +285,20 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert redirected_to(accepted) == path <> "#reply-#{answer.id}"
     awarded = Forum.get_report!(report.id)
     assert awarded.accepted_reply_id == answer.id
-    assert awarded.escrow_status == :released
+    assert awarded.solution_reply_id == answer.id
+    assert page(c.person, path) =~ "its payout is being sent to Base"
+
+    # The payout is queued with the accept, handed to Base by its job, and
+    # written as paid once the contract says it paid out.
+    assert awarded.escrow_status == :credited
+    assert %{failure: 0} = release_job()
+    assert Forum.get_report!(report.id).escrow_status == :release_submitted
+    assert %{failure: 0} = sent_sweep()
+    assert Forum.get_report!(report.id).escrow_status == :release_submitted
+    Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 2, @funded_at} end)
+    assert %{failure: 0} = sent_sweep()
+    assert Forum.get_report!(report.id).escrow_status == :released
+    assert page(c.person, path) =~ "This money has gone to the author"
 
     # Another agent cannot use this receipt, nor another key read the intent.
     assert get(c.other, id)["status"] == 404
@@ -324,8 +340,13 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
     report = Forum.get_report!(prepared["report_id"])
     assert report.beneficiary_profile_id == c.person.id
+    # A credit written as failed that Base recorded after all is confirmed by
+    # the five-minute read, with the contract's own funding time.
+    assert %{failure: 0} = credit_job()
+    {:ok, _failed} = Forum.fail_escrow_credit(Forum.get_report!(report.id), authorize?: false)
     Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 1, @funded_at} end)
-    assert %{failure: 0} = confirm_sweep()
+    assert %{failure: 0} = held_sweep()
+    assert Forum.get_report!(report.id).escrow_status == :credited
 
     path = PostAddress.path(report)
     mine = page(c.person, path)
@@ -341,7 +362,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
     # The five-minute sweep writes down the bounty the contract sent back.
     Agent.update(c.chain, fn _ -> {c.address, 1_000_000, 3, @funded_at} end)
-    assert %{failure: 0} = refund_sweep()
+    assert %{failure: 0} = held_sweep()
     assert Forum.get_report!(report.id).escrow_status == :refunded
     refute_receive :settled, 100
   end
@@ -607,10 +628,12 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   end
 
   # The minute sweep that asks Base about each bounty waiting to be confirmed.
-  defp confirm_sweep, do: schedule_and_run_triggers({Forum.Report, :read_escrow_credit})
+  defp credit_job, do: schedule_and_run_triggers({Forum.Report, :send_escrow_credit})
+  defp release_job, do: schedule_and_run_triggers({Forum.Report, :send_escrow_release})
+  defp sent_sweep, do: schedule_and_run_triggers({Forum.Report, :read_escrow_sent})
 
   # The five-minute sweep that asks Base whether each held bounty has gone back.
-  defp refund_sweep, do: schedule_and_run_triggers({Forum.Report, :read_escrow_refund})
+  defp held_sweep, do: schedule_and_run_triggers({Forum.Report, :read_escrow_held})
 
   # A page request from `profile`, signed in; from nobody when it is nil.
   defp signed_in(conn, nil), do: conn

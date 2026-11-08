@@ -7,7 +7,8 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
 
   A thread with money still held for it refuses outright: its answer is named
   by the award flow, so the ordinary mark can never quietly stand in for the
-  prize or point at a different recipient.
+  prize or point at a different recipient. Once an answer is accepted for the
+  money, that is the thread's answer for good, whatever the money did next.
   """
 
   use Ash.Resource.Validation
@@ -23,7 +24,8 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
 
     if asker?(report, session_id, context.actor) do
       report
-      |> no_money_waiting()
+      |> not_awarded()
+      |> then_ok(fn -> no_money_waiting(report) end)
       |> then_ok(fn -> reply_on_this_thread(report, reply_id, context.actor) end)
     else
       refuse(:not_asker)
@@ -50,6 +52,9 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
 
   @impl true
   def describe(_opts), do: [message: "cannot be marked as the solution", vars: []]
+
+  defp not_awarded(%{accepted_reply_id: nil}), do: :ok
+  defp not_awarded(_awarded), do: refuse(:already_awarded)
 
   # `bounty_open` without the calculation loaded: money named and not yet
   # refunded means the award flow chooses, never this one.

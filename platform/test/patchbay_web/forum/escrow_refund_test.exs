@@ -19,7 +19,6 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.RefundRelayRecord
   alias Patchbay.Identity
-  alias Patchbay.Repo
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @contract String.duplicate("e", 64)
@@ -88,10 +87,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     {:ok, submitted} =
       Forum.record_escrow_credit(
         paid_report(tool, asker),
-        %{
-          escrow_status: :credit_submitted,
-          escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)
-        },
+        %{escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)},
         authorize?: false
       )
 
@@ -102,33 +98,17 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   end
 
   defp released(tool, asker) do
-    # The accepted answer's payout, written the way SolutionAccept writes it.
-    {:ok, report} =
+    # The accepted answer's payout, written the way its job and the watch of
+    # Base write it.
+    {:ok, sent} =
       Forum.record_escrow_release(
         credited(tool, asker),
-        %{escrow_status: :released, escrow_release_tx_hash: "0x" <> String.duplicate("2", 64)},
+        %{escrow_release_tx_hash: "0x" <> String.duplicate("2", 64)},
         authorize?: false
       )
 
+    {:ok, report} = Forum.confirm_escrow_release(sent, authorize?: false)
     report
-  end
-
-  defp migrate_still_held do
-    version = 20_261_108_143_500
-    migration = Patchbay.Repo.Migrations.RefusedRefundsStillHeld
-
-    unless Code.ensure_loaded?(migration) do
-      Repo
-      |> Ecto.Migrator.migrations_path()
-      |> Path.join("#{version}_refused_refunds_still_held.exs")
-      |> Code.require_file()
-    end
-
-    # The test database already ran it, on no such rows, so it is stepped back
-    # first. The migrator runs it in a task of its own, which shares this
-    # test's connection, so it takes no lock that would hold that connection.
-    Ecto.Migrator.down(Repo, version, migration, migration_lock: false, log: false)
-    Ecto.Migrator.up(Repo, version, migration, migration_lock: false, log: false)
   end
 
   defp priority_ids(versions) do
@@ -229,7 +209,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert is_nil(held.escrow_refund_tx_hash)
 
       # Still held, so the sweep that finds a refund made on Base keeps asking.
-      assert_would_schedule(held, :read_escrow_refund)
+      assert_would_schedule(held, :read_escrow_held)
 
       page = build_conn() |> get(PostAddress.path(held)) |> html_response(200)
       assert page =~ "Held on Base until the asker accepts an answer"
@@ -335,6 +315,21 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       refunded = Forum.get_report!(report.id)
       assert refunded.escrow_status == :refunded
       assert refunded.escrow_refund_tx_hash == first
+    end
+
+    test "a refund the watch of Base wrote first leaves the press's job done", %{
+      tool: tool,
+      node: node
+    } do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+      assert {:ok, _sent} = PriorityRefund.run(report.id, asker)
+
+      {:ok, _found} = PriorityRefund.record(Forum.get_report!(report.id), nil)
+      mined(node, @refund_tx, "0x1")
+
+      assert :ok = perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
+      assert Forum.get_report!(report.id).escrow_status == :refunded
     end
 
     test "an accepted press, then one Base refuses, ends as the receipt says", %{
@@ -524,10 +519,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       {:ok, submitted} =
         Forum.record_escrow_credit(
           paid_report(tool, asker),
-          %{
-            escrow_status: :credit_submitted,
-            escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)
-          },
+          %{escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)},
           authorize?: false
         )
 
@@ -641,7 +633,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       asker = profile("aaa")
       report = credited(tool, asker)
 
-      assert %{failure: 0} = schedule_and_run_triggers({Forum.Report, :read_escrow_refund})
+      assert %{failure: 0} = schedule_and_run_triggers({Forum.Report, :read_escrow_held})
 
       {:ok, untouched} = Forum.get_report(report.id)
       assert untouched.escrow_status == :credited
@@ -655,26 +647,9 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       {:ok, gone} = PriorityRefund.record(credited(tool, profile("bbb")), "0xdead")
       free = free_report(tool)
 
-      assert_would_schedule(held, :read_escrow_refund)
-      refute_would_schedule(gone, :read_escrow_refund)
-      refute_would_schedule(free, :read_escrow_refund)
-    end
-  end
-
-  describe "a refund refused before" do
-    test "is written back as held, and the refund sweep asks about it again", %{tool: tool} do
-      asker = profile("aaa")
-      report = credited(tool, asker)
-
-      Repo.query!("UPDATE forum_reports SET escrow_status = 'refund_failed' WHERE id = $1", [
-        Ecto.UUID.dump!(report.id)
-      ])
-
-      migrate_still_held()
-
-      held = Forum.get_report!(report.id)
-      assert held.escrow_status == :credited
-      assert_would_schedule(held, :read_escrow_refund)
+      assert_would_schedule(held, :read_escrow_held)
+      refute_would_schedule(gone, :read_escrow_held)
+      refute_would_schedule(free, :read_escrow_held)
     end
   end
 

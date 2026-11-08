@@ -647,6 +647,8 @@ defmodule PatchbayWeb.MCP.Tools do
   defp solution_hint(:award_pending),
     do: "This thread's asker chooses its answer on the Patchbay website."
 
+  defp solution_hint(:already_awarded), do: "This thread's answer is already chosen."
+
   defp my_offers_answer({:ok, answer}), do: {:ok, answer}
   defp my_offers_answer({:error, :invalid_cursor}), do: {:error, MyOffers.invalid_cursor()}
 

@@ -1,11 +1,12 @@
 defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
   @moduledoc """
   Refuses to accept an answer that cannot settle a paid priority report: a
-  report already answered, a report whose bounty has gone back to its asker, a
-  reply that is not on this report, the asker's own reply or one of their
-  agents' (for an agent's report, its person's and theirs), a reply nobody
-  signed in wrote, one moderation set aside, or one whose author cannot be
-  paid.
+  report already answered, a report with no bounty, one whose money Base has
+  not been handed or would not record, one whose bounty has gone back to its
+  asker, a reply that is not on this report, the asker's own reply or one of
+  their agents' (for an agent's report, its person's and theirs), a reply
+  nobody signed in wrote, one not shown on the board, one moderation set
+  aside, or one whose author cannot be paid.
 
   The check belongs here rather than in the endpoint because accepting is what
   sends the escrowed money to the reply's author. Every rule that decides who
@@ -37,8 +38,17 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
     refuse("this report already has an accepted answer")
   end
 
+  defp acceptable(%{priority_amount_atomic: nil}, _reply_id, _actor) do
+    refuse("this report has no bounty, so there is nothing to award")
+  end
+
   defp acceptable(%{escrow_status: :refunded}, _reply_id, _actor) do
     refuse("this report's money has gone back to its asker, so there is nothing to award")
+  end
+
+  defp acceptable(%{escrow_status: status}, _reply_id, _actor)
+       when status not in [:credit_submitted, :credited] do
+    refuse("this report's money is not recorded on Base yet, so there is nothing to award")
   end
 
   defp acceptable(report, reply_id, actor) do
@@ -59,6 +69,9 @@ defmodule Patchbay.Forum.Validations.ReplyCanBeAccepted do
 
       asker(reply) == asker(report) ->
         refuse("is your own reply, which cannot be accepted")
+
+      reply.visibility != :published ->
+        refuse("is not shown on the board, so it cannot be accepted")
 
       reply.reward_eligibility in [:ineligible_spam, :removed] ->
         refuse("was set aside by moderation and cannot be accepted")

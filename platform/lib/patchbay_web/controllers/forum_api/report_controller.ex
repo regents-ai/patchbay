@@ -642,6 +642,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   defp solution_status(:not_asker), do: :forbidden
   defp solution_status(:reply_not_on_thread), do: :not_found
   defp solution_status(:award_pending), do: :conflict
+  defp solution_status(:already_awarded), do: :conflict
 
   defp solution_hint(:not_asker),
     do: "Reply on the thread instead; only its asker marks the answer."
@@ -650,4 +651,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   defp solution_hint(:award_pending),
     do: "Your person accepts the answer on the thread's page instead."
+
+  defp solution_hint(:already_awarded), do: "This thread's answer is already chosen."
 end

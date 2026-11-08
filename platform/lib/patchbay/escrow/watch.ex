@@ -2,30 +2,37 @@ defmodule Patchbay.Escrow.Watch do
   @moduledoc """
   Patchbay watching Base for what the escrow contract did with bounties.
 
-  Two things happen on the chain that the board only learns by asking. The
-  first is confirmation: when a paid report is published, the request to
-  record its money is handed to Base, and the bounty is confirmed only once
-  the contract itself says the post is funded, from the wallet and for the
-  amount that paid. Every minute this asks the contract about each bounty
-  still waiting, and writes down the ones it has confirmed, with the chain's
-  own funding time. A credit that goes unconfirmed for too long is reported
-  for a person to look at; it is still asked about, and a late confirmation
-  still counts.
+  The board only learns what the contract did by asking it. This is the
+  `:read_escrow` action of `Patchbay.Forum.Report`, run one report at a time
+  by two triggers: every minute for a bounty with a request sent and not yet
+  confirmed (`:read_escrow_sent`), and every five minutes for one the board
+  believes is held or a send failed for (`:read_escrow_held`). Each asks the
+  contract what it holds for the report's post and settles the board's state
+  against that answer:
 
-  The second is refund: thirty days after a bounty is funded the contract
-  lets anybody refund it, Patchbay included but not only Patchbay, so a
-  bounty's money can move without this server ever being asked. Every five
-  minutes this takes the bounties the board still believes are held, asks
-  the contract what it holds for each, and writes down the ones the contract
-  has already sent back. A report whose bounty has gone back is an ordinary
-  report again and is listed with them from then on.
+    * the contract sent the money back: the refund is written, whatever the
+      board believed, since thirty days after a bounty is funded anybody may
+      refund it without Patchbay being asked;
+    * the contract paid it out: the payout is written, for a payout sent or
+      one written as failed that went through after all;
+    * the contract holds it, from the wallet and for the amount that paid: a
+      credit sent, or one written as failed that went through after all, is
+      written as confirmed, with the chain's own funding time;
+    * the contract holds it while a payout was sent: the payout's receipt is
+      read, and a payout the contract refused, or one still not in a block an
+      hour after it was sent, is written as failed for a person to send again;
+    * the contract holds nothing while a credit was sent: the credit's
+      receipt is read, and a credit the contract refused, or one still not in
+      a block an hour after it was sent, is written as failed for a person to
+      send again.
 
-  These are the `:read_escrow_credit` and `:read_escrow_refund` actions of
-  `Patchbay.Forum.Report`, each run by its trigger's job, one report at a time.
-  The question to Base is asked outside any transaction, and only what it
-  answered is written. It never moves money and never sends anything again,
-  so a read that cannot reach Base changes nothing and the next sweep asks
-  again. It does nothing at all while no escrow is configured.
+  Anything else leaves the report as it is, and a state that has waited too
+  long, or that only a person can move, is logged for one to look at. The
+  question to Base is asked outside any transaction and only what it answered
+  is written, through actions that refuse to move a bounty that has moved on
+  meanwhile. It never moves money and never sends anything, so a read that
+  cannot reach Base changes nothing and the next sweep asks again. It does
+  nothing at all while no escrow is configured.
   """
 
   use Ash.Resource.ManualUpdate
@@ -37,29 +44,52 @@ defmodule Patchbay.Escrow.Watch do
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Payments.SpecialPost
 
+  # How long a credit or a payout may go without landing in a block before it
+  # is taken not to have been sent at all.
+  @landing_window_s 3_600
+
   @impl true
-  def update(changeset, opts, _context) do
+  def update(changeset, _opts, _context) do
     report = changeset.data
 
     if Escrow.contract_address(),
-      do: {:ok, read(opts[:read], report)},
+      do: {:ok, read(report)},
       else: {:ok, report}
   end
 
-  defp read(:credit, report), do: confirmed(report)
-  defp read(:refund, report), do: refunded(report)
-
-  # The report with the contract's confirmation written down, when the
-  # contract has confirmed this bounty from the wallet and for the amount that
-  # paid. Any other answer leaves the report waiting for the next sweep.
-  defp confirmed(report) do
+  defp read(report) do
     case Escrow.post(report.id) do
-      {:ok, %{status: :funded} = post} -> confirm_as_paid(report, post)
-      {:ok, %{status: :none}} -> still_waiting(report)
-      {:ok, %{status: moved}} -> attention(report, "the contract says #{moved}")
+      {:ok, post} -> settle(report, post)
       {:error, _reason} -> unread(report)
     end
   end
+
+  defp settle(report, %{status: :refunded}), do: refunded(report)
+
+  defp settle(%{escrow_status: status} = report, %{status: :released})
+       when status in [:release_submitted, :release_failed],
+       do: released(report)
+
+  defp settle(%{escrow_status: status} = report, %{status: :funded} = post)
+       when status in [:credit_submitted, :credit_failed],
+       do: confirm_as_paid(report, post)
+
+  defp settle(%{escrow_status: :release_submitted} = report, %{status: :funded}),
+    do: release_receipt(report)
+
+  defp settle(%{escrow_status: :credit_submitted} = report, %{status: :none}),
+    do: credit_receipt(report)
+
+  defp settle(%{escrow_status: :credited} = report, %{status: :funded}), do: report
+
+  defp settle(%{escrow_status: :credit_failed} = report, %{status: :none}),
+    do: attention(report, "its credit failed and is not on Base; send it again")
+
+  defp settle(%{escrow_status: :release_failed} = report, %{status: :funded}),
+    do: attention(report, "its payout failed and the money is still held; send it again")
+
+  defp settle(report, post),
+    do: attention(report, "the board says #{report.escrow_status}, the contract #{post.status}")
 
   # A funded post confirms this bounty only when it is the one that was
   # paid: the same amount, from the wallet the receipt names.
@@ -75,7 +105,10 @@ defmodule Patchbay.Escrow.Watch do
         attention(report, "the contract names a different payer")
 
       true ->
-        confirm(report, post.funded_at)
+        Forum.confirm_escrow_credit(report, %{escrow_funded_at: post.funded_at},
+          authorize?: false
+        )
+        |> written(report, "confirmed")
     end
   end
 
@@ -91,19 +124,35 @@ defmodule Patchbay.Escrow.Watch do
     end
   end
 
-  defp confirm(report, funded_at) do
-    # Recording what the chain said is nobody's request: no actor is on this
-    # path, and no policy names the write, so it is made without one.
-    case Forum.confirm_escrow_credit(report, %{escrow_funded_at: funded_at}, authorize?: false) do
-      {:ok, credited} ->
-        Logger.info("escrow watch: bounty on report #{report.id} confirmed on Base")
-        credited
+  defp credit_receipt(report) do
+    case Escrow.outcome(report.escrow_credit_tx_hash) do
+      {:ok, :reverted} ->
+        credit_failed(report)
 
-      {:error, reason} ->
-        Logger.warning("escrow watch could not record a confirmation: #{inspect(reason)}")
+      {:error, :not_landed} ->
+        if lost?(report.escrow_credit_sent_at),
+          do: credit_failed(report),
+          else: still_waiting(report)
+
+      _succeeded_or_unread ->
+        still_waiting(report)
+    end
+  end
+
+  defp release_receipt(report) do
+    case Escrow.outcome(report.escrow_release_tx_hash) do
+      {:ok, :reverted} ->
+        release_failed(report)
+
+      {:error, :not_landed} ->
+        if lost?(report.escrow_release_sent_at), do: release_failed(report), else: report
+
+      _succeeded_or_unread ->
         report
     end
   end
+
+  defp lost?(sent_at), do: DateTime.diff(DateTime.utc_now(), sent_at) >= @landing_window_s
 
   defp still_waiting(report) do
     if SpecialPost.overdue?(report) do
@@ -120,7 +169,7 @@ defmodule Patchbay.Escrow.Watch do
   # the log, since a transport error can carry the address it was sent to.
   defp unread(report) do
     Logger.warning("escrow watch: Base could not be read for report #{report.id}")
-    still_waiting(report)
+    report
   end
 
   defp attention(report, why) do
@@ -128,24 +177,31 @@ defmodule Patchbay.Escrow.Watch do
     report
   end
 
-  # The report with its refund written down, when the contract has already
-  # sent this bounty back.
+  # Recording what the chain said is nobody's request: no actor is on this
+  # path, and no policy names the writes, so each is made without one.
   defp refunded(report) do
-    case Escrow.post(report.id) do
-      {:ok, %{status: :refunded}} -> record(report)
-      _held_or_unreachable -> report
-    end
+    report
+    |> PriorityRefund.record(report.escrow_refund_tx_hash)
+    |> written(report, "refunded")
   end
 
-  defp record(report) do
-    case PriorityRefund.record(report, report.escrow_refund_tx_hash) do
-      {:ok, refunded} ->
-        Logger.info("escrow watch: bounty on report #{report.id} refunded on Base")
-        refunded
+  defp released(report), do: move(report, &Forum.confirm_escrow_release/2, "paid out")
+  defp credit_failed(report), do: move(report, &Forum.fail_escrow_credit/2, "credit failed")
+  defp release_failed(report), do: move(report, &Forum.fail_escrow_release/2, "payout failed")
 
-      {:error, reason} ->
-        Logger.warning("escrow watch could not record a refund: #{inspect(reason)}")
-        report
-    end
+  # Written without an actor, as every record of what Base said.
+  defp move(report, step, what), do: report |> step.(authorize?: false) |> written(report, what)
+
+  defp written({:ok, moved}, report, what) do
+    Logger.info("escrow watch: bounty on report #{report.id} #{what} on Base")
+    moved
+  end
+
+  defp written({:error, reason}, report, what) do
+    Logger.warning(
+      "escrow watch could not write report #{report.id} as #{what}: #{inspect(reason)}"
+    )
+
+    report
   end
 end

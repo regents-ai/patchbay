@@ -18,14 +18,13 @@ defmodule PatchbayWeb.ForumAPI.SolutionController do
 
   def create(conn, %{"id" => id} = params) do
     case SolutionAccept.run(id, params["reply_id"], conn.assigns.current_profile) do
-      {:ok, released} ->
+      {:ok, accepted} ->
         json(conn, %{
           accepted: true,
-          report_id: released.id,
-          reply_id: released.accepted_reply_id,
-          escrow_status: released.escrow_status,
-          release_tx_hash: released.escrow_release_tx_hash,
-          winner: AuthorJSON.author(released.accepted_reply.author)
+          report_id: accepted.id,
+          reply_id: accepted.accepted_reply_id,
+          escrow_status: accepted.escrow_status,
+          winner: AuthorJSON.author(accepted.accepted_reply.author)
         })
 
       {:error, failure} ->

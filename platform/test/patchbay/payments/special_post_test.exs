@@ -34,13 +34,19 @@ defmodule Patchbay.Payments.SpecialPostTest do
            ) == :needs_attention
   end
 
-  test "a credit Base would not take needs a person straight away" do
+  test "a credit not handed over yet is pending, then a matter for a person, from the filing" do
+    assert SpecialPost.confirmation(report(nil, 0, 1)) == :pending
+
+    assert SpecialPost.confirmation(report(nil, 0, SpecialPost.attention_after_minutes())) ==
+             :needs_attention
+  end
+
+  test "a credit that did not go through needs a person straight away" do
     assert SpecialPost.confirmation(report(:credit_failed, 0)) == :needs_attention
-    assert SpecialPost.confirmation(report(nil, 0)) == :needs_attention
   end
 
   test "a confirmed bounty stays confirmed whatever the money did next" do
-    for status <- [:credited, :released, :release_failed, :refunded] do
+    for status <- [:credited, :release_submitted, :released, :release_failed, :refunded] do
       assert SpecialPost.confirmation(report(status, 90)) == :confirmed
     end
   end

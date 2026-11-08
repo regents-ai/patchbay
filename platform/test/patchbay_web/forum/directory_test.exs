@@ -117,10 +117,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
       {:ok, submitted} =
         Forum.record_escrow_credit(
           report,
-          %{
-            escrow_status: :credit_submitted,
-            escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)
-          },
+          %{escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)},
           authorize?: false
         )
 

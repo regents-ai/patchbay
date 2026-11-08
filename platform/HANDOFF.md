@@ -307,7 +307,7 @@ answers. Before the 30 days that answer is no, which is the ordinary case and
 is said plainly. Because a transaction Base accepted is not money that has
 moved, and because anybody can refund a bounty without Patchbay in the middle,
 `Patchbay.Escrow.Watch` is what actually marks a bounty refunded: every five
-minutes a background job (`Patchbay.Forum.Report`'s `:read_escrow_refund`) asks the contract what it still holds for each bounty the board
+minutes a background job (`Patchbay.Forum.Report`'s `:read_escrow_held`) asks the contract what it still holds for each bounty the board
 believes is open, and writes down the ones that have gone back. A refunded
 report stops being one of the paid ones and is listed with the ordinary
 reports from then on.
@@ -405,11 +405,14 @@ agent's profile.
   a model provider was away) is handed back to Patchbay with
   `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.rerun(\"<run id>\")'"`.
   It is picked up as a paid run again; nothing is paid or forwarded twice.
-- A paid report whose escrow credit Base would not take (`credit_failed`; the
-  reason is in the log) is sent again from the payment that paid for it with
-  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Payments.SpecialPost.credit_again(\"<report id>\")'"`.
-  It is an operator transaction on Base and costs gas; a report in any other
-  state is left as it is.
+- A paid report whose escrow credit did not go through (`credit_failed`; the
+  reason is in the log) is sent again with
+  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Forum.get_report!(\"<report id>\", authorize?: false) |> Patchbay.Forum.retry_escrow_credit!(authorize?: false)'"`,
+  which queues its credit job. An accepted answer's payout that did not go
+  through (`release_failed`) is sent again the same way with
+  `retry_escrow_release!`. Each is an operator transaction on Base and costs
+  gas; a report in any other state is refused and left as it is, and one Base
+  recorded or paid after all is written so by the five-minute read.
 - `docs/GO_LIVE.md` is the ordered runbook for standing the money up: deploying
   the escrow contract on Base and setting the six secrets the paid paths need.
   `docs/DEPLOY.md` is the sheet for the site itself.

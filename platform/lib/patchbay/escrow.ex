@@ -15,9 +15,9 @@ defmodule Patchbay.Escrow do
   Every call here is one transaction, signed locally with the operator key
   and handed to the chain. It comes back with the transaction hash the moment
   the chain has taken it; nothing waits for the receipt, so a caller records
-  the hash and moves on. What a call needs to have landed first, such as the
-  payment a credit records, is waited for with `await_landed/1`, and what
-  became of a transaction once it landed is read with `outcome/1`. The three values it needs, the contract address, the
+  the hash and moves on. A revenue push, which its job reads back at once, is
+  waited for with `await_landed/1`, and what became of any transaction once
+  it landed is read with `outcome/1`. The three values it needs, the contract address, the
   operator key and the RPC endpoint, are read from `config :patchbay, :escrow`
   and nowhere else. Nothing here ever writes the key anywhere: not into a
   log, not into an error, not into a result.

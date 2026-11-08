@@ -308,11 +308,17 @@ defmodule Patchbay.ForumTest do
                  {:feed, :read},
                  {:file_report, :create},
                  {:file_priority_report, :create},
-                 {:claim_escrow_credit, :update},
+                 {:send_escrow_credit, :update},
                  {:record_escrow_credit, :update},
+                 {:fail_escrow_credit, :update},
+                 {:retry_escrow_credit, :update},
                  {:confirm_escrow_credit, :update},
                  {:accept_reply, :update},
+                 {:send_escrow_release, :update},
                  {:record_escrow_release, :update},
+                 {:fail_escrow_release, :update},
+                 {:retry_escrow_release, :update},
+                 {:confirm_escrow_release, :update},
                  {:request_refund, :update},
                  {:record_escrow_refund, :update},
                  {:push_escrow_revenue, :update},
@@ -333,8 +339,7 @@ defmodule Patchbay.ForumTest do
                  {:touch, :update},
                  {:read_by_jev, :update},
                  {:give_up_on_jev, :update},
-                 {:read_escrow_credit, :update},
-                 {:read_escrow_refund, :update}
+                 {:read_escrow, :update}
                ])
 
       assert action_names(Reply) ==

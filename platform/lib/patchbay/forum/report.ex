@@ -10,10 +10,15 @@ defmodule Patchbay.Forum.Report do
   settled it, and what Jev made of it: Jev reads each published one once, as
   a job (`:read_by_jev`) queued when the report is filed. Once its bounty has
   paid out or gone back to the asker, a job (`:push_escrow_revenue`) sends the
-  10% the escrow kept to REGENT staking. Base is asked about each bounty
-  still waiting to be confirmed, every minute (`:read_escrow_credit`), and about
-  each one the board believes is held, every five minutes
-  (`:read_escrow_refund`), by `Patchbay.Escrow.Watch`.
+  10% the escrow kept to REGENT staking. Patchbay's own sends for the money are
+  jobs too, each queued in the transaction that makes it due: recording it on
+  Base once the report is filed (`:send_escrow_credit`), and paying the
+  accepted answer's author (`:send_escrow_release`). What the contract did is
+  read by `Patchbay.Escrow.Watch` (`:read_escrow`): every minute for a bounty
+  with a request sent and not yet confirmed (`:read_escrow_sent`), and every
+  five minutes for one the board believes is held or a send failed for
+  (`:read_escrow_held`). `Patchbay.Forum.Types.EscrowStatus` draws the states
+  and the actions that move between them.
   """
 
   use Ash.Resource,
@@ -33,6 +38,7 @@ defmodule Patchbay.Forum.Report do
   alias Patchbay.Forum.Types.ThreadKind
   alias Patchbay.Forum.Types.Verdict
   alias Patchbay.Forum.Types.Visibility
+  alias Patchbay.Forum.Validations.EscrowFrom
 
   @max_evidence_bytes 8 * 1024
   @max_note_bytes 500
@@ -59,6 +65,17 @@ defmodule Patchbay.Forum.Report do
       check_constraint(:thread_kind, "forum_reports_thread_kind_known",
         check: "thread_kind IN (#{Enum.map_join(ThreadKind.values(), ", ", &"'#{&1}'")})",
         message: "is not a type a thread can be"
+      )
+
+      # Only the escrow's own states, and only on a report with a bounty.
+      check_constraint(:escrow_status, "forum_reports_escrow_status_known",
+        check: "escrow_status IN (#{Enum.map_join(EscrowStatus.values(), ", ", &"'#{&1}'")})",
+        message: "is not a state a bounty's money can be in"
+      )
+
+      check_constraint(:escrow_status, "forum_reports_escrow_status_needs_bounty",
+        check: "escrow_status IS NULL OR priority_amount_atomic IS NOT NULL",
+        message: "belongs only to a report with a bounty"
       )
     end
 
@@ -132,34 +149,70 @@ defmodule Patchbay.Forum.Report do
         scheduler_module_name(Patchbay.Forum.Report.Schedulers.PushEscrowRevenue)
       end
 
-      # Base asked whether a bounty handed to it is recorded yet, once a minute
-      # while it waits (`Patchbay.Escrow.Watch`). One try each sweep: a read
-      # that fails changes nothing and the next sweep asks again, and a late
-      # confirmation still counts.
-      trigger :read_escrow_credit do
-        action(:read_escrow_credit)
+      # Recording a filed report's money on Base (`Patchbay.Escrow.Send`),
+      # queued in the transaction that files the report, with the minute's
+      # sweep behind it. A try that cannot hand the request over, or finds the
+      # payment not in a block yet, is tried again with Oban's backoff, for
+      # about twenty minutes; after the last the bounty is written as failed,
+      # for a person. A repeat is safe: the contract records a post once. It
+      # runs on the fee queue, one send at a time from the operator wallet.
+      trigger :send_escrow_credit do
+        action(:send_escrow_credit)
+        queue(:fees)
+        where(expr(not is_nil(priority_amount_atomic) and is_nil(escrow_status)))
+        sort(inserted_at: :asc)
+        max_attempts(10)
+        on_error(:fail_escrow_credit)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.SendEscrowCredit)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.SendEscrowCredit)
+      end
+
+      # Paying the accepted answer's author, queued in the transaction that
+      # accepts the answer; one accepted before Base confirmed the bounty is
+      # paid by the sweep once it has. Tried as above, and a repeat is safe: the
+      # contract pays a post out once.
+      trigger :send_escrow_release do
+        action(:send_escrow_release)
+        queue(:fees)
+        where(expr(escrow_status == :credited and not is_nil(accepted_reply_id)))
+        sort(accepted_at: :asc)
+        max_attempts(10)
+        on_error(:fail_escrow_release)
+        lock_for_update?(false)
+        worker_module_name(Patchbay.Forum.Report.Workers.SendEscrowRelease)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.SendEscrowRelease)
+      end
+
+      # What the contract did with a bounty that has a request sent and not
+      # yet confirmed, read once a minute (`Patchbay.Escrow.Watch`). One try
+      # each sweep: a read that fails changes nothing and the next sweep asks
+      # again, and a late confirmation still counts.
+      trigger :read_escrow_sent do
+        action(:read_escrow)
         queue(:escrow_reads)
-        where(expr(escrow_status == :credit_submitted))
+        where(expr(escrow_status in [:credit_submitted, :release_submitted]))
         sort(inserted_at: :asc)
         max_attempts(1)
         lock_for_update?(false)
-        worker_module_name(Patchbay.Forum.Report.Workers.ReadEscrowCredit)
-        scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadEscrowCredit)
+        worker_module_name(Patchbay.Forum.Report.Workers.ReadEscrowSent)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadEscrowSent)
       end
 
-      # Base asked whether a bounty the board believes is held has gone back,
-      # every five minutes, since after thirty days anybody can refund one
-      # without Patchbay in the middle. One try each sweep, as above.
-      trigger :read_escrow_refund do
-        action(:read_escrow_refund)
+      # The same read every five minutes for a bounty the board believes is
+      # held, since after thirty days anybody can refund one without Patchbay
+      # in the middle, and for one a send failed for, which may have gone
+      # through after all. One try each sweep, as above.
+      trigger :read_escrow_held do
+        action(:read_escrow)
         queue(:escrow_reads)
-        where(expr(escrow_status == :credited))
-        sort(escrow_funded_at: :asc)
+        where(expr(escrow_status in [:credited, :credit_failed, :release_failed]))
+        sort(inserted_at: :asc)
         scheduler_cron("*/5 * * * *")
         max_attempts(1)
         lock_for_update?(false)
-        worker_module_name(Patchbay.Forum.Report.Workers.ReadEscrowRefund)
-        scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadEscrowRefund)
+        worker_module_name(Patchbay.Forum.Report.Workers.ReadEscrowHeld)
+        scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadEscrowHeld)
       end
     end
   end
@@ -297,6 +350,10 @@ defmodule Patchbay.Forum.Report do
     # later is only as old as that hand-over.
     attribute(:escrow_credit_sent_at, :utc_datetime_usec, allow_nil?: true)
     attribute(:escrow_release_tx_hash, :string, allow_nil?: true, public?: true)
+
+    # When the payout Base has not yet confirmed was handed to it, which is
+    # what its hour to land in a block is counted from.
+    attribute(:escrow_release_sent_at, :utc_datetime_usec, allow_nil?: true)
     attribute(:escrow_refund_tx_hash, :string, allow_nil?: true, public?: true)
 
     # When the 10% the escrow kept from this bounty was seen to have reached
@@ -526,15 +583,16 @@ defmodule Patchbay.Forum.Report do
       )
     )
 
-    # Only money that reached escrow counts as settled. A priority report that
-    # has been filed but not credited is still pending, and a refunded bounty
-    # was never settled.
+    # Only money that reached escrow counts as settled: held, on its way to
+    # the accepted answer, or paid out. A priority report that has been filed
+    # but not credited is still pending, and a refunded bounty was never
+    # settled.
     calculate(
       :verified_paid_usdc_atomic,
       :integer,
       expr(
         if not is_nil(priority_amount_atomic) and
-             escrow_status in [:credited, :released] do
+             escrow_status in [:credited, :release_submitted, :released, :release_failed] do
           priority_amount_atomic
         else
           0
@@ -969,6 +1027,7 @@ defmodule Patchbay.Forum.Report do
       validate(present(:verdict))
       validate(compare(:priority_amount_atomic, greater_than: 0))
       change(run_oban_trigger(:read_by_jev))
+      change(run_oban_trigger(:send_escrow_credit))
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
@@ -1183,53 +1242,79 @@ defmodule Patchbay.Forum.Report do
       change(Patchbay.Forum.Changes.DeriveSolutionCard)
     end
 
-    update :claim_escrow_credit do
+    update :send_escrow_credit do
       description("""
-      Takes the one hand-over of a paid report's escrow credit to Base, before
-      anything is sent. Only a report whose credit nobody has handed over can
-      be claimed, so one payment is credited once however often it is read.
+      Hands Base the request to record a filed report's money in escrow
+      against its post, once the payment that paid it is in a Base block, and
+      writes down the transaction. Its trigger's job runs it; the question
+      goes out to Base, so nothing here holds a transaction open.
       """)
 
       accept([])
-
-      # A validation, not a filter: this atomic update checks it inside the
-      # UPDATE statement against the stored value, while Ash 3.33 leaves an
-      # action's `filter` change out of the statement.
-      validate(absent(:escrow_status), message: "has already been handed to Base")
-      change(set_attribute(:escrow_status, :credit_submitted))
-      change(set_attribute(:escrow_credit_sent_at, &DateTime.utc_now/0))
+      transaction?(false)
+      require_atomic?(false)
+      manual({Patchbay.Escrow.Send, send: :credit})
     end
 
     update :record_escrow_credit do
       description("""
-      Whether the request to record the payer's money in escrow against this
-      report was handed to Base. The chain has not confirmed it yet.
+      The request to record the payer's money in escrow against this report
+      was handed to Base, in this transaction. The chain has not confirmed it
+      yet.
       """)
 
-      accept([:escrow_status, :escrow_credit_tx_hash])
-      validate(one_of(:escrow_status, [:credit_submitted, :credit_failed]))
+      accept([:escrow_credit_tx_hash])
+      validate({EscrowFrom, from: [nil]})
+      validate(present(:escrow_credit_tx_hash))
+      change(set_attribute(:escrow_status, :credit_submitted))
+      change(set_attribute(:escrow_credit_sent_at, &DateTime.utc_now/0))
+    end
 
-      change(set_attribute(:escrow_credit_sent_at, &DateTime.utc_now/0),
-        where: [attribute_equals(:escrow_status, :credit_submitted)]
-      )
+    update :fail_escrow_credit do
+      description("""
+      Recording the payer's money on Base did not go through: every try to
+      hand the request over failed, or its receipt says the contract refused
+      it, or it was still not in a block an hour after it was sent. The money
+      is where the payment left it, for a person to send again.
+      """)
+
+      accept([])
+      validate({EscrowFrom, from: [nil, :credit_submitted]})
+      change(set_attribute(:escrow_status, :credit_failed))
+    end
+
+    update :retry_escrow_credit do
+      description("""
+      A person at Patchbay sends a failed credit again: the bounty goes back
+      to paid and not handed over, and its job hands it to Base.
+      """)
+
+      accept([])
+      validate({EscrowFrom, from: [:credit_failed]})
+      change(set_attribute(:escrow_status, nil))
+      change(set_attribute(:escrow_credit_tx_hash, nil))
+      change(set_attribute(:escrow_credit_sent_at, nil))
+      change(run_oban_trigger(:send_escrow_credit))
     end
 
     update :confirm_escrow_credit do
       description("""
       The chain confirmed the payer's money is recorded in escrow against this
-      report, at the time the contract itself recorded it.
+      report, at the time the contract itself recorded it: a credit sent, or
+      one written as failed that went through after all.
       """)
 
       accept([:escrow_funded_at])
+      validate({EscrowFrom, from: [:credit_submitted, :credit_failed]})
       validate(present(:escrow_funded_at))
-      validate(attribute_equals(:escrow_status, :credit_submitted))
       change(set_attribute(:escrow_status, :credited))
     end
 
     update :accept_reply do
       description("""
       The asker names the reply that answered a paid priority report. The
-      money held for it goes to that reply's author, so this happens once.
+      money held for it goes to that reply's author, so this happens once,
+      and the payout is queued in the same transaction.
       """)
 
       # The reply is read from another table to check it, so the update is
@@ -1243,16 +1328,76 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:accepted_reply_id, arg(:reply_id)))
       change(set_attribute(:accepted_at, &DateTime.utc_now/0))
 
-      # The award names the same reply as the thread's answer, so the two
-      # selections can never point different ways.
+      # The award names the same reply as the thread's answer, and the
+      # ordinary mark refuses once an award is made, so the two selections can
+      # never point different ways.
       change(set_attribute(:solution_reply_id, arg(:reply_id)))
       change(Patchbay.Forum.Changes.DeriveSolutionCard)
+      change(run_oban_trigger(:send_escrow_release))
+    end
+
+    update :send_escrow_release do
+      description("""
+      Hands Base the payout of a bounty to the author of the answer its asker
+      accepted, and writes down the transaction. Its trigger's job runs it;
+      the question goes out to Base, so nothing here holds a transaction open.
+      """)
+
+      accept([])
+      transaction?(false)
+      require_atomic?(false)
+      manual({Patchbay.Escrow.Send, send: :release})
     end
 
     update :record_escrow_release do
-      description("Whether the accepted reply's author was paid out of escrow.")
-      accept([:escrow_status, :escrow_release_tx_hash])
-      validate(one_of(:escrow_status, [:released, :release_failed]))
+      description("""
+      The payout to the accepted answer's author was handed to Base, in this
+      transaction. The chain has not confirmed it yet.
+      """)
+
+      accept([:escrow_release_tx_hash])
+      validate({EscrowFrom, from: [:credited]})
+      validate(present(:escrow_release_tx_hash))
+      change(set_attribute(:escrow_status, :release_submitted))
+      change(set_attribute(:escrow_release_sent_at, &DateTime.utc_now/0))
+    end
+
+    update :fail_escrow_release do
+      description("""
+      The payout to the accepted answer's author did not go through: every try
+      to hand it over failed, or its receipt says the contract refused it, or
+      it was still not in a block an hour after it was sent. The money is
+      still held, for a person to send again.
+      """)
+
+      accept([])
+      validate({EscrowFrom, from: [:credited, :release_submitted]})
+      change(set_attribute(:escrow_status, :release_failed))
+    end
+
+    update :retry_escrow_release do
+      description("""
+      A person at Patchbay sends a failed payout again: the bounty goes back
+      to held for the accepted answer, and its job pays it out.
+      """)
+
+      accept([])
+      validate({EscrowFrom, from: [:release_failed]})
+      change(set_attribute(:escrow_status, :credited))
+      change(set_attribute(:escrow_release_tx_hash, nil))
+      change(set_attribute(:escrow_release_sent_at, nil))
+      change(run_oban_trigger(:send_escrow_release))
+    end
+
+    update :confirm_escrow_release do
+      description("""
+      The contract says the accepted answer's author has been paid: a payout
+      sent, or one written as failed that went through after all.
+      """)
+
+      accept([])
+      validate({EscrowFrom, from: [:release_submitted, :release_failed]})
+      change(set_attribute(:escrow_status, :released))
     end
 
     update :request_refund do
@@ -1281,6 +1426,12 @@ defmodule Patchbay.Forum.Report do
       """)
 
       accept([:escrow_refund_tx_hash])
+
+      validate(
+        {EscrowFrom,
+         from: [:credit_submitted, :credited, :credit_failed, :release_submitted, :release_failed]}
+      )
+
       change(set_attribute(:escrow_status, :refunded))
     end
 
@@ -1322,30 +1473,18 @@ defmodule Patchbay.Forum.Report do
       change(set_attribute(:jev_gave_up_at, &DateTime.utc_now/0))
     end
 
-    update :read_escrow_credit do
+    update :read_escrow do
       description("""
-      Asks Base whether this bounty's money is recorded in escrow, from the
-      wallet and for the amount that paid, and confirms it if so. The question
-      goes out to Base, so nothing here holds a transaction open.
-      """)
-
-      accept([])
-      transaction?(false)
-      require_atomic?(false)
-      manual({Patchbay.Escrow.Watch, read: :credit})
-    end
-
-    update :read_escrow_refund do
-      description("""
-      Asks Base whether this bounty has already been refunded, and records the
-      refund if so. The question goes out to Base, so nothing here holds a
+      Asks Base what the escrow contract holds for this bounty and writes the
+      board's state to match: confirmed, paid out, refunded, or a send the
+      contract refused. The question goes out to Base, so nothing here holds a
       transaction open.
       """)
 
       accept([])
       transaction?(false)
       require_atomic?(false)
-      manual({Patchbay.Escrow.Watch, read: :refund})
+      manual(Patchbay.Escrow.Watch)
     end
   end
 
@@ -1420,14 +1559,15 @@ defmodule Patchbay.Forum.Report do
       authorize_if(expr(is_nil(beneficiary_profile_id) and author_profile_id == ^actor(:id)))
     end
 
-    # `claim_escrow_credit`, `record_escrow_credit`, `confirm_escrow_credit`,
-    # `record_escrow_release`, `record_escrow_refund`, `push_escrow_revenue`,
-    # `record_escrow_revenue_pushed`, `read_escrow_credit`,
-    # `read_escrow_refund`, `read_by_jev` and `give_up_on_jev` are named by no
-    # policy, so nothing that arrives over HTTP can reach them. The settlement,
-    # confirmation, acceptance, refund, push and escrow-watch paths skip
-    # authorization to write what the escrow said, and Jev's job to write what
-    # Jev said.
+    # The escrow's own actions (`send_escrow_credit`, `record_escrow_credit`,
+    # `fail_escrow_credit`, `retry_escrow_credit`, `confirm_escrow_credit`,
+    # `send_escrow_release`, `record_escrow_release`, `fail_escrow_release`,
+    # `retry_escrow_release`, `confirm_escrow_release`, `record_escrow_refund`,
+    # `read_escrow`), `push_escrow_revenue`, `record_escrow_revenue_pushed`,
+    # `read_by_jev` and `give_up_on_jev` are named by no policy, so nothing
+    # that arrives over HTTP can reach them. Patchbay's own jobs, its watch of
+    # Base, the refund relay and a person at the console skip authorization to
+    # write what the escrow said, and Jev's job to write what Jev said.
   end
 
   @doc """

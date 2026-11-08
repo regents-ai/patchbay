@@ -1,10 +1,13 @@
 defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
   # What Patchbay does around a payment the payments library settled: the
-  # report or tip it paid for, and the escrow credit handed to Base after it.
-  # The settlement itself is the library's, and its own tests cover it.
+  # report or tip it paid for, and the escrow credit its job hands to Base
+  # after it. The settlement itself is the library's, and its own tests cover
+  # it.
   use PatchbayWeb.ConnCase, async: false
+  use AshOban.Test, repo: Patchbay.Repo
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.Report.Workers.SendEscrowCredit
   alias Patchbay.Identity
   alias Patchbay.Payments.AgentTip
   alias Patchbay.Payments.SpecialPost
@@ -105,7 +108,8 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     refute_receive {:settle, _, _}, 200
   end
 
-  test "an unavailable escrow leaves one report, its credit waiting for a person", c do
+  test "paying files one report with its credit queued, and one that never goes through waits for a person",
+       c do
     c = priority(c)
     {worker, _} = execute(c)
     assert_receive {:settle, service, _}, 3_000
@@ -113,15 +117,26 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     assert_receive {:done, ^worker, response}, 3_000
     body = json_response(response, 200)
     assert body["status"] == "applied"
-    assert body["credit_confirmation"] == "needs_attention"
+    assert body["credit_confirmation"] == "pending"
     assert body["receipt"]["transaction_hash"] == settled("6")["transaction"]
+
+    # Paying asks Base nothing: the credit is a job, queued as the report was filed.
     report = Forum.get_report!(c.intent.target_id)
-    assert report.escrow_status == :credit_failed
-    assert report.escrow_credit_tx_hash == nil
+    assert report.escrow_status == nil
+    assert_enqueued(worker: SendEscrowCredit, args: credit_job(report))
     duplicate = signed_in(c.payer) |> post(path(c.intent), %{})
     assert json_response(duplicate, 200)["receipt"] == body["receipt"]
     assert recovery(c)["receipt"] == body["receipt"]
     assert Forum.get_report!(report.id) == report
+    refute_receive {:settle, _, _}, 200
+
+    # No operator is set up, so each try fails and is tried again, until the
+    # last, which writes the credit down as failed for a person.
+    assert catch_error(perform_job(SendEscrowCredit, credit_job(report)))
+    assert Forum.get_report!(report.id).escrow_status == nil
+    perform_job(SendEscrowCredit, credit_job(report), attempt: 10, max_attempts: 10)
+    assert Forum.get_report!(report.id).escrow_status == :credit_failed
+    assert recovery(c)["result"]["credit_confirmation"] == "needs_attention"
     refute_receive {:settle, _, _}, 200
   end
 
@@ -163,38 +178,39 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     refute_receive {:settle, _, _}, 200
   end
 
-  test "a credit is handed to Base once, even when its caller dies on the way", c do
+  test "the credit is handed to Base by its job once the payment is in a block, and once only",
+       c do
     c = priority(c)
     operator(c)
 
-    {worker, ref} = execute(c)
+    {worker, _} = execute(c)
     assert_receive {:settle, service, _}, 3_000
     send(service, {:reply, 200, settled("9")})
+    assert_receive {:done, ^worker, response}, 3_000
+    assert json_response(response, 200)["credit_confirmation"] == "pending"
+    refute_receive {:landed?, _}, 200
+
+    report = Forum.get_report!(c.intent.target_id)
+    hash = "0x" <> String.duplicate("f", 64)
+    job = Task.async(fn -> perform_job(SendEscrowCredit, credit_job(report)) end)
     assert_receive {:landed?, landing}, 3_000
     send(landing, {:rpc_reply, landed("9")})
     assert_receive {:credit, rpc}, 3_000
+    send(rpc, {:rpc_reply, hash})
+    assert {:ok, _sent} = Task.await(job)
 
-    # The report is published and its credit claimed before Base is asked.
-    report = Forum.get_report!(c.intent.target_id)
-    assert report.escrow_status == :credit_submitted
-    assert report.escrow_credit_tx_hash == nil
+    sent = Forum.get_report!(report.id)
+    assert sent.escrow_status == :credit_submitted
+    assert sent.escrow_credit_tx_hash == hash
+    assert recovery(c)["result"]["credit_confirmation"] == "pending"
 
-    Process.exit(worker, :kill)
-    assert_receive {:DOWN, ^ref, :process, ^worker, :killed}
-    send(rpc, {:rpc_reply, "0x" <> String.duplicate("f", 64)})
-
-    recovered = recovery(c)
-    assert recovered["status"] == "applied"
-    assert recovered["receipt"]["transaction_hash"] == settled("9")["transaction"]
-    assert recovered["result"]["credit_confirmation"] == "pending"
-    duplicate = signed_in(c.payer) |> post(path(c.intent), %{})
-    assert json_response(duplicate, 200)["receipt"] == recovered["receipt"]
-    refute_receive {:settle, _, _}, 200
+    # A second job for the same report finds it handed over and sends nothing.
+    assert {:cancel, _} = perform_job(SendEscrowCredit, credit_job(report))
     refute_receive {:landed?, _}, 200
     refute_receive {:credit, _}, 200
   end
 
-  test "the credit waits for the payment to land, and one Base would not take is sent again",
+  test "the credit waits for the payment to land, and one that did not go through is sent again",
        c do
     c = priority(c)
     {worker, _} = execute(c)
@@ -202,34 +218,40 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     send(service, {:reply, 200, settled("a")})
     assert_receive {:done, ^worker, response}, 3_000
     assert json_response(response, 200)["status"] == "applied"
-    # No operator was set up when it was paid, so Base was never asked.
     report = Forum.get_report!(c.intent.target_id)
-    assert report.escrow_status == :credit_failed
 
+    # Not in a block yet: nothing is sent or written, and the job tries again.
     operator(c)
-    parent = self()
-    spawn(fn -> send(parent, {:again, SpecialPost.credit_again(report.id)}) end)
-
-    # Not in a block yet: the credit is not sent, and Base is asked again.
+    job = Task.async(fn -> catch_error(perform_job(SendEscrowCredit, credit_job(report))) end)
     assert_receive {:landed?, landing}, 3_000
     send(landing, {:rpc_reply, nil})
+    assert Task.await(job)
     refute_receive {:credit, _}, 200
+    assert Forum.get_report!(report.id).escrow_status == nil
+
+    # Every try failed: a person sends it again, which queues the job afresh.
+    {:ok, failed} = Forum.fail_escrow_credit(report, authorize?: false)
+    {:ok, again} = Forum.retry_escrow_credit(failed, authorize?: false)
+    assert again.escrow_status == nil
+    assert_enqueued(worker: SendEscrowCredit, args: credit_job(report))
+
+    job = Task.async(fn -> perform_job(SendEscrowCredit, credit_job(report)) end)
     assert_receive {:landed?, landing}, 3_000
     send(landing, {:rpc_reply, landed("a")})
-
     assert_receive {:credit, rpc}, 3_000
     hash = "0x" <> String.duplicate("e", 64)
     send(rpc, {:rpc_reply, hash})
-    assert_receive {:again, {:ok, credited}}, 3_000
+    assert {:ok, _sent} = Task.await(job)
+
+    credited = Forum.get_report!(report.id)
     assert credited.escrow_status == :credit_submitted
     assert credited.escrow_credit_tx_hash == hash
 
-    # Handed over once; a second ask leaves it as it is.
-    assert {:error, {:not_credit_failed, :credit_submitted}} =
-             SpecialPost.credit_again(report.id)
-
-    refute_receive {:landed?, _}, 200
+    # Sent once; a second retry is refused, since the credit has moved on.
+    assert {:error, %Ash.Error.Invalid{}} = Forum.retry_escrow_credit(credited, authorize?: false)
   end
+
+  defp credit_job(report), do: %{"primary_key" => %{"id" => report.id}}
 
   defp rpc_answer(requests, owner) when is_list(requests),
     do: Enum.map(requests, &rpc_answer(&1, owner))

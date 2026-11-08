@@ -9,8 +9,9 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   against them, settles it once and has Patchbay's offer carry out what it
   bought. What is here is Patchbay's side of it: reading what the caller asked
   for into an offer's input, refusing a purchase that cannot go ahead before
-  anyone is asked to pay, following up once the payment has committed, and
-  the words and addresses every door answers with.
+  anyone is asked to pay, and the words and addresses every door answers
+  with. What a payment bought that must happen later is queued by the offer
+  in the transaction that applies it.
 
   The money never passes through Patchbay. The payer's wallet pays the wallet
   the terms name, a profile's own for a tip, the escrow contract for a paid
@@ -28,7 +29,6 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
-  alias Patchbay.Payments
   alias Patchbay.Payments.AgentTip
   alias Patchbay.Payments.JevAssist
   alias Patchbay.Payments.SpecialPost
@@ -199,25 +199,17 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   # Paying
 
   @doc """
-  Moves `actor`'s intent `id` one step on through the payments library, then
-  follows up on what it bought (`Patchbay.Payments.follow_up/1`). `request`
-  carries the signed payment, if any, the wallet it must come from, and the
-  browser the purchase was made from as `context.browser_session_id`.
+  Moves `actor`'s intent `id` one step on through the payments library.
+  `request` carries the signed payment, if any, the wallet it must come from,
+  and the browser the purchase was made from as `context.browser_session_id`.
   """
   @spec execute(struct(), String.t(), RegentPayments.Purchase.request()) ::
           RegentPayments.Purchase.answer()
-  def execute(actor, id, request) do
-    actor
-    |> RegentPayments.Purchase.execute(id, request)
-    |> Payments.follow_up()
-  end
+  def execute(actor, id, request), do: RegentPayments.Purchase.execute(actor, id, request)
 
   @doc "Finish an already authorized payment without starting or retrying settlement."
-  def complete(actor, id) do
-    actor
-    |> RegentPayments.Purchase.complete(id, %{browser_session_id: nil})
-    |> Payments.follow_up()
-  end
+  def complete(actor, id),
+    do: RegentPayments.Purchase.complete(actor, id, %{browser_session_id: nil})
 
   @doc "Only the original payment's status and receipt, without private product details."
   def completion_payload(intent, receipt) do
@@ -231,15 +223,12 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   @doc """
   A page's payment for `actor`'s intent `id` with a wallet its person's
   account links (`RegentPayments.WalletPayment.pay/4`), made from the
-  browser `browser_session_id` names, then followed up like `execute/3`.
+  browser `browser_session_id` names.
   """
   @spec pay(struct(), String.t(), map(), Ash.UUID.t() | nil) ::
           RegentPayments.WalletPayment.answer()
-  def pay(actor, id, params, browser_session_id) do
-    actor
-    |> WalletPayment.pay(id, params, %{browser_session_id: browser_session_id})
-    |> Payments.follow_up()
-  end
+  def pay(actor, id, params, browser_session_id),
+    do: WalletPayment.pay(actor, id, params, %{browser_session_id: browser_session_id})
 
   @doc """
   A refusal in the caller's words: it names the field the caller sent, never
