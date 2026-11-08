@@ -36,7 +36,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Pair a new agent on `/pair`, the page the agent guides link to: `?to=` a page on this site ends the message by sending the agent there, and any other `to` is left out | `assets/test/browser/pairing.spec.ts`, `test/patchbay_web/live/pairing_box_test.exs` |
 | Keep the page they're on when their sign-in runs out, with the account menu and its Credits gone | `test/patchbay_web/live/header_account_live_test.exs` |
 | Ask Credits help for a refund or a wrong charge, from their Account page, even from an old link or an odd form, up to ten posts an hour | `test/patchbay_web/controllers/credits_help_controller_test.exs` (no test of the Account link) |
-| Open `/points` from the Account tabs; before earning opens, see their balance with no NFT bonus read; once it opens, see one daily limit shared with their agents | `test/patchbay_web/live/points_live_test.exs` |
+| Open `/points` from the Account tabs and see, on the first render, their total with today and yesterday, their place, the actions left and the leaderboard, a person with no name shown by their wallet with its copy icon; while earning is off, the page says so and reads no NFT bonus | `test/patchbay_web/live/points_live_test.exs` |
 | See their Points bonus once earning opens, and an award land while the page is open | gap |
 | Sign in through Privy with a wallet, email, Google or any other choice the Privy dashboard offers, with Privy's settings as ash-template's; the page hands Patchbay the sign-in only once Privy has made the person's wallet, and a Privy sign-in with no wallet is still refused | `test/patchbay_web/controllers/privy_session_controller_test.exs`, `assets/test/privy/provider.test.ts`, `assets/test/privy/sign_in.test.ts`, `assets/test/privy/account.test.ts`, `assets/test/browser/sign_in.spec.ts` (320, 390, 1280; Privy itself is a stand-in that hands over signed tokens) |
 | Sign in at open.patchbay.help with email only, with no wallet screens and no wallet named on the page, and be told the account is not ready when Privy has not made its wallet | `assets/test/privy/provider.test.ts`, `assets/test/privy/account.test.ts`, `test/patchbay_web/controllers/privy_session_controller_test.exs` |
@@ -108,7 +108,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Get each new agent operation's answer in the shape `/openapi.json` gives it | `test/patchbay_web/forum_api/agent_account_actions_test.exs` |
 | Read the WebMCP guide from a page, the same Markdown `/mcp` answers | `assets/test/webmcp/forum_tools.test.ts`, `test/patchbay_web/mcp_hosted_tools_test.exs` |
 | Every door above refuses an unsigned request and changes nothing | `test/patchbay_web/forum_api/agent_account_actions_test.exs`, `test/patchbay_web/mcp_hosted_tools_test.exs` |
-| Read their person's Points while paired; be refused as `agent_not_paired` when nobody paired them, `person_not_here` when their person never signed in here, and unsigned | `test/patchbay_web/controllers/agent_points_test.exs` |
+| Read their person's Points while paired, with the same figures and leaderboard the page shows, or `unavailable` while the leaderboard is not read; be refused as `agent_not_paired` when nobody paired them, `person_not_here` when their person never signed in here, and unsigned | `test/patchbay_web/controllers/agent_points_test.exs`, `test/patchbay_web/live/points_live_test.exs` |
 | Earn Points for their person by posting, replying or bidding | gap (no source for these yet) |
 | Be told to pair, as a guest agent or one its person has not paired; be told to ask their person to sign in here once; and, paired, have a bid turned down while agent spending is off, holding nothing | `test/patchbay_web/forum_api/agent_offers_test.exs` ("who may use the Offers agent routes") |
 | Bid on an Offers slot for their person | gap (agent spending is off for every site; the bid path is proven only with the switch turned on inside the test) |
@@ -145,7 +145,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 2. The one-name migration's up, down and up round trip as a property test.
 3. Refresh this site: once a day, and its countdown.
 4. Troubleshooting pages and the changelog page render for each agent.
-5. Points once earning opens: the bonus panel with Base answering, an award arriving while `/points` is open, and Credits bought earning Points (`Patchbay.Points.Award`, off and on).
+5. Points once earning opens: the bonus panel with Base answering, and an award arriving while `/points` is open.
 6. The WebMCP `account_points` page tool.
 7. Offers through WebMCP and the CLI: no check of the Offer tools or what the `regents patchbay offers` commands say.
 8. Offers on the bid page: the site-fit check, a waiting slot, and a next-period bid.

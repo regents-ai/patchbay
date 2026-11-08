@@ -33,6 +33,7 @@ defmodule Patchbay.Application do
         Patchbay.SharedReading,
         wallet_bench_board(),
         hidden_sites(),
+        points_board(),
         # The Wallet Bench's filtered boards, built four at a time.
         Patchbay.WalletBench.Board.builds(),
         # Each paired agent's sign-in service reading, kept five minutes.
@@ -97,6 +98,11 @@ defmodule Patchbay.Application do
   # The directory's hidden sites are read only where pages are served, like the bench.
   defp hidden_sites do
     if serving?(), do: Patchbay.Forum.HiddenSites
+  end
+
+  # The Points board is read only where pages are served, like the bench.
+  defp points_board do
+    if serving?(), do: Patchbay.Points.Board
   end
 
   defp serving?, do: Phoenix.Endpoint.server?(:patchbay, PatchbayWeb.Endpoint)

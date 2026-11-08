@@ -14,7 +14,7 @@ trap 'exit 130' INT
 
 # The outside services' settings are cleared, and PATCHBAY_WALK points the rest at
 # nothing on this machine (config/dev.exs).
-unset BASE_RPC_URL PATCHBAY_ETHEREUM_NODE_URL ETHEREUM_READ_RPC_URL PATCHBAY_SIWA_URL \
+unset BASE_RPC_URL ETHEREUM_READ_RPC_URL PATCHBAY_SIWA_URL \
   SIWA_HOSTED_URL SIWA_HOSTED_SIGNING_KEY SIWA_ACTIVITY_READ_TOKEN OPENROUTER_API_KEY \
   PATCHBAY_INDEXNOW_KEY
 # The run's own Privy signing key, in its own folder of saved sign-ins (dropped

@@ -6423,7 +6423,7 @@
       "get": {
         "operationId": "getAccountPoints",
         "summary": "Read shared Points",
-        "description": "Read your person's Points, today's total and recent entries. Points are decimal text, such as \"12.5\". Changes nothing. Requires exact-request SIWA proof and current pairing.",
+        "description": "Read your person's Points as decimal text, what they earned today and yesterday, their place, the actions still open, daily limits, the leaderboard by name or wallet, recent entries with who earned each and whether it counted, and period bonuses. note says when earning is off. Changes nothing. Requires exact-request SIWA proof and current pairing.",
         "security": [
           {
             "AgentSIWA": []

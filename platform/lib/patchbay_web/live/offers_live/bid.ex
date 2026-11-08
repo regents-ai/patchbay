@@ -130,8 +130,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
       {:error, error} ->
         {_kind, words} = BidDesk.refusal(error)
 
-        {:noreply,
-         socket |> assign(problem: words) |> read()}
+        {:noreply, socket |> assign(problem: words) |> read()}
     end
   end
 

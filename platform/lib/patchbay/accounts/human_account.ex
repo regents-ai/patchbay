@@ -77,6 +77,13 @@ defmodule Patchbay.Accounts.HumanAccount do
       filter(expr(id == ^arg(:id)))
     end
 
+    # What other people see of each account: its name, wallet and pictures.
+    read :by_ids do
+      argument(:ids, {:array, :integer}, allow_nil?: false)
+      filter(expr(id in ^arg(:ids)))
+      prepare(build(load: [:display_name, :ens_name, :ens_avatar_url]))
+    end
+
     create :register_verified do
       accept([:privy_user_id, :wallet_address, :wallet_addresses])
       upsert?(true)

@@ -1,12 +1,18 @@
 defmodule PatchbayWeb.AgentPointsTest do
   # An agent reads its person's Points only while it is paired with someone
   # who has signed in here; anyone else is refused with the reason and what to do.
-  use PatchbayWeb.ConnCase, async: true
+  # The Points board is held for the whole machine, so this file runs alone.
+  use PatchbayWeb.ConnCase, async: false
 
+  alias Patchbay.Points.Board
+  alias Patchbay.SharedReading
   alias PatchbayWeb.SignedAgent
 
   setup do
     SignedAgent.stub_siwa()
+    on_exit(fn -> SharedReading.delete(Board.key()) end)
+    assert :ok = Board.read()
+    :ok
   end
 
   test "a paired agent reads its person's Points, told earning is off", %{conn: conn} do
@@ -17,9 +23,13 @@ defmodule PatchbayWeb.AgentPointsTest do
     assert %{
              "points" => "0",
              "earned_today" => "0",
-             "pending" => 0,
-             "daily_allowances" => [],
+             "earned_yesterday" => "0",
+             "rank" => nil,
+             "activity_being_verified" => 0,
+             "to_do" => [],
+             "leaderboard" => [],
              "entries" => [],
+             "period_bonuses" => [],
              "more" => false,
              "note" => "Earning Points is off on this site."
            } = body

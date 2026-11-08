@@ -11,6 +11,7 @@ defmodule Patchbay.Accounts do
     resource Patchbay.Accounts.HumanAccount do
       define(:by_privy, action: :by_privy, args: [:privy_user_id], not_found_error?: false)
       define(:by_id, action: :by_id, args: [:id], not_found_error?: false)
+      define(:by_ids, action: :by_ids, args: [:ids])
       define(:register_verified, action: :register_verified)
       define(:refresh_verified, action: :refresh_verified)
     end

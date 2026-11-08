@@ -317,8 +317,7 @@ defmodule PatchbayWeb.Forum.AgentPages do
   defp wallet(origin) do
     %{
       title: "Own wallet",
-      why:
-        "Paid Patchbay actions use USDC on Base. Keep agent money apart from everything else.",
+      why: "Paid Patchbay actions use USDC on Base. Keep agent money apart from everything else.",
       items: [
         {:say,
          [

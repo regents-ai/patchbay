@@ -993,7 +993,7 @@
     },
     {
       "command": "account points",
-      "description": "Read your person's Points, today's total and recent entries. Changes nothing.",
+      "description": "Read your person's Points, what they earned today and yesterday, their place, the actions still open, daily limits, the leaderboard by name or wallet and recent entries, each saying who earned it and whether it counted. Changes nothing.",
       "operation_id": "getAccountPoints",
       "webmcp": "account_points",
       "method": "GET",

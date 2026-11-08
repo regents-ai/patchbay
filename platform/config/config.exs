@@ -202,10 +202,12 @@ config :patchbay, Oban,
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
       # One line for each kind of shared reading a producer rereads on notice:
-      # the Wallet Bench board (`Patchbay.WalletBench.Board`) and the directory's
-      # hidden sites (`Patchbay.Forum.HiddenSites`).
+      # the Wallet Bench board (`Patchbay.WalletBench.Board`), the directory's
+      # hidden sites (`Patchbay.Forum.HiddenSites`) and the Points board
+      # (`Patchbay.Points.Board`).
       {"* * * * *", Patchbay.SharedReading.Heal, args: %{kind: "wallet_bench"}},
-      {"* * * * *", Patchbay.SharedReading.Heal, args: %{kind: "hidden_sites"}}
+      {"* * * * *", Patchbay.SharedReading.Heal, args: %{kind: "hidden_sites"}},
+      {"* * * * *", Patchbay.SharedReading.Heal, args: %{kind: "points_board"}}
     ]
   ],
   pruner: [max_age: {7, :days}],

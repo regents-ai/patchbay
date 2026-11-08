@@ -1,0 +1,82 @@
+/* The pairing window the account menu opens, and the /pair page. The shared
+   window frame (Regent.Structure.dialog) draws the box, its corners and the dim
+   behind it; its inner area scrolls. */
+
+/* The header's account slot adds no box of its own. */
+.pb-account-header {
+  display: contents;
+}
+
+.pb-pairing-dialog {
+  --pb-dialog-pad-top: var(--space-4);
+  --pb-dialog-pad-side: var(--space-4);
+  --rg-dialog-size: 30rem;
+  max-block-size: calc(100dvh - 4rem);
+}
+
+.pb-pairing-dialog .rg-dialog__body {
+  padding: var(--pb-dialog-pad-top) var(--pb-dialog-pad-side) var(--space-3);
+}
+
+/* The close button sits in the window's top right corner and stays there while
+   the window scrolls. Its row takes no height, so the panel keeps its place. */
+.pb-dialog-close {
+  position: sticky;
+  inset-block-start: calc(-1 * var(--pb-dialog-pad-top));
+  z-index: var(--rg-layer-card);
+  display: flex;
+  justify-content: flex-end;
+  height: 0;
+  margin-block: calc(-1 * var(--pb-dialog-pad-top)) var(--pb-dialog-pad-top);
+  margin-inline-end: calc(-1 * var(--pb-dialog-pad-side));
+}
+
+.pb-dialog-close button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pb-text);
+  cursor: pointer;
+}
+
+.pb-dialog-close .rg-icon {
+  font-size: 1.5rem;
+}
+
+@media (hover: hover) {
+  .pb-dialog-close button:hover {
+    background: var(--pb-surface-sunk);
+  }
+}
+
+.pb-pairing-dialog h2 {
+  margin: 0 0 var(--space-3);
+  padding-inline-end: 3rem;
+  font-family: var(--font-family-ui);
+  font-size: var(--type-headline-size);
+}
+
+.pair-page .rg-account__pair {
+  max-inline-size: 27rem;
+}
+
+.pair-page #pair-start {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 47.99rem) {
+  .pb-pairing-dialog {
+    --pb-dialog-pad-top: var(--space-3);
+    --pb-dialog-pad-side: var(--space-2);
+    max-block-size: calc(100dvh - 1rem);
+  }
+
+  .pb-pairing-dialog .rg-dialog__body {
+    padding-block-end: var(--space-2);
+  }
+}
