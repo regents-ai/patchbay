@@ -321,6 +321,7 @@ defmodule Patchbay.ForumTest do
                  {:confirm_escrow_release, :update},
                  {:request_refund, :update},
                  {:record_escrow_refund, :update},
+                 {:name_escrow_refund, :update},
                  {:push_escrow_revenue, :update},
                  {:record_escrow_revenue_pushed, :update},
                  {:ask_question, :create},
