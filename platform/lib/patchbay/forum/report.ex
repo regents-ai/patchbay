@@ -1274,13 +1274,14 @@ defmodule Patchbay.Forum.Report do
 
     update :record_escrow_refund do
       description("""
-      What the escrow said about a refund. It is written from Patchbay's own
-      relay and from Base itself, because after thirty days anybody can refund
-      a bounty without Patchbay in the middle.
+      A refund that went through on Base, with its transaction. It is written
+      from the receipt of Patchbay's own relay and from Base itself, because
+      after thirty days anybody can refund a bounty without Patchbay in the
+      middle. A refund the chain refuses moves no money, so nothing is written.
       """)
 
-      accept([:escrow_status, :escrow_refund_tx_hash])
-      validate(one_of(:escrow_status, [:refunded, :refund_failed]))
+      accept([:escrow_refund_tx_hash])
+      change(set_attribute(:escrow_status, :refunded))
     end
 
     update :read_by_jev do

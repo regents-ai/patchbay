@@ -7,8 +7,9 @@ defmodule Patchbay.Forum.RefundRelayRecord do
   gone back when the transaction's receipt says it succeeded, and the contract
   may still refuse it (a press racing another, or one before the thirty days).
   Until it is in a block the job waits and asks again; once it is, a refund that
-  succeeded is written as the refund itself and one the contract refused as
-  refused. A database too busy for the write is tried again.
+  succeeded is written as the refund itself. One the contract refused moved no
+  money, so nothing is written. A database too busy for the write is tried
+  again.
 
   One job for each transaction, so each press's own transaction is the one its
   job writes down. A transaction still not in a block an hour after it was sent
@@ -35,7 +36,8 @@ defmodule Patchbay.Forum.RefundRelayRecord do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"report_id" => report_id, "tx_hash" => tx_hash}} = job) do
     case Escrow.outcome(tx_hash) do
-      {:ok, outcome} -> write(report_id, tx_hash, outcome)
+      {:ok, :succeeded} -> write(report_id, tx_hash)
+      {:ok, :reverted} -> :ok
       {:error, :not_landed} -> wait(job)
       {:error, reason} -> {:error, reason}
     end
@@ -49,13 +51,10 @@ defmodule Patchbay.Forum.RefundRelayRecord do
 
   # Nothing over HTTP may write what the escrow said, so the report is read
   # deliberately without an actor.
-  defp write(report_id, tx_hash, outcome) do
+  defp write(report_id, tx_hash) do
     with {:ok, report} <- Forum.get_report(report_id, authorize?: false),
-         {:ok, _written} <- written(report, tx_hash, outcome) do
+         {:ok, _refunded} <- PriorityRefund.record(report, tx_hash) do
       :ok
     end
   end
-
-  defp written(report, tx_hash, :succeeded), do: PriorityRefund.record(report, tx_hash)
-  defp written(report, _tx_hash, :reverted), do: PriorityRefund.refused(report)
 end

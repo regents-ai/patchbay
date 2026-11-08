@@ -19,20 +19,22 @@ defmodule PatchbayWeb.ForumAPI.RefundController do
 
   def create(conn, %{"id" => id}) do
     case PriorityRefund.run(id, conn.assigns.current_profile) do
-      {:ok, refunded} ->
-        json(conn, %{
-          # Base decides, and it decides later than this answer, so this says
-          # only whether the request reached the chain.
-          asked: is_binary(refunded.escrow_refund_tx_hash),
-          report_id: refunded.id,
-          escrow_status: refunded.escrow_status,
-          refund_tx_hash: refunded.escrow_refund_tx_hash,
-          refundable_after_days: 30
-        })
-
-      {:error, failure} ->
-        send_failure(conn, failure)
+      {:ok, sent} -> json(conn, answer(sent, true))
+      {:refused, held} -> json(conn, answer(held, false))
+      {:error, failure} -> send_failure(conn, failure)
     end
+  end
+
+  # Base decides, and it decides later than this answer, so `asked` says only
+  # whether the request reached the chain.
+  defp answer(report, asked) do
+    %{
+      asked: asked,
+      report_id: report.id,
+      escrow_status: report.escrow_status,
+      refund_tx_hash: report.escrow_refund_tx_hash,
+      refundable_after_days: 30
+    }
   end
 
   defp send_failure(conn, :not_found) do

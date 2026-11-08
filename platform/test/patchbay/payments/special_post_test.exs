@@ -40,7 +40,7 @@ defmodule Patchbay.Payments.SpecialPostTest do
   end
 
   test "a confirmed bounty stays confirmed whatever the money did next" do
-    for status <- [:credited, :released, :release_failed, :refunded, :refund_failed] do
+    for status <- [:credited, :released, :release_failed, :refunded] do
       assert SpecialPost.confirmation(report(status, 90)) == :confirmed
     end
   end

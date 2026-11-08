@@ -14,9 +14,9 @@ defmodule Patchbay.Forum.PriorityRefund do
   transaction is the refund being sent; it has happened when the transaction's
   receipt says it succeeded (`Patchbay.Forum.RefundRelayRecord`). Nothing here decides whether
   the money can move. Every press reaches the chain, including a press before
-  the thirty days and a second press while an earlier one is in flight, and
-  what the chain says is written down. A press the chain refuses costs gas and
-  changes nothing, which is an accepted outcome.
+  the thirty days and a second press while an earlier one is in flight. A
+  press the chain refuses costs gas and changes nothing, which is an accepted
+  outcome: the asker is told, and nothing about the money is written.
   """
 
   alias Patchbay.Escrow
@@ -26,10 +26,13 @@ defmodule Patchbay.Forum.PriorityRefund do
   require Logger
 
   @doc """
-  Relays `actor`'s request to take the bounty on `report_id` back, and returns
-  the report as it stands afterwards.
+  Relays `actor`'s request to take the bounty on `report_id` back.
+
+  `{:ok, report}` holds the transaction Base accepted; `{:refused, report}` is
+  the report as it stands when Base would not take the request.
   """
-  @spec run(String.t(), struct() | nil) :: {:ok, Report.t()} | {:error, term()}
+  @spec run(String.t(), struct() | nil) ::
+          {:ok, Report.t()} | {:refused, Report.t()} | {:error, term()}
   def run(report_id, actor) do
     with {:ok, uuid} <- uuid(report_id),
          {:ok, report} <- found_or_missing(Forum.get_report(uuid)),
@@ -49,11 +52,7 @@ defmodule Patchbay.Forum.PriorityRefund do
     # Nothing over HTTP may write what the escrow said; this and the relay
     # below are the only places that hear it, so the write is made deliberately
     # without an actor.
-    Forum.record_escrow_refund(
-      report,
-      %{escrow_status: :refunded, escrow_refund_tx_hash: tx_hash},
-      authorize?: false
-    )
+    Forum.record_escrow_refund(report, %{escrow_refund_tx_hash: tx_hash}, authorize?: false)
   end
 
   defp uuid(report_id) do
@@ -88,7 +87,7 @@ defmodule Patchbay.Forum.PriorityRefund do
         {:ok, %{asked | escrow_refund_tx_hash: tx_hash}}
 
       {:error, _reason} ->
-        refused(asked)
+        {:refused, asked}
     end
   end
 
@@ -105,29 +104,4 @@ defmodule Patchbay.Forum.PriorityRefund do
         )
     end
   end
-
-  @doc """
-  Records that Base refused a refund: when the transaction was handed over, or
-  in its receipt afterwards.
-
-  Only a bounty Base holds is written refused: one confirmed held, or one
-  already refused before. Every other state is what Base last confirmed, and
-  a refused press leaves it standing: a bounty not yet confirmed held would
-  lose that confirmation, and one paid to the answer's author or refunded
-  stays paid out. The asker's button reaches the chain in every state, so a
-  press on a paid-out bounty is refused there and must not undo the payout.
-  """
-  @spec refused(Report.t()) :: {:ok, Report.t()} | {:error, term()}
-  def refused(%Report{escrow_status: status} = asked)
-      when status in [:credited, :refund_failed] do
-    # Nothing over HTTP may write what the escrow said, so this is written
-    # deliberately without an actor.
-    Forum.record_escrow_refund(
-      asked,
-      %{escrow_status: :refund_failed, escrow_refund_tx_hash: nil},
-      authorize?: false
-    )
-  end
-
-  def refused(asked), do: {:ok, asked}
 end

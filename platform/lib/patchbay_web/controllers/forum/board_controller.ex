@@ -1204,10 +1204,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   """
   def refund(conn, %{"id" => id}) do
     case PriorityRefund.run(id, conn.assigns.current_profile) do
-      {:ok, %{escrow_refund_tx_hash: hash}} when is_binary(hash) ->
+      {:ok, %{escrow_refund_tx_hash: hash}} ->
         refunded(conn, id, hash)
 
-      {:ok, _refused} ->
+      {:refused, _held} ->
         show_report(conn, fetch_report!(id), %{},
           escrow_problem:
             "Base would not take that request. A bounty can only be taken back 30 days " <>

@@ -2311,15 +2311,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   # The answer to a refund press, holding the transaction Base accepted. What
   # became of it is written once its receipt is in (`RefundRelayRecord`): the
-  # refund, or a refusal, which keeps no transaction.
+  # refund, or nothing when the contract refused it.
   defp escrow_standing_said(%{escrow_status: status, escrow_refund_tx_hash: hash})
-       when status in [:credited, :credit_submitted, :refund_failed] and is_binary(hash),
+       when status in [:credited, :credit_submitted] and is_binary(hash),
        do:
          "Refund sent to Base. Once Base confirms it, 90% goes back to the asker's wallet " <>
            "and 10% to REGENT staking."
-
-  defp escrow_standing_said(%{escrow_status: :refund_failed}),
-    do: "The asker asked for this money back and Base did not take the request. It is still held."
 
   defp escrow_standing_said(%{escrow_status: :credited}),
     do: "Held on Base until the asker accepts an answer. 90% goes to that answer's author."

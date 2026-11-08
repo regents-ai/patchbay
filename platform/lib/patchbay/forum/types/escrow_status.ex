@@ -32,9 +32,6 @@ defmodule Patchbay.Forum.Types.EscrowStatus do
       # The bounty was taken off the board: 90% went back to the asker who put
       # it up and 10% was kept for REGENT staking, the same split an answer
       # would have paid.
-      :refunded,
-      # A refund was asked for and the chain did not take it, which before the
-      # thirty days are up is the ordinary answer. The money is still held.
-      :refund_failed
+      :refunded
     ]
 end

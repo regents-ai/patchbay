@@ -6,8 +6,8 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   after the money was recorded and then lets anybody make one, paying the asker
   90% and the treasury 10%. Patchbay only relays and then watches. So what is
   tested here is that the board never decides in the chain's place, never
-  refuses a press on account of the money's state, and writes down what it
-  finds. No escrow is configured in a test run, so every relay reaches an
+  refuses a press on account of the money's state, and writes down money that
+  moved, never a press the chain refused. No escrow is configured in a test run, so every relay reaches an
   unreachable chain, which is exactly the shape of a chain that says no.
   """
 
@@ -19,6 +19,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.RefundRelayRecord
   alias Patchbay.Identity
+  alias Patchbay.Repo
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @contract String.duplicate("e", 64)
@@ -112,6 +113,24 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     report
   end
 
+  defp migrate_still_held do
+    version = 20_261_108_143_500
+    migration = Patchbay.Repo.Migrations.RefusedRefundsStillHeld
+
+    unless Code.ensure_loaded?(migration) do
+      Repo
+      |> Ecto.Migrator.migrations_path()
+      |> Path.join("#{version}_refused_refunds_still_held.exs")
+      |> Code.require_file()
+    end
+
+    # The test database already ran it, on no such rows, so it is stepped back
+    # first. The migrator runs it in a task of its own, which shares this
+    # test's connection, so it takes no lock that would hold that connection.
+    Ecto.Migrator.down(Repo, version, migration, migration_lock: false, log: false)
+    Ecto.Migrator.up(Repo, version, migration, migration_lock: false, log: false)
+  end
+
   defp priority_ids(versions) do
     versions
     |> Forum.list_priority_reports_for_tools!()
@@ -190,7 +209,8 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert page =~ ~s(href="https://basescan.org/tx/#{@refund_tx}")
     end
 
-    test "a refund the contract refused in its block is written as refused", %{
+    test "a refund the contract refused in its block writes nothing and leaves the money held",
+         %{
       conn: conn,
       tool: tool,
       node: node
@@ -204,12 +224,15 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert :ok =
                perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
 
-      refused = Forum.get_report!(report.id)
-      assert refused.escrow_status == :refund_failed
-      assert is_nil(refused.escrow_refund_tx_hash)
+      held = Forum.get_report!(report.id)
+      assert held.escrow_status == :credited
+      assert is_nil(held.escrow_refund_tx_hash)
 
-      page = build_conn() |> get(PostAddress.path(refused)) |> html_response(200)
-      assert page =~ "Base did not take the request"
+      # Still held, so the sweep that finds a refund made on Base keeps asking.
+      assert_would_schedule(held, :read_escrow_refund)
+
+      page = build_conn() |> get(PostAddress.path(held)) |> html_response(200)
+      assert page =~ "Held on Base until the asker accepts an answer"
       refute page =~ "basescan.org/tx/"
     end
 
@@ -323,8 +346,8 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
       assert {:ok, _sent} = PriorityRefund.run(report.id, asker)
       sends(node, :refused)
-      assert {:ok, refused} = PriorityRefund.run(report.id, asker)
-      assert refused.escrow_status == :refund_failed
+      assert {:refused, held} = PriorityRefund.run(report.id, asker)
+      assert held.escrow_status == :credited
 
       mined(node, @refund_tx, "0x1")
 
@@ -337,7 +360,6 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
       page = build_conn() |> get(PostAddress.path(refunded)) |> html_response(200)
       assert page =~ "90% of it went back to the asker"
-      refute page =~ "did not take the request"
     end
 
     test "a transaction still not in a block an hour after it was sent is given up on", %{
@@ -476,10 +498,11 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       asker = profile("aaa")
       report = credited(tool, asker)
 
-      assert {:ok, refused} = PriorityRefund.run(report.id, asker)
-      assert refused.escrow_status == :refund_failed
-      assert is_nil(refused.escrow_refund_tx_hash)
-      assert refused.refund_requested_at
+      assert {:refused, held} = PriorityRefund.run(report.id, asker)
+      assert held.escrow_status == :credited
+      assert is_nil(held.escrow_refund_tx_hash)
+      assert held.refund_requested_at
+      assert Forum.get_report!(report.id).escrow_status == :credited
     end
 
     test "a press on a bounty already paid out leaves it paid", %{tool: tool} do
@@ -488,7 +511,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
       # The press reaches the chain, which refuses it: the money is no longer
       # held. The refusal is not written over the payout.
-      assert {:ok, pressed} = PriorityRefund.run(report.id, asker)
+      assert {:refused, pressed} = PriorityRefund.run(report.id, asker)
       assert pressed.escrow_status == :released
       assert pressed.escrow_release_tx_hash == report.escrow_release_tx_hash
       assert pressed.refund_requested_at
@@ -510,7 +533,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
       # The press reaches the chain and is refused; the refusal is not written
       # over the waiting record, so the confirmation can still be written down.
-      assert {:ok, pressed} = PriorityRefund.run(submitted.id, asker)
+      assert {:refused, pressed} = PriorityRefund.run(submitted.id, asker)
       assert pressed.escrow_status == :credit_submitted
       assert pressed.refund_requested_at
 
@@ -526,14 +549,14 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       asker = profile("aaa")
       report = credited(tool, asker)
 
-      {:ok, first} = PriorityRefund.run(report.id, asker)
+      {:refused, first} = PriorityRefund.run(report.id, asker)
 
       # A press while an earlier one is in flight, and a press after one the
       # chain refused, both reach the chain again. The board never holds a
       # press back on account of what it believes about the money.
-      assert {:ok, second} = PriorityRefund.run(report.id, asker)
+      assert {:refused, second} = PriorityRefund.run(report.id, asker)
       assert DateTime.compare(second.refund_requested_at, first.refund_requested_at) in [:gt, :eq]
-      assert {:ok, _third} = PriorityRefund.run(report.id, asker)
+      assert {:refused, _third} = PriorityRefund.run(report.id, asker)
     end
 
     test "only the asker can spend Patchbay's gas on it", %{tool: tool} do
@@ -638,6 +661,23 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
     end
   end
 
+  describe "a refund refused before" do
+    test "is written back as held, and the refund sweep asks about it again", %{tool: tool} do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+
+      Repo.query!("UPDATE forum_reports SET escrow_status = 'refund_failed' WHERE id = $1", [
+        Ecto.UUID.dump!(report.id)
+      ])
+
+      migrate_still_held()
+
+      held = Forum.get_report!(report.id)
+      assert held.escrow_status == :credited
+      assert_would_schedule(held, :read_escrow_refund)
+    end
+  end
+
   describe "over the board's tools" do
     test "the asker is told what was asked, not that the money moved", %{conn: conn, tool: tool} do
       asker = profile("aaa")
@@ -650,7 +690,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
         |> json_response(200)
 
       assert answer["asked"] == false
-      assert answer["escrow_status"] == "refund_failed"
+      assert answer["escrow_status"] == "credited"
       assert answer["refundable_after_days"] == 30
       assert answer["report_id"] == report.id
     end
@@ -711,7 +751,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert page =~ "Take my money back"
 
       {:ok, held} = Forum.get_report(report.id)
-      assert held.escrow_status == :refund_failed
+      assert held.escrow_status == :credited
     end
 
     test "a refunded report shows where its money went", %{conn: conn, tool: tool} do
