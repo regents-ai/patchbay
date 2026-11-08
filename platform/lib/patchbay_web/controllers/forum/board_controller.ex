@@ -1236,7 +1236,7 @@ defmodule PatchbayWeb.Forum.BoardController do
           BusyPage.respond(conn, kind,
             try_again: "/posts/#{id}",
             note:
-              "Refund sent to Base, transaction #{tx_hash}. " <>
+              "Sent to Base, transaction #{tx_hash}. " <>
                 "This page could not refresh to show it."
           )
       end

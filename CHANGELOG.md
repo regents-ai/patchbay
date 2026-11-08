@@ -4,6 +4,7 @@
 
 - Taking a bounty back before its 30 days are up still reaches Base, which says no, and the bounty now stays held, as it is. It used to be marked as a take-back that failed, which left it out of the open bounties, the money paid in, and the site's watch for a bounty sent back on Base.
 - Bounties marked that way before are held again, and the watch reads them from then on.
+- The bounty's button now reads Take back, and after a press the page says it was sent to Base.
 
 ## 2026-11-06 — Pairing
 

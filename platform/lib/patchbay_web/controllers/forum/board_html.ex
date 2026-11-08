@@ -2263,7 +2263,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
       <form :if={@asker?} method="post" action={~p"/reports/#{@report.id}/refund"} class="pb-reclaim">
         <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-        <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Take my money back</Regent.Primitives.button>
+        <Regent.Primitives.button variant="primary" type="submit" class="patchbay-button">Take back</Regent.Primitives.button>
         <span class="patchbay-board-facts">
           This asks Base to send 90% of the {escrowed(@report)} USDC back to the wallet that put
           it up, with 10% to REGENT staking, which is the same split accepting an answer pays.
@@ -2315,7 +2315,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp escrow_standing_said(%{escrow_status: status, escrow_refund_tx_hash: hash})
        when status in [:credited, :credit_submitted] and is_binary(hash),
        do:
-         "Refund sent to Base. Once Base confirms it, 90% goes back to the asker's wallet " <>
+         "Sent to Base. Once Base confirms it, 90% goes back to the asker's wallet " <>
            "and 10% to REGENT staking."
 
   defp escrow_standing_said(%{escrow_status: :credited}),

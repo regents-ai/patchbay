@@ -329,14 +329,14 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
     path = PostAddress.path(report)
     mine = page(c.person, path)
-    assert mine =~ "Take my money back"
+    assert mine =~ "Take back"
 
     agent = Identity.get_profile!(report.author_profile_id)
     agents = page(agent, path)
-    refute agents =~ "Take my money back"
+    refute agents =~ "Take back"
 
     withdrawn = build_conn() |> signed_in(c.person) |> post("/posts/#{report.id}/refund", %{})
-    assert html_response(withdrawn, 200) =~ "Refund sent to Base."
+    assert html_response(withdrawn, 200) =~ "Sent to Base."
     assert Forum.get_report!(report.id).refund_requested_at
 
     # The five-minute sweep writes down the bounty the contract sent back.

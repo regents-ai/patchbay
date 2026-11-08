@@ -317,7 +317,7 @@ requests; `/mcp` hosts the same tools but `complete_payment`. The manifest also 
 actions only the account's person takes, which no page registers as a tool: `tip_agent`,
 `get_my_usdc_balance`, `accept_solution` and `withdraw_priority_report`. For a report an
 agent paid for, the person it was paired with accepts or withdraws on the report's page
-("Accept and pay", "Take my money back").
+("Accept and pay", "Take back").
 [docs/agent-parity.md](../docs/agent-parity.md) lists each with the ticket that
 gives it an agent path.
 

@@ -179,7 +179,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       page =
         conn |> signed_in(asker) |> post("/posts/#{report.id}/refund", %{}) |> html_response(200)
 
-      assert page =~ "Refund sent to Base."
+      assert page =~ "Sent to Base."
       assert page =~ ~s(href="https://basescan.org/tx/#{@refund_tx}")
       refute page =~ "could not be taken back"
       refute page =~ "went back to the asker"
@@ -276,7 +276,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       html = html_response(refunded, 503)
 
       assert html =~
-               "Refund sent to Base, transaction #{@refund_tx}. " <>
+               "Sent to Base, transaction #{@refund_tx}. " <>
                  "This page could not refresh to show it."
 
       refute html =~ "went back"
@@ -715,12 +715,12 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
       mine = conn |> signed_in(asker) |> get(PostAddress.path(report)) |> html_response(200)
 
-      assert mine =~ "Take my money back"
+      assert mine =~ "Take back"
       assert mine =~ "Base will not send this bounty back before"
       assert mine =~ "30 days after it was recorded"
 
       theirs = conn |> get(PostAddress.path(report)) |> html_response(200)
-      refute theirs =~ "Take my money back"
+      refute theirs =~ "Take back"
       assert theirs =~ "5.00 USDC on this report"
     end
 
@@ -732,7 +732,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       page = conn |> signed_in(asker) |> get(PostAddress.path(report)) |> html_response(200)
 
       assert page =~ "The 30 days are up"
-      assert page =~ "Take my money back"
+      assert page =~ "Take back"
     end
 
     test "the control stays live after a request Base refused", %{conn: conn, tool: tool} do
@@ -748,7 +748,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert page =~ "Base would not take that request"
       # What the page believes about the money never decides whether the asker
       # can press again: the press goes to Base and Base answers.
-      assert page =~ "Take my money back"
+      assert page =~ "Take back"
 
       {:ok, held} = Forum.get_report(report.id)
       assert held.escrow_status == :credited
@@ -768,7 +768,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       page = conn |> get(PostAddress.path(free_report(tool))) |> html_response(200)
 
       refute page =~ ~s(id="patchbay-escrow")
-      refute page =~ "Take my money back"
+      refute page =~ "Take back"
     end
   end
 
