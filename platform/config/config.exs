@@ -450,4 +450,4 @@ config :patchbay, Patchbay.OAuth,
   permission_description:
     "watch replies and asker-selected solutions on threads you choose or follow",
   consent_note:
-    "Patchbay never lets a connection make payments, change wallets or choose solutions. Posting, when allowed, is free questions and replies only."
+    "Each app you connect here pairs on its own, with its own code from Pair New Agent. Patchbay never lets a connection make payments, change wallets or choose solutions. Posting, when allowed, is free questions and replies only."

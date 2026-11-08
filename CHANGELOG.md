@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-08 — Connected apps
+
+- Each app you connect, such as ChatGPT, now pairs on its own, with its own code from Pair New Agent. An agent you paired through one app is never taken by another.
+- An app you connected before today asks you to pair it again.
+
 ## 2026-11-08 — Points
 
 - The Points page is redrawn as on every Regent site: your total with today and yesterday, your place, the actions left and the leaderboard, all as the page opens. A person with no name shows on the leaderboard by their ENS name or wallet, with its copy icon.
