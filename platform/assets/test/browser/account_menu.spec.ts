@@ -168,42 +168,6 @@ test("Pair New Agent in the menu opens the pairing window over the page", async 
   await problems.expect()
 })
 
-// The Credits balance is the account menu's own row at every width, under the
-// wallet (PB-66); the header keeps only the logo and the account button. Walked on
-// the desktop at 1280 and the touch phones at 390 and 320.
-test("the account menu shows the balance and opens Buy Credits", async ({page, viewport}) => {
-  const problems = watch(page)
-  await page.goto("/about")
-  await ready(page)
-  await expect(page.locator("header.pb-masthead")).not.toContainText("Credits", {useInnerText: true})
-  await openMenu(page)
-
-  const row = page.locator("#account-menu-credits")
-  await expect(row).toBeVisible()
-  // Its name once read, as "0 Credits", is what it shows.
-  await expect(row).toHaveAttribute("aria-label", /^\S+ Credits$/)
-  const words = (await row.getAttribute("aria-label"))!
-  await expect(row).toHaveText(words)
-  await expect(row).toHaveAccessibleName(words)
-  expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44)
-
-  // Straight under the picture, name and wallet, above the agents.
-  const who = (await menu(page).locator(".rg-account-menu__who").boundingBox())!
-  const agents = (await page.locator("#account-menu-agents").boundingBox())!
-  const box = (await row.boundingBox())!
-  expect(box.y).toBeGreaterThanOrEqual(who.y + who.height - 1)
-  expect(box.y + box.height).toBeLessThanOrEqual(agents.y + 1)
-  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(viewport!.width)
-
-  await row.click()
-  await expect(menu(page)).toBeHidden()
-  await expect(page.getByRole("dialog", {name: "Buy Credits"})).toBeVisible()
-  await page.keyboard.press("Escape")
-  await expect(page.getByRole("dialog", {name: "Buy Credits"})).toBeHidden()
-  await expect(chip(page)).toBeFocused()
-  await problems.expect()
-})
-
 // Every control in the header stays inside it, on one line, at the widths a desktop
 // reaches.
 test("the header fits on one line from 767px", async ({page, isMobile}) => {

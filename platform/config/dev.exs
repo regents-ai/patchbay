@@ -28,7 +28,7 @@ walk? = System.get_env("PATCHBAY_WALK") == "true"
 if walk? do
   closed = "http://127.0.0.1:9"
 
-  config :patchbay, :chain_nodes, %{8453 => closed, 1 => closed}
+  config :patchbay, :chain_nodes, %{8453 => closed}
   config :req, default_options: [adapter: PatchbayDev.WalkOffline]
   config :patchbay, :assist_target, resolve: &PatchbayDev.WalkOffline.resolve/1
 

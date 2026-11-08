@@ -1,9 +1,10 @@
 defmodule Patchbay.SharedReading do
   @moduledoc """
-  A figure every visitor sees alike, read once and shared by every open page.
+  A figure every reader it admits sees alike, read once and shared by every open
+  page.
 
   It is for a reading no saved row carries (a chain's newest block) or one built
-  from many rows (a list of the latest trades). A public row saved through Ash
+  from many rows (a list of the latest trades, the Points board). A public row saved through Ash
   reaches pages through its own `pub_sub` publication instead, and anything that
   differs by viewer is reread under that viewer's scope: neither belongs here.
   The rule and its reasons are in the `ash-frontend` skill,
@@ -35,10 +36,12 @@ defmodule Patchbay.SharedReading do
 
   A key is `{kind, id}`. `kind` is one of `@kinds` and `id` is an integer or a
   short string the site already holds in its own rows or settings, never text
-  from a request. Each kind states why every visitor may see it, the most keys
-  it may hold and the largest reading it accepts, so adding one is a reviewed
-  change. A reading is small plain data: numbers, strings, atoms, dates,
-  `Decimal`s, and maps, lists or tuples of them. An Ash record or any other
+  from a request. Each kind states who may see it and why, the most keys it may
+  hold and the largest reading it accepts, so adding one is a reviewed change.
+  Nothing hands out a reading by its kind: each page or answer fetches the keys it
+  shows, and shows a kind only to the readers its `audience` names. A reading is
+  small plain data: numbers, strings, atoms, dates, `Decimal`s, and maps, lists or
+  tuples of them. An Ash record or any other
   struct is refused, as is a reading over its kind's size.
 
   Every kind also states `within`: the seconds inside which a working producer
@@ -54,7 +57,10 @@ defmodule Patchbay.SharedReading do
   each kind, how many keys it holds, how many of them have never been read, how
   many are late and how long ago its oldest reading was taken
   (`[:patchbay, :shared_reading, :kind]`), and the table's size in memory
-  (`[:patchbay, :shared_reading, :table]`). Every `degraded/1` is counted
+  (`[:patchbay, :shared_reading, :table]`). Every reading offered to `put/2`
+  reports its `bytes` and its kind's `limit` (`[:patchbay, :shared_reading, :size]`),
+  so a reading growing towards its limit shows before it is refused. Every
+  `degraded/1` is counted
   (`[:patchbay, :shared_reading, :degraded]`), as is every refused reading
   (`[:patchbay, :shared_reading, :refused]`) and every wake-up sent to pages
   (`[:patchbay, :shared_reading, :woken]`), by kind.
@@ -64,7 +70,7 @@ defmodule Patchbay.SharedReading do
 
   @table __MODULE__
 
-  # open: why a signed-out visitor may see it. keys: the most this kind holds.
+  # audience: who may see it, and why. keys: the most this kind holds.
   # bytes: the largest reading, measured as `:erlang.external_size/1`.
   # within: the seconds inside which a working producer reads every key again.
   @kinds %{
@@ -78,8 +84,8 @@ defmodule Patchbay.SharedReading do
     # reading: 8 MB at 2,000 finished attempts (5,000 runs and 33,000 checks),
     # so the size limit leaves room to grow too.
     wallet_bench: %{
-      open:
-        "Techtree publishes the bench for anyone to read (Patchbay.WalletBench's " <>
+      audience:
+        "every visitor: Techtree publishes the bench for anyone to read (Patchbay.WalletBench's " <>
           "resources, read policy authorize_if always()); every visitor sees the same board",
       keys: 400,
       bytes: 48_000_000,
@@ -89,11 +95,23 @@ defmodule Patchbay.SharedReading do
     # check found no tools on. Every listed host hidden is about 4,000 short
     # strings, under 200 KB, so 2 MB leaves room for the listing to grow.
     hidden_sites: %{
-      open:
-        "Site checks are public (Patchbay.Forum.SiteCheck's read policy authorize_if " <>
+      audience:
+        "every visitor: site checks are public (Patchbay.Forum.SiteCheck's read policy authorize_if " <>
           "always()); every visitor sees the same listing",
       keys: 1,
       bytes: 2_000_000,
+      within: 150
+    },
+    # `Patchbay.Points.Board`'s one key. Ten rows of about 1.3 KB at most (a
+    # name, a wallet, an ENS name and a picture address) and 8 bytes for each
+    # account with points: 10,000 such accounts take about 93 KB.
+    points_board: %{
+      audience:
+        "signed-in people and paired agents, the readers the Points page and the agent's " <>
+          "Points answer admit; each gets the rows without account ids and their own place, " <>
+          "never the list of totals (Patchbay.Points.Board)",
+      keys: 1,
+      bytes: 131_072,
       within: 150
     }
   }
@@ -300,9 +318,20 @@ defmodule Patchbay.SharedReading do
     refused
   end
 
+  # Every offered reading's size is reported against its kind's limit, so one
+  # that grows shows nearing the limit well before it is refused.
   defp fits(kind, reading) do
+    bytes = :erlang.external_size(reading)
+    limit = @kinds[kind].bytes
+
+    :telemetry.execute(
+      [:patchbay, :shared_reading, :size],
+      %{bytes: bytes, limit: limit},
+      %{kind: kind}
+    )
+
     cond do
-      :erlang.external_size(reading) > @kinds[kind].bytes -> {:error, :too_large}
+      bytes > limit -> {:error, :too_large}
       not plain?(reading) -> {:error, :not_plain}
       true -> :ok
     end

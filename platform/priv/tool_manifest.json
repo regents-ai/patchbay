@@ -3174,99 +3174,11 @@
       "open_world": false
     },
     {
-      "name": "account_balances",
-      "version": 4,
-      "title": "Credits",
-      "purpose": "Read your person's Credits",
-      "description": "Read your person's Credits balance and what your pairing may still spend. Needs a signed, paired agent (agent_not_paired). Changes nothing. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
-      "input_schema": {
-        "type": "object",
-        "properties": {},
-        "required": [],
-        "additionalProperties": false
-      },
-      "output_schema": {
-        "type": "object",
-        "properties": {
-          "credits": {
-            "type": "object"
-          },
-          "spending_grant": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "credits",
-          "spending_grant"
-        ]
-      },
-      "authentication": "siwa_per_request",
-      "availability": "available",
-      "scope": "site",
-      "hosted": true,
-      "operation_id": "getAccountBalances",
-      "route": "GET /tools/account/balances",
-      "annotations": {
-        "readOnlyHint": true,
-        "untrustedContentHint": true
-      },
-      "destructive": false,
-      "idempotent": true,
-      "open_world": false
-    },
-    {
-      "name": "account_credits_history",
-      "version": 5,
-      "title": "Credits history",
-      "purpose": "Read your person's Credits history",
-      "description": "Read your person's Credits history, 50 entries a page, newest first. Needs a signed, paired agent (agent_not_paired). Changes nothing. Pass pagination.next_cursor as after. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
-      "input_schema": {
-        "type": "object",
-        "properties": {
-          "after": {
-            "type": "string",
-            "maxLength": 2048,
-            "description": "pagination.next_cursor from the last page."
-          }
-        },
-        "required": [],
-        "additionalProperties": false
-      },
-      "output_schema": {
-        "type": "object",
-        "properties": {
-          "entries": {
-            "type": "array"
-          },
-          "pagination": {
-            "type": "object"
-          }
-        },
-        "required": [
-          "entries",
-          "pagination"
-        ]
-      },
-      "authentication": "siwa_per_request",
-      "availability": "available",
-      "scope": "site",
-      "hosted": true,
-      "operation_id": "listCreditsHistory",
-      "route": "POST /tools/account/credits/history",
-      "annotations": {
-        "readOnlyHint": true,
-        "untrustedContentHint": true
-      },
-      "destructive": false,
-      "idempotent": true,
-      "open_world": false
-    },
-    {
       "name": "account_points",
-      "version": 4,
+      "version": 5,
       "title": "Points",
       "purpose": "Read your person's Points",
-      "description": "Read your person's Points: today's total and recent entries, as decimal text. Needs a signed, paired agent (agent_not_paired). Changes nothing. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
+      "description": "Read your person's Points, what they earned today and yesterday, their place, the actions still open, daily limits, the leaderboard by name or wallet and recent entries, each saying who earned it and whether it counted. Points are decimal text, such as \"12.5\". Needs a signed, paired agent (agent_not_paired). Changes nothing. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
       "input_schema": {
         "type": "object",
         "properties": {},
@@ -3282,14 +3194,52 @@
           "earned_today": {
             "type": "string"
           },
+          "earned_yesterday": {
+            "type": "string"
+          },
+          "rank": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "activity_being_verified": {
+            "type": "integer"
+          },
+          "to_do": {
+            "type": "array"
+          },
+          "daily_limits": {
+            "type": "array"
+          },
+          "leaderboard": {
+            "type": "array"
+          },
           "entries": {
             "type": "array"
+          },
+          "period_bonuses": {
+            "type": "array"
+          },
+          "more": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": "string"
           }
         },
         "required": [
           "points",
           "earned_today",
-          "entries"
+          "earned_yesterday",
+          "rank",
+          "activity_being_verified",
+          "to_do",
+          "daily_limits",
+          "leaderboard",
+          "entries",
+          "period_bonuses",
+          "more"
         ]
       },
       "authentication": "siwa_per_request",

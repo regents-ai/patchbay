@@ -40,7 +40,7 @@ defmodule PatchbayWeb.SiteEdition do
   @doc """
   The page tools an edition does not offer: at the open address, every one
   whose route answers only at patchbay.help (`only: :main` in the router), such
-  as each Offer, Credits and Points tool. A page names them so its WebMCP tools
+  as each Offer, Credits help and Points tool. A page names them so its WebMCP tools
   leave them out, and the page's help lists none of them.
   """
   @spec left_out_tools(t()) :: [String.t()]

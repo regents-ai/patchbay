@@ -4,7 +4,7 @@ defmodule PatchbayWeb.Plugs.X402Test do
   0.01 USDC on Base, from the caller's wallet straight to the Bench's own
   funder wallet, which pays for the Bench's runs and so gets its cent back.
   Patchbay holds no key for that wallet and keeps no record of the payment;
-  it is not revenue, and earns no Credits or Points.
+  it is not revenue, and earns no Points.
 
   The price, the chain, the token and the path are fixed here, and nothing in
   a request changes them. The wallet paid is the site's `:x402_test_pay_to`

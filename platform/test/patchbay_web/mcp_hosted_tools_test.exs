@@ -19,6 +19,8 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum.Capabilities
+  alias Patchbay.Points.Board
+  alias Patchbay.SharedReading
   alias PatchbayWeb.SignedAgent
 
   # What admission answers a request with no signature headers.
@@ -27,7 +29,13 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   setup do
     SignedAgent.stub_siwa()
     SignedAgent.stub_wallet_author()
-    %{asker: SignedAgent.pair!(), helper: SignedAgent.pair!()}
+    pairs = %{asker: SignedAgent.pair!(), helper: SignedAgent.pair!()}
+
+    # account_points answers from the leaderboard every reader shares, read once
+    # here as its producer reads it on notice.
+    assert :ok = Board.read()
+    on_exit(fn -> SharedReading.delete(Board.key()) end)
+    pairs
   end
 
   test "every tool that writes, or reads an account, refuses an unsigned call", %{conn: conn} do
@@ -209,9 +217,6 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
          "verdict" => "verified_success",
          "client_request_id" => Ecto.UUID.generate()
        }, :ok},
-      {"account_balances", %{}, {:http, :answer, :get, "/tools/account/balances"}},
-      {"account_credits_history", %{},
-       {:http, :answer, :post, "/tools/account/credits/history", %{}}},
       {"account_points", %{}, {:http, :answer, :get, "/tools/account/points"}},
       {"get_offer_bid_options", %{"slot" => 1},
        {:http, :answer, :post, "/forum/offer-bid-options", %{"slot" => 1}}},

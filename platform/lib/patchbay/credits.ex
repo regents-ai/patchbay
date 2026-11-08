@@ -1,12 +1,12 @@
 defmodule Patchbay.Credits do
   @moduledoc """
-  Patchbay's part in Regent Credits (`RegentCredits`): the name it acts under
-  and the actors it passes. The library keeps the balance; Patchbay says who
-  is asking, from what its own sign-in verified.
+  The Offer bid path's part in Regent Credits (`RegentCredits`): the name it
+  holds bids under and the actors it passes. The library keeps the balance;
+  Patchbay says who is bidding, from what its own sign-in verified.
 
-  A profile signed in with Privy spends its own Credits. A profile that signed
-  in only with an agent wallet has no Regent account Patchbay can name yet, so
-  it cannot spend.
+  A profile signed in with Privy bids with its own Credits. A profile that
+  signed in only with an agent wallet has no Regent account Patchbay can name
+  yet, so it cannot bid.
   """
 
   alias Patchbay.Identity.AgentProfile
@@ -14,7 +14,7 @@ defmodule Patchbay.Credits do
 
   @site "patchbay"
 
-  @doc "The name Patchbay places holds and attaches wallets under."
+  @doc "The name Patchbay places bid holds under."
   def site, do: @site
 
   @doc """

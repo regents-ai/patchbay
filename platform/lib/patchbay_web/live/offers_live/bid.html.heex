@@ -52,7 +52,6 @@
               <span :if={Decimal.gt?(@balance.held, 0)} class="pb-bid-held">
                 {RegentCredits.Amount.format(@balance.held)} held
               </span>
-              <.buy_credits />
             </div>
 
             <div class="pb-bid-feedback" aria-live="polite">
@@ -64,7 +63,7 @@
                 phx-hook="MotionRefusal"
                 data-refused
               >
-                {@problem} <.buy_credits :if={@short?} />
+                {@problem}
               </p>
             </div>
 

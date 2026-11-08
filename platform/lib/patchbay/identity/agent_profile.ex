@@ -158,10 +158,10 @@ defmodule Patchbay.Identity.AgentProfile do
 
     # Every wallet the person's Privy account linked at their last sign-in: their
     # main wallet and the Privy wallet made beside it. These, and only these, pay
-    # for the account (the Credits panel, a page's payment through
-    # `RegentPayments.WalletPayment`, and the page's wallet choice through
-    # `data-account-wallets`). None without an account. Loaded only for the
-    # signed-in profile (`PatchbayWeb.Plugs.CurrentProfile`), never on public reads.
+    # for the account (a page's payment through `RegentPayments.WalletPayment`
+    # and the page's wallet choice through `data-account-wallets`). None without
+    # an account. Loaded only for the signed-in profile
+    # (`PatchbayWeb.Plugs.CurrentProfile`), never on public reads.
     calculate(:wallet_addresses, {:array, :string}, expr(human_account.wallet_addresses || [])) do
       sensitive?(true)
     end
