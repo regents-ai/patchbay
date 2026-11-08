@@ -84,9 +84,10 @@ defmodule PatchbayWeb.Forum.EscrowReleaseTest do
       {:record_escrow_release, %{escrow_release_tx_hash: "0x02"}, [:credited]},
       {:fail_escrow_release, %{}, [:credited, :release_submitted]},
       {:retry_escrow_release, %{}, [:release_failed]},
-      {:confirm_escrow_release, %{}, [:release_submitted, :release_failed]},
+      {:confirm_escrow_release, %{}, [:release_submitted, :release_failed, :credit_failed]},
       {:record_escrow_refund, %{escrow_refund_tx_hash: "0x03"},
-       [:credit_submitted, :credited, :credit_failed, :release_submitted, :release_failed]}
+       [:credit_submitted, :credited, :credit_failed, :release_submitted, :release_failed]},
+      {:name_escrow_refund, %{escrow_refund_tx_hash: "0x04"}, [:refunded]}
     ]
 
     for {action, input, from} <- @steps do
@@ -310,6 +311,18 @@ defmodule PatchbayWeb.Forum.EscrowReleaseTest do
   end
 
   describe "watching Base for a credit" do
+    test "a credit written as failed whose payout Base made is written as paid", %{
+      tool: tool,
+      node: node
+    } do
+      report = paid_report(tool, profile("aaa"))
+      store(report, :credit_failed)
+
+      holds(node, 2)
+      assert %{failure: 0} = held_sweep()
+      assert Forum.get_report!(report.id).escrow_status == :released
+    end
+
     test "a credit still not in a block an hour after it was sent is written as failed", %{
       tool: tool
     } do

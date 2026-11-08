@@ -1392,11 +1392,13 @@ defmodule Patchbay.Forum.Report do
     update :confirm_escrow_release do
       description("""
       The contract says the accepted answer's author has been paid: a payout
-      sent, or one written as failed that went through after all.
+      sent, or one written as failed that went through after all, including
+      one written before the payout's own states existed, whose credit was
+      written as failed.
       """)
 
       accept([])
-      validate({EscrowFrom, from: [:release_submitted, :release_failed]})
+      validate({EscrowFrom, from: [:release_submitted, :release_failed, :credit_failed]})
       change(set_attribute(:escrow_status, :released))
     end
 
@@ -1433,6 +1435,18 @@ defmodule Patchbay.Forum.Report do
       )
 
       change(set_attribute(:escrow_status, :refunded))
+    end
+
+    update :name_escrow_refund do
+      description("""
+      The transaction of a refund the watch of Base wrote before the relay's
+      receipt came back, which the watch cannot know. Only a refund with no
+      transaction written takes one.
+      """)
+
+      accept([:escrow_refund_tx_hash])
+      validate({EscrowFrom, from: [:refunded]})
+      change(filter(expr(is_nil(escrow_refund_tx_hash))))
     end
 
     update :read_by_jev do
@@ -1563,7 +1577,7 @@ defmodule Patchbay.Forum.Report do
     # `fail_escrow_credit`, `retry_escrow_credit`, `confirm_escrow_credit`,
     # `send_escrow_release`, `record_escrow_release`, `fail_escrow_release`,
     # `retry_escrow_release`, `confirm_escrow_release`, `record_escrow_refund`,
-    # `read_escrow`), `push_escrow_revenue`, `record_escrow_revenue_pushed`,
+    # `name_escrow_refund`, `read_escrow`), `push_escrow_revenue`, `record_escrow_revenue_pushed`,
     # `read_by_jev` and `give_up_on_jev` are named by no policy, so nothing
     # that arrives over HTTP can reach them. Patchbay's own jobs, its watch of
     # Base, the refund relay and a person at the console skip authorization to

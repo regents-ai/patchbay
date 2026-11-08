@@ -317,7 +317,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert refunded.escrow_refund_tx_hash == first
     end
 
-    test "a refund the watch of Base wrote first leaves the press's job done", %{
+    test "a refund the watch of Base wrote first takes the press's transaction", %{
       tool: tool,
       node: node
     } do
@@ -329,7 +329,15 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       mined(node, @refund_tx, "0x1")
 
       assert :ok = perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: @refund_tx})
-      assert Forum.get_report!(report.id).escrow_status == :refunded
+      refunded = Forum.get_report!(report.id)
+      assert refunded.escrow_status == :refunded
+      assert refunded.escrow_refund_tx_hash == @refund_tx
+
+      # Its transaction is written once; another job's writes nothing over it.
+      other = "0x" <> String.duplicate("9", 64)
+      mined(node, other, "0x1")
+      assert :ok = perform_job(RefundRelayRecord, %{report_id: report.id, tx_hash: other})
+      assert Forum.get_report!(report.id).escrow_refund_tx_hash == @refund_tx
     end
 
     test "an accepted press, then one Base refuses, ends as the receipt says", %{

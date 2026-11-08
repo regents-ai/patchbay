@@ -7,9 +7,9 @@ defmodule Patchbay.Forum.RefundRelayRecord do
   gone back when the transaction's receipt says it succeeded, and the contract
   may still refuse it (a press racing another, or one before the thirty days).
   Until it is in a block the job waits and asks again; once it is, a refund that
-  succeeded is written as the refund itself, unless the watch
-  (`Patchbay.Escrow.Watch`) found it first. One the contract refused moved no
-  money, so nothing is written. A database too busy for the write is tried
+  succeeded is written as the refund itself, or, when the watch
+  (`Patchbay.Escrow.Watch`) found the refund first, as its transaction. One
+  the contract refused moved no money, so nothing is written. A database too busy for the write is tried
   again.
 
   One job for each transaction, so each press's own transaction is the one its
@@ -58,7 +58,14 @@ defmodule Patchbay.Forum.RefundRelayRecord do
     end
   end
 
-  # The watch of Base may have written the same refund first.
+  # The watch of Base may have written the same refund first, with no
+  # transaction, which is this one: only one refund of a bounty can succeed.
+  defp record(%{escrow_status: :refunded, escrow_refund_tx_hash: nil} = report, tx_hash) do
+    with {:ok, _named} <-
+           Forum.name_escrow_refund(report, %{escrow_refund_tx_hash: tx_hash}, authorize?: false),
+         do: :ok
+  end
+
   defp record(%{escrow_status: :refunded}, _tx_hash), do: :ok
 
   defp record(report, tx_hash) do

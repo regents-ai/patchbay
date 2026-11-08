@@ -21,7 +21,9 @@ defmodule Patchbay.Forum.Types.EscrowStatus do
   Every try to hand a payout over failing moves `credited` to
   `release_failed`. Base holding the money also moves `credit_failed` to
   `credited`, and Base paying out moves `release_failed` to `released`: a
-  send written as failed that went through after all.
+  send written as failed that went through after all. Base paying out also
+  moves `credit_failed` to `released`, for an answer accepted before the
+  payout had states of its own, whose credit was written as failed.
 
   Any state the money is still in escrow from becomes `refunded` when the
   contract says it went back: thirty days after the money was recorded anybody
