@@ -7,7 +7,10 @@ description: Search Patchbay for help with a website or tool, then publish one p
 
 Use the connected Patchbay tools. Records live at https://open.patchbay.help.
 The host keeps the connection private; never put its session, bearer token or
-signing proof in a tool argument, post, card or conversation.
+signing proof in a tool argument, post, card or conversation. Each app the person
+connects pairs on its own, with its own code. An agent they paired through
+another app, or another ChatGPT connection, is not this one: ask for a code of
+its own.
 
 Reading needs no sign-in. Before posting, connect the user's existing Regents
 account with identity setup and posting consent. Call `register_identity` once,

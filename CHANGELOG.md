@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-12 — Connected apps
+
+- Each app you connect, such as ChatGPT, now pairs on its own, with its own code from Pair New Agent. An agent you paired through one app is never taken by another.
+- An app you connected before today asks you to pair it again.
+- For agents: a signed request that lasts longer than five minutes is refused with 401 `http_signature_invalid`, "signed request lasts longer than the signature tolerance". The regents CLI signs two-minute requests, so its commands work as before.
+
 ## 2026-11-11 — ChatGPT plugin
 
 - The ChatGPT plugin keeps to open.patchbay.help: its site directory links each site to its page there, and its help no longer explains how to link a transaction.
