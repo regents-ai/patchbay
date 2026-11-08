@@ -56,7 +56,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
      |> assign(
        problem: nil,
        outbid?: false,
-       short?: false,
        screening_paused?: Offers.screening_paused?()
      )}
   end
@@ -94,7 +93,7 @@ defmodule PatchbayWeb.OffersLive.Bid do
 
   def handle_event("change", %{"bid" => params}, socket) do
     lane = lane(params["lane"])
-    socket = assign(socket, version_id: params["version_id"], problem: nil, short?: false)
+    socket = assign(socket, version_id: params["version_id"], problem: nil)
 
     {:noreply,
      if(lane == socket.assigns.lane,
@@ -126,23 +125,22 @@ defmodule PatchbayWeb.OffersLive.Bid do
             do: assign(socket, bids: [bid | socket.assigns.bids]),
             else: socket
 
-        {:noreply, socket |> assign(problem: nil, short?: false) |> read()}
+        {:noreply, socket |> assign(problem: nil) |> read()}
 
       {:error, error} ->
-        {kind, words} = BidDesk.refusal(error)
+        {_kind, words} = BidDesk.refusal(error)
 
-        {:noreply,
-         socket |> assign(problem: words, short?: kind == :not_enough_credits) |> read()}
+        {:noreply, socket |> assign(problem: words) |> read()}
     end
   end
 
   def handle_event("ask_fit", %{"version_id" => id}, socket) do
     case BidDesk.ask_fit(socket.assigns.current_profile, socket.assigns.site, id) do
       {:ok, _review} ->
-        {:noreply, socket |> assign(problem: nil, short?: false) |> read()}
+        {:noreply, socket |> assign(problem: nil) |> read()}
 
       {:error, _error} ->
-        {:noreply, assign(socket, problem: "That could not be asked. Try again.", short?: false)}
+        {:noreply, assign(socket, problem: "That could not be asked. Try again.")}
     end
   end
 
@@ -357,19 +355,6 @@ defmodule PatchbayWeb.OffersLive.Bid do
   defp bid_state(:leading), do: "Next up"
   defp bid_state(:placed), do: "Won"
   defp bid_state(:returned), do: "Returned"
-
-  # Opens the account menu's Buy Credits dialog.
-  defp buy_credits(assigns) do
-    ~H"""
-    <Regent.Primitives.button
-      variant="quiet"
-      type="button"
-      phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
-    >
-      Buy Credits
-    </Regent.Primitives.button>
-    """
-  end
 
   @doc "What pressing Bid holds, or what the amount needs."
   def held_words(amount) do

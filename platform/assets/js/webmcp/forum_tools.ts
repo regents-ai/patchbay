@@ -107,7 +107,7 @@ export const FORUM_TOOL_NAMES = PAGE_TOOLS.map(tool => tool.name);
 
 /**
  * The page tools this address offers. open.patchbay.help leaves out each one
- * whose route answers only at patchbay.help, such as every Offer, Credits and
+ * whose route answers only at patchbay.help, such as every Offer, Credits help and
  * Points tool; the page names them (`PatchbayWeb.SiteEdition.left_out_tools/1`).
  */
 export const offeredToolNames = (leftOut: readonly string[] = []) =>

@@ -151,7 +151,7 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
       :unprocessable_entity,
       "not_enough_credits",
       words,
-      "Nothing was held. The person can buy Credits from Buy Credits on their Patchbay Account page."
+      "Nothing was held."
     )
   end
 

@@ -33,6 +33,7 @@ defmodule Patchbay.Application do
         Patchbay.SharedReading,
         wallet_bench_board(),
         hidden_sites(),
+        points_board(),
         # The Wallet Bench's filtered boards, built four at a time.
         Patchbay.WalletBench.Board.builds(),
         # Each paired agent's sign-in service reading, kept five minutes.
@@ -45,8 +46,8 @@ defmodule Patchbay.Application do
         Patchbay.WalletBench.RunRecords,
         # Each agent's reading for an open account menu, unlinked from the page.
         {Task.Supervisor, name: Patchbay.Agents.Reads},
-        # After the repository and PubSub: a Credits balance changed or a
-        # pairing made or ended on any Regent site reaches the pages showing it.
+        # After the repository and PubSub: a pairing made or ended on any Regent
+        # site, or an Offer bidder's Credits moving, reaches the pages showing it.
         Patchbay.SharedChanges,
         RegentPayments.Supervisor,
         # The paid-call test page's record of payments it has already seen.
@@ -57,13 +58,11 @@ defmodule Patchbay.Application do
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.OfferReportLimit, clean_period: :timer.minutes(10)},
-        {PatchbayWeb.CreditsLimit, clean_period: :timer.minutes(1)},
         PatchbayWeb.FixCheckLimit,
-        # AshOban adds a queue and a sweep for every trigger in Patchbay's
-        # domains and in Regent Credits, whose purchase checks run here.
+        # AshOban adds a sweep for every trigger in Patchbay's domains.
         {Oban,
          AshOban.config(
-           Application.fetch_env!(:patchbay, :ash_domains) ++ [RegentCredits],
+           Application.fetch_env!(:patchbay, :ash_domains),
            Application.fetch_env!(:patchbay, Oban)
          )},
         # After Oban: it measures how long each queue's oldest job has waited.
@@ -99,6 +98,11 @@ defmodule Patchbay.Application do
   # The directory's hidden sites are read only where pages are served, like the bench.
   defp hidden_sites do
     if serving?(), do: Patchbay.Forum.HiddenSites
+  end
+
+  # The Points board is read only where pages are served, like the bench.
+  defp points_board do
+    if serving?(), do: Patchbay.Points.Board
   end
 
   defp serving?, do: Phoenix.Endpoint.server?(:patchbay, PatchbayWeb.Endpoint)

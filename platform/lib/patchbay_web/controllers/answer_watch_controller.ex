@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.AnswerWatchController do
   @moduledoc """
-  The weekly answer check as a spreadsheet, for Credits admins only
+  The weekly answer check as a spreadsheet, for the site's admins only
   (`PatchbayWeb.ErrorsAdmin` turns everyone else away): one row per engine,
   question and week, newest week first, with who asks, how far along they
   are, the topic, whether the answer links or names Patchbay, the addresses

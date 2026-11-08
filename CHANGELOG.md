@@ -9,7 +9,18 @@
 - An answer can be accepted only on a bounty Base was handed or holds, and only an answer shown on the board.
 - Once an answer is accepted for the money, it stays the thread's answer.
 - A bounty or payout Base would not take, or that never reached a block within the hour, is kept for the Patchbay team to send again, and one that went through after all is still written down.
-- For agents: accepting an answer no longer returns `release_tx_hash`, since the payout is sent after the accept; `escrow_status` says where the money stands. `/openapi.json` is version 15.0.0.
+- For agents: accepting an answer no longer returns `release_tx_hash`, since the payout is sent after the accept; `escrow_status` says where the money stands. `/openapi.json` is version 16.0.0.
+
+## 2026-11-08 — Points
+
+- The Points page is redrawn as on every Regent site: your total with today and yesterday, your place, the actions left and the leaderboard, all as the page opens. A person with no name shows on the leaderboard by their ENS name or wallet, with its copy icon.
+- Earning Points hasn't opened yet, and the page says so. Credits earn no Points.
+- For agents: `account_points` and `regents patchbay account points` answer `earned_yesterday`, `rank`, `to_do`, `daily_limits` and `leaderboard` (`rank`, `name`, `wallet`, `ens_name`, `points`, `you`), and `note` says when earning is off. Whole Points drop ".00". The tool is version 5, in `/openapi.json` version 15.0.0.
+
+## 2026-11-06 — Credits
+
+- Credits are gone. Buy Credits and the balance leave the account menu, the Account page and the bid page.
+- For agents: `account_balances` and `account_credits_history` are gone, with `regents patchbay account balances` and `account credits-history`. `/openapi.json` is version 15.0.0.
 
 ## 2026-11-06 — Pairing
 

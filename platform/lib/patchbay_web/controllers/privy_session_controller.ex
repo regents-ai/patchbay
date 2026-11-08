@@ -11,7 +11,6 @@ defmodule PatchbayWeb.PrivySessionController do
   already carries is left where it is, because a report filed before signing in
   was still filed by this browser. The fixes this browser asked Jev for before
   signing in are saved to the profile, so it keeps every answer Jev gave.
-  Credits given to the signed-in wallet before it had an account move to it.
   Signing out gives the browser a new forum identity, so the next person to
   sign in on it starts with nothing of the last one's.
   The person is recorded in their shared Regent account, as on every Regent
@@ -21,7 +20,6 @@ defmodule PatchbayWeb.PrivySessionController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Assist
-  alias Patchbay.Credits
   alias Patchbay.Identity
   alias Patchbay.Identity.Privy
   alias PatchbayWeb.ApiError
@@ -46,12 +44,8 @@ defmodule PatchbayWeb.PrivySessionController do
 
   def create(conn, _untrusted_params) do
     with {:ok, pair} <- session_pair(conn),
-         {:ok, %{wallet_addresses: wallets} = evidence} <- Privy.verify_session_pair(pair),
-         {:ok, profile} <- Identity.upsert_from_privy(Map.delete(evidence, :wallet_addresses)),
-         {:ok, _moved} <-
-           RegentCredits.attach_wallets(profile.privy_user_id, wallets,
-             actor: Credits.site_actor()
-           ) do
+         {:ok, evidence} <- Privy.verify_session_pair(pair),
+         {:ok, profile} <- Identity.upsert_from_privy(evidence) do
       :ok = Assist.save_browser_runs(conn.assigns.forum_session_id, profile)
 
       conn
