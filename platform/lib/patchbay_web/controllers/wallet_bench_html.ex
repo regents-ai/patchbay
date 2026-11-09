@@ -18,7 +18,6 @@ defmodule PatchbayWeb.WalletBenchHTML do
   import PatchbayWeb.Forum.BoardHTML, only: [moment: 1]
 
   alias Patchbay.Forum.ProgramSites
-  alias Patchbay.WalletBench.ExtraNotes
   alias Patchbay.WalletBench.Matrix
   alias Patchbay.WalletBench.Sets
 
@@ -770,7 +769,10 @@ defmodule PatchbayWeb.WalletBenchHTML do
         </p>
 
         <ol :if={grid.runs != []} class="pb-wb-runs">
-          <li :for={%{result: run, checks: checks} <- Enum.reverse(grid.runs)} class="pb-wb-run">
+          <li
+            :for={%{result: run, checks: checks, noted?: noted?} <- Enum.reverse(grid.runs)}
+            class="pb-wb-run"
+          >
             <div class="pb-wb-run-head">
               <h3>Run {run.run}</h3>
               <.chip notes={@notes} outcome={run.outcome} />
@@ -818,7 +820,7 @@ defmodule PatchbayWeb.WalletBenchHTML do
                 </div>
               </div>
             </Regent.Primitives.disclosure>
-            <a :if={ExtraNotes.for_runs(@extra_notes, [run]) != []} href="#pair-extra-notes">
+            <a :if={noted?} href="#pair-extra-notes">
               Release observations
             </a>
             <a href={run_path(run, @harness, @wallet, @context)} data-wb-open-run>See the whole run →</a>
