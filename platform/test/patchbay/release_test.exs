@@ -470,6 +470,10 @@ defmodule Patchbay.ReleaseTest do
   # The application repository is running against the shared test database, so
   # every case that points the release commands somewhere else takes it down
   # first and puts it back exactly as it was.
+  # Named after this partition's test database with a random ending, so lanes
+  # running at once and a database a crashed run left behind never share a name.
+  defp suffix, do: Base.encode16(:crypto.strong_rand_bytes(6), case: :lower)
+
   defp disposable_database do
     previous = Application.fetch_env!(:patchbay, Repo)
     assert previous[:hostname] == "127.0.0.1"
@@ -478,7 +482,7 @@ defmodule Patchbay.ReleaseTest do
 
     config =
       Keyword.merge(previous,
-        database: "patchbay_release_#{System.unique_integer([:positive])}",
+        database: String.replace_suffix(previous[:database], "_test", "_release_#{suffix()}"),
         pool: DBConnection.ConnectionPool,
         pool_size: 2
       )
@@ -505,7 +509,7 @@ defmodule Patchbay.ReleaseTest do
     directory =
       Path.join(
         System.tmp_dir!(),
-        "patchbay-release-migrations-#{System.unique_integer([:positive])}"
+        "patchbay-release-migrations-#{suffix()}"
       )
 
     File.mkdir_p!(directory)
