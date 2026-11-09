@@ -22,7 +22,9 @@ defmodule Patchbay.Forum.EventSubscription do
   every minute. A failed event is retried by Oban with backoff and never
   stepped over: `delivered_seq` moves only when the callback acknowledges.
   When the attempts run out, the subscription stops where it was, and a
-  refresh resumes it from the same event.
+  refresh resumes it from the same event. A refresh that lands while the last
+  attempt is running wins: the stop is not written, and the sweep queues a
+  new job for the refreshed subscription.
 
   A subscription that has run out is removed by the `:forget_lapsed`
   trigger, looked for every hour; subscribing again starts a new one.
@@ -38,13 +40,15 @@ defmodule Patchbay.Forum.EventSubscription do
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshOban]
 
+  require Ash.Expr
+
   oban do
     triggers do
       trigger :deliver do
         action(:deliver)
         queue(:webhooks)
         max_attempts(8)
-        on_error(:halt)
+        on_error(:halt_after_retries)
         # A callback that is down for a while is normal; Oban keeps each
         # attempt's error on the job, and only the last one is logged.
         log_errors?(false)
@@ -211,6 +215,25 @@ defmodule Patchbay.Forum.EventSubscription do
       argument(:error, :term, allow_nil?: false)
       change(set_attribute(:active, false))
       change(Patchbay.Forum.Changes.RecordDeliveryError)
+    end
+
+    update :halt_after_retries do
+      description("""
+      The `:deliver` trigger's last attempt failed: delivery stops as `:halt`
+      does, unless a refresh verified the callback again after that attempt
+      began. Then the write is stale, AshOban cancels the job, and the
+      trigger's sweep queues a new one for the refreshed subscription.
+      """)
+
+      require_atomic?(false)
+      argument(:error, :term, allow_nil?: false)
+      change(set_attribute(:active, false))
+      change(Patchbay.Forum.Changes.RecordDeliveryError)
+
+      change(fn changeset, _context ->
+        attempted_at = changeset.context.ash_oban.job.attempted_at
+        Ash.Changeset.filter(changeset, Ash.Expr.expr(verified_at < ^attempted_at))
+      end)
     end
   end
 

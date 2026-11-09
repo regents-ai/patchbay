@@ -4,7 +4,8 @@ defmodule Patchbay.Forum.NotificationFanOutTest do
   tells everyone following the event's site, never the person who caused it,
   and running it again tells nobody twice. An event left unfanned without a
   job, as one written just before the job existed would be, is picked up by
-  the trigger's sweep.
+  the trigger's sweep. One whose attempts ran out is marked given up, apart
+  from delivered, and the sweep leaves it.
   """
 
   use Patchbay.DataCase, async: false
@@ -52,6 +53,26 @@ defmodule Patchbay.Forum.NotificationFanOutTest do
     assert %{failure: 0} = schedule_and_run_triggers({ForumEvent, :fan_out})
     assert recipients(event) == ["session:follower"]
     assert Ash.get!(ForumEvent, event.id, authorize?: false).fanned_out_at
+  end
+
+  test "a fan-out that ran out of attempts is marked given up, not delivered, and left alone",
+       ctx do
+    event = ask!(ctx)
+    Patchbay.Repo.delete_all(Oban.Job)
+
+    # What the `:fan_out` trigger does once its last try has failed.
+    Ash.update!(event, %{error: "the last try failed"},
+      action: :give_up_fan_out,
+      authorize?: false
+    )
+
+    given_up = Ash.get!(ForumEvent, event.id, authorize?: false)
+    assert given_up.fan_out_gave_up_at
+    assert given_up.fanned_out_at == nil
+
+    schedule_and_run_triggers({ForumEvent, :fan_out})
+    assert recipients(event) == []
+    assert Ash.get!(ForumEvent, event.id, authorize?: false).fanned_out_at == nil
   end
 
   defp ask!(%{site: site, poster: poster}) do

@@ -3,14 +3,18 @@ defmodule Patchbay.Forum.SiteCheck do
   What a site offers agents, as Patchbay last found it: one row per
   registrable domain, whether or not the site has a board.
 
-  Opening a site's page asks for a check when there is none or the last is a
-  day old, and so does the directory's "Update" (`due?/2`); "Refresh this
+  Opening a site's page asks for a check when there is none, the last read
+  no directory pages or the last is a day old, and so does the directory's
+  "Update" (`due?/1`); "Refresh this
   site" asks for one however recent the last is (`:refresh`), at most once a
   day for the site's picture. Asking only marks the row; the check itself
   (`:run`, `Patchbay.Forum.SiteScan`) is a job on its own queue, so a slow
   site never holds up a page. Asking again while a check is on its way adds
   nothing: the job is one per row. A check that fails is tried three times,
-  then recorded as one that could not be done (`:give_up`).
+  then recorded as one that could not be done (`:give_up`). Every ask queues
+  its job in the same write; a sweep every ten minutes queues a job only for
+  a check still on its way whose job is gone, so a page never shows a check
+  under way for ever.
 
   A finished check is told to open pages on `"site_check:<domain>"`, and the
   WebMCP tools it found are recorded on the site's board when the site has
@@ -41,8 +45,10 @@ defmodule Patchbay.Forum.SiteCheck do
 
   oban do
     triggers do
-      # Run when asked for, never on a sweep: every ask queues its job in
-      # the same write.
+      # Every ask queues its job in the same write. The ten-minute sweep only
+      # picks up a check still on its way whose job is gone, such as one
+      # discarded on its last attempt before `:give_up` could run; a check
+      # whose job is waiting or running is left to it, one job per row.
       trigger :run do
         action(:run)
         queue(:site_checks)
@@ -50,8 +56,9 @@ defmodule Patchbay.Forum.SiteCheck do
         max_attempts(3)
         on_error(:give_up)
         lock_for_update?(false)
-        scheduler_cron(false)
+        scheduler_cron("*/10 * * * *")
         worker_module_name(Patchbay.Forum.SiteCheck.Workers.Run)
+        scheduler_module_name(Patchbay.Forum.SiteCheck.Schedulers.Run)
       end
     end
   end
@@ -86,6 +93,31 @@ defmodule Patchbay.Forum.SiteCheck do
   end
 
   calculations do
+    # The front page the last finished check read, or nil when it read none.
+    calculate(:read_page_url, :string, expr(fragment("(? ->> 'page_url')", findings)))
+
+    # When the last finished check read the whole front page, every script
+    # on the site's own domain included (`"page_complete"`), and found at
+    # least one tool there; nil otherwise, and for checks recorded before the
+    # flag existed. A tool last seen on that page before then is no longer
+    # offered there (`Patchbay.Forum.Tool`'s `current?`). A page whose tools
+    # the reader cannot see, being put together at run time, retires nothing.
+    calculate(
+      :page_read_at,
+      :utc_datetime_usec,
+      expr(
+        if not is_nil(read_page_url) and
+             fragment(
+               "(? -> 'failed') IS DISTINCT FROM 'true'::jsonb AND (? -> 'page_complete') = 'true'::jsonb AND (? -> 'webmcp') @> '[{}]'::jsonb",
+               findings,
+               findings,
+               findings
+             ) do
+          checked_at
+        end
+      )
+    )
+
     # The directory pages the last check read in full, with their tool lists.
     calculate(
       :read_directory_pages,
@@ -224,22 +256,17 @@ defmodule Patchbay.Forum.SiteCheck do
   end
 
   @doc """
-  Whether opening the page (`:open`) or the directory's "Update"
-  (`:directory`) should ask for a check: there is none yet, or none on its
-  way and the last is at least 24 hours old. The upsert condition enforces
-  this again at the write.
+  Whether opening the page or the directory's "Update" should ask for a
+  check: there is none yet, or none on its way and the last either read no
+  directory pages or is at least 24 hours old. The same rule as the
+  `:request` upsert condition, which enforces it again at the write.
   """
-  @spec due?(Ash.Resource.record() | nil, :open | :directory) :: boolean()
-  def due?(nil, _reason), do: true
+  @spec due?(Ash.Resource.record() | nil) :: boolean()
+  def due?(nil), do: true
 
-  def due?(check, reason) do
-    not pending?(check) and (first_directory_check?(check, reason) or expired?(check))
+  def due?(check) do
+    not pending?(check) and (is_nil((check.findings || %{})["directory"]) or expired?(check))
   end
-
-  defp first_directory_check?(check, :directory),
-    do: not Map.has_key?(check.findings || %{}, "directory")
-
-  defp first_directory_check?(_check, _reason), do: false
 
   defp expired?(check) do
     {amount, unit} = @fresh_for

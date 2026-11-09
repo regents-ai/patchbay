@@ -97,6 +97,10 @@ config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists
 # (`PatchbayWeb.CallbackStandIn`), never sent to an address.
 config :patchbay, Patchbay.Forum.EventSubscription, webhooks: PatchbayWeb.CallbackStandIn
 
+# No test reads Ethereum: a wallet's ENS name is whatever the test says
+# (`PatchbayWeb.EnsStandIn`).
+config :patchbay, Patchbay.Accounts.EnsIdentity, primary_name: PatchbayWeb.EnsStandIn
+
 # The SIWA service answers signed agent requests from each test's own stub
 # (`PatchbayWeb.SignedAgent.stub_siwa/0`), never the internet.
 config :regent_agents, :req_options, plug: {Req.Test, RegentAgents.Broker}

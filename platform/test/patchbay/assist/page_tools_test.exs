@@ -104,6 +104,53 @@ defmodule Patchbay.Assist.PageToolsTest do
     assert {:ok, []} = PageTools.read("https://bookings.example.com/names", target_options())
   end
 
+  test "keeps only names the board would store, in code and on forms" do
+    PageSite.serve(%{
+      "/" =>
+        PageSite.with_tool("_private") <>
+          PageSite.with_tool("3d-view") <>
+          ~s(<form toolname="_x" tooldescription="Hidden."></form>)
+    })
+
+    assert {:ok, [%{name: "3d-view"}]} =
+             PageTools.read("https://bookings.example.com/", target_options())
+  end
+
+  test "a read is complete only when the page and every own-site script answer in full" do
+    tool = PageSite.with_tool("reserve_table")
+    loads = &~s(<script src="/#{&1}"></script>)
+
+    PageSite.serve(%{
+      "/" => tool <> loads.("app.js"),
+      "/down" => tool <> loads.("down.js"),
+      "/big" => tool <> loads.("big.js"),
+      "/deep" => tool <> loads.("chain.js"),
+      "/inline" => tool <> ~s(<script type="module">import "/one.js";</script>),
+      "/app.js" => ~s(import "./one.js";),
+      "/one.js" => "export const one = 1",
+      "/down.js" => {503, [], "away"},
+      # One byte past the script bound: read up to it, then cut.
+      "/big.js" => String.duplicate("x", 2 * 1024 * 1024 + 1),
+      # b.js is two imports deep, past what the reader follows.
+      "/chain.js" => ~s(import "./a.js";),
+      "/a.js" => ~s(import "./b.js";),
+      "/b.js" => "export const b = 1"
+    })
+
+    for {path, complete?} <- [
+          {"/", true},
+          {"/down", false},
+          {"/big", false},
+          {"/deep", false},
+          {"/inline", false}
+        ] do
+      {:ok, page} = PageTools.page("https://bookings.example.com" <> path, target_options())
+
+      assert %{complete?: ^complete?, tools: [%{name: "reserve_table"}]} =
+               PageTools.inspect_tools(page, target_options())
+    end
+  end
+
   test "discovery puts the directory's tools first and adds what the page signs up" do
     site = Forum.register_site!("https://bookings.example.com")
 

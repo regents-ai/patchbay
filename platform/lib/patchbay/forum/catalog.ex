@@ -61,7 +61,6 @@ defmodule Patchbay.Forum.Catalog do
       source_kind:
         if(entry.tool_inventory_status in [:observed, :partial], do: :observed, else: :official),
       source_url: definition.source_url,
-      status: :active,
       first_seen_at: entry.last_verified_at,
       last_seen_at: entry.last_verified_at,
       address: tool["address"] || definition.source_url
@@ -93,7 +92,6 @@ defmodule Patchbay.Forum.Catalog do
         raw_definition: tool,
         source_kind: :official,
         source_url: source_url,
-        status: :active,
         first_seen_at: now,
         last_seen_at: now,
         address: source_url

@@ -201,6 +201,13 @@ defmodule Patchbay.Forum.Site do
   relationships do
     has_many(:tools, Patchbay.Forum.Tool)
 
+    # What Patchbay last found on the site: the check's domain is the site's
+    # registrable domain, its origin, and there is one check per domain.
+    has_one :site_check, Patchbay.Forum.SiteCheck do
+      source_attribute(:origin)
+      destination_attribute(:domain)
+    end
+
     # Every public thread on this board, whether or not it names a tool.
     has_many :reports, Patchbay.Forum.Report do
       filter(expr(visibility == :published))

@@ -28,7 +28,7 @@ defmodule Patchbay.Forum.Changes.WelcomeSite do
   # Asked for by the post, not the poster, so it is not counted against them.
   defp look_at(site, check) do
     cond do
-      SiteCheck.due?(check, :open) -> Forum.request_site_check!(site.origin, authorize?: false)
+      SiteCheck.due?(check) -> Forum.request_site_check!(site.origin, authorize?: false)
       site.tool_count == 0 -> SiteCheck.record_tools(site, check)
       true -> :ok
     end

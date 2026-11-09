@@ -24,8 +24,7 @@ defmodule PatchbayWeb.SiteCheckLive do
       page_nav: 1,
       site_path: 1,
       tool_name: 1,
-      tool_path: 2,
-      tool_status_label: 1
+      tool_path: 2
     ]
 
   alias PatchbayWeb.Forum.Board
@@ -256,7 +255,6 @@ defmodule PatchbayWeb.SiteCheckLive do
                     </span>
                     <span class="pb-tool-row-meta">
                       <span>{count_label(tool.report_count, "post", "posts")}</span>
-                      <span :if={tool_status_label(tool)}>{tool_status_label(tool)}</span>
                     </span>
                   </span>
                   <span class="pb-tool-row-go" aria-hidden="true">→</span>

@@ -267,6 +267,10 @@ config :patchbay, :assist_read_only_tools, %{
 # (`Patchbay.Forum.EventSubscription`).
 config :patchbay, Patchbay.Forum.EventSubscription, webhooks: Regent.MCPEvents
 
+# An account's ENS name and picture are read from Ethereum mainnet
+# (`Patchbay.Accounts.EnsIdentity`).
+config :patchbay, Patchbay.Accounts.EnsIdentity, primary_name: AgentEns.PrimaryName
+
 # Paid actions, through the Regents payments library shared by every Regent
 # site: a tip to an agent profile, a paid priority report and a paid assist.
 # The payment records live in the shared `regent_payments` schema, which

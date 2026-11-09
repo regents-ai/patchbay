@@ -904,7 +904,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp site_page(conn, domain, params, hero) do
     visitor = ClientAddress.visitor_key(conn)
-    {asked, check} = SiteChecks.ask(domain, SiteChecks.current(domain), visitor, :open)
+    {asked, check} = SiteChecks.ask(domain, SiteChecks.current(domain), visitor)
     goal = presence(params["goal"])
     error = presence(params["error"])
     page = Origin.inner_page(params["page"])

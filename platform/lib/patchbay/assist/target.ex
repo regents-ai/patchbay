@@ -58,10 +58,18 @@ defmodule Patchbay.Assist.Target do
   is read: through `connect/2`, with no cookies, and the answer bounded by
   `max_body_bytes`. Up to `redirects` redirects (none by default) are
   followed, each one checked again as a new address. Answers the address
-  that was finally read, its status, its body and its content type.
+  that was finally read, its status, its body, its content type and whether
+  the body was cut at the bound.
   """
   @spec get(String.t(), keyword()) ::
-          {:ok, %{url: String.t(), status: pos_integer(), body: binary(), type: String.t()}}
+          {:ok,
+           %{
+             url: String.t(),
+             status: pos_integer(),
+             body: binary(),
+             type: String.t(),
+             cut?: boolean()
+           }}
           | {:error, :unresolvable | :not_public | :unreachable}
   def get(url, opts \\ []), do: get(url, opts, Keyword.get(opts, :redirects, 0))
 
@@ -83,7 +91,8 @@ defmodule Patchbay.Assist.Target do
            url: url,
            status: response.status,
            body: response.body |> Kernel.||("") |> IO.iodata_to_binary(),
-           type: response |> Req.Response.get_header("content-type") |> List.first("")
+           type: response |> Req.Response.get_header("content-type") |> List.first(""),
+           cut?: Map.get(response.private, :assist_cut, false)
          }}
       end
     else

@@ -25,9 +25,11 @@ defmodule Patchbay.Forum.SiteScan do
   kept short and only ever shown.
 
   The answer is a map with string keys, as it is stored: `"page_url"` (the
-  front page that was read, or nil), `"webmcp"`, `"servers"`, `"files"`,
-  `"code"` and `"unsearched"` (the outside lists that could not be searched
-  just now).
+  front page that was read, or nil), `"page_complete"` (whether the front
+  page and every script it loads or imports from the site's own domain were
+  read in full, `Patchbay.Assist.PageTools.inspect_tools/2`), `"webmcp"`,
+  `"servers"`, `"files"`, `"code"` and `"unsearched"` (the outside lists that
+  could not be searched just now).
   """
 
   alias Patchbay.Assist.McpClient
@@ -101,10 +103,11 @@ defmodule Patchbay.Forum.SiteScan do
         {{:exit, :timeout}, part} -> {part, timed_out(part)}
       end)
 
-    {page_url, webmcp, links} = found.page
+    {page_url, complete?, webmcp, links} = found.page
 
     %{
       "page_url" => page_url,
+      "page_complete" => complete?,
       "webmcp" => webmcp,
       "servers" => servers(found.cards, found.registry, site, domain, opts),
       "files" => found.files,
@@ -127,8 +130,8 @@ defmodule Patchbay.Forum.SiteScan do
     |> Task.async_stream(
       fn url ->
         snapshot =
-          with {:ok, page_url, html} <- PageTools.page(url, opts),
-               %{complete?: true, tools: tools} <- PageTools.inspect_tools(page_url, html, opts) do
+          with {:ok, %{url: page_url} = page} <- PageTools.page(url, opts),
+               %{complete?: true, tools: tools} <- PageTools.inspect_tools(page, opts) do
             %{
               "checked_at" => now,
               "page_url" => page_url,
@@ -156,7 +159,7 @@ defmodule Patchbay.Forum.SiteScan do
     end)
   end
 
-  defp timed_out(:page), do: {nil, [], []}
+  defp timed_out(:page), do: {nil, false, [], []}
   defp timed_out(part) when part in [:cards, :files], do: []
   defp timed_out(_search), do: :busy
 
@@ -172,16 +175,13 @@ defmodule Patchbay.Forum.SiteScan do
 
   defp front_page(site, opts) do
     case PageTools.page(site <> "/", opts) do
-      {:ok, page_url, html} ->
-        tools =
-          page_url
-          |> PageTools.tools(html, opts)
-          |> Enum.map(&%{"name" => &1.name, "description" => &1.description})
-
-        {page_url, tools, links(html, page_url)}
+      {:ok, %{url: page_url, html: html} = page} ->
+        %{tools: tools, complete?: complete?} = PageTools.inspect_tools(page, opts)
+        webmcp = Enum.map(tools, &%{"name" => &1.name, "description" => &1.description})
+        {page_url, complete?, webmcp, links(html, page_url)}
 
       {:error, _unread} ->
-        {nil, [], []}
+        {nil, false, [], []}
     end
   end
 

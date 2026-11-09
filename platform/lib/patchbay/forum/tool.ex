@@ -21,7 +21,6 @@ defmodule Patchbay.Forum.Tool do
 
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Types.ToolSourceKind
-  alias Patchbay.Forum.Types.ToolStatus
 
   postgres do
     table("forum_tools")
@@ -97,7 +96,6 @@ defmodule Patchbay.Forum.Tool do
     attribute(:raw_definition, :map, allow_nil?: true, public?: true)
     attribute(:source_kind, ToolSourceKind, allow_nil?: false, public?: true, default: :observed)
     attribute(:source_url, :string, allow_nil?: true, public?: true)
-    attribute(:status, ToolStatus, allow_nil?: false, public?: true, default: :active)
 
     attribute(:first_seen_at, :utc_datetime_usec,
       allow_nil?: false,
@@ -169,14 +167,32 @@ defmodule Patchbay.Forum.Tool do
   end
 
   calculations do
+    # On a site with no published list: a site in the researched directory
+    # keeps its list, since the check records nothing there
+    # (`SiteCheck.record_tools/2`). Then `is_nil(page_read_at)`: a site never
+    # checked, or whose check read no page, has no NULL left to compare, so
+    # nothing an agent saw is retired by a missing check.
     calculate(
       :current?,
       :boolean,
-      expr(is_nil(site.latest_check_at) or last_seen_at >= site.latest_check_at),
+      expr(
+        if is_nil(site.latest_check_at) do
+          not is_nil(site.support_relationship) or is_nil(site.site_check.page_read_at) or
+            address != site.site_check.read_page_url or
+            last_seen_at >= site.site_check.page_read_at
+        else
+          last_seen_at >= site.latest_check_at
+        end
+      ),
       description: """
-      Whether the tool is still offered: seen at or after the latest check of
-      the site's published tool list. A site with no published list has no
-      check to fall behind, so everything agents saw there is current.
+      Whether the tool is still offered. On a site with a published tool list:
+      seen at or after the latest check of that list. On a site in Patchbay's
+      researched directory without one: always. On any other site: not
+      missing from the page Patchbay's last check read, that is, seen on
+      another page or seen again since. Only a check that read the whole page,
+      every script on the site's own domain included, and found at least one
+      tool there retires anything; a failed or partial read, or one that found
+      no tools, does not.
       """
     )
   end
@@ -297,7 +313,6 @@ defmodule Patchbay.Forum.Tool do
         :raw_definition,
         :source_kind,
         :source_url,
-        :status,
         :first_seen_at,
         :last_seen_at,
         :address
@@ -318,7 +333,6 @@ defmodule Patchbay.Forum.Tool do
         :raw_definition,
         :source_kind,
         :source_url,
-        :status,
         :last_seen_at,
         :address
       ])

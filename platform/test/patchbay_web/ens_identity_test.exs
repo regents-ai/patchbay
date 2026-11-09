@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.EnsIdentityTest do
   # A signed-in person is shown under their wallet's ENS picture and name, read
-  # from Ethereum by a job each sign-in queues. No test reads the chain: the
-  # rows a finished lookup writes are put here directly.
+  # from Ethereum by a job each sign-in queues. No test reads the chain: either
+  # the rows a finished lookup writes are put here directly, or the lookup
+  # answers from `PatchbayWeb.EnsStandIn`.
   use PatchbayWeb.ConnCase, async: false
   use Oban.Testing, repo: Patchbay.Repo
 
@@ -10,6 +11,7 @@ defmodule PatchbayWeb.EnsIdentityTest do
   alias Patchbay.Accounts
   alias Patchbay.Accounts.EnsIdentity
   alias Patchbay.Identity
+  alias PatchbayWeb.EnsStandIn
   alias PatchbayWeb.Forum.Nameplate
   alias PatchbayWeb.Plugs.CurrentProfile
 
@@ -100,6 +102,51 @@ defmodule PatchbayWeb.EnsIdentityTest do
     refute at_open =~ "pat.eth"
     assert at_open |> Floki.parse_fragment!() |> Floki.find("img") == []
   end
+
+  test "a new wallet shows no name while its lookup runs, then its own name" do
+    {account, wallet_b} = moved_to_new_wallet({:ok, %{name: "b.eth", avatar_url: nil}})
+
+    assert %{lookup_state: :pending} = identity()
+    assert ens_name(account) == nil
+
+    Oban.drain_queue(queue: :ens)
+    assert %{lookup_state: :done, wallet_address: ^wallet_b} = identity()
+    assert ens_name(account) == "b.eth"
+  end
+
+  test "a new wallet whose lookup fails shows no name, never the old wallet's" do
+    {account, _wallet_b} = moved_to_new_wallet({:error, :unreachable})
+
+    for _attempt <- 1..3, do: Oban.drain_queue(queue: :ens, with_scheduled: true)
+
+    assert %{lookup_state: :failed, ens_name: "a.eth"} = identity()
+    assert ens_name(account) == nil
+  end
+
+  # An account whose wallet A was looked up as "a.eth" signs in with wallet B,
+  # whose lookup will answer `answer_b`.
+  defp moved_to_new_wallet(answer_b) do
+    Application.put_env(:patchbay, :ethereum_read_rpc_url, "https://ethereum.test")
+    on_exit(fn -> Application.delete_env(:patchbay, :ethereum_read_rpc_url) end)
+
+    person = person()
+    wallet_b = "0x" <> String.duplicate("b", 40)
+    EnsStandIn.answer(person.wallet_address, {:ok, %{name: "a.eth", avatar_url: nil}})
+    EnsStandIn.answer(wallet_b, answer_b)
+
+    {:ok, account} = Accounts.establish(session(person))
+    Oban.drain_queue(queue: :ens)
+    assert ens_name(account) == "a.eth"
+
+    moved = %{session(person) | wallet_address: wallet_b, wallet_addresses: [wallet_b]}
+    {:ok, account} = Accounts.establish(moved)
+    {account, wallet_b}
+  end
+
+  defp identity, do: Ash.read_one!(EnsIdentity)
+
+  # The name the account is shown under.
+  defp ens_name(account), do: Ash.load!(account, :ens_name, authorize?: false).ens_name
 
   defp header_picture(html),
     do: html |> Floki.parse_document!() |> Floki.find(".pb-account-picture")

@@ -11,6 +11,7 @@ defmodule PatchbayWeb.MCPEventsDeliveryTest do
   use Oban.Testing, repo: Patchbay.Repo
 
   alias Patchbay.Forum.EventSubscription
+  alias PatchbayWeb.CallbackStandIn
   alias PatchbayWeb.SignedAgent
 
   setup do
@@ -103,6 +104,41 @@ defmodule PatchbayWeb.MCPEventsDeliveryTest do
     assert [%{delivered_seq: ^before}] = Ash.read!(EventSubscription, authorize?: false)
   end
 
+  test "a callback still down at the last attempt stops the subscription where it was",
+       %{conn: conn, asker: asker, helper: helper} do
+    thread_id = ask!(conn, asker)
+    rpc(conn, asker, "events/subscribe", down(thread_id)) |> json_response(200)
+    reply!(conn, helper, thread_id)
+    [%{id: id, delivered_seq: before}] = Ash.read!(EventSubscription, authorize?: false)
+
+    last_attempt(id, DateTime.utc_now())
+
+    assert [%{delivered_seq: ^before, active: false, last_error: error}] =
+             Ash.read!(EventSubscription, authorize?: false)
+
+    assert is_binary(error)
+  end
+
+  test "a refresh during the last attempt keeps the subscription on, and the owed event arrives",
+       %{conn: conn, asker: asker, helper: helper} do
+    thread_id = ask!(conn, asker)
+    rpc(conn, asker, "events/subscribe", down(thread_id)) |> json_response(200)
+    %{"reply_id" => reply_id} = reply!(conn, helper, thread_id)
+
+    began = DateTime.utc_now()
+    rpc(conn, asker, "events/subscribe", down(thread_id)) |> json_response(200)
+    [%{id: id}] = Ash.read!(EventSubscription, authorize?: false)
+
+    assert {:cancel, :trigger_no_longer_applies} = last_attempt(id, began)
+    assert [%{active: true}] = Ash.read!(EventSubscription, authorize?: false)
+
+    CallbackStandIn.recover()
+    AshOban.Test.schedule_and_run_triggers({EventSubscription, :deliver})
+
+    assert_received {:delivered, %{id: ^id},
+                     %{"data" => %{"thread_id" => ^thread_id, "reply_id" => ^reply_id}}}
+  end
+
   test "the code interface holds the same rules without the web layer" do
     actor = Patchbay.AssistFixtures.paired_agent()
 
@@ -183,6 +219,21 @@ defmodule PatchbayWeb.MCPEventsDeliveryTest do
       },
       "ttlMs" => 60_000
     }
+  end
+
+  # A subscription whose callback is down until the test brings it up.
+  defp down(thread_id),
+    do: put_in(subscription(thread_id), ["delivery", "url"], "https://recovers.test/hook")
+
+  # The subscription's delivery job on its last attempt, begun at `began`, with
+  # no other job queued for it.
+  defp last_attempt(id, began) do
+    Patchbay.Repo.delete_all(Oban.Job)
+
+    EventSubscription.Workers.Deliver
+    |> build_job(%{"primary_key" => %{"id" => id}}, attempt: 8, max_attempts: 8)
+    |> Map.put(:attempted_at, began)
+    |> perform_job()
   end
 
   defp secret, do: "whsec_" <> Base.encode64(:crypto.strong_rand_bytes(32))
