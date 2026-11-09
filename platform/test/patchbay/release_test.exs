@@ -276,6 +276,14 @@ defmodule Patchbay.ReleaseTest do
     assert record =~ "Appeal upheld"
   end
 
+  test "the console says why a reason made only of spaces changes nothing" do
+    refuses_reason("   ")
+  end
+
+  test "the console says why a reason over 500 characters changes nothing" do
+    refuses_reason(String.duplicate("a", 501))
+  end
+
   test "an index a stopped build left unusable stops the release, and its migration builds it again" do
     config = disposable_database()
     with_repo(config, fn _repo -> LocalDatabaseFixture.create_shared_tables!() end)
@@ -551,6 +559,36 @@ defmodule Patchbay.ReleaseTest do
     end)
 
     config
+  end
+
+  # Suspending and then reinstating with `reason` each say why nothing changed,
+  # and neither changes the profile, writes a record or queues a job.
+  defp refuses_reason(reason) do
+    without_running_oban()
+    config = bootstrapped_database()
+
+    person =
+      with_repo(config, fn _repo ->
+        Identity.upsert_from_privy!(%{
+          privy_user_id: "did:privy:release-#{System.unique_integer([:positive])}",
+          wallet_address: "0x" <> String.duplicate("cd", 20)
+        })
+      end)
+
+    said = capture_io(fn -> Release.suspend_profile(person.public_id, reason, config: config) end)
+    assert said =~ "reason"
+    assert profile_status(config, person) == "active"
+    assert status_changes(config, person) == []
+    assert queued_jobs(config) == []
+
+    capture_io(fn -> Release.suspend_profile(person.public_id, "Spam", config: config) end)
+
+    said =
+      capture_io(fn -> Release.reinstate_profile(person.public_id, reason, config: config) end)
+
+    assert said =~ "reason"
+    assert profile_status(config, person) == "suspended"
+    assert status_changes(config, person) == [["suspend", "Spam"]]
   end
 
   # The running site's Oban stops for the test and starts again after it, once

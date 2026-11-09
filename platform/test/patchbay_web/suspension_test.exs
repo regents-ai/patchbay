@@ -4,7 +4,8 @@ defmodule PatchbayWeb.SuspensionTest do
   connected to them and an agent paired with them are refused while they
   are suspended, by the same check their own web sign-in meets
   (`Patchbay.Identity.AgentProfile.may_act?/1`). Suspending queues a job that
-  disconnects their apps for good, so reinstating them brings their paired
+  disconnects their apps, waiting in a paused queue while connected apps are
+  switched off, so once it has run reinstating them brings their paired
   agents back and not their apps. Nothing a request carries can suspend or
   reinstate anyone: only Patchbay's console can, and each change is recorded
   with its reason.
@@ -46,7 +47,7 @@ defmodule PatchbayWeb.SuspensionTest do
       assert watch(conn, bearer).status == 401
     end
 
-    test "waits while connected apps are switched off, and disconnects them once they are on",
+    test "is disconnected by the job once connected apps are switched on, though they were reinstated while apps were off",
          %{conn: conn, client: client} do
       person = person!()
       bearer = connect!(client, person)
@@ -54,14 +55,59 @@ defmodule PatchbayWeb.SuspensionTest do
 
       switch_apps(false)
       suspended = suspend!(person)
-      assert %{snoozed: 1} = Oban.drain_queue(queue: :connected_apps)
+      assert_enqueued(worker: DisconnectApps, args: %{profile_id: person.id})
+      reinstate!(suspended)
 
       switch_apps(true)
+      assert %{success: 1} = Oban.drain_queue(queue: :connected_apps)
       assert watch(conn, bearer).status == 401
-      assert %{success: 1} = Oban.drain_queue(queue: :connected_apps, with_scheduled: true)
+    end
+
+    test "is disconnected by one job, however often they are suspended and reinstated while it waits",
+         %{conn: conn, client: client} do
+      person = person!()
+      bearer = connect!(client, person)
+
+      switch_apps(false)
+      again = person |> suspend!() |> reinstate!() |> suspend!("Spam again")
+      assert [_one] = all_enqueued(worker: DisconnectApps, args: %{profile_id: person.id})
+
+      switch_apps(true)
+      assert %{success: 1} = Oban.drain_queue(queue: :connected_apps)
+
+      reinstate!(again)
+      assert watch(conn, bearer).status == 401
+    end
+
+    test "stays disconnected when the job runs twice", %{conn: conn, client: client} do
+      person = person!()
+      bearer = connect!(client, person)
+      suspended = suspend!(person)
+
+      assert :ok = perform_job(DisconnectApps, %{profile_id: person.id})
+      assert :ok = perform_job(DisconnectApps, %{profile_id: person.id})
 
       reinstate!(suspended)
       assert watch(conn, bearer).status == 401
+    end
+  end
+
+  describe "the job's queue" do
+    test "starts paused at a boot with connected apps switched off, and running at a boot with them on" do
+      for {setting, paused?} <- [{nil, true}, {"true", false}] do
+        name = {:boot, setting}
+
+        start_supervised!(
+          {Oban,
+           setting
+           |> booted_oban()
+           |> Keyword.merge(name: name, testing: :disabled, plugins: false, peer: false)
+           |> Keyword.update!(:queues, &Keyword.take(&1, [:connected_apps]))},
+          id: name
+        )
+
+        assert %{paused: ^paused?} = Oban.check_queue(name, queue: :connected_apps)
+      end
     end
   end
 
@@ -161,6 +207,26 @@ defmodule PatchbayWeb.SuspensionTest do
 
   defp reinstate!(profile, reason \\ "Appeal upheld"),
     do: Identity.reinstate_profile!(profile, reason, actor: @console)
+
+  # Oban's settings as a boot reads them with PATCHBAY_OAUTH_ENABLED set to
+  # `setting`, or unset: config/runtime.exs over the compiled ones.
+  defp booted_oban(setting) do
+    previous = System.get_env("PATCHBAY_OAUTH_ENABLED")
+    put_system_env("PATCHBAY_OAUTH_ENABLED", setting)
+
+    try do
+      runtime = Config.Reader.read!("config/runtime.exs", env: :test, imports: :disabled)
+
+      [patchbay: [{Oban, Application.fetch_env!(:patchbay, Oban)}]]
+      |> Config.Reader.merge(runtime)
+      |> get_in([:patchbay, Oban])
+    after
+      put_system_env("PATCHBAY_OAUTH_ENABLED", previous)
+    end
+  end
+
+  defp put_system_env(name, nil), do: System.delete_env(name)
+  defp put_system_env(name, value), do: System.put_env(name, value)
 
   defp switch_apps(on?) do
     Application.put_env(

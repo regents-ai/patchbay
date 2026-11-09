@@ -1,6 +1,7 @@
 import Config
 
 mcp_identity_enabled? = System.get_env("PATCHBAY_MCP_IDENTITY_ENABLED") == "true"
+oauth_enabled? = System.get_env("PATCHBAY_OAUTH_ENABLED") == "true"
 
 # Remains off unless a separately authorized release opts in after migrations.
 # Only patchbay.events.read exists until ChatGPT identities are switched on.
@@ -8,7 +9,7 @@ mcp_identity_enabled? = System.get_env("PATCHBAY_MCP_IDENTITY_ENABLED") == "true
 # a scope, so the release that switches them on carries a migration calling
 # `RegentOAuth.Migration.ClientScopes.up/1` with every scope below.
 config :patchbay, Patchbay.OAuth,
-  enabled?: System.get_env("PATCHBAY_OAUTH_ENABLED") == "true",
+  enabled?: oauth_enabled?,
   additional_scopes:
     if(mcp_identity_enabled?,
       do: %{
@@ -19,6 +20,11 @@ config :patchbay, Patchbay.OAuth,
       },
       else: %{}
     )
+
+# The queue that disconnects a suspended person's apps
+# (`Patchbay.Identity.DisconnectApps`) starts paused while connected apps are
+# switched off, so its jobs wait for a boot that switches them on.
+config :patchbay, Oban, queues: [connected_apps: [paused: not oauth_enabled?]]
 
 # ChatGPT is the one hosted app that pairs here, and only while identities are on.
 config :regent_agents, hosted_pairing: if(mcp_identity_enabled?, do: [:chatgpt], else: [])

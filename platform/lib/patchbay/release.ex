@@ -7,8 +7,9 @@ defmodule Patchbay.Release do
   alias Patchbay.Identity
 
   @app :patchbay
-  # Patchbay's console: the release commands that change a profile act as the
-  # system actor, which no request carries (`Patchbay.Identity.AgentProfile`).
+  # Patchbay's console acts as the system actor, the only actor that may
+  # suspend, reinstate or read their record (`Patchbay.Identity.AgentProfile`,
+  # `Patchbay.Identity.StatusChange`). Code builds it; no request supplies it.
   @system %{role: :system}
   @console [actor: @system, not_found_error?: false]
   @platform_schema "regent_names"
@@ -217,19 +218,24 @@ defmodule Patchbay.Release do
 
   @doc """
   Suspends the profile with this public id, for `reason`, as Patchbay's
-  console (`Patchbay.Identity.AgentProfile`'s `suspend` action): it can no
-  longer sign in on the web, post or pay, its live web sign-ins end, a paired
-  agent's posting, paying and other actions and its wallet are refused, and a
-  job disconnects its connected apps (`Patchbay.Identity.DisconnectApps`). The
-  shared agent check-in, whoami and pairing still answer. The suspension, its
-  record and its job are saved together. Run on the deployment as
-  `/app/bin/suspend-profile <public id> <reason>`.
+  console (`Patchbay.Identity.AgentProfile`'s `suspend` action). It can no
+  longer sign in on the web, and its live web sign-ins end. Its paired agents
+  are refused wherever Patchbay asks whom an agent acts for, its connected
+  apps are refused while it stays suspended, and a job disconnects them
+  (`Patchbay.Identity.DisconnectApps`). The shared agent check-in, whoami and
+  pairing (`regent_agents`) still answer, whoami's list of what the agent may
+  do reading as before, and an agent can still finish a payment it made
+  before the suspension, whose money has already moved. A wallet signs as a
+  wallet author under its own profile, a separate row, so the person's own
+  wallet is still accepted there; suspending that wallet's profile refuses
+  it. The suspension, its record and its job are saved together. Run on the
+  deployment as `/app/bin/suspend-profile <public id> <reason>`.
 
-  It prints what it changed, and changes nothing when no profile has that id
-  or the profile is already suspended. It starts only the database connection
-  and an Oban that queues jobs without running any, so the running site does
-  the work. Its options are the bootstrap's: `:config` names another
-  connection.
+  It prints what it changed, or why it changed nothing: no profile has that
+  id, the profile is already suspended, or the reason is empty or longer than
+  500 characters. It starts only the database connection and an Oban that
+  queues jobs without running any, so the running site does the work. Its
+  options are the bootstrap's: `:config` names another connection.
   """
   def suspend_profile(public_id, reason, opts \\ []) when is_list(opts) do
     with_release_repo(opts, fn _repo ->
@@ -242,12 +248,10 @@ defmodule Patchbay.Release do
   defp suspend(nil, public_id, _reason),
     do: IO.puts("No profile has the public id #{public_id}. Nothing changed.")
 
-  defp suspend(%{status: :suspended}, public_id, _reason),
-    do: IO.puts("#{public_id} is already suspended. Nothing changed.")
-
   defp suspend(profile, public_id, reason) do
-    Identity.suspend_profile!(profile, reason, actor: @system)
-    IO.puts("#{public_id} is suspended.")
+    profile
+    |> Identity.suspend_profile(reason, actor: @system)
+    |> report(public_id, "is suspended.")
   end
 
   @doc """
@@ -257,8 +261,9 @@ defmodule Patchbay.Release do
   and its record are saved together. Run on the deployment as
   `/app/bin/reinstate-profile <public id> <reason>`.
 
-  It prints what it changed, and changes nothing when no profile has that id
-  or the profile is not suspended. Its options are the bootstrap's.
+  It prints what it changed, or why it changed nothing: no profile has that
+  id, the profile is not suspended, or the reason is empty or longer than 500
+  characters. Its options are the bootstrap's.
   """
   def reinstate_profile(public_id, reason, opts \\ []) when is_list(opts) do
     with_release_repo(opts, fn _repo ->
@@ -269,13 +274,26 @@ defmodule Patchbay.Release do
   defp reinstate(nil, public_id, _reason),
     do: IO.puts("No profile has the public id #{public_id}. Nothing changed.")
 
-  defp reinstate(%{status: :active}, public_id, _reason),
-    do: IO.puts("#{public_id} is not suspended. Nothing changed.")
-
   defp reinstate(profile, public_id, reason) do
-    Identity.reinstate_profile!(profile, reason, actor: @system)
-    IO.puts("#{public_id} is reinstated.")
+    profile
+    |> Identity.reinstate_profile(reason, actor: @system)
+    |> report(public_id, "is reinstated.")
   end
+
+  defp report({:ok, _profile}, public_id, done), do: IO.puts("#{public_id} #{done}")
+
+  defp report({:error, %Ash.Error.Invalid{errors: errors}}, public_id, _done),
+    do: IO.puts(Enum.map_join(errors, " ", &refusal(&1, public_id)) <> " Nothing changed.")
+
+  # The words for each refusal the profile's suspend and reinstate can give.
+  defp refusal(%Ash.Error.Changes.Required{field: :reason}, _public_id),
+    do: "The reason is empty."
+
+  defp refusal(%Ash.Error.Changes.InvalidArgument{field: :reason, vars: vars}, _public_id),
+    do: "The reason is longer than #{vars[:max]} characters."
+
+  defp refusal(%Ash.Error.Changes.InvalidAttribute{field: :status, message: said}, public_id),
+    do: "#{public_id} #{said}."
 
   @doc """
   Prints the record of the profile with this public id being suspended and

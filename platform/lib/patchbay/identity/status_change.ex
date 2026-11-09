@@ -47,8 +47,8 @@ defmodule Patchbay.Identity.StatusChange do
 
   policies do
     # The suspension and reinstatement that write a row and the console that
-    # reads them all act as the system actor (`Patchbay.Release`), which no
-    # request carries.
+    # reads them all act as the system actor (`Patchbay.Release`), which code
+    # builds and no request supplies.
     policy always() do
       authorize_if(actor_attribute_equals(:role, :system))
     end
