@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v352, 9 Nov 2026
+
+- Commit: 3cdbd87db545a17f678b8c8d0ce8e39f48248e04 (image `3cdbd87`), PB-68 fast-forwarded onto main above the v351 record 8ae5c06b, on Sean's "96. a" at 14:47Z. One machine in iad (850e6ef4534178), check passing. Rollback: v351, image `cc425e5`; the four indexes can stay, as nothing else reads them.
+- PB-68: four trigram indexes, each built concurrently (migrations 20261030191501 to 20261030191504: site origin, site name, tool name, tool title), and the home page's site and tool matches read them through `Patchbay.Forum.FindText` instead of every row. Same results, same order (`test/patchbay/forum/find_test.exs` asserts each index is used).
+- Release command `/app/bin/migrate` completed. Gate APPROVED fbf8a48b + 60bdba86 (control a7e0476c); rebased twice, code unchanged (range-diff: changelog context only). Chief's fresh copy of 3cdbd87d: ExUnit 1001 passed, 2 excluded; walk 347 passed, 37 skipped; contracts 15; cli, SIWA-latest, required fixes (template d3bd2013) ok.
+- Live read, headless Chromium, 15:00Z: `/`, `/?q=wallet`, `/sites`, `/changelog` 200 at 390 and 1280, LiveViews connected, no sideways scroll, no page errors; no error lines in the logs after the release.
+- Not proven: index use on the production planner (no production EXPLAIN run); WebKit is not run on the Mac.
+
 ## v351, 8 Nov 2026
 
 - Commit: cc425e5a (merge of Credits out 6422ef39798ee5527340e1e48bf8b64931a57d65 into main above the v350 record 488c22d4; the merge adds only that record). Image `cc425e5`. One machine in iad (48edd003fe95d8), check passing. Rollback: v350 (image `bbbd72d` with `PATCHBAY_MCP_IDENTITY_ENABLED=true`). No schema change; every regent_credits table stays until TABLE-DROP (question 97).
