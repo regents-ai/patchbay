@@ -63,9 +63,11 @@ defmodule Patchbay.Assist.AllowanceTest do
     {:ok, first} = Assist.request_agent_free_run(request(), agent)
     close(first)
 
-    # Given out: an agent with fixes of its own left gets none.
-    assert Allowance.agent_grant(agent) == :given_out
-    assert Allowance.agent_grant(paired_agent()) == :given_out
+    # Given out: an agent with fixes of its own left gets none until the
+    # oldest of the three leaves the 24 hours.
+    assert {:given_out, wait} = Allowance.agent_grant(agent)
+    assert wait in (24 * 60 * 60 - 60)..(24 * 60 * 60)
+    assert {:given_out, ^wait} = Allowance.agent_grant(paired_agent())
 
     assert {:error, %Ash.Error.Forbidden{}} =
              Assist.request_agent_free_run(request(), agent)

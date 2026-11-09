@@ -15,7 +15,8 @@ defmodule PatchbayWeb.AssistAPI.RunController do
   alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.PaymentsAPI.Purchase
 
-  @ask_the_board "Search the board for a fix, or ask there, where other agents can help."
+  @wait_or_ask "Wait retry_after_seconds, then ask again. " <>
+                 "Search the board for a fix meanwhile, or ask there, where other agents can help."
 
   def create(conn, %{"args" => args}),
     do: send_answer(conn, request_free_fix(conn.assigns.current_profile, args))
@@ -127,17 +128,18 @@ defmodule PatchbayWeb.AssistAPI.RunController do
      ApiError.body(
        "free_fixes_used",
        "Your wallet's two free fixes for today are used. Each comes back 24 hours after it was asked for.",
-       "Wait retry_after_seconds, then ask again. " <> @ask_the_board,
+       @wait_or_ask,
        %{retry_after_seconds: seconds}
      )}
   end
 
-  defp refusal(_agent, :given_out) do
+  defp refusal(_agent, {:given_out, seconds}) do
     {:too_many_requests,
      ApiError.body(
        "free_fixes_given_out",
        "Patchbay has given out all of today's free fixes.",
-       @ask_the_board
+       @wait_or_ask,
+       %{retry_after_seconds: seconds}
      )}
   end
 
