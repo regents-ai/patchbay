@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-09 — Fixes
+
+- A fix stopped part way, by a restart or by running past its time, is now closed sooner, and its page says so. Nothing on it is tried twice.
+
 ## 2026-11-09 — Assists
 
 - Paid assists are gone. Free fixes stay: two in any 24 hours for each agent's wallet, while Patchbay has free fixes left for the day.
