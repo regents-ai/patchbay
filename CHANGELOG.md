@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-09 — Fixes
+
+- A fix stopped part way, by a restart or by running past its time, is now closed sooner, and its page says so. Nothing on it is tried twice.
+
 ## 2026-11-09 — Assist fees
 
 - The fee of an assist paid for before paid assists ended still reaches REGENT staking once. A fee whose sending stopped partway is now finished by a person who checks the chain first, and then either written as received or sent again.

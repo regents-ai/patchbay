@@ -12,13 +12,15 @@ defmodule Patchbay.Assist.Run do
 
   The work is a job (`:work`), queued in the same transaction that opens or
   reopens the run, so a run that opened is always worked on, after a
-  restart too, and on one node only. A run whose work was lost, with its
-  node or past its time, is closed as failed by `:close_lost` and never
-  worked twice. The fee goes on to the staking contract as a job of its own
-  (`:forward_fee`) once the run is answered. Each step of the fee names the
-  stored states it starts from, a forward left `forwarding` or `failed` is
-  finished by a person (`:record_deposited`, `:forward_fee_again`), and the
-  database keeps `deposit_status` and `deposit_tx_hash` in step.
+  restart too, and on one node only. A job that stops part way, with its node
+  or past its time, is tried once more, and that try closes the run as failed
+  rather than working it twice. A step is written, and a run closed, only
+  while the stored run is still open, whatever the writer last read. The fee
+  goes on to the staking contract as a job of its own (`:forward_fee`) once
+  the run is answered. Each step of the fee names the stored states it starts
+  from, a forward left `forwarding` or `failed` is finished by a person
+  (`:record_deposited`, `:forward_fee_again`), and the database keeps
+  `deposit_status` and `deposit_tx_hash` in step.
   """
 
   use Ash.Resource,
@@ -69,30 +71,22 @@ defmodule Patchbay.Assist.Run do
 
   oban do
     triggers do
-      # A paid run is worked on once. A run its job lost stays running and
-      # is closed by `:close_lost`, never started again.
+      # A paid run is worked on once. A try that stops part way (past its
+      # time, or with its node, which Oban's Lifeline hands back) leaves the
+      # run running; the second try finds it so and closes it as failed
+      # (`Patchbay.Assist.Work`). A running run whose job is gone altogether
+      # gets a new one from the minute's sweep, which closes it the same way.
+      # One job per run at a time, so a running run is never worked twice.
       trigger :work do
         action(:work)
         queue(:assist)
-        where(expr(status == :paid))
-        max_attempts(1)
+        where(expr(status in [:paid, :running]))
+        max_attempts(2)
         timeout(:timer.minutes(5))
         on_error(:interrupt)
         lock_for_update?(false)
         worker_module_name(Patchbay.Assist.Run.Workers.Work)
         scheduler_module_name(Patchbay.Assist.Run.Schedulers.Work)
-      end
-
-      # Past the work's own time and Oban's rescue of a dead node's jobs, a
-      # run still running has no work behind it.
-      trigger :close_lost do
-        action(:interrupt)
-        queue(:lost_runs)
-        where(expr(status == :running and started_at < ago(15, :minute)))
-        stream_with(:full_read)
-        scheduler_cron("*/5 * * * *")
-        worker_module_name(Patchbay.Assist.Run.Workers.CloseLost)
-        scheduler_module_name(Patchbay.Assist.Run.Schedulers.CloseLost)
       end
 
       # A forward that sent nothing is tried again; one that may have sent
@@ -301,6 +295,17 @@ defmodule Patchbay.Assist.Run do
       require_atomic?(false)
       accept([])
       argument(:step, :map, allow_nil?: false)
+
+      # The run is read again under its row lock, so the check and the
+      # append see it as stored, whatever the writer last read: a closed
+      # run's record is never added to, and no step written since is lost.
+      change(get_and_lock_for_update())
+
+      validate(data_one_of(:status, [:paid, :running]),
+        message: "is not open",
+        before_action?: true
+      )
+
       change(Patchbay.Assist.Changes.AppendStep)
     end
 
@@ -308,7 +313,16 @@ defmodule Patchbay.Assist.Run do
       description("Closes the run with what it found, or with why it stopped.")
       require_atomic?(false)
       accept([:status, :outcome])
-      validate(Patchbay.Assist.Validations.UnderWay)
+
+      # The run is read again under its row lock and checked as stored, so a
+      # run is closed once: a worker that outlived its job, or a second close
+      # of any kind, changes nothing.
+      change(get_and_lock_for_update())
+
+      validate(data_one_of(:status, [:running]),
+        message: "is not under way",
+        before_action?: true
+      )
 
       validate(one_of(:status, [:finished, :assessment_pending, :failed]),
         message: "must be finished, assessment_pending or failed"
@@ -444,9 +458,8 @@ defmodule Patchbay.Assist.Run do
 
     update :interrupt do
       description("""
-      Marks an open run whose work was lost, with its node, past its time or
-      on an error, as failed: its calls are not made twice, and a person
-      looks at it.
+      Marks an open run whose job ran out of tries on an error as failed: its
+      calls are not made again, and a person looks at it.
       """)
 
       accept([])

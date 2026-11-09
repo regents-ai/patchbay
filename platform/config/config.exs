@@ -133,8 +133,8 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # Background jobs, in Patchbay's own schema (set in config/runtime.exs). Queues
 # hear about new jobs through Erlang process groups. Each
 # queue is added here with the jobs it runs: a run of an assist, four at once
-# (`Patchbay.Assist.Run`'s `:work`); closing runs whose work was lost; a fee
-# forwarded to the staking contract, and the escrow's 10% pushed there, one at
+# (`Patchbay.Assist.Run`'s `:work`, which also closes a run an earlier try
+# left part way); a fee forwarded to the staking contract, and the escrow's 10% pushed there, one at
 # a time so the operator wallet sends in order (`:forward_fee`, and
 # `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
 # priority report (`:read_by_jev`); the screening of an Offer's wording
@@ -166,7 +166,6 @@ config :patchbay, Oban,
   notifier: Oban.Notifiers.PG,
   queues: [
     assist: 4,
-    lost_runs: 1,
     fees: 1,
     jev: 2,
     offers_review: 2,

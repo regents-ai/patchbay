@@ -290,24 +290,67 @@ defmodule Patchbay.Assist.WorkTest do
     assert Enum.any?(failed.steps, &(&1["note"] =~ "hit an error"))
   end
 
-  test "a run whose work was lost is closed as failed; one still being worked on is left" do
+  test "a run an earlier try left part way is closed on the next try and never worked again" do
+    site = mcp_site(%{"lookup" => %{"found" => true}})
+    run = free_run(site, believed_calls: [%{"tool" => "lookup", "arguments" => %{}}])
+
+    # The first try started the run and stopped, past its time or with its
+    # node; Oban hands its job back for the second try.
+    {:ok, _running} = Assist.start_run(run, authorize?: false)
+
+    assert :ok = work(run)
+    {:ok, failed} = Assist.get_run(run.id, authorize?: false)
+    assert {failed.status, failed.outcome} == {:failed, nil}
+    assert failed.finished_at
+    assert List.last(failed.steps)["note"] =~ "stopped part way"
+    assert calls(site, "tools/list") == []
+  end
+
+  test "a running run left with no job gets one from the minute's sweep, and only that run" do
     site = mcp_site(%{})
     lost = free_run(site, believed_calls: [])
     {:ok, _running} = Assist.start_run(lost, authorize?: false)
-    lost_at(lost, ~U[2026-10-02 08:00:00Z])
 
-    fresh = free_run(site, believed_calls: [])
-    {:ok, _running} = Assist.start_run(fresh, authorize?: false)
+    # Its job gone, as a job Oban gave up on with its node is.
+    Patchbay.Repo.delete_all(Oban.Job)
+    queued = free_run(site, believed_calls: [])
 
-    assert %{failure: 0} = schedule_and_run_triggers({Run, :close_lost})
+    assert :ok = perform_job(Run.Schedulers.Work, %{})
+    assert [_one] = work_jobs(queued)
+    assert [job] = work_jobs(lost)
+
+    assert {:ok, _closed} = perform_job(Run.Workers.Work, job.args)
     {:ok, failed} = Assist.get_run(lost.id, authorize?: false)
     assert failed.status == :failed
-    assert failed.finished_at
-    {:ok, still} = Assist.get_run(fresh.id, authorize?: false)
-    assert still.status == :running
+    assert List.last(failed.steps)["note"] =~ "stopped part way"
 
-    # A run already answered is never closed again.
+    # A run already answered gets no job and is never closed again.
+    Patchbay.Repo.delete_all(Oban.Job)
+    assert :ok = perform_job(Run.Schedulers.Work, %{})
+    assert work_jobs(failed) == []
     assert {:error, _not_open} = Ash.update(failed, %{}, action: :interrupt, authorize?: false)
+  end
+
+  test "a worker holding an older copy adds every step and closes only a run still under way" do
+    site = mcp_site(%{})
+    run = free_run(site, believed_calls: [])
+    {:ok, copy} = Assist.start_run(run, authorize?: false)
+
+    # The worker's own writes, each from the copy it started with.
+    {:ok, _first} = Assist.record_step(copy, %{"note" => "first"}, authorize?: false)
+    {:ok, both} = Assist.record_step(copy, %{"note" => "second"}, authorize?: false)
+    assert Enum.map(both.steps, & &1["note"]) == ["first", "second"]
+
+    # Patchbay's own job closes the run behind the worker's back.
+    {:ok, closed} = Ash.update(both, %{}, action: :interrupt, authorize?: false)
+
+    assert {:error, _closed} = Assist.record_step(copy, %{"note" => "late"}, authorize?: false)
+
+    assert {:error, _closed} =
+             Assist.finish_run(copy, %{status: :finished, outcome: :reached}, authorize?: false)
+
+    {:ok, stored} = Assist.get_run(run.id, authorize?: false)
+    assert {stored.status, stored.outcome, stored.steps} == {:failed, nil, closed.steps}
   end
 
   test "one open run per asker is the database's rule, not only the door's" do
@@ -349,13 +392,9 @@ defmodule Patchbay.Assist.WorkTest do
     :ok
   end
 
-  # Moves a running run's start back, as if its work began at `at`.
-  defp lost_at(run, at) do
-    Patchbay.Repo.query!("UPDATE assist_runs SET started_at = $1 WHERE id = $2", [
-      at,
-      Ecto.UUID.dump!(run.id)
-    ])
-  end
+  # The run's work jobs waiting in the queue.
+  defp work_jobs(run),
+    do: all_enqueued(worker: Run.Workers.Work, args: %{primary_key: %{id: run.id}})
 
   defp request(believed_calls) do
     %{
