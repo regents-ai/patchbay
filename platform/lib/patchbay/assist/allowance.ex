@@ -21,16 +21,21 @@ defmodule Patchbay.Assist.Allowance do
 
   @doc """
   The grant the next free fix for the SIWA-signed `agent` opens under:
-  `:none` when its wallet has used today's, `:given_out` when the site has
-  no free fixes left today, and an error when the runs could not be counted.
+  `{:none, seconds}` when its wallet has used today's, with the whole seconds
+  until the next comes back, `:given_out` when the site has no free fixes left
+  today, and an error when the runs could not be read.
   """
-  @spec agent_grant(struct()) :: {:ok, :agent} | :none | :given_out | {:error, term()}
+  @spec agent_grant(struct()) ::
+          {:ok, :agent} | {:none, pos_integer()} | :given_out | {:error, term()}
   def agent_grant(%{id: id}) do
-    since = since()
+    now = DateTime.utc_now()
+    since = DateTime.add(now, -@day_seconds, :second)
 
     with {:ok, false} <- given_out(since),
-         {:ok, runs} <- agent_runs(id, since) do
-      if runs < @agent_per_day, do: {:ok, :agent}, else: :none
+         {:ok, asked} <- agent_asked(id, since) do
+      if length(asked) < @agent_per_day,
+        do: {:ok, :agent},
+        else: {:none, back_in(List.last(asked), now)}
     else
       {:ok, true} -> :given_out
       {:error, _failure} = failed -> failed
@@ -48,22 +53,35 @@ defmodule Patchbay.Assist.Allowance do
     with {:ok, runs} <- free_runs, do: {:ok, runs >= Config.daily_free_fixes()}
   end
 
-  # Same as above: the agent's own free runs, for its limit alone.
-  defp agent_runs(profile_id, since) do
-    Run
-    |> Ash.Query.filter(
-      grant == :agent and payer_profile_id == ^profile_id and inserted_at >= ^since
-    )
-    |> count()
+  # When the agent's own free runs in the window were asked for, newest first
+  # and no more than its limit. Once the last of them leaves the window, a
+  # free fix comes back.
+  defp agent_asked(profile_id, since) do
+    query =
+      Run
+      |> Ash.Query.filter(
+        grant == :agent and payer_profile_id == ^profile_id and inserted_at >= ^since
+      )
+      |> Ash.Query.sort(inserted_at: :desc)
+      |> Ash.Query.limit(@agent_per_day)
+      |> Ash.Query.select([:inserted_at])
+
+    with {:ok, runs} <- read(query, &Ash.read/2), do: {:ok, Enum.map(runs, & &1.inserted_at)}
   end
 
-  # Ash hands back a count's own errors, but a database that refuses the
-  # count raises instead of answering; both come back here as an error.
-  defp count(query) do
-    Ash.count(query, authorize?: false)
+  # Whole seconds, rounded up, until a run asked for `at` leaves the window.
+  defp back_in(at, now) do
+    left = DateTime.diff(DateTime.add(at, @day_seconds, :second), now, :millisecond)
+    max(div(left + 999, 1000), 1)
+  end
+
+  defp count(query), do: read(query, &Ash.count/2)
+
+  # Ash hands back a read's own errors, but a database that refuses the read
+  # raises instead of answering; both come back here as an error.
+  defp read(query, read) do
+    read.(query, authorize?: false)
   rescue
     failure in [Postgrex.Error, DBConnection.ConnectionError] -> {:error, failure}
   end
-
-  defp since, do: DateTime.add(DateTime.utc_now(), -@day_seconds, :second)
 end

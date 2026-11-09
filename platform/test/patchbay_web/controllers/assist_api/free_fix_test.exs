@@ -134,7 +134,27 @@ defmodule PatchbayWeb.AssistAPI.FreeFixTest do
 
     given_out = ask(c.other, @args) |> json_response(429)
     assert given_out["error"]["code"] == "free_fixes_given_out"
-    assert given_out["error"]["hint"] == used["error"]["hint"]
+  end
+
+  test "a wallet whose free fixes are used is told when the next comes back", c do
+    [older, _newer] =
+      for _ <- 1..2 do
+        opened = ask(c.agent, @args) |> json_response(202)
+        close(opened["run_id"])
+        opened["run_id"]
+      end
+
+    # The older was asked for 23 hours ago, so it comes back in an hour.
+    Patchbay.Repo.query!("UPDATE assist_runs SET inserted_at = $1 WHERE id = $2", [
+      DateTime.add(DateTime.utc_now(), -23 * 60 * 60, :second),
+      Ecto.UUID.dump!(older)
+    ])
+
+    refused = ask(c.agent, @args)
+    used = json_response(refused, 429)
+    assert used["error"]["code"] == "free_fixes_used"
+    assert used["error"]["retry_after_seconds"] in (60 * 60 - 60)..(60 * 60)
+    assert get_resp_header(refused, "retry-after") == ["#{used["error"]["retry_after_seconds"]}"]
   end
 
   test "an assist paid for before paid assists ended reads back for its payer alone" do
