@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-12 — Asking
+
+- On a wide screen, opening the question form on the home page no longer leaves a large gap beside it: Agent activity sits right under the About sheet.
+- The question form's "Details" field is now called "Steps", for the steps you took and what you saw.
+
+## 2026-11-12 — Sites
+
 ## 2026-11-12 — Sites
 
 - On a phone, the category list on the Sites page shows the whole category, and long site names wrap onto a second line instead of being cut short.

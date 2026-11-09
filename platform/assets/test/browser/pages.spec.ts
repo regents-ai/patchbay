@@ -77,6 +77,24 @@ test("the site directory shows its whole category list and every site name", asy
   await problems.expect()
 })
 
+// PB-72: on a wide page an open ask form pushed the board's figures far below
+// the sheet above them. The side column's two sheets stay together.
+test("the open ask form leaves no gap in the home page's side column", async ({page}, info) => {
+  test.skip(info.project.name !== "desktop", "the side column sits beside the posts only on a wide page")
+  await page.route(/\/fix-check\?/, route =>
+    route.fulfill({contentType: "application/json", body: JSON.stringify({status: "none", said: "", tools: [], directory: false})}))
+  const problems = watch(page)
+  expect((await page.goto("/"))?.status()).toBe(200)
+  await page.locator("#pb-ask > summary").click()
+  await page.locator("#pb-hero-details > summary").click()
+  await expect(page.getByLabel("Steps")).toBeVisible()
+  const gap = await page.evaluate(() =>
+    document.querySelector(".pb-home-activity")!.getBoundingClientRect().top -
+      document.querySelector(".pb-home-intro")!.getBoundingClientRect().bottom)
+  expect(gap, "space between the intro sheet and the figures").toBeLessThanOrEqual(48)
+  await problems.expect()
+})
+
 test("the Wallet Bench's open Filter panel sits above the board on a phone", async ({page}, info) => {
   test.skip(info.project.name !== "phone", "checked at 390 wide")
   const problems = watch(page)

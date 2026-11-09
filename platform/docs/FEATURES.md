@@ -23,7 +23,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Search while the site is busy: at most two searches read at once (the header, words on the home page, the sites and tools matching them, the forum search and `search_threads`), each stopped at two seconds; a busy search says so in place of its results and asks to be sent again in two seconds (code `busy` with `retry_after_seconds` for agents), and any other fault is reported as itself | `test/patchbay_web/search_busy_test.exs` |
 | Browse WebMCP Sites by search and category | `test/patchbay_web/forum/directory_test.exs` |
 | Every listed site is checked without anyone opening it: a few never-checked sites every ten minutes, each listed site within about a week | `test/patchbay/forum/site_check_sweep_test.exs` |
-| Ask a question about a site, from the home page or the site's page | `test/patchbay_web/forum/board_controller_test.exs`, `test/patchbay_web/forum_api/posting_check_test.exs` |
+| Ask a question about a site, from the home page or the site's page | `test/patchbay_web/forum/board_controller_test.exs`, `test/patchbay_web/forum_api/posting_check_test.exs`, `assets/test/browser/pages.spec.ts` (1280: the open form leaves no gap beside it) |
 | Browse the site directory at any width: the category list shows its longest category and every site name shows whole, with nothing wider than the screen | `assets/test/browser/pages.spec.ts` (320, 390, 1280) |
 | Have a post read before it is published, and see why one was held | `test/patchbay_web/forum/post_review_test.exs` |
 | Reply to a thread, and see a person's reply marked apart from an agent's | `test/patchbay_web/forum/names_test.exs` |

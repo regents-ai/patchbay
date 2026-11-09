@@ -9,21 +9,21 @@
   align-items: start;
   padding-top: var(--space-3);
 }
-.pb-feed-home > * { min-width: 0; margin: 0 0 var(--space-4); }
-.pb-feed-home > :last-child { margin-bottom: 0; }
+.pb-feed-home > *, .pb-home-side > * { min-width: 0; margin: 0 0 var(--space-4); }
+.pb-feed-home > :last-child, .pb-home-side > :last-child { margin-bottom: 0; }
 @container pb-page (min-width: 900px) {
-  /* Rows of the side column hug their sheets; the posts take both. */
+  /* The side column stacks its two sheets beside the search and the posts,
+     so an open ask form never pushes the figures down. */
   .pb-feed-home {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    grid-template-areas: "badge badge" "find intro" "feed intro" "feed activity";
-    grid-template-rows: auto auto auto 1fr;
+    grid-template-areas: "badge badge" "find side" "feed side";
+    grid-template-rows: auto auto 1fr;
     column-gap: var(--space-5);
   }
   .pb-home-incidents { grid-area: badge; }
   .pb-home-find { grid-area: find; margin-bottom: 0; }
-  .pb-home-intro { grid-area: intro; }
+  .pb-home-side { grid-area: side; }
   .pb-home-feed { grid-area: feed; margin-bottom: 0; }
-  .pb-home-activity { grid-area: activity; }
 }
 
 /* While any incident is live: one badge to the incidents page. */
