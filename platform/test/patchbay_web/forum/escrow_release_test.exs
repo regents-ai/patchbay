@@ -376,7 +376,7 @@ defmodule PatchbayWeb.Forum.EscrowReleaseTest do
   describe "the database" do
     test "keeps only the known states", %{tool: tool} do
       report = paid_report(tool, profile("aaa"))
-      assert {:error, "forum_reports_escrow_status_known"} = raw_store(report, "refund_failed")
+      assert {:error, "forum_reports_escrow_status_known"} = raw_store(report, "lost")
     end
 
     test "keeps a state only on a report with a bounty", %{tool: tool} do
