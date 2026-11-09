@@ -36,8 +36,8 @@ defmodule Patchbay.OAuth do
   Disconnects every app connected to `profile`'s person, ending each app's
   access and refresh tokens (`RegentOAuth.revoke_client/2`), so an app the
   person connected before a suspension stays disconnected after it is lifted.
-  Only `Patchbay.Identity.DisconnectApps` calls it, and only while connected
-  apps are switched on. An app counts as connected once it holds a token; an
+  Only `Patchbay.Identity.DisconnectApps` calls it, whose queue runs only at
+  a boot with connected apps switched on. An app counts as connected once it holds a token; an
   authorization code not yet exchanged is not listed.
   """
   @spec disconnect_apps(AgentProfile.t()) :: :ok
