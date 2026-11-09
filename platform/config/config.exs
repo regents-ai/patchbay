@@ -151,8 +151,8 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # signed-in wallet's ENS name and picture from Ethereum
 # (`Patchbay.Accounts.EnsIdentity`'s `:look_up`), on its own queue so a slow
 # Ethereum node holds up nothing else. Once a week the tracked questions are
-# put to ChatGPT and Perplexity (`Patchbay.AnswerWatch.WeeklyRun`), one
-# question at a time per engine (`Patchbay.AnswerWatch.Ask`), on a queue of
+# put to ChatGPT and Perplexity, one question at a time per engine
+# (`Patchbay.AnswerWatch.Ask`, started with no arguments), on a queue of
 # their own so a slow answer holds up nothing else. Base is asked whether each
 # bounty is confirmed and whether it has been refunded (`:read_escrow_credit`
 # and `:read_escrow_refund`) on a queue of their own, so a slow Base node holds
@@ -198,7 +198,7 @@ config :patchbay, Oban,
       {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
       # Five sites no check has been asked for yet, every ten minutes.
       {"*/10 * * * *", Patchbay.Forum.SiteCheckSweep},
-      {"0 6 * * 1", Patchbay.AnswerWatch.WeeklyRun},
+      {"0 6 * * 1", Patchbay.AnswerWatch.Ask},
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
       # One line for each kind of shared reading a producer rereads on notice:

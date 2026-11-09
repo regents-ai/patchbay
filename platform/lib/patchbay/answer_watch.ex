@@ -6,8 +6,8 @@ defmodule Patchbay.AnswerWatch do
 
   The questions are kept in code (`Patchbay.AnswerWatch.Questions`). Once a
   week each is put to each engine with web search on
-  (`Patchbay.AnswerWatch.WeeklyRun`), and every answer is written down with
-  the addresses it cites (`Patchbay.AnswerWatch.Answer`). Admins download the
+  (`Patchbay.AnswerWatch.Ask`), and every answer is written down with the
+  addresses it cites (`Patchbay.AnswerWatch.Answer`). Admins download the
   answers as a spreadsheet at /admin/ai-answers.csv.
   """
 
