@@ -6,7 +6,7 @@ defmodule Patchbay.Accounts.EnsIdentity.LookUp do
   kept only when it resolves back to the same wallet, and a picture only when
   the ENS avatar service answers with one (`AgentEns.PrimaryName`). A failed
   read fails the action as a server fault, so the job retries with backoff and
-  the reason reaches saved errors (`Patchbay.ErrorIgnorer` leaves out invalid
+  the reason reaches saved errors (`Patchbay.SavedErrors` leaves out invalid
   input); a server with no Ethereum endpoint cancels it. The avatar service
   not answering in time is a failed read too, never "no picture": it is slow
   for a name it has not been asked about lately, and the picture already stored

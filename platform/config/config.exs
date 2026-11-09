@@ -146,7 +146,7 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
 # sites wait only on each other; the daily clearing of saved errors
-# (`Patchbay.ErrorPruner`); the daily forgetting of the words of posts
+# (`Patchbay.SavedErrors`); the daily forgetting of the words of posts
 # turned away a month ago (`Patchbay.Forum.PostCheckPruner`); and reading a
 # signed-in wallet's ENS name and picture from Ethereum
 # (`Patchbay.Accounts.EnsIdentity`'s `:look_up`), on its own queue so a slow
@@ -194,7 +194,7 @@ config :patchbay, Oban,
   # AshOban adds each trigger's minute sweep here.
   cron: [
     crontab: [
-      {"17 4 * * *", Patchbay.ErrorPruner},
+      {"17 4 * * *", Patchbay.SavedErrors},
       {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
       # Five sites no check has been asked for yet, every ten minutes.
       {"*/10 * * * *", Patchbay.Forum.SiteCheckSweep},
@@ -374,15 +374,14 @@ config :logger, :default_formatter,
 
 # Failed requests, pages and jobs are saved in the site's own schema (set in
 # config/runtime.exs) and shown to the site's admins at /admin/errors. Only server
-# faults are saved (Patchbay.ErrorIgnorer), only where each one happened is kept
-# (Patchbay.ErrorFilter), and Patchbay.ErrorPruner clears each one a week after
-# it was last seen.
+# faults are saved, only where each one happened is kept, and each is cleared a
+# week after it was last seen (Patchbay.SavedErrors).
 config :error_tracker,
   repo: Patchbay.Repo,
   otp_app: :patchbay,
   prefix: "public",
-  ignorer: Patchbay.ErrorIgnorer,
-  filter: Patchbay.ErrorFilter
+  ignorer: Patchbay.SavedErrors,
+  filter: Patchbay.SavedErrors
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
