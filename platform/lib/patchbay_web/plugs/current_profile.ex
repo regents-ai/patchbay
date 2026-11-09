@@ -5,9 +5,12 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   The signed session cookie names the profile and when it signed in, and nothing
   else does: no header, parameter or body a caller sends can name one, so a
   request cannot sign itself in as somebody else. A sign-in lasts 30 days: one
-  older than that, or naming a profile that is no longer there, reads as signed
-  out until the person signs in again, and says the sign-in ended
-  (`signed_out_reason/1`). The session cookie expires after the same 30 days.
+  older than that, naming a profile that is no longer there, naming a profile
+  that may not act (`Patchbay.Identity.AgentProfile.may_act?/1`), or made no
+  later than its profile's suspension, reads as signed out until the person
+  signs in again, and says the sign-in ended (`signed_out_reason/1`).
+  Reinstating a profile leaves its old sign-ins ended. The session cookie
+  expires after the same 30 days.
   A profile the database is too busy to read is never taken for one that is
   gone: the page answers busy, and the sign-in still holds when it is opened
   again.
@@ -27,6 +30,7 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   import Plug.Conn
 
   alias Patchbay.Identity
+  alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Plugs.ForumSession
 
   @profile_key "agent_profile_id"
@@ -88,10 +92,10 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   @doc """
   The profile a session belongs to, read the same way by pages and live views.
   """
-  @spec signed_in_profile(map()) :: Patchbay.Identity.AgentProfile.t() | nil
+  @spec signed_in_profile(map()) :: AgentProfile.t() | nil
   def signed_in_profile(%{@profile_key => id, @signed_in_at_key => signed_in_at})
       when is_binary(id) and is_integer(signed_in_at) do
-    if System.os_time(:second) - signed_in_at < @lifetime_seconds, do: profile(id)
+    if System.os_time(:second) - signed_in_at < @lifetime_seconds, do: profile(id, signed_in_at)
   end
 
   def signed_in_profile(_session), do: nil
@@ -110,12 +114,26 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
 
   # A profile that is not there, or an id that names none, is an invalid
   # read; any other error is the database's, and the page says so.
-  defp profile(id) do
+  defp profile(id, signed_in_at) do
     case Identity.get_profile(id, load: [:wallet_addresses]) do
-      {:ok, %{authentication_origin: :privy} = profile} -> profile
-      {:ok, _wallet_author} -> nil
-      {:error, %Ash.Error.Invalid{}} -> nil
-      {:error, error} -> raise error
+      {:ok, %{authentication_origin: :privy} = profile} ->
+        if AgentProfile.may_act?(profile) and after_cutoff?(profile, signed_in_at), do: profile
+
+      {:ok, _wallet_author} ->
+        nil
+
+      {:error, %Ash.Error.Invalid{}} ->
+        nil
+
+      {:error, error} ->
+        raise error
     end
   end
+
+  # Suspending ends every sign-in made up to the second it was saved, the
+  # same second included, so a sign-in racing the suspension never survives it.
+  defp after_cutoff?(%{sessions_valid_after: nil}, _signed_in_at), do: true
+
+  defp after_cutoff?(%{sessions_valid_after: cutoff}, signed_in_at),
+    do: signed_in_at > DateTime.to_unix(cutoff)
 end

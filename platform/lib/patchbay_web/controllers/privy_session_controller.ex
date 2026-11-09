@@ -14,13 +14,16 @@ defmodule PatchbayWeb.PrivySessionController do
   Signing out gives the browser a new forum identity, so the next person to
   sign in on it starts with nothing of the last one's.
   The person is recorded in their shared Regent account, as on every Regent
-  site, so their Points and paired agents follow them here.
+  site, so their Points and paired agents follow them here. A suspended
+  person is refused (`Patchbay.Identity.AgentProfile.may_act?/1`) and the
+  browser stays signed out.
   """
 
   use PatchbayWeb, :controller
 
   alias Patchbay.Assist
   alias Patchbay.Identity
+  alias Patchbay.Identity.AgentProfile
   alias Patchbay.Identity.Privy
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.AuthorJSON
@@ -39,13 +42,16 @@ defmodule PatchbayWeb.PrivySessionController do
     # are ash-template's for an account with no wallet.
     "no_wallet" =>
       {:unprocessable_entity, "Your account has no wallet yet.", "Sign in again to get one."},
-    "unauthorized" => {:unauthorized, "That sign-in could not be verified.", "Sign in again."}
+    "unauthorized" => {:unauthorized, "That sign-in could not be verified.", "Sign in again."},
+    "suspended" =>
+      {:forbidden, "This account is suspended.", "To ask about it, write to build@regents.sh."}
   }
 
   def create(conn, _untrusted_params) do
     with {:ok, pair} <- session_pair(conn),
          {:ok, evidence} <- Privy.verify_session_pair(pair),
-         {:ok, profile} <- Identity.upsert_from_privy(evidence) do
+         {:ok, profile} <- Identity.upsert_from_privy(evidence),
+         :ok <- may_act(profile) do
       :ok = Assist.save_browser_runs(conn.assigns.forum_session_id, profile)
 
       conn
@@ -61,6 +67,10 @@ defmodule PatchbayWeb.PrivySessionController do
     conn
     |> CurrentProfile.sign_out()
     |> json(%{signed_out: true})
+  end
+
+  defp may_act(profile) do
+    if AgentProfile.may_act?(profile), do: :ok, else: {:error, {:profile, :suspended}}
   end
 
   # Exactly one of each header is a pair. Anything else is refused before Privy
@@ -103,6 +113,7 @@ defmodule PatchbayWeb.PrivySessionController do
   # so plainly, because there is nothing the visitor can do about it.
   defp code(:configuration, :missing_privy_config), do: "not_configured"
   defp code(:account_evidence, :missing_linked_wallet), do: "no_wallet"
+  defp code(:profile, :suspended), do: "suspended"
 
   # Both values are fixed atoms from the refusal vocabulary, so they belong in
   # the message itself. The browser is told only that it was refused.

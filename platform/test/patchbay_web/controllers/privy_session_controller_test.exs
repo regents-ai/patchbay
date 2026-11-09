@@ -8,8 +8,11 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
   use ExUnit.Case, async: false
 
   import Phoenix.ConnTest
+  import Phoenix.LiveViewTest, only: [has_element?: 2, live: 2]
   import Plug.Conn, only: [put_req_header: 3]
   import PatchbayWeb.ConnCase, only: [on_open: 1]
+
+  alias Patchbay.Identity
 
   @endpoint PatchbayWeb.Endpoint
   @own "0x" <> String.duplicate("e", 40)
@@ -111,6 +114,52 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
     assert signed_in |> recycle([]) |> get("/account") |> html_response(200) =~
              ~s(data-account-wallet="#{@own}")
   end
+
+  # Sean, 9 Nov 2026 ("100. a"): a suspended person cannot sign in on the web,
+  # and every live web sign-in they hold ends. Only Patchbay's console
+  # suspends and reinstates.
+  describe "a suspended person" do
+    test "is refused at sign-in and stays signed out", %{key: key} do
+      did = "did:privy:suspended-#{System.unique_integer([:positive])}"
+      linked = [@email, wallet(@made, 1_001, "privy")]
+      assert json_response(sign_in(key, did, linked), 200)
+      {:ok, _suspended} = Identity.suspend(public_id(did), "Spam")
+
+      refused = sign_in(key, did, linked)
+
+      assert %{"error" => %{"code" => "suspended"}} = json_response(refused, 403)
+      assert refused |> recycle([]) |> get("/account") |> html_response(200) =~ @sign_in_button
+    end
+
+    test "loses every live sign-in, open pages included, and signs in afresh once reinstated",
+         %{key: key} do
+      did = "did:privy:cut-off-#{System.unique_integer([:positive])}"
+      linked = [@email, wallet(@made, 1_001, "privy")]
+      browser = key |> sign_in(did, linked) |> recycle([])
+      {:ok, page, _html} = live(browser, "/account")
+      refute has_element?(page, "#account-signed-out")
+
+      {:ok, _suspended} = Identity.suspend(public_id(did), "Spam")
+
+      assert browser |> get("/account") |> html_response(200) =~ @sign_in_button
+      send(page.pid, :agents_changed)
+      assert has_element?(page, "#account-signed-out")
+
+      {:ok, _reinstated} = Identity.reinstate(public_id(did), "Appeal upheld")
+      assert browser |> get("/account") |> html_response(200) =~ @sign_in_button
+
+      next_second()
+      fresh = sign_in(key, did, linked)
+
+      assert json_response(fresh, 200)
+      refute fresh |> recycle([]) |> get("/account") |> html_response(200) =~ @sign_in_button
+    end
+  end
+
+  defp public_id(did), do: Identity.get_profile_by_privy_user_id!(did).public_id
+
+  # A sign-in made in the same second as a suspension stays ended with it.
+  defp next_second, do: Process.sleep(1_001 - rem(System.os_time(:millisecond), 1_000))
 
   # The browser's steps: a page for its CSRF token, then Privy's two tokens on
   # the sign-in step.

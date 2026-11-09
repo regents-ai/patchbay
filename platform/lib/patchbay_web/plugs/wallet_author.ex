@@ -14,6 +14,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
   import Plug.Conn
   require Logger
   alias Patchbay.Identity
+  alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.ApiError
   alias RegentAgents.HumanBacking
 
@@ -168,8 +169,9 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
     with true <- Regex.match?(~r/\A0x[0-9a-f]{40}\z/, address),
          {:ok, registry_url} <- registry_url(registration),
          {:ok, backing} <- HumanBacking.read(book),
-         {:ok, %{authentication_origin: :wallet, status: :active} = profile} <-
-           Identity.upsert_from_wallet(%{wallet_address: address, registry_url: registry_url}) do
+         {:ok, %{authentication_origin: :wallet} = profile} <-
+           Identity.upsert_from_wallet(%{wallet_address: address, registry_url: registry_url}),
+         true <- AgentProfile.may_act?(profile) do
       profile = with_backing(profile, backing)
 
       # Only the signed body carries a payment signature; an unsigned header is dropped.

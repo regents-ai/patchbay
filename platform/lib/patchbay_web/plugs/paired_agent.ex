@@ -6,6 +6,7 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
 
   alias Patchbay.{Accounts, Identity}
   alias Patchbay.Agents.Actor
+  alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.{ApiError, Plugs.WalletAuthor}
 
   @unsigned_hint "The request's signature headers are missing, too old or malformed. Get the newest client " <>
@@ -83,10 +84,12 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
   def attach_verified_wallet(conn, address) do
     with true <- Regex.match?(~r/\A0x[0-9a-f]{40}\z/, address),
          {:ok, pairing} <- RegentAgents.Authority.resolve(Patchbay.Repo, address),
-         {:ok, %{status: :active} = beneficiary} <- local_profile(pairing.privy_user_id),
+         {:ok, %{} = beneficiary} <- local_profile(pairing.privy_user_id),
+         true <- AgentProfile.may_act?(beneficiary),
          {:ok, %{} = account} <- local_account(pairing.privy_user_id),
-         {:ok, %{status: :active} = profile} <-
-           Identity.upsert_from_wallet(%{wallet_address: address}, upsert_fields: []) do
+         {:ok, profile} <-
+           Identity.upsert_from_wallet(%{wallet_address: address}, upsert_fields: []),
+         true <- AgentProfile.may_act?(profile) do
       actor = Actor.new(profile, beneficiary, account, pairing)
       # A stable agent identity preserves request keys across MCP reconnects and CLI calls.
       {:ok,
