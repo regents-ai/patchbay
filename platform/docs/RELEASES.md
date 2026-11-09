@@ -4,6 +4,22 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v353, 9 Nov 2026
+
+- Commit: 9930cee287a488ae01717cd9640f5db154b9080c (image `9930cee`), the "Simplify the Patchbay codebase" thread's seven behaviour-preserving commits fast-forwarded onto main above the v352 record, plus the gate's two doc notes. One machine in iad (8d99357b2d5dd8), check passing. Rollback: v352, image `3cdbd87`. No schema change.
+- Commits:
+  - 0e0423e4 Wallet Bench: the domain answers the board and pair pages
+  - 0c91bd49 Answer check: one worker asks the week's questions
+  - 8cec07c2 Saved errors: one module decides what is kept and for how long
+  - 1eb1405c Site pictures: the take-picture action calls the screenshot machine itself
+  - d72f37a9 Written pages: About, Terms and the agent guide from one module
+  - c272ef9a Canonical JSON: one size check for values from outside
+  - 900944a7 Smaller interfaces: module-only helpers go private, dead code out
+  - 9930cee2 Docs: drop the stale Shots.take check and name Patchbay.WrittenPages
+- Gate APPROVED all seven separately (control fd79f255), no blocking finding; a WeeklyRun or ErrorPruner job queued at deploy may fail up to 3 times and be discarded (harmless). Chief's fresh copy of 9930cee2: ExUnit 1002 passed, 2 excluded; walk 347 passed, 37 skipped; contracts 15; cli, SIWA-latest, required fixes (template d3bd2013) ok.
+- Live read, headless Chromium, 16:35Z: `/`, `/docs`, `/about`, `/sites` 200 at 390 and 1280, LiveViews connected, no sideways scroll, no page errors; `/terms`, `/agents.md`, `/llms.txt`, `/changelog`, `/points` 200; no error lines in the logs after the release.
+- Not proven: WebKit is not run on the Mac.
+
 ## v352, 9 Nov 2026
 
 - Commit: 3cdbd87db545a17f678b8c8d0ce8e39f48248e04 (image `3cdbd87`), PB-68 fast-forwarded onto main above the v351 record 8ae5c06b, on Sean's "96. a" at 14:47Z. One machine in iad (850e6ef4534178), check passing. Rollback: v351, image `cc425e5`; the four indexes can stay, as nothing else reads them.
