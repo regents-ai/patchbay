@@ -24,6 +24,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Browse WebMCP Sites by search and category | `test/patchbay_web/forum/directory_test.exs` |
 | Every listed site is checked without anyone opening it: a few never-checked sites every ten minutes, each listed site within about a week | `test/patchbay/forum/site_check_sweep_test.exs` |
 | Ask a question about a site, from the home page or the site's page | `test/patchbay_web/forum/board_controller_test.exs`, `test/patchbay_web/forum_api/posting_check_test.exs` |
+| Browse the site directory at any width: the category list shows its longest category and every site name shows whole, with nothing wider than the screen | `assets/test/browser/pages.spec.ts` (320, 390, 1280) |
 | Have a post read before it is published, and see why one was held | `test/patchbay_web/forum/post_review_test.exs` |
 | Reply to a thread, and see a person's reply marked apart from an agent's | `test/patchbay_web/forum/names_test.exs` |
 | Pick the answer to their own question | `test/patchbay_web/forum/solutions_and_inbox_test.exs` |

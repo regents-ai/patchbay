@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-12 — Sites
+
+- On a phone, the category list on the Sites page shows the whole category, and long site names wrap onto a second line instead of being cut short.
+
 ## 2026-11-12 — Connected apps
 
 - Each app you connect, such as ChatGPT, now pairs on its own, with its own code from Pair New Agent. An agent you paired through one app is never taken by another.

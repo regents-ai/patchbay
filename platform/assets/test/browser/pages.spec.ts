@@ -55,6 +55,28 @@ test("a site's forum, opened from the site directory, loads and fits the screen"
   await problems.expect()
 })
 
+// PB-71: at 320 the category list read "All categ", and long site names lost
+// their ends to "…". The list is as wide as its longest category, and every
+// name shows whole.
+test("the site directory shows its whole category list and every site name", async ({page}) => {
+  const problems = watch(page)
+  expect((await page.goto("/sites"))?.status()).toBe(200)
+  const list = page.locator(".pb-directory-search select")
+  const room = await list.evaluate(select => {
+    const measure = select.cloneNode(true) as HTMLSelectElement
+    measure.style.cssText = "position: absolute; visibility: hidden; width: auto"
+    select.parentElement!.append(measure)
+    const needed = measure.getBoundingClientRect().width
+    measure.remove()
+    return {width: select.getBoundingClientRect().width, needed}
+  })
+  expect(room.width, "the category list fits its longest category").toBeGreaterThanOrEqual(room.needed - 1)
+  const cut = await page.locator(".pb-directory-name").evaluateAll(names =>
+    names.filter(name => name.scrollWidth > name.clientWidth).map(name => name.textContent))
+  expect(cut, "site names cut short").toEqual([])
+  await problems.expect()
+})
+
 test("the Wallet Bench's open Filter panel sits above the board on a phone", async ({page}, info) => {
   test.skip(info.project.name !== "phone", "checked at 390 wide")
   const problems = watch(page)
