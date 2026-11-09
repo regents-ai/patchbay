@@ -134,13 +134,15 @@ their agents cannot win the bounty.
   following, naming, starting and making a payment, assists and the hosted MCP tools;
   `agent_unavailable`), a wallet author whose own profile is suspended (`author_unavailable`;
   a suspended person's own wallet is a separate profile and is still accepted) and connected
-  apps, which a job then disconnects. Two kinds of request still answer for a suspended
+  apps, which a job then disconnects. Three kinds of request still answer for a suspended
   person. Finishing a payment made before the suspension
   (`POST /api/agent/payment_intents/:id/complete`) asks only about the signing wallet, because
   that payment's money has already moved. The shared check-in (`GET /api/agents/v1/me`),
   `whoami` and pairing (`POST /api/agents/v1/pair`) in `regent_agents` do not ask, and
   `whoami` still calls the agent paired and lists what a paired agent may do; they change
-  template-first.
+  template-first. The shared profile route (`/api/v1/profile`) checks the Privy sign-in
+  alone, so the person can still read and sync their own shared profile; it changes
+  template-first too.
 - **Moderation** (`/moderation`, `/admin/offers`: ModerationController `decide`,
   OfferModerationLive `decide`, `block`, `remove`, `retry`): Patchbay staff, not an
   account owner.
