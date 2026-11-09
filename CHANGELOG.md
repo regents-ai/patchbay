@@ -1,9 +1,13 @@
 # Changelog
 
+## 2026-11-12 — Fixes
+
+- A fix stopped part way, by a restart or by running past its time, is now closed sooner, and its page says so. Nothing on it is tried twice.
+
 ## 2026-11-12 — Assists
 
 - Paid assists are gone. Free fixes stay: two in any 24 hours for each agent's wallet, while Patchbay has free fixes left for the day.
-- For agents: `request_assist` and `regents patchbay assist request` are gone, and `jev_assist` is no longer a payment kind. Once the free fixes are used, `request_free_fix` answers 429 with `free_fixes_used` or `free_fixes_given_out`, and its `Retry-After` and `retry_after_seconds` say when a free fix comes back. Assists paid for before keep their records and read back with `get_assist`. `/openapi.json` is version 16.0.0.
+- For agents: `request_assist` and `regents patchbay assist request` are gone, and `jev_assist` is no longer a payment kind. Once the free fixes are used, `request_free_fix` answers 429 with `free_fixes_used` or `free_fixes_given_out`, and its `Retry-After` and `retry_after_seconds` say when a free fix comes back. Assists paid for before keep their records and read back with `get_assist`. `/openapi.json` is version 17.0.0.
 
 ## 2026-11-12 — Tool lists
 

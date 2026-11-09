@@ -24,7 +24,10 @@ defmodule Patchbay.Assist.Work do
   as Jev's reading, a model's judgement rather than a checked result.
 
   Nothing here retries on its own, and nothing is sent to the site but the
-  run's own request: no cookies, no credentials, no agent identity.
+  run's own request: no cookies, no credentials, no agent identity. The job
+  has a second try only for a first one that stopped part way, past its time
+  or with its node; that try finds the run still running and closes it as
+  failed, so no call is made twice.
   """
 
   use Ash.Resource.ManualUpdate
@@ -44,8 +47,24 @@ defmodule Patchbay.Assist.Work do
   @max_questions 14
   @max_seconds 120
 
-  # A run already started is refused by `:start`, so it is never worked twice.
+  # A run still running when its job starts was left part way by an earlier
+  # try of the same job: one job per run at a time, so nothing else is
+  # working on it. It is closed, not worked again.
   @impl true
+  def update(%{data: %{status: :running} = run}, _opts, _context) do
+    Logger.warning("Assist #{run.id} was left part way by an earlier try and is closed")
+
+    # Patchbay's own job closing the run its earlier try left.
+    run
+    |> note(
+      "Patchbay's work on this stopped part way, with a restart or past its time, " <>
+        "and was not started again."
+    )
+    |> finish(:failed, nil)
+    |> then(&{:ok, &1})
+  end
+
+  # A run already started is refused by `:start`, so it is never worked twice.
   def update(changeset, _opts, _context) do
     # Patchbay's own job: the run was bought and answers to no request now.
     with {:ok, run} <- Assist.start_run(changeset.data, authorize?: false) do
@@ -93,20 +112,18 @@ defmodule Patchbay.Assist.Work do
 
     :ok
   rescue
-    error -> stopped(run.id, Exception.message(error))
+    error -> stopped(run, Exception.message(error))
   catch
-    :exit, reason -> stopped(run.id, inspect(reason))
+    :exit, reason -> stopped(run, inspect(reason))
   end
 
-  # The run is read again before the note goes on: the one the work started
-  # from is behind by every step written since, and those are kept.
-  defp stopped(run_id, why) do
-    Logger.error("Assist #{run_id} stopped on an error: #{why}")
+  # The run as the work started it is behind by every step written since;
+  # the note is appended to the steps as stored, so those are kept.
+  defp stopped(run, why) do
+    Logger.error("Assist #{run.id} stopped on an error: #{why}")
 
     # Patchbay's own worker closing the run it was working on.
-    {:ok, latest} = Assist.get_run(run_id, authorize?: false)
-
-    latest
+    run
     |> note("Patchbay hit an error while working on this and stopped.")
     |> finish(:failed, nil)
 

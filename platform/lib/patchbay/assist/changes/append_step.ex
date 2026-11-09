@@ -1,7 +1,9 @@
 defmodule Patchbay.Assist.Changes.AppendStep do
   @moduledoc """
   Adds one step to the end of a run's record of what was tried, stamped with
-  the moment it was written.
+  the moment it was written. The step goes after the steps of the run as the
+  action last read it, which `:record_step` reads again under the row's lock
+  just before.
   """
 
   use Ash.Resource.Change
@@ -13,7 +15,8 @@ defmodule Patchbay.Assist.Changes.AppendStep do
       |> Ash.Changeset.get_argument(:step)
       |> Map.put("at", DateTime.to_iso8601(DateTime.utc_now()))
 
-    steps = Ash.Changeset.get_attribute(changeset, :steps) || []
-    Ash.Changeset.force_change_attribute(changeset, :steps, steps ++ [step])
+    Ash.Changeset.before_action(changeset, fn changeset ->
+      Ash.Changeset.force_change_attribute(changeset, :steps, changeset.data.steps ++ [step])
+    end)
   end
 end
