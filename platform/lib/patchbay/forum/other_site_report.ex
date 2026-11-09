@@ -64,13 +64,11 @@ defmodule Patchbay.Forum.OtherSiteReport do
   defp digestible_arguments(nil), do: :ok
 
   defp digestible_arguments(arguments) when is_map(arguments) do
-    encoded = CanonicalJSON.encode(arguments)
-
-    if byte_size(encoded) <= @max_arguments_bytes,
-      do: :ok,
-      else: {:error, {:invalid, ["arguments: must be 8 KB or less once encoded"]}}
-  rescue
-    ArgumentError -> {:error, {:invalid, ["arguments: must be plain named values"]}}
+    case CanonicalJSON.encoded_size(arguments) do
+      {:ok, bytes} when bytes <= @max_arguments_bytes -> :ok
+      {:ok, _bytes} -> {:error, {:invalid, ["arguments: must be 8 KB or less once encoded"]}}
+      :error -> {:error, {:invalid, ["arguments: must be plain named values"]}}
+    end
   end
 
   defp digestible_arguments(_arguments),

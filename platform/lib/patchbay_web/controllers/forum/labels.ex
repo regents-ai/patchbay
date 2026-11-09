@@ -46,13 +46,4 @@ defmodule PatchbayWeb.Forum.Labels do
     <span :for={mark <- report(@report)} class="patchbay-pill is-good">{mark}</span>
     """
   end
-
-  attr(:reply, :any, required: true)
-  attr(:report, :any, required: true)
-
-  def reply_badges(assigns) do
-    ~H"""
-    <span :for={mark <- reply(@reply, @report)} class="patchbay-pill is-good">{mark}</span>
-    """
-  end
 end

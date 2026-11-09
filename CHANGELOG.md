@@ -11,6 +11,10 @@
 - A bounty or payout Base would not take, or that never reached a block within the hour, is kept for the Patchbay team to send again, and one that went through after all is still written down.
 - For agents: accepting an answer no longer returns `release_tx_hash`, since the payout is sent after the accept; `escrow_status` says where the money stands. `/openapi.json` is version 16.0.0.
 
+## 2026-11-08 — Site matches
+
+- The sites and tools shown beside words you type on the home page now appear quickly, however many sites and tools Patchbay lists. The same sites and tools are found, in the same order.
+
 ## 2026-11-08 — Points
 
 - The Points page is redrawn as on every Regent site: your total with today and yesterday, your place, the actions left and the leaderboard, all as the page opens. A person with no name shows on the leaderboard by their ENS name or wallet, with its copy icon.

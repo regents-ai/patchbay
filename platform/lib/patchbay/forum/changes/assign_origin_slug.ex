@@ -35,8 +35,7 @@ defmodule Patchbay.Forum.Changes.AssignOriginSlug do
     end
   end
 
-  @spec slug_for(String.t()) :: String.t()
-  def slug_for(origin) do
+  defp slug_for(origin) do
     origin
     |> String.trim()
     |> String.downcase()

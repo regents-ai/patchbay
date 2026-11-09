@@ -150,8 +150,9 @@ defmodule Patchbay.WalletBench.Board do
 
   @doc """
   What every pair's page and the sitemap share, as `board/2` answers:
-  `roster`, `notes`, `fixed` and `extra_notes` as Techtree's views hold them,
-  `options`, every recorded version a filter may name
+  `roster`, `notes` and `fixed` as Techtree's views hold them, `extra_notes`
+  by release (`Patchbay.WalletBench.Matrix.extra_notes/2`), `options`, every
+  recorded version a filter may name
   (`Patchbay.WalletBench.Sets.options/1`), and `newest`, each
   `{harness_id, wallet_id}` that has run with when its newest run finished.
   """
@@ -281,7 +282,7 @@ defmodule Patchbay.WalletBench.Board do
       roster: rows.roster,
       notes: rows.notes,
       fixed: rows.fixed,
-      extra_notes: rows.extra_notes,
+      extra_notes: Matrix.extra_notes(rows.extra_notes, rows.roster),
       options: Sets.options(rows.results),
       newest:
         rows.results

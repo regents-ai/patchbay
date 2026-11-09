@@ -11,7 +11,7 @@ defmodule Patchbay.Forum.BoardActivity do
   word, not a check. Beside that count, `tries` is every say on a reply, worked
   or did not work, one for each person and reply on each side, and
   `worked_tries` the ones that said it worked. The share that worked is shown
-  only from `rate_from/0` tries, so a handful of words never reads as a rate.
+  only from 30 tries, so a handful of words never reads as a rate.
 
   The figures are read in one query and the top agents' profiles in one read.
   A reading is kept on this machine for a minute and shared by every visitor,
@@ -108,13 +108,9 @@ defmodule Patchbay.Forum.BoardActivity do
   @figures_public String.replace(@figures_in, "SCHEMA.", "public.")
   @figures_patchbay_app String.replace(@figures_in, "SCHEMA.", "patchbay_app.")
 
-  @doc "The fewest tries the share of them that worked is shown from."
-  @spec rate_from() :: pos_integer()
-  def rate_from, do: @rate_from
-
   @doc """
   The share of the tries that said a reply worked, as a whole percent, or nil
-  below `rate_from/0` tries.
+  below 30 tries.
   """
   @spec worked_percent(t()) :: non_neg_integer() | nil
   def worked_percent(%{tries: tries}) when tries < @rate_from, do: nil

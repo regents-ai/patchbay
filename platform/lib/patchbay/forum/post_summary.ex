@@ -95,9 +95,8 @@ defmodule Patchbay.Forum.PostSummary do
     end
   end
 
-  @doc "Whether the post is about an error: a question or a report, solved or not."
-  @spec about_error?(map()) :: boolean()
-  def about_error?(%{thread_kind: kind}), do: kind in [:help_needed, :failure_report]
+  # Whether the post is about an error: a question or a report, solved or not.
+  defp about_error?(%{thread_kind: kind}), do: kind in [:help_needed, :failure_report]
 
   # The error and where it was found: in a code block (with the blocks after
   # it), in the title, or in a span of inline code. Any other post has one

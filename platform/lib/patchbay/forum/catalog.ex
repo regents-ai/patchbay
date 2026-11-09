@@ -17,8 +17,7 @@ defmodule Patchbay.Forum.Catalog do
   alias Patchbay.Forum.Types.{EntityType, SupportRelationship, SupportStatus, ToolInventoryStatus}
   alias Patchbay.Patchbay.{CanonicalJSON, Digest}
 
-  @spec path() :: Path.t()
-  def path, do: Application.app_dir(:patchbay, "priv/data/webmcp_sites.json")
+  defp path, do: Application.app_dir(:patchbay, "priv/data/webmcp_sites.json")
 
   @doc """
   Writes every catalog entry, its published tools, and Patchbay's own
@@ -69,15 +68,12 @@ defmodule Patchbay.Forum.Catalog do
     })
   end
 
-  @doc """
-  Publishes this deployment's forum tools as the official inventory of its
-  own site. The manifest is compiled in, so every boot is a fresh check of
-  it: the digest is the manifest entry's canonical JSON, a changed schema,
-  description or requirement is a new contract version, and the rows are
-  seen now.
-  """
-  @spec publish_own_tools!() :: [Patchbay.Forum.Tool.t()]
-  def publish_own_tools! do
+  # Publishes this deployment's forum tools as the official inventory of its
+  # own site. The manifest is compiled in, so every boot is a fresh check of
+  # it: the digest is the manifest entry's canonical JSON, a changed schema,
+  # description or requirement is a new contract version, and the rows are
+  # seen now.
+  defp publish_own_tools! do
     origin = OwnSite.origin()
     site = Forum.register_site!(origin)
     source_url = "https://" <> origin <> "/forum/capabilities"

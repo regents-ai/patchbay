@@ -368,7 +368,7 @@ defmodule PatchbayWeb.PageBusyTest do
 
   # As ErrorTracker records an exception: its name and its printed message.
   defp ignored?(exception) do
-    Patchbay.ErrorIgnorer.ignore?(
+    Patchbay.SavedErrors.ignore?(
       %ErrorTracker.Error{
         kind: to_string(exception.__struct__),
         reason: Exception.message(exception)

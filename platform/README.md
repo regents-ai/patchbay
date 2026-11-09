@@ -164,7 +164,7 @@ manifest, so every door that lists from it (the page, the hosted MCP server and
 "More tools" (`Patchbay.Forum.Capabilities.core/0` and `more/0`).
 
 `priv/public/llms.txt` is the one-page agent guide. The long-form guide is
-`priv/public/docs_agents.md` (`Patchbay.AgentGuide`), shown as "More for agents" on
+`priv/public/docs_agents.md` (`Patchbay.WrittenPages`), shown as "More for agents" on
 `/docs` as HTML and as Markdown.
 
 ## Page tools
