@@ -6,7 +6,8 @@ defmodule Patchbay.AssistFixtures do
   the shape a free run asked from the page left behind: open, asked by a
   browser and, when `payer_profile_id` is given, by a signed-in person.
   `paid_run/2` writes a run bought before paid assists ended, with the
-  payment that bought it.
+  payment that bought it, and `paid_payment/2` such a payment that settled
+  and opened no run.
   """
 
   alias Patchbay.Agents.Actor
@@ -69,6 +70,28 @@ defmodule Patchbay.AssistFixtures do
   """
   def paid_run(payer, pay_to) do
     request = request()
+    settled = paid_payment(payer, pay_to)
+    {:ok, _applied} = Steps.step(settled, :mark_applied, payer)
+
+    Ash.Seed.seed!(Run, %{
+      id: settled.target_id,
+      payment_intent_id: settled.id,
+      payer_profile_id: payer.id,
+      grant: :paid,
+      deposit_status: :pending,
+      goal: request["goal"],
+      site_url: request["site_url"],
+      sign_in: :unknown,
+      believed_calls: []
+    })
+  end
+
+  @doc """
+  A `jev_assist` payment `payer` made into the wallet `pay_to` before paid
+  assists ended, settled, naming the run it was to open, which never opened.
+  """
+  def paid_payment(payer, pay_to) do
+    request = request()
     run_id = Ash.UUID.generate()
     payload = %{"run_id" => run_id, "request" => request, "pay_to_address" => pay_to}
 
@@ -92,18 +115,6 @@ defmodule Patchbay.AssistFixtures do
       })
 
     {settled, _receipt} = SettledPayment.settle!(intent, payer)
-    {:ok, _applied} = Steps.step(settled, :mark_applied, payer)
-
-    Ash.Seed.seed!(Run, %{
-      id: run_id,
-      payment_intent_id: intent.id,
-      payer_profile_id: payer.id,
-      grant: :paid,
-      deposit_status: :pending,
-      goal: request["goal"],
-      site_url: request["site_url"],
-      sign_in: :unknown,
-      believed_calls: []
-    })
+    settled
   end
 end

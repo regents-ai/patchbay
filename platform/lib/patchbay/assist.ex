@@ -51,6 +51,7 @@ defmodule Patchbay.Assist do
       define(:release_fee, action: :release_fee)
       define(:record_deposited, action: :record_deposited)
       define(:record_fee_failed, action: :record_fee_failed)
+      define(:forward_fee_again, action: :forward_fee_again)
       define(:reopen_run, action: :reopen)
     end
 

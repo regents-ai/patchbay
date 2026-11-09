@@ -13,8 +13,7 @@ defmodule Patchbay.OperatorWallet do
 
   Beside those ages are Patchbay's own two numbers: paid priority reports
   whose escrow credit the chain has not yet confirmed, and the USDC of
-  assist fees the operator wallet still holds, waiting, being forwarded or
-  failed for a person to look at.
+  assist fees the operator wallet still holds.
 
   The operator wallet's requests to its node go through Ethers, from
   `Patchbay.Escrow` and the payments library's fee forward, the only two
@@ -73,19 +72,29 @@ defmodule Patchbay.OperatorWallet do
     |> Ash.count!(authorize?: false)
   end
 
-  @doc "USDC of assist fees in the operator wallet not yet deposited to staking."
+  @doc """
+  USDC of assist fees the operator wallet holds: a run's fee waiting, being
+  forwarded, or failed with no deposit sent, and the fee of a paid assist
+  that settled before paid assists ended and opened no run, which a person
+  reviews. A failed fee whose deposit was sent may have landed, so it is left
+  out until a person writes it deposited or puts it back.
+  """
   @spec assist_fees_unforwarded_usdc() :: float()
   def assist_fees_unforwarded_usdc do
-    # One sum over the join of the site's runs and the payments library's
-    # intents. Ash's unrelated exists cannot carry it: its subquery takes the
-    # intents' schema prefix and looks for the runs there.
+    # One sum over the payments library's intents and the site's runs. Ash's
+    # unrelated exists cannot carry it: its subquery takes the intents' schema
+    # prefix and looks for the runs there.
     atomic =
       Patchbay.Repo.one(
-        from(run in "assist_runs",
-          join: intent in "payment_intents",
+        from(intent in "payment_intents",
           prefix: "regent_payments",
-          on: intent.id == run.payment_intent_id,
-          where: run.deposit_status in ["pending", "forwarding", "failed"],
+          left_join: run in "assist_runs",
+          on: run.payment_intent_id == intent.id,
+          where:
+            run.deposit_status in ["pending", "forwarding"] or
+              (run.deposit_status == "failed" and is_nil(run.deposit_tx_hash)) or
+              (is_nil(run.id) and intent.site == "patchbay" and intent.kind == "jev_assist" and
+                 intent.status == "settled"),
           select: type(coalesce(sum(intent.amount_atomic), 0), :integer)
         )
       )

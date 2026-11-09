@@ -399,6 +399,16 @@ agent's profile.
   still reads back by its run id. A paid-assist payment that settled without
   opening a run is found in the payment records and reviewed by a person:
   refunds are not expected, but may be made case by case after that review.
+- An assist fee left `forwarding` for over an hour (Sentinel's `fee_forward`
+  age) or `failed` is finished by a person after looking on Base for the
+  operator wallet's deposit to REGENT staking, sent after the run's
+  `fee_taken_at` (a `failed` fee names it in `deposit_tx_hash` when one was
+  sent). If the deposit landed, write it:
+  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.record_deposited(\"<run id>\", %{deposit_tx_hash: \"<0x hash>\"}, authorize?: false)'"`
+  (a `failed` fee that already names it needs no hash). If nothing landed,
+  put it back and its job forwards it again:
+  `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.forward_fee_again(\"<run id>\", authorize?: false)'"`.
+  Putting back a fee whose deposit landed pays staking twice, so look first.
 - An assist that waited on a person (`assessment_pending`, usually because
   a model provider was away) is handed back to Patchbay with
   `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.rerun(\"<run id>\")'"`.

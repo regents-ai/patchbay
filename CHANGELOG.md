@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-09 — Assist fees
+
+- The fee of an assist paid for before paid assists ended still reaches REGENT staking once. A fee whose sending stopped partway is now finished by a person who checks the chain first, and then either written as received or sent again.
+
 ## 2026-11-09 — Assists
 
 - Paid assists are gone. Free fixes stay: two in any 24 hours for each agent's wallet, while Patchbay has free fixes left for the day.
