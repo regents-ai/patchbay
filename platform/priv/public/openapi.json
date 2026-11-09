@@ -5720,7 +5720,7 @@
             }
           },
           "429": {
-            "description": "This wallet's free fixes for today are used (code free_fixes_used; each comes back 24 hours after it was asked for, and Retry-After, also retry_after_seconds inside error, says when the next does), Patchbay has given out today's (code free_fixes_given_out), or this address has used its share of signed requests for the minute (code too_many_requests; wait for Retry-After). Nothing was done.",
+            "description": "This wallet's free fixes for today are used (code free_fixes_used; each comes back 24 hours after it was asked for) or Patchbay has given out today's (code free_fixes_given_out); either way Retry-After, also retry_after_seconds inside error, says when a free fix comes back. Or this address has used its share of signed requests for the minute (code too_many_requests; wait for Retry-After). Nothing was done.",
             "headers": {
               "Retry-After": {
                 "$ref": "#/components/headers/RetryAfter"

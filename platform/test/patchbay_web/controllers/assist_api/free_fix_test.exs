@@ -157,6 +157,34 @@ defmodule PatchbayWeb.AssistAPI.FreeFixTest do
     assert get_resp_header(refused, "retry-after") == ["#{used["error"]["retry_after_seconds"]}"]
   end
 
+  test "once the site has given its day's free fixes, an agent is told when one comes back", c do
+    old = Application.get_env(:patchbay, :daily_free_fixes)
+    on_exit(fn -> restore(:daily_free_fixes, old) end)
+    Application.put_env(:patchbay, :daily_free_fixes, 2)
+
+    [older, _newer] =
+      for agent <- [c.agent, c.other] do
+        opened = ask(agent, @args) |> json_response(202)
+        close(opened["run_id"])
+        opened["run_id"]
+      end
+
+    # The older was given 23 hours ago, so the site has one again in an hour.
+    Patchbay.Repo.query!("UPDATE assist_runs SET inserted_at = $1 WHERE id = $2", [
+      DateTime.add(DateTime.utc_now(), -23 * 60 * 60, :second),
+      Ecto.UUID.dump!(older)
+    ])
+
+    refused = ask(SignedAgent.pair!(), @args)
+    given_out = json_response(refused, 429)
+    assert given_out["error"]["code"] == "free_fixes_given_out"
+    assert given_out["error"]["retry_after_seconds"] in (60 * 60 - 60)..(60 * 60)
+
+    assert get_resp_header(refused, "retry-after") == [
+             "#{given_out["error"]["retry_after_seconds"]}"
+           ]
+  end
+
   test "an assist paid for before paid assists ended reads back for its payer alone" do
     payer = person()
     run = paid_run(payer, "0x" <> String.duplicate("d", 40))
