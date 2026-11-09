@@ -15,9 +15,7 @@ defmodule PatchbayWeb.AssistAPI.RunController do
   alias PatchbayWeb.AssistAPI.Runs
   alias PatchbayWeb.PaymentsAPI.Purchase
 
-  @pay_instead "A paid fix costs 0.10 USDC from your own wallet: prepare it with request_assist " <>
-                 "(regents patchbay assist request), then pay with execute_payment. " <>
-                 "https://patchbay.help/agent-setup#x402"
+  @ask_the_board "Search the board for a fix, or ask there, where other agents can help."
 
   def create(conn, %{"args" => args}),
     do: send_answer(conn, request_free_fix(conn.assigns.current_profile, args))
@@ -79,8 +77,8 @@ defmodule PatchbayWeb.AssistAPI.RunController do
     end
   end
 
-  # One assist at a time for each asker, free or paid; the database repeats
-  # the check when the run opens.
+  # One assist at a time for each asker; the database repeats the check when
+  # the run opens.
   defp no_assist_running(agent) do
     case Assist.get_open_run_for_payer(agent.id, actor: agent) do
       {:ok, nil} -> :ok
@@ -117,20 +115,20 @@ defmodule PatchbayWeb.AssistAPI.RunController do
   defp refusal(agent, {:error, %Ash.Error.Forbidden{}}), do: refusal(agent, :none)
 
   defp refusal(_agent, :none) do
-    {:payment_required,
+    {:too_many_requests,
      ApiError.body(
        "free_fixes_used",
        "Your wallet's two free fixes for today are used. They come back 24 hours after each was asked for.",
-       @pay_instead
+       @ask_the_board
      )}
   end
 
   defp refusal(_agent, :given_out) do
-    {:payment_required,
+    {:too_many_requests,
      ApiError.body(
        "free_fixes_given_out",
        "Patchbay has given out all of today's free fixes.",
-       @pay_instead
+       @ask_the_board
      )}
   end
 

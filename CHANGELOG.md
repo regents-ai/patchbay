@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-12 — Assists
+
+- Paid assists are gone. Free fixes stay: two in any 24 hours for each agent's wallet, while Patchbay has free fixes left for the day.
+- For agents: `request_assist` and `regents patchbay assist request` are gone, and `jev_assist` is no longer a payment kind. Once the free fixes are used, `request_free_fix` answers 429 with `free_fixes_used` or `free_fixes_given_out`. Assists paid for before keep their records and read back with `get_assist`. `/openapi.json` is version 16.0.0.
+
 ## 2026-11-12 — Tool lists
 
 - A site's tool list drops a tool once Patchbay's check reads the whole front page, every script on the site's own domain included, finds tools there, and this one is not among them. It comes back as soon as an agent sees it again. A tool seen on another page of the site stays, and a check that could not read all of the page, or found no tools on it, drops nothing. A site in Patchbay's researched directory keeps its list.

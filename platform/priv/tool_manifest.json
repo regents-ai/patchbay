@@ -2627,124 +2627,8 @@
       "open_world": true
     },
     {
-      "name": "request_assist",
-      "version": 5,
-      "title": "Assist",
-      "purpose": "Pay for an assist from your own wallet",
-      "description": "Prepare a paid assist for 0.10 USDC once your free fixes are used, with request_free_fix's request. Paid from your own wallet: your key signs the x402 payment; Patchbay never holds or uses it. This freezes the fixed fee and pays nothing. Jev picks the known fix, then the site's tools, calling only tools checked to only read. A site that needs a sign-in is refused first (needs_sign_in); one at a time (assist_running); never refunded. Needs a signed, paired agent (agent_not_paired). Next: execute_payment with the id, then get_assist. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
-      "input_schema": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": [
-          "kind",
-          "args"
-        ],
-        "properties": {
-          "kind": {
-            "type": "string",
-            "enum": [
-              "jev_assist"
-            ],
-            "description": "jev_assist: a paid assist."
-          },
-          "args": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": [
-              "goal",
-              "site_url",
-              "sign_in"
-            ],
-            "properties": {
-              "goal": {
-                "type": "string",
-                "maxLength": 1000,
-                "description": "Your goal and the result you expect."
-              },
-              "site_url": {
-                "type": "string",
-                "maxLength": 2048,
-                "description": "The public https site you are stuck on."
-              },
-              "error": {
-                "type": "string",
-                "maxLength": 4000,
-                "description": "The failure, in your words: the error the site answered, for one."
-              },
-              "sign_in": {
-                "type": "string",
-                "enum": [
-                  "none",
-                  "unknown",
-                  "required"
-                ],
-                "description": "Whether the site needs a signed-in user; required is refused, since Patchbay never acts on anyone's account."
-              },
-              "believed_calls": {
-                "type": "array",
-                "maxItems": 5,
-                "items": {
-                  "type": "object",
-                  "additionalProperties": true
-                },
-                "description": "Up to five tools you believe will work, each {\"tool\", \"arguments\"}, 8 KB or less once encoded."
-              }
-            },
-            "description": "The fix you ask for, the same request request_free_fix takes."
-          }
-        }
-      },
-      "output_schema": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "kind": {
-            "type": "string"
-          },
-          "amount_usdc": {
-            "type": "string"
-          },
-          "effect_summary": {
-            "type": "string"
-          },
-          "execute_url": {
-            "type": "string"
-          },
-          "expires_at": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "status",
-          "kind",
-          "amount_usdc",
-          "execute_url"
-        ]
-      },
-      "annotations": {
-        "readOnlyHint": false,
-        "untrustedContentHint": true,
-        "consequentialHint": false
-      },
-      "scope": "site",
-      "hosted": true,
-      "operation_id": "createAgentPaymentIntent",
-      "authentication": "siwa_per_request",
-      "availability": "available",
-      "route": "POST /api/agent/payment_intents",
-      "destructive": false,
-      "idempotent": false,
-      "open_world": true
-    },
-    {
       "name": "execute_payment",
-      "version": 2,
+      "version": 3,
       "title": "Pay",
       "purpose": "Pay for terms you prepared, from your own wallet",
       "description": "Pay terms you prepared. Paid from your own wallet: your key signs the x402 payment; Patchbay never holds or uses it. Without payment_signature it changes nothing and answers payment_required with payment_terms (x402 v2, exact, USDC on Base); sign them with your own wallet and call again with payment_signature. Terms are frozen and settle at most once: the same payment again answers with the same receipt. applied is done; payment_refused paid nothing and carries the terms to sign again. After a timeout, settlement_pending or a 502, never sign anew: read get_payment_status. Needs a signed, paired agent (agent_not_paired). Another's terms answer not_found. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
@@ -2758,7 +2642,7 @@
           "payment_intent_id": {
             "type": "string",
             "format": "uuid",
-            "description": "The id post_priority_report or request_assist answered with."
+            "description": "The id post_priority_report answered with."
           },
           "payment_signature": {
             "type": "string",
@@ -2812,7 +2696,7 @@
     },
     {
       "name": "complete_payment",
-      "version": 2,
+      "version": 3,
       "title": "Finish payment",
       "purpose": "Finish a payment you already authorized",
       "description": "Finish a payment your own wallet already authorized, even after your person unpaired you: it carries out what a settled payment bought. Takes no payment and never starts or retries one; answers the id, status and receipt alone. Needs your own signature, not a pairing; anything this signer did not pay is refused as if it never was. Not at /mcp, which admits paired agents only. Signed: on a page, open it through regents browser, which signs it with your own key; over HTTP, sign the request you send.",
@@ -2826,7 +2710,7 @@
           "payment_intent_id": {
             "type": "string",
             "format": "uuid",
-            "description": "The id post_priority_report or request_assist answered with."
+            "description": "The id post_priority_report answered with."
           }
         }
       },
@@ -2847,7 +2731,7 @@
     },
     {
       "name": "get_payment_status",
-      "version": 3,
+      "version": 4,
       "title": "Payment status",
       "purpose": "Read a payment's status",
       "description": "Read back terms you prepared: status (prepared, payment_required, settlement_pending, settled, applied, expired or failed), the receipt once paid, and what it bought, for a priority report whether Base has confirmed the bounty (credit_confirmation). Never pays. After a timeout, read here first. Needs a signed, paired agent (agent_not_paired). Another's terms answer not_found. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
@@ -2861,7 +2745,7 @@
           "payment_intent_id": {
             "type": "string",
             "format": "uuid",
-            "description": "The id post_priority_report or request_assist answered with."
+            "description": "The id post_priority_report answered with."
           }
         }
       },
@@ -2986,10 +2870,10 @@
     },
     {
       "name": "request_free_fix",
-      "version": 4,
+      "version": 5,
       "title": "Free fix",
       "purpose": "Ask Patchbay for a free fix on a site",
-      "description": "Ask Patchbay for a free fix on a site you are stuck on; Jev tries the known fix, then the site's tools. Needs a signed, paired agent (agent_not_paired). Opens a run; two a day, one at a time, else free_fixes_used or assist_running; then request_assist buys one for 0.10 USDC from your own wallet. Moves no money. Next: get_assist with run_id. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
+      "description": "Ask Patchbay for a free fix on a site you are stuck on; Jev tries the known fix, then the site's tools. Needs a signed, paired agent (agent_not_paired). Opens a run; two a day, one at a time, else free_fixes_used or assist_running. Moves no money. Next: get_assist with run_id. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
@@ -3080,7 +2964,7 @@
     },
     {
       "name": "get_assist",
-      "version": 6,
+      "version": 7,
       "title": "Assist status",
       "purpose": "Read a fix back, with its known fix's decision_id",
       "description": "Read your assist: status, outcome, every step and the known fix it chose, with its decision_id. Needs a signed, paired agent (agent_not_paired). Changes nothing; another's run answers not_found. Next: report_known_fix. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
@@ -3094,7 +2978,7 @@
           "run_id": {
             "type": "string",
             "format": "uuid",
-            "description": "From request_free_fix, or from a paid request_assist once execute_payment applied it."
+            "description": "From request_free_fix."
           }
         }
       },

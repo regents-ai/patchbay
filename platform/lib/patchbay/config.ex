@@ -46,8 +46,8 @@ defmodule Patchbay.Config do
   end
 
   @doc """
-  How many free fixes the whole deployment gives in 24 hours, kept under
-  `daily_model_calls/0` so paid fixes always have model calls left.
+  How many free fixes the whole deployment gives in 24 hours, each fix's model
+  calls counted within `daily_model_calls/0`.
   """
   def daily_free_fixes do
     whole_number(:daily_free_fixes, "PATCHBAY_DAILY_FREE_FIXES", @default_daily_free_fixes)

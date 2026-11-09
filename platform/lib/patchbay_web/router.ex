@@ -599,7 +599,7 @@ defmodule PatchbayWeb.Router do
     post "/payment_intents", PaymentIntentController, :create
   end
 
-  # Reading a paid assist back is not a payment request either.
+  # Reading back an assist a page once paid for is not a payment request either.
   scope "/api", PatchbayWeb.AssistAPI do
     pipe_through [:main_only, :forum_tools, :require_profile]
     get "/assists/:id", RunController, :show

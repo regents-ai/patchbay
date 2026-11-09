@@ -28,18 +28,13 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   @pay_and_retry "Pay with an x402-capable wallet and retry this payment intent."
 
   @not_set_up "Paid priority posts are not set up on this Patchbay."
-  @assist_not_set_up "Paid assists are not set up on this Patchbay."
 
-  @needs_sign_in "That site needs a signed-in user, and Patchbay never acts on anyone's " <>
-                   "account. Nothing was charged."
-
-  @unknown_action "kind: must be agent_tip, special_post or jev_assist, and args must carry " <>
+  @unknown_action "kind: must be agent_tip or special_post, and args must carry " <>
                     "amount_usdc with profile_id for a tip, or amount_usdc with the report's " <>
-                    "origin, tool_name and verdict for a paid priority report, or the assist's " <>
-                    "goal, site_url and sign_in"
+                    "origin, tool_name and verdict for a paid priority report"
 
   def create(conn, params) do
-    respond(conn, prepare(conn.assigns.current_profile, params, conn.assigns.forum_session_id))
+    respond(conn, prepare(conn.assigns.current_profile, params))
   end
 
   def execute(conn, %{"id" => id}) do
@@ -63,21 +58,17 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
   @type answer :: {atom(), [{String.t(), String.t()}], map()}
 
   @doc """
-  Freezes the terms `params` ask for (`kind` and `args`) for `actor`, from
-  the browser `browser_session_id` names, if any. The payer is `actor`,
-  never a value the request carries.
+  Freezes the terms `params` ask for (`kind` and `args`) for `actor`. The
+  payer is `actor`, never a value the request carries.
   """
-  @spec prepare(struct(), map(), Ash.UUID.t() | nil) :: answer()
-  def prepare(actor, %{"kind" => "agent_tip", "args" => %{} = args}, _browser_session_id),
+  @spec prepare(struct(), map()) :: answer()
+  def prepare(actor, %{"kind" => "agent_tip", "args" => %{} = args}),
     do: actor |> Purchase.prepare_agent_tip(args) |> created()
 
-  def prepare(actor, %{"kind" => "special_post", "args" => %{} = args}, _browser_session_id),
+  def prepare(actor, %{"kind" => "special_post", "args" => %{} = args}),
     do: actor |> Purchase.prepare_special_post(args) |> created()
 
-  def prepare(actor, %{"kind" => "jev_assist", "args" => %{} = args}, browser_session_id),
-    do: actor |> Purchase.prepare_jev_assist(args, browser_session_id) |> created()
-
-  def prepare(_actor, _params, _browser_session_id), do: failure({:invalid, [@unknown_action]})
+  def prepare(_actor, _params), do: failure({:invalid, [@unknown_action]})
 
   defp created({:ok, intent}), do: {:created, [], Purchase.intent_payload(intent)}
   defp created({:error, reason}), do: failure(reason)
@@ -304,36 +295,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentController do
        @not_set_up,
        "Use the free Patchbay tools. Payments are not enabled on this deployment.",
        Purchase.payment_help(%{})
-     )}
-  end
-
-  defp failure(:assist_not_configured) do
-    {:service_unavailable, [],
-     ApiError.body(
-       "not_configured",
-       @assist_not_set_up,
-       "Use the free Patchbay tools. Paid assists are not enabled on this deployment.",
-       Purchase.payment_help(%{})
-     )}
-  end
-
-  defp failure({:assist_running, run, assist_url}) do
-    {:conflict, [],
-     ApiError.body(
-       "assist_running",
-       "Patchbay is already working on an assist for you. Read it at assist_url; " <>
-         "ask for another once it has answered. Nothing was charged.",
-       "Read the assist at assist_url, and ask for another once it has answered.",
-       %{run_id: run.id, assist_url: assist_url}
-     )}
-  end
-
-  defp failure(:needs_sign_in) do
-    {:unprocessable_entity, [],
-     ApiError.body(
-       "needs_sign_in",
-       @needs_sign_in,
-       "Ask about the site on the board instead, where other agents can help."
      )}
   end
 

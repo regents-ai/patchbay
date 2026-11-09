@@ -5,13 +5,11 @@ defmodule Patchbay.Payments do
 
   Patchbay never holds anyone's money. A payment intent freezes what an action
   will cost and who receives it; the payer's wallet then pays that wallet
-  directly, and the library keeps the receipt. Three actions use it, all in
+  directly, and the library keeps the receipt. Two actions use it, both in
   USDC on Base, each an offer of its own: a tip to an agent profile, paid to
-  that profile's own wallet (`Patchbay.Payments.AgentTip`); a paid priority
-  report, paid into the escrow contract that holds the money for the answer
-  its asker accepts (`Patchbay.Payments.SpecialPost`); and a paid assist,
-  paid to the wallet this Patchbay takes its fee at
-  (`Patchbay.Payments.JevAssist`).
+  that profile's own wallet (`Patchbay.Payments.AgentTip`); and a paid
+  priority report, paid into the escrow contract that holds the money for
+  the answer its asker accepts (`Patchbay.Payments.SpecialPost`).
   """
 
   alias Patchbay.Payments.SpecialPost
@@ -45,8 +43,7 @@ defmodule Patchbay.Payments do
   from the purchase's answer, which it hands back unchanged: a paid priority
   report's escrow credit is handed to Base. It is decided by what is written
   down, so it happens once however many calls read the same applied intent,
-  and a call after one that was cut short finishes it. A paid assist needs
-  nothing more: its run's work was queued when the payment was applied.
+  and a call after one that was cut short finishes it.
   """
   @spec follow_up(answer) :: answer when answer: RegentPayments.Purchase.answer()
   def follow_up({:applied, %{kind: :special_post} = intent, receipt} = answer) do

@@ -3,16 +3,15 @@ defmodule Patchbay.Assist.Run do
   One assist: what somebody asked Patchbay to work out on some site, what
   let it open, and what came of it.
 
-  A paid run is opened from the frozen terms of a settled payment and from
-  nothing else, so what Patchbay works on is exactly what the payer was
-  shown and paid for. A free run is opened for an agent signed in with
-  SIWA, under the free fixes its wallet had left. A run is read back by its
-  payer, or by the browser it was asked from. The status and the
+  A run opens for an agent signed in with SIWA, under the free fixes its
+  wallet has left. Paid assists have ended; the runs they bought keep their
+  records, and a fee still on its way is forwarded as before. A run is read
+  back by its asker, or by the browser it was asked from. The status and the
   outcome are the only things that move after it is opened, and every move
   is announced on the run's own channel, so a page watching it follows along.
 
   The work is a job (`:work`), queued in the same transaction that opens or
-  reopens the run, so a run that was paid for is always worked on, after a
+  reopens the run, so a run that opened is always worked on, after a
   restart too, and on one node only. A run whose work was lost, with its
   node or past its time, is closed as failed by `:close_lost` and never
   worked twice. The fee goes on to the staking contract as a job of its own
@@ -118,14 +117,14 @@ defmodule Patchbay.Assist.Run do
     # has none.
     attribute(:browser_session_id, :uuid, allow_nil?: true, public?: true)
 
-    attribute(:grant, Grant, allow_nil?: false, public?: true, default: :paid)
+    attribute(:grant, Grant, allow_nil?: false, public?: true)
 
     # The key the page door derived for the connection a free run from the
     # page was once asked from. Never the address.
     attribute(:visitor_key, :string, allow_nil?: true, public?: true)
 
-    # The payment that bought a paid run, in the shared payment records; a
-    # free run has none.
+    # The payment that bought a run before paid assists ended, in the shared
+    # payment records; a free run has none.
     attribute(:payment_intent_id, :uuid, allow_nil?: true, public?: true)
 
     attribute(:goal, :string, allow_nil?: false, public?: true)
@@ -149,9 +148,10 @@ defmodule Patchbay.Assist.Run do
     attribute(:started_at, :utc_datetime_usec, allow_nil?: true, public?: true)
     attribute(:finished_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
-    # Where the fee stands on its way from the operator wallet to the REGENT
-    # staking contract, and the deposit's transaction once it is there.
-    attribute(:deposit_status, DepositStatus, allow_nil?: false, public?: true, default: :pending)
+    # Where a paid run's fee stands on its way from the operator wallet to
+    # the REGENT staking contract, and the deposit's transaction once it is
+    # there; a free run has no fee.
+    attribute(:deposit_status, DepositStatus, allow_nil?: false, public?: true)
     attribute(:deposit_tx_hash, :string, allow_nil?: true, public?: true)
 
     # When the fee's forward was last taken, which its wait for the chain is
@@ -227,33 +227,6 @@ defmodule Patchbay.Assist.Run do
       filter(expr(id == ^arg(:id) and browser_session_id == ^arg(:browser_session_id)))
     end
 
-    create :open do
-      description("""
-      Opens the run a settled payment bought, from that payment's frozen terms:
-      the request as the payer wrote it, under the id the terms named.
-      """)
-
-      accept([])
-
-      argument(:intent, :struct,
-        allow_nil?: false,
-        constraints: [instance_of: RegentPayments.PaymentIntent],
-        description: "The settled payment for this assist, as it stands."
-      )
-
-      argument(:browser_session_id, :uuid,
-        allow_nil?: true,
-        description: "The browser's forum identity the settling request carried, if any."
-      )
-
-      change(set_attribute(:payer_profile_id, actor(:id)))
-      change(set_attribute(:browser_session_id, arg(:browser_session_id)))
-      change(Patchbay.Assist.Changes.OpenFromIntent)
-      change(Patchbay.Agents.AttributeAction)
-      validate({Patchbay.Payments.Completion, kind: :jev_assist, target_type: :assist_run})
-      change(run_oban_trigger(:work))
-    end
-
     create :open_agent_free do
       description("""
       Opens a free run for an agent signed in with SIWA, from a request the
@@ -279,7 +252,7 @@ defmodule Patchbay.Assist.Run do
 
     update :work do
       description("""
-      Works a paid run through to its answer: starts it, tries what fits, and
+      Works an open run through to its answer: starts it, tries what fits, and
       closes it. The calls go out to other sites and to models, so nothing
       here holds a transaction open.
       """)
@@ -427,15 +400,8 @@ defmodule Patchbay.Assist.Run do
   end
 
   policies do
-    policy actor_attribute_equals(:role, :payment_completion) do
-      forbid_unless(action(:open))
-      authorize_if(always())
-    end
-
-    # Only the settled payment's own payer opens its run, and only the
-    # purchase process holds a settled intent to open one from. A free run
-    # opens for a SIWA-signed agent under the free fixes its wallet has left
-    # right now and no other. The actions that move a run along (`work`,
+    # A run opens for a SIWA-signed agent under the free fixes its wallet has
+    # left right now and no other. The actions that move a run along (`work`,
     # `start`, `record_step`, `finish`, `interrupt`, the fee's `forward_fee`,
     # `take_fee`, `release_fee`, `record_deposited`, `record_fee_failed` and
     # `fee_not_forwarded`, and `reopen`) and
@@ -448,10 +414,6 @@ defmodule Patchbay.Assist.Run do
       authorize_if(expr(beneficiary_profile_id == ^actor(:beneficiary_profile_id)))
     end
 
-    policy action(:open) do
-      authorize_if(actor_present())
-    end
-
     policy action(:open_agent_free) do
       forbid_unless({RegentAgents.Checks.Paired, repo: Patchbay.Repo})
       authorize_if(Patchbay.Assist.Checks.WithinAgentAllowance)
@@ -460,7 +422,6 @@ defmodule Patchbay.Assist.Run do
     # The browser's read filters on the identity in its own signed cookie,
     # so it is authorized as a whole and the filter does the choosing.
     bypass action(:as_browser) do
-      forbid_if(actor_attribute_equals(:role, :payment_completion))
       forbid_if(actor_attribute_equals(:role, :agent))
       authorize_if(always())
     end

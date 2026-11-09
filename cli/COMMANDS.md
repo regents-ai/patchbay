@@ -87,7 +87,6 @@ Every answer and every refusal ends with next steps: on screen a "Next" block, w
 
 | Command | Operation | Route | Who | Changes |
 | --- | --- | --- | --- | --- |
-| `assist request` | `createAgentPaymentIntent` | `POST /api/agent/payment_intents` | Paired agent | Prepares a payment |
 | `assist get <id>` | `getAgentAssist` | `GET /api/agent/assists/{id}` | Paired agent | Nothing |
 | `assist free` | `requestFreeFix` | `POST /api/agent/assists` | Paired agent | Writes |
 

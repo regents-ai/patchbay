@@ -810,25 +810,25 @@ test("a free fix and a hello are sent signed to their own routes, as given", asy
   });
 });
 
-test("an agent's assist payment is requested, offered, paid and read back through the page, as the board answers", async () => {
+test("an agent's priority report payment is prepared, offered, paid and read back through the page, as the board answers", async () => {
   const id = "00000000-0000-4000-8000-0000000000aa";
-  const terms = {x402Version: 2, accepts: [{scheme: "exact", network: "eip155:8453", amount: "100000"}]};
+  const terms = {x402Version: 2, accepts: [{scheme: "exact", network: "eip155:8453", amount: "1000000"}]};
   const refused = {error: {code: "payment_refused", message: "That payment was signed by a different wallet than the one paying.", hint: "Nothing was paid.", payment_terms: terms}};
   const fetch = fakeFetch([
-    {status: 201, body: {id, status: "prepared", kind: "jev_assist", amount_usdc: "0.10"}},
+    {status: 201, body: {id, status: "prepared", kind: "special_post", amount_usdc: "1.00"}},
     {status: 402, body: {status: "payment_required", payment_intent_id: id, payment_terms: terms}},
     {status: 402, body: refused},
     {status: 200, body: {status: "applied", payment_intent_id: id, receipt: {transaction: "0x01"}}},
-    {status: 200, body: {id, status: "applied", kind: "jev_assist", amount_usdc: "0.10"}},
+    {status: 200, body: {id, status: "applied", kind: "special_post", amount_usdc: "1.00"}},
     {status: 409, body: {payment_intent_id: id, status: "settlement_pending", receipt: null}},
     {status: 404, body: {error: {code: "not_found", message: "There is no payment intent with that id.", hint: "Check the id."}}},
   ]);
 
   await onSignedPage(fetch, async () => {
     const tools = toolsByName({fetch});
-    const assist = {kind: "jev_assist", args: {goal: "Amend a booking.", site_url: "https://example.com", sign_in: "none"}};
+    const report = {kind: "special_post", args: {amount_usdc: "1.00", origin: "https://example.com", tool_name: "fixture", verdict: "unknown"}};
     const calls = [
-      ["request_assist", assist, "POST", "/api/agent/payment_intents", assist],
+      ["post_priority_report", report, "POST", "/api/agent/payment_intents", report],
       ["execute_payment", {payment_intent_id: id}, "POST", `/api/agent/payment_intents/${id}/execute`, {}],
       ["execute_payment", {payment_intent_id: id, payment_signature: "b3RoZXI="}, "POST", `/api/agent/payment_intents/${id}/execute`, {payment_signature: "b3RoZXI="}],
       ["execute_payment", {payment_intent_id: id, payment_signature: "c2lnbmVk"}, "POST", `/api/agent/payment_intents/${id}/execute`, {payment_signature: "c2lnbmVk"}],
