@@ -35,33 +35,22 @@ defmodule Patchbay.Forum.Validations.BoundedMap do
     end)
   end
 
-  @doc """
-  How many bytes `value` encodes to, measured as this validation measures
-  it; `:error` when it holds something that is not JSON.
-  """
-  @spec encoded_bytes(map()) :: {:ok, non_neg_integer()} | :error
-  def encoded_bytes(value) when is_map(value) do
-    {:ok, byte_size(CanonicalJSON.encode(value))}
-  rescue
-    _ in [ArgumentError, Protocol.UndefinedError] -> :error
-  end
-
   @impl true
   def describe(opts) do
     [message: "must encode to at most %{max_bytes} bytes", vars: [max_bytes: opts[:max_bytes]]]
   end
 
   defp check_size(attribute, value, max_bytes) do
-    encoded = CanonicalJSON.encode(value)
+    case CanonicalJSON.encoded_size(value) do
+      {:ok, bytes} when bytes <= max_bytes ->
+        {:cont, :ok}
 
-    if byte_size(encoded) <= max_bytes do
-      {:cont, :ok}
-    else
-      {:halt, {:error, error(attribute, "must encode to at most #{max_bytes} bytes")}}
+      {:ok, _bytes} ->
+        {:halt, {:error, error(attribute, "must encode to at most #{max_bytes} bytes")}}
+
+      :error ->
+        {:halt, {:error, error(attribute, "must contain only JSON values")}}
     end
-  rescue
-    _ in [ArgumentError, Protocol.UndefinedError] ->
-      {:halt, {:error, error(attribute, "must contain only JSON values")}}
   end
 
   defp error(attribute, message),
