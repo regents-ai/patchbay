@@ -222,27 +222,45 @@ defmodule Patchbay.MixProject do
         "esbuild patchbay_privy --minify",
         "phx.digest"
       ],
-      precommit: [
-        "compile --warnings-as-errors",
-        "deps.unlock --check-unused",
-        "cmd mix hex.audit",
-        "format --check-formatted",
-        "credo --strict",
-        "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
-        # Canonical accounts and the two owned-subscription policy checks add
-        # three required compile connections to the previous 59-connection budget;
-        # the saved-errors page's admin check (a router plug and mount hook) adds one.
-        # The moderator check depends on no other Patchbay module, so the Offers
-        # and Credits help policies that name it add none. The bench's set
-        # summaries are one more resource its domain must name, which adds one,
-        # and so are the forum's record of each post Jev read, the bench's
-        # extra notes and an account's ENS name and picture.
-        "xref graph --label compile-connected --fail-above 64",
-        "ash.codegen --check",
-        "usage_rules.sync --check",
-        "cmd npm run typecheck --prefix assets",
-        "test --warnings-as-errors"
-      ]
+      precommit: precommit_checks(),
+      "check.static": Enum.reject(precommit_checks(), &slow_check?/1)
+    ]
+  end
+
+  # The fast loop keeps the same static gates; only suites run by the change
+  # runner and the network advisory audit remain in the full loop.
+  defp slow_check?(check) do
+    check in [
+      "cmd mix hex.audit",
+      "test",
+      "test --warnings-as-errors",
+      "cmd npm test",
+      "cmd npm run test:browser",
+      "cmd --cd assets npm run test:browser"
+    ]
+  end
+
+  defp precommit_checks do
+    [
+      "compile --warnings-as-errors",
+      "deps.unlock --check-unused",
+      "cmd mix hex.audit",
+      "format --check-formatted",
+      "credo --strict",
+      "cmd env SOBELOW_HOME=_build/sobelow mix sobelow --exit",
+      # Canonical accounts and the two owned-subscription policy checks add
+      # three required compile connections to the previous 59-connection budget;
+      # the saved-errors page's admin check (a router plug and mount hook) adds one.
+      # The moderator check depends on no other Patchbay module, so the Offers
+      # and Credits help policies that name it add none. The bench's set
+      # summaries are one more resource its domain must name, which adds one,
+      # and so are the forum's record of each post Jev read, the bench's
+      # extra notes and an account's ENS name and picture.
+      "xref graph --label compile-connected --fail-above 64",
+      "ash.codegen --check",
+      "usage_rules.sync --check",
+      "cmd npm run typecheck --prefix assets",
+      "test --warnings-as-errors"
     ]
   end
 end

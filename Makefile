@@ -4,7 +4,7 @@ help:
 	@echo "Run make check for every gate, or check-platform, check-browser, check-required-fixes, check-cli or check-contracts for one component."
 	@echo "Run make release to run every gate, then build the committed tree into an image."
 	@echo "Run make readiness to start the local server and check what the agent-readiness scorer looks for."
-check: check-platform check-browser check-required-fixes check-cli check-contracts
+check: check-change-runner check-platform check-browser check-required-fixes check-cli check-contracts
 # A new checkout needs nothing first: the libraries, the page packages, esbuild and the
 # shared library copies the type check reads are all fetched or built here, so the
 # browser walk itself fetches nothing.
@@ -43,3 +43,12 @@ release:
 # looks for, then stops the server.
 readiness:
 	scripts/readiness.sh
+
+# The template change loop; BASE=<ref> selects the comparison.
+.PHONY: check-change
+check-change:
+	python3 scripts/check-change.py
+
+.PHONY: check-change-runner
+check-change-runner:
+	python3 -m unittest discover -s scripts/tests -p 'test_check_change.py'

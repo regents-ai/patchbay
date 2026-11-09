@@ -22,6 +22,12 @@ ARG RUNNER_IMAGE="debian:${DEBIAN_VERSION}"
 # a Node of its own; the release image below never sees it.
 FROM node:24-bookworm-slim AS node
 
+# Stable npm dependencies are cached before application source, as in ash-template.
+FROM node AS assets
+WORKDIR /assets
+COPY platform/assets/package.json platform/assets/package-lock.json ./
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+
 FROM ${BUILDER_IMAGE} AS builder
 
 # install build dependencies
@@ -44,8 +50,9 @@ ENV MIX_ENV="prod"
 
 # install mix dependencies; the shared Regent libraries come from GitHub at the
 # commits mix.exs pins
+COPY --from=assets /assets/node_modules assets/node_modules
 COPY platform/mix.exs platform/mix.lock ./
-RUN mix deps.get --only $MIX_ENV
+RUN mix deps.get --only $MIX_ENV --check-locked
 RUN mkdir config
 
 # copy compile-time config files before we compile dependencies
@@ -70,7 +77,7 @@ COPY contracts/abi ../contracts/abi
 RUN mix compile
 
 # download the esbuild binary, then build and digest the assets
-RUN mix assets.setup
+RUN mix esbuild.install --if-missing
 RUN mix assets.deploy
 
 # changes to config/runtime.exs don't require recompiling the code

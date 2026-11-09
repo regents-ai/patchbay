@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-10-19 — Template development check and build improvements
+
+Adopt ash-template's change runner with all configured platform suites, independent
+ExUnit parts, bounded local runs and owned cleanup. Cache stable build dependencies
+before application files. Full integration/protected checks remain available. This
+records local implementation; verification and release state are in the rollout report.
+
 ## 2026-10-19 — The Wallet Bench's paid-call test pays the Bench's new wallet
 
 - The 0.01 USDC paid by `GET https://patchbay.help/bench/x402-test` now goes to the Wallet Bench's own wallet, 0x786C67651BcB148f5A383A150E78bD4Ed9f64f7b, which Techtree holds and which pays for the Bench's runs. Before, it went to 0x18E8692e3235Db15AdafD2c3AbE8fCFC554Bdef0, the wallet the Bench used to share.
