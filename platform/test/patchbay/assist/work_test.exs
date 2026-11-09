@@ -171,7 +171,7 @@ defmodule Patchbay.Assist.WorkTest do
     {:ok, done} = Assist.get_run(run.id, authorize?: false)
     assert {done.status, done.outcome} == {:finished, :needs_sign_in}
 
-    # Jev's provider refuses: the payment stands and a person finishes it.
+    # Jev's provider refuses: the run waits and a person finishes it.
     away = free_run(site, believed_calls: [])
 
     Application.put_env(:patchbay, :jev_req_options,

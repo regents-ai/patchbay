@@ -32,7 +32,9 @@ defmodule Patchbay.Assist.AllowanceTest do
     {:ok, second} = Assist.request_agent_free_run(request(), agent)
     close(second)
 
-    assert Allowance.agent_grant(agent) == :none
+    # Used up until the older of the two leaves the 24 hours.
+    assert {:none, wait} = Allowance.agent_grant(agent)
+    assert wait in (24 * 60 * 60 - 60)..(24 * 60 * 60)
 
     assert {:error, %Ash.Error.Forbidden{}} =
              Assist.request_agent_free_run(request(), agent)

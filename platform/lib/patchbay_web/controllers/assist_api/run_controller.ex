@@ -23,7 +23,14 @@ defmodule PatchbayWeb.AssistAPI.RunController do
   def show(conn, %{"id" => id}),
     do: send_answer(conn, get_assist(conn.assigns.current_profile, id))
 
-  defp send_answer(conn, {status, body}), do: conn |> put_status(status) |> json(body)
+  defp send_answer(conn, {status, body}),
+    do: conn |> wait_header(body) |> put_status(status) |> json(body)
+
+  # A refusal that names a wait says it as Retry-After too.
+  defp wait_header(conn, %{error: %{retry_after_seconds: seconds}}),
+    do: put_resp_header(conn, "retry-after", Integer.to_string(seconds))
+
+  defp wait_header(conn, _body), do: conn
 
   @doc """
   Opens one of the two free fixes a day a SIWA-signed agent gets, from the
@@ -111,15 +118,17 @@ defmodule PatchbayWeb.AssistAPI.RunController do
   end
 
   # The allowance was used by another request between the count and the
-  # opening, so the policy refused the run: the same answer as used up.
-  defp refusal(agent, {:error, %Ash.Error.Forbidden{}}), do: refusal(agent, :none)
+  # opening, so the policy refused the run: read again, it says which.
+  defp refusal(agent, {:error, %Ash.Error.Forbidden{}}),
+    do: refusal(agent, Allowance.agent_grant(agent))
 
-  defp refusal(_agent, :none) do
+  defp refusal(_agent, {:none, seconds}) do
     {:too_many_requests,
      ApiError.body(
        "free_fixes_used",
-       "Your wallet's two free fixes for today are used. They come back 24 hours after each was asked for.",
-       @ask_the_board
+       "Your wallet's two free fixes for today are used. Each comes back 24 hours after it was asked for.",
+       "Wait retry_after_seconds, then ask again. " <> @ask_the_board,
+       %{retry_after_seconds: seconds}
      )}
   end
 

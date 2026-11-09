@@ -2871,7 +2871,7 @@
       "version": 5,
       "title": "Free fix",
       "purpose": "Ask Patchbay for a free fix on a site",
-      "description": "Ask Patchbay for a free fix on a site you are stuck on; Jev tries the known fix, then the site's tools. Needs a signed, paired agent (agent_not_paired). Opens a run; two a day, one at a time, else free_fixes_used or assist_running. Moves no money. Next: get_assist with run_id. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
+      "description": "Ask Patchbay for a free fix on a site you are stuck on; Jev tries the known fix, then the site's tools. Needs a signed, paired agent (agent_not_paired). Opens a run; two a day, one at a time, else free_fixes_used (with retry_after_seconds) or assist_running. Moves no money. Next: get_assist with run_id. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
