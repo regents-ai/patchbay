@@ -10,6 +10,10 @@ defmodule Patchbay.Identity.AgentProfile do
   A wallet author keeps the registry page its latest verified sign-in named.
   The first World ID person a verified sign-in names stays linked to it for
   good; that number only groups the person's agents.
+
+  A profile is active or suspended. Only a person at Patchbay's console
+  suspends or reinstates one (`Patchbay.Identity.suspend/2`, `reinstate/2`),
+  and every door a profile acts through asks `may_act?/1` the same question.
   """
 
   use Ash.Resource,
@@ -48,6 +52,10 @@ defmodule Patchbay.Identity.AgentProfile do
       check_constraint(:authentication_origin, "agent_profiles_authentication_shape",
         check:
           "(authentication_origin = 'privy' AND privy_user_id IS NOT NULL AND wallet_chain_id IS NULL) OR (authentication_origin = 'wallet' AND privy_user_id IS NULL AND wallet_chain_id IS NOT NULL AND wallet_chain_id = 8453)"
+      )
+
+      check_constraint(:status, "agent_profiles_status_known",
+        check: "status IN ('active', 'suspended')"
       )
 
       check_constraint(:human_id, "agent_profiles_human_backing_complete",
@@ -102,6 +110,15 @@ defmodule Patchbay.Identity.AgentProfile do
     end
 
     attribute(:status, ProfileStatus, allow_nil?: false, public?: true, default: :active)
+
+    # The words a person at Patchbay's console gave for the latest suspension
+    # or reinstatement. Nothing shows them.
+    attribute(:status_reason, :string, constraints: [max_length: 500])
+
+    # A web sign-in made in this second or before it no longer holds
+    # (`PatchbayWeb.Plugs.CurrentProfile`). Suspending sets it; nothing else
+    # does, so reinstating never brings an old sign-in back.
+    attribute(:sessions_valid_after, :utc_datetime)
 
     attribute :registry_url, :string do
       description(
@@ -283,6 +300,42 @@ defmodule Patchbay.Identity.AgentProfile do
       accept([:agent_name])
       require_atomic?(false)
     end
+
+    update :suspend do
+      description("""
+      Suspends the profile for `reason`: it can no longer sign in on the web,
+      post or pay, every web sign-in it holds ends now, its agents are refused
+      and every app connected to it is disconnected. Suspending a suspended
+      profile again saves the new reason and disconnects any app still left.
+      """)
+
+      argument :reason, :string do
+        allow_nil?(false)
+        constraints(max_length: 500)
+      end
+
+      require_atomic?(false)
+      change(set_attribute(:status, :suspended))
+      change(set_attribute(:status_reason, arg(:reason)))
+      change(set_attribute(:sessions_valid_after, &DateTime.utc_now/0))
+      change(Patchbay.Identity.Changes.DisconnectApps)
+    end
+
+    update :reinstate do
+      description("""
+      Reinstates a suspended profile for `reason`. Old web sign-ins and
+      disconnected apps stay ended: the person signs in and connects them again.
+      """)
+
+      argument :reason, :string do
+        allow_nil?(false)
+        constraints(max_length: 500)
+      end
+
+      validate(attribute_equals(:status, :suspended), message: "is not suspended")
+      change(set_attribute(:status, :active))
+      change(set_attribute(:status_reason, arg(:reason)))
+    end
   end
 
   policies do
@@ -302,6 +355,10 @@ defmodule Patchbay.Identity.AgentProfile do
     policy action(:rename_agent) do
       authorize_if(expr(id == ^actor(:id) and authentication_origin == :privy))
     end
+
+    # `suspend` and `reinstate` are named by no policy, so nothing that
+    # arrives over HTTP can reach them; a person at Patchbay's console is
+    # their only caller and says so by skipping authorization deliberately.
   end
 
   @doc """
@@ -318,6 +375,15 @@ defmodule Patchbay.Identity.AgentProfile do
   """
   @spec can_receive_usdc?(t()) :: boolean()
   def can_receive_usdc?(%{status: status}), do: status == :active
+
+  @doc """
+  Whether this profile may act on Patchbay: sign in on the web, post, pay,
+  and be acted for by its agents and connected apps. Web sign-in, connected
+  apps, paired agents and wallet authors all ask this, and a suspended
+  profile is refused at every one of them.
+  """
+  @spec may_act?(t()) :: boolean()
+  def may_act?(%{status: status}), do: status == :active
 
   @doc """
   The public id minted from a profile's own key.

@@ -41,8 +41,9 @@ defmodule Patchbay.OAuth.Actor do
       })
       when is_binary(token_id) and is_binary(client_id) and is_binary(profile_id) do
     case Ash.get(Patchbay.Identity.AgentProfile, profile_id, not_found_error?: false) do
-      {:ok, %{authentication_origin: :privy, status: :active, privy_user_id: subject}} ->
-        RegentOAuth.live_token?(token_id, subject, client_id)
+      {:ok, %{authentication_origin: :privy, privy_user_id: subject} = profile} ->
+        Patchbay.Identity.AgentProfile.may_act?(profile) and
+          RegentOAuth.live_token?(token_id, subject, client_id)
 
       {:ok, _} ->
         false

@@ -2,7 +2,9 @@ defmodule Patchbay.Identity do
   @moduledoc """
   Patchbay's public attribution identities. Verified Privy humans and verified
   autonomous wallets resolve through separate named interfaces, even when their
-  wallet addresses match. Only humans can rename their own profile names.
+  wallet addresses match. Only humans can rename their own profile names. Only
+  a person at Patchbay's console suspends or reinstates a profile (`suspend/2`,
+  `reinstate/2`).
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -34,6 +36,38 @@ defmodule Patchbay.Identity do
       )
 
       define(:rename_agent, action: :rename_agent, args: [])
+      define(:suspend_profile, action: :suspend, args: [:reason])
+      define(:reinstate_profile, action: :reinstate, args: [:reason])
+    end
+  end
+
+  @doc """
+  Suspends the profile with this public id, for `reason`
+  (`Patchbay.Identity.AgentProfile`'s `suspend` action): it can no longer sign
+  in on the web, post or pay, its live web sign-ins end, its agents are
+  refused and its connected apps are disconnected. A person at Patchbay's
+  console runs it; it answers to no request:
+
+      bin/patchbay rpc 'Patchbay.Identity.suspend("<public id>", "<reason>")'
+  """
+  def suspend(public_id, reason) do
+    # A person at Patchbay's console: the suspension answers to no request.
+    with {:ok, profile} <- get_profile_by_public_id(public_id, authorize?: false) do
+      suspend_profile(profile, reason, authorize?: false)
+    end
+  end
+
+  @doc """
+  Reinstates the suspended profile with this public id, for `reason`. Its old
+  web sign-ins and disconnected apps stay ended: the person signs in again
+  and connects their apps again. A person at Patchbay's console runs it:
+
+      bin/patchbay rpc 'Patchbay.Identity.reinstate("<public id>", "<reason>")'
+  """
+  def reinstate(public_id, reason) do
+    # A person at Patchbay's console: the reinstatement answers to no request.
+    with {:ok, profile} <- get_profile_by_public_id(public_id, authorize?: false) do
+      reinstate_profile(profile, reason, authorize?: false)
     end
   end
 

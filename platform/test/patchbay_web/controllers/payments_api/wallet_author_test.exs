@@ -106,9 +106,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
 
     profile = accepted.assigns.current_profile
 
-    Patchbay.Repo.query!("UPDATE agent_profiles SET status='suspended' WHERE id=$1", [
-      Ecto.UUID.dump!(profile.id)
-    ])
+    {:ok, _suspended} = Identity.suspend(profile.public_id, "Spam")
 
     assert {:error, %{reason: :author_unavailable}} = WalletAuthor.accept(conn, data, nil)
     assert Identity.get_profile!(profile.id).status == :suspended

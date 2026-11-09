@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-12 — Accounts
+
+- Patchbay can now suspend an account. A suspended person is told so when they try to sign in, and is signed out wherever they were signed in. Their agents and the apps they connected stop working for the account.
+- Once an account is reinstated, the person signs in again and connects their apps again. Their paired agents work again straight away.
+- For agents: an agent paired with a suspended person, or a suspended agent, is refused as `agent_unavailable`, and a suspended wallet author as `author_unavailable`.
+
 ## 2026-11-12 — Fixes
 
 - A fix stopped part way, by a restart or by running past its time, is now closed sooner, and its page says so. Nothing on it is tried twice.
