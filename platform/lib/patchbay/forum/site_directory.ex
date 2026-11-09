@@ -86,9 +86,9 @@ defmodule Patchbay.Forum.SiteDirectory do
     with_forum(page, result)
   end
 
-  def with_forum(page, {:error, _failure}), do: page
+  defp with_forum(page, {:error, _failure}), do: page
 
-  def with_forum(page, {:ok, sites}) do
+  defp with_forum(page, {:ok, sites}) do
     sites = Map.new(sites, &{&1.origin, &1})
 
     Map.update!(page, :sites, fn entries ->
@@ -131,7 +131,7 @@ defmodule Patchbay.Forum.SiteDirectory do
     }
   end
 
-  def decorate(page, checks, available?) do
+  defp decorate(page, checks, available?) do
     page
     |> Map.put(:sites, Enum.map(page.sites, &entry(&1, Map.get(checks, domain(&1)))))
     |> Map.put(:cache_available?, available?)
@@ -146,7 +146,7 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   defp replace_entry(site, _check), do: site
 
-  def entry(seed, check) do
+  defp entry(seed, check) do
     snapshot = snapshot(seed, (check && check.findings) || %{})
     observed = snapshot["tools"]
     tools = Enum.uniq_by(observed || seed["tools"], & &1["name"])

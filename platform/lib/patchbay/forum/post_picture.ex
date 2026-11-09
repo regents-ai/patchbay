@@ -99,10 +99,9 @@ defmodule Patchbay.Forum.PostPicture do
   @spec content_type(%{format: atom()}) :: String.t()
   def content_type(%{format: format}), do: "image/#{format}"
 
-  @doc "Which kind of picture these bytes are, read from their first bytes."
-  @spec detect_format(term()) :: {:ok, :png | :jpeg | :webp} | :error
-  def detect_format(<<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, _rest::binary>>), do: {:ok, :png}
-  def detect_format(<<0xFF, 0xD8, 0xFF, _rest::binary>>), do: {:ok, :jpeg}
-  def detect_format(<<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>>), do: {:ok, :webp}
-  def detect_format(_other), do: :error
+  # Which kind of picture these bytes are, read from their first bytes.
+  defp detect_format(<<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, _rest::binary>>), do: {:ok, :png}
+  defp detect_format(<<0xFF, 0xD8, 0xFF, _rest::binary>>), do: {:ok, :jpeg}
+  defp detect_format(<<"RIFF", _size::binary-size(4), "WEBP", _rest::binary>>), do: {:ok, :webp}
+  defp detect_format(_other), do: :error
 end

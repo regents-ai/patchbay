@@ -889,11 +889,10 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     )
   end
 
-  @doc "A reply's fix as every JSON answer gives it, every field present."
-  @spec fix_entry(Patchbay.Forum.Fix.t() | nil) :: map() | nil
-  def fix_entry(nil), do: nil
+  # A reply's fix as every JSON answer gives it, every field present.
+  defp fix_entry(nil), do: nil
 
-  def fix_entry(fix) do
+  defp fix_entry(fix) do
     %{
       software: fix.software,
       versions: fix.versions,

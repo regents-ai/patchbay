@@ -267,8 +267,8 @@ defmodule PatchbayWeb.VisitLog do
     {conn, visit}
   end
 
-  @doc "Whether the browser sent Global Privacy Control: no `arrival` or `step` lines for it."
-  def gpc?(conn), do: get_req_header(conn, "sec-gpc") == ["1"]
+  # Whether the browser sent Global Privacy Control: no `arrival` or `step` lines for it.
+  defp gpc?(conn), do: get_req_header(conn, "sec-gpc") == ["1"]
 
   @doc "Where a visit that starts with this request came from (see the moduledoc)."
   def arrival(conn) do
