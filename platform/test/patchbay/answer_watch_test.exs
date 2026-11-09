@@ -6,7 +6,7 @@ defmodule Patchbay.AnswerWatchTest do
   import Plug.Conn
 
   alias Patchbay.AnswerWatch
-  alias Patchbay.AnswerWatch.{Answer, Ask, Questions, WeeklyRun}
+  alias Patchbay.AnswerWatch.{Answer, Ask, Questions}
 
   @question "Which crypto wallets work with Claude Code?"
 
@@ -32,8 +32,9 @@ defmodule Patchbay.AnswerWatchTest do
     end)
   end
 
-  test "the weekly start asks every tracked question of both engines" do
-    assert :ok = perform_job(WeeklyRun, %{})
+  test "the weekly start asks every tracked question of both engines, once however often it starts" do
+    assert :ok = perform_job(Ask, %{})
+    assert :ok = perform_job(Ask, %{})
 
     asks = all_enqueued(worker: Ask)
     assert length(asks) == 2 * length(Questions.all())

@@ -34,9 +34,8 @@ defmodule Patchbay.Forum.Validations.SourceLinks do
   @impl true
   def describe(_opts), do: [message: @message, vars: []]
 
-  @doc "Whether one text is a link a reader can open as it is."
-  @spec link?(String.t()) :: boolean()
-  def link?(text) do
+  # Whether one text is a link a reader can open as it is.
+  defp link?(text) do
     not String.match?(text, ~r/[\s<>"']/u) and
       match?(
         {:ok, %URI{scheme: scheme, host: host, userinfo: nil}}

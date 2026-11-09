@@ -1,36 +1,12 @@
 defmodule Patchbay.ChainClient do
   @moduledoc """
-  JSON-RPC reads at the latest block of the chain a Credits purchase names.
-  Every read is at `latest`: never count confirmations and never wait for
-  `safe` or `finalized`. The node is the site's own for the chain
-  (`config :patchbay, :chain_nodes`), never the public address a wallet adds
-  the chain with. Regent Credits checks a purchase through `transaction/2`,
-  `receipt/2` and `block_number/1`; Regent Points reads the NFTs a person
-  holds through `rpc/3`.
+  JSON-RPC reads at the latest block of a chain, through the site's own node
+  for it (`config :patchbay, :chain_nodes`), never the public address a wallet
+  adds the chain with. Regent Points reads the NFTs a person holds through
+  `rpc/3`.
   """
 
-  @behaviour RegentCredits.ChainClient
   @behaviour RegentPoints.ChainClient
-
-  @doc "The transaction sent as `hash`, or `nil` while the chain does not know it."
-  @impl RegentCredits.ChainClient
-  def transaction(chain, hash), do: rpc(chain, "eth_getTransactionByHash", [hash])
-
-  @doc "The receipt for `hash`, or `nil` while it has not landed."
-  @impl RegentCredits.ChainClient
-  def receipt(chain, hash), do: rpc(chain, "eth_getTransactionReceipt", [hash])
-
-  @doc "The newest block number."
-  @impl RegentCredits.ChainClient
-  def block_number(chain) do
-    with {:ok, "0x" <> hex} <- rpc(chain, "eth_blockNumber", []) do
-      {:ok, String.to_integer(hex, 16)}
-    end
-  end
-
-  @doc "`eth_getLogs` with `filter` as given."
-  @impl RegentCredits.ChainClient
-  def logs(chain, filter), do: rpc(chain, "eth_getLogs", [filter])
 
   @doc """
   One JSON-RPC request to the chain's node; one that gets no answer counts in

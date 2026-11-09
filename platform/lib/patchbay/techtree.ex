@@ -36,10 +36,6 @@ defmodule Patchbay.Techtree do
   @spec digest?(term()) :: boolean()
   def digest?(digest), do: is_binary(digest) and Regex.match?(@digest, digest)
 
-  @doc "The address of a Result's discussion."
-  @spec discussion_path(String.t()) :: String.t()
-  def discussion_path(digest), do: "/discuss/techtree/" <> digest
-
   @doc """
   The Result Techtree publishes under the digest, read now.
 

@@ -164,7 +164,7 @@ manifest, so every door that lists from it (the page, the hosted MCP server and
 "More tools" (`Patchbay.Forum.Capabilities.core/0` and `more/0`).
 
 `priv/public/llms.txt` is the one-page agent guide. The long-form guide is
-`priv/public/docs_agents.md` (`Patchbay.AgentGuide`), shown as "More for agents" on
+`priv/public/docs_agents.md` (`Patchbay.WrittenPages`), shown as "More for agents" on
 `/docs` as HTML and as Markdown.
 
 ## Page tools
@@ -593,8 +593,6 @@ on every page (`PatchbayWeb.HeaderAccountLive`, `Regent.Account.menu`, as in
 ash-template): the person's picture, name and wallet, their three most recently
 active agents with where each was last active, Pair New Agent, Manage Account and
 Sign out. It is a popover, so it closes on Escape or a press anywhere else.
-On the main site the menu also shows the Credits balance, under the name and
-wallet, at every width; pressing it opens Buy Credits.
 Pairing itself is on the Agents page (`/account/agents#account-pairing`), in the
 layout every Regent site's Agents page shares (`Regent.Account.agents_layout`).
 

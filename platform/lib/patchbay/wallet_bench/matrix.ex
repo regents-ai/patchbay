@@ -32,7 +32,6 @@ defmodule Patchbay.WalletBench.Matrix do
   alias Patchbay.WalletBench.{
     Check,
     ExtraNote,
-    ExtraNotes,
     Fixed,
     Note,
     Result,
@@ -155,7 +154,32 @@ defmodule Patchbay.WalletBench.Matrix do
       filters: filters,
       grids: grids
     )
-    |> Map.put(:extra_notes, ExtraNotes.by_release(rows.extra_notes, rows.roster))
+    |> Map.put(:extra_notes, extra_notes(rows.extra_notes, rows.roster))
+  end
+
+  @doc """
+  Techtree's extra notes by release: an agent or a wallet on the roster at
+  one version, under the roster's name, with its notes oldest first; agents,
+  then wallets, by name and version. Only the roster's agents and wallets
+  have a name to show a note under.
+  """
+  @spec extra_notes([struct()], [struct()]) :: [map()]
+  def extra_notes(notes, roster) do
+    names = Map.new(roster, &{{&1.kind, &1.id}, &1.name})
+
+    notes
+    |> Enum.filter(&Map.has_key?(names, {&1.kind, &1.id}))
+    |> Enum.group_by(&{&1.kind, &1.id, &1.version})
+    |> Enum.map(fn {{kind, id, version}, notes} ->
+      %{
+        kind: kind,
+        id: id,
+        name: names[{kind, id}],
+        version: version,
+        notes: Enum.sort_by(notes, & &1.noted_at, DateTime)
+      }
+    end)
+    |> Enum.sort_by(&{&1.kind, &1.name, &1.version})
   end
 
   @doc """

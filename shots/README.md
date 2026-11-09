@@ -98,6 +98,3 @@ its path the server logged `the browser did not start` and exited 1. On Fly
 the browser takes about 20 seconds to start after the machine wakes, longer
 than the proxy waits for the port, so before this the first picture of each
 hour failed.
-
-After Patchbay's next deploy, this prints `:ok`:
-`fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'IO.inspect(elem(Patchbay.Forum.Shots.take(\"https://example.com/\"), 0))'"`

@@ -24,6 +24,25 @@ defmodule Patchbay.SharedReadingTest do
     assert {:ok, %{reading: 41, at: ^at, degraded?: false}} = SharedReading.fetch(@key)
   end
 
+  test "every reading offered reports its size against its kind's limit, refused ones too" do
+    test = self()
+
+    :telemetry.attach(
+      "shared-reading-size-test",
+      [:patchbay, :shared_reading, :size],
+      fn _, size, %{kind: kind}, _ -> send(test, {kind, size}) end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach("shared-reading-size-test") end)
+
+    assert :ok = SharedReading.put(@key, 41)
+    assert {:error, :not_plain} = SharedReading.put(@key, 1..2)
+
+    assert_received {:wallet_bench, %{bytes: small, limit: 48_000_000}} when small < 16
+    assert_received {:wallet_bench, %{bytes: ranged, limit: 48_000_000}} when ranged > small
+  end
+
   test "a first read that fails is marked, and pages hear it" do
     SharedReading.subscribe(@key)
 

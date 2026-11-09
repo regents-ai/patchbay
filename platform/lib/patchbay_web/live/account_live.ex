@@ -4,8 +4,8 @@ defmodule PatchbayWeb.AccountLive do
   tabs:
 
   - Account (`/account`): who Patchbay knows them as, their wallet with its
-    ENS name when it has one, their Credits and their Profile on every Regent
-    site, in the layout every Regent site shares (`Regent.Account.layout`).
+    ENS name when it has one, and their Profile on every Regent site, in the
+    layout every Regent site shares (`Regent.Account.layout`).
   - Agents (`/account/agents`): the agents they paired, whose Pair New Agent
     opens the pairing window (`PatchbayWeb.HeaderAccountLive`).
   - Inbox (`/account/inbox`): what happened on the sites, tools and threads
@@ -20,8 +20,7 @@ defmodule PatchbayWeb.AccountLive do
   Everything here is read from the sign-in the page already holds; nothing on
   it asks the visitor to sign in again. When the sign-in ends while the page is
   open, the page stays and says so (`PatchbayWeb.CurrentProfile`, `:account`).
-  The Credits figures and the agents list change the moment either changes on
-  any Regent site.
+  The agents list changes the moment it changes on any Regent site.
   """
 
   use PatchbayWeb, :live_view
@@ -51,36 +50,22 @@ defmodule PatchbayWeb.AccountLive do
   alias PatchbayWeb.FixLive.Panel
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Discussions
-  alias PatchbayWeb.Read
 
   @inbox_page 50
 
   @impl true
   def mount(_params, session, socket) do
-    socket =
-      assign(socket,
-        credits: %Read{},
-        forum_session_id: session["forum_session_id"]
-      )
+    socket = assign(socket, forum_session_id: session["forum_session_id"])
 
-    case {socket.assigns.current_profile, socket.assigns.site_edition} do
-      {nil, _site_edition} ->
+    case socket.assigns.current_profile do
+      nil ->
         {:ok, socket}
 
-      # The open address shows no Credits (PatchbayWeb.SiteEdition).
-      {%{privy_user_id: did}, :open} ->
+      %{privy_user_id: did} ->
         if connected?(socket),
           do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentAgents.topic(did))
 
         {:ok, socket}
-
-      {%{privy_user_id: did}, :main} ->
-        if connected?(socket) do
-          :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentCredits.topic(did))
-          :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, RegentAgents.topic(did))
-        end
-
-        {:ok, read_credits(socket)}
     end
   end
 
@@ -192,22 +177,11 @@ defmodule PatchbayWeb.AccountLive do
   defp refusal(_refused), do: "That name could not be set."
 
   @impl true
-  def handle_info(:credits_changed, socket), do: {:noreply, read_credits(socket)}
-
   def handle_info(:agents_changed, socket) do
     if socket.assigns.live_action == :agents,
       do: send_update(PatchbayWeb.AgentsPanel, id: "account-agents", agents_changed: true)
 
     {:noreply, socket}
-  end
-
-  @impl true
-  def handle_async({Read, :credits, _generation} = name, result, socket),
-    do: {:noreply, Read.settle(socket, name, result)}
-
-  defp read_credits(socket) do
-    did = socket.assigns.current_profile.privy_user_id
-    Read.start(socket, :credits, did, fn -> {:ok, RegentCredits.balance(did)} end)
   end
 
   @impl true
@@ -270,8 +244,8 @@ defmodule PatchbayWeb.AccountLive do
   end
 
   # The layout every Regent site's Account page shares (`Regent.Account.layout`):
-  # the account card across the top, then Credits beside the person's public name.
-  # The open address (`PatchbayWeb.SiteEdition`) shows no wallet and no Credits.
+  # the account card, then the person's public name, one below the other. The
+  # open address (`PatchbayWeb.SiteEdition`) shows no wallet.
   defp overview(assigns) do
     ~H"""
     <Regent.Account.layout id="account">
@@ -287,26 +261,6 @@ defmodule PatchbayWeb.AccountLive do
           </:picture>
         </Regent.Account.identity>
       </:identity>
-      <:credits :if={@site_edition == :main}>
-        <Regent.Account.credits_summary
-          id="account-credits"
-          available={@credits.value && RegentCredits.Amount.format(@credits.value.available)}
-          held={@credits.value && RegentCredits.Amount.format(@credits.value.held)}
-          state={if @credits.state in [:idle, :empty], do: :loading, else: @credits.state}
-        >
-          <Regent.Primitives.button
-            type="button"
-            variant="secondary"
-            phx-click={JS.dispatch("pb:credits-open", to: "#pb-credits")}
-          >
-            Buy Credits
-          </Regent.Primitives.button>
-          <p class="pb-account-credits">
-            <a href="https://regents.sh/account">Manage Credits on regents.sh</a>
-            <a href={~p"/credits-help"}>Credits help</a>
-          </p>
-        </Regent.Account.credits_summary>
-      </:credits>
       <:profile>
         <%!-- The name is saved from the browser with the sign-in's own proof. --%>
         <div id="account-profile" phx-hook="PublicName" phx-update="ignore">

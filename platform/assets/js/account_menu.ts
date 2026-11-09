@@ -1,9 +1,8 @@
 // The account menu at the top right of every page (PatchbayWeb.HeaderAccountLive),
 // as in the Regent template's shell_panels.ts. The menu is a popover the browser
 // opens and closes itself, so it closes on Escape or a press anywhere else; what is
-// ours is following a link inside it, its Credits row on the narrowest phones, its
-// Pair New Agent, which opens the pairing window, and arriving at what an address's
-// #fragment names.
+// ours is following a link inside it, its Pair New Agent, which opens the pairing
+// window, and arriving at what an address's #fragment names.
 
 /**
  * Brings `target`, what an address's #fragment names, into view. When it holds a
@@ -46,18 +45,9 @@ export function installAccountMenu() {
     const target = event.target instanceof Element ? event.target : null
     if (!target) return
 
-    // The menu's balance row opens the Buy Credits dialog. The menu closes
-    // first, so focus goes back to the account button and returns there when the
-    // dialog closes.
-    const creditsOpener = target.closest<HTMLElement>("[data-credits-open]")
-    if (creditsOpener) {
-      creditsOpener.closest<HTMLElement>("[popover]")?.hidePopover()
-      document.getElementById("pb-credits")?.dispatchEvent(new CustomEvent("pb:credits-open"))
-      return
-    }
-
     // Pair New Agent, in the account menu and on the Agents page, opens the one
-    // pairing window. The menu closes first, as for Buy Credits.
+    // pairing window. The menu closes first, so focus goes back to the account
+    // button and returns there when the window closes.
     const pairOpener = target.closest<HTMLElement>("[data-pair-open]")
     if (pairOpener) {
       pairOpener.closest<HTMLElement>("[popover]")?.hidePopover()

@@ -75,8 +75,8 @@ defmodule Patchbay.Forum.PostingCheck do
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.Types.PostFinding
   alias Patchbay.Forum.Types.ThreadKind
-  alias Patchbay.Forum.Validations.BoundedMap
   alias Patchbay.Identity.AgentProfile
+  alias Patchbay.Patchbay.CanonicalJSON
 
   # How sure Jev must be of a fault before the post is turned away for it.
   @reject_confidence 0.7
@@ -618,7 +618,7 @@ defmodule Patchbay.Forum.PostingCheck do
   # writer's, so Jev is told that it is attached and how large, never what it
   # says.
   defp evidence(value) when is_map(value) do
-    {:ok, bytes} = BoundedMap.encoded_bytes(value)
+    {:ok, bytes} = CanonicalJSON.encoded_size(value)
     "attached, #{bytes} bytes, not shown"
   end
 

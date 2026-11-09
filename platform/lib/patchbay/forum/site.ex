@@ -52,6 +52,20 @@ defmodule Patchbay.Forum.Site do
         using: "GIN",
         concurrently: true
       )
+
+      # The site match (`:find`) reads these: an address or name containing the
+      # typed words, or nearly matching them.
+      index(["origin public.gin_trgm_ops"],
+        name: "forum_sites_origin_trgm_index",
+        using: "GIN",
+        concurrently: true
+      )
+
+      index(["display_name public.gin_trgm_ops"],
+        name: "forum_sites_display_name_trgm_index",
+        using: "GIN",
+        concurrently: true
+      )
     end
   end
 
@@ -260,13 +274,9 @@ defmodule Patchbay.Forum.Site do
 
       argument(:text, :string, allow_nil?: false, constraints: [min_length: 2, max_length: 200])
 
-      filter(
-        expr(
-          contains(string_downcase(origin), string_downcase(^arg(:text))) or
-            contains(string_downcase(display_name), string_downcase(^arg(:text))) or
-            fragment("? OPERATOR(public.<%) ?", ^arg(:text), origin) or
-            fragment("? OPERATOR(public.<%) coalesce(?, '')", ^arg(:text), display_name)
-        )
+      prepare(
+        {Patchbay.Forum.FindText,
+         contains: [:origin, :display_name], near: [:origin, :display_name]}
       )
 
       prepare(build(sort: [report_count: :desc, featured_rank: :asc, origin: :asc], limit: 6))

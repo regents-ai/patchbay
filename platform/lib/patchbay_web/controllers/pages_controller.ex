@@ -18,10 +18,7 @@ defmodule PatchbayWeb.PagesController do
   def about(conn, _params) do
     conn
     |> merge_assigns(PatchbayWeb.PublicDocuments.page("/about"))
-    |> render(:about,
-      html: Patchbay.AddressText.html(Patchbay.About.page(conn.assigns.site_edition)),
-      markdown: Patchbay.About.markdown(conn.assigns.site_edition)
-    )
+    |> render(:about, Map.to_list(Patchbay.WrittenPages.about(conn.assigns.site_edition)))
   end
 
   def privacy(conn, _params) do
@@ -39,10 +36,7 @@ defmodule PatchbayWeb.PagesController do
 
     conn
     |> merge_assigns(PatchbayWeb.PublicDocuments.page("/terms", edition))
-    |> render(terms_page(edition),
-      html: Patchbay.Terms.html(edition),
-      markdown: Patchbay.Terms.markdown(edition)
-    )
+    |> render(terms_page(edition), Map.to_list(Patchbay.WrittenPages.terms(edition)))
   end
 
   # The open address has its own terms, for the services it offers.
@@ -86,8 +80,8 @@ defmodule PatchbayWeb.PagesController do
     json(conn, %{title: title, markdown: markdown})
   end
 
-  defp agent_guide("md"), do: Patchbay.AgentGuide.markdown()
-  defp agent_guide(_html), do: Patchbay.AgentGuide.html()
+  defp agent_guide("md"), do: Patchbay.WrittenPages.agent_guide().markdown
+  defp agent_guide(_html), do: Patchbay.WrittenPages.agent_guide().html
 
   # The agents the pairing box offers, in its order, each with ash-template's
   # line on how it pairs (its priv/public/agents/SLUG.md), then NemoClaw, which

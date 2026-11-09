@@ -169,7 +169,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     end
 
     for name <- ~w(unlike_post unfollow_scope), do: assert(facts[name].destructive, name)
-    for name <- ~w(account_balances account_points), do: refute(facts[name].open_world, name)
+    refute facts["account_points"].open_world
   end
 
   test "every tool's version and the manifest's are whole numbers" do

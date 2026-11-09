@@ -1,9 +1,9 @@
 defmodule PatchbayWeb.ErrorsAdmin do
   @moduledoc """
   Keeps the saved errors at /admin/errors, and the weekly answer check's
-  download at /admin/ai-answers.csv, for Credits admins: a signed-in
-  profile whose Privy account the Credits `:admins` setting names
-  (REGENT_CREDITS_ADMINS). Anyone else gets the site's ordinary not-found page,
+  download at /admin/ai-answers.csv, for the site's admins: a signed-in
+  profile whose Privy account the site's `:admins` setting names
+  (config/config.exs). Anyone else gets the site's ordinary not-found page,
   so the page's existence is not shown either.
 
   As a plug it checks the request and sends the page's own content security
@@ -59,7 +59,7 @@ defmodule PatchbayWeb.ErrorsAdmin do
   defp admin?(session) do
     case CurrentProfile.signed_in_profile(session) do
       %{privy_user_id: id} when is_binary(id) ->
-        id in Application.fetch_env!(:regent_credits, :admins)
+        id in Application.fetch_env!(:patchbay, :admins)
 
       _signed_out ->
         false

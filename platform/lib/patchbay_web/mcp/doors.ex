@@ -33,7 +33,7 @@ defmodule PatchbayWeb.MCP.Doors do
 
   @names ~w(request_free_fix get_assist find_known_fixes get_known_fix get_subscriptions
             like_post unlike_post report_tool_on_another_site reply_to_report
-            account_balances account_credits_history account_points
+            account_points
             get_offer_bid_options ask_offer_fit save_agent_offer reword_agent_offer
             read_wallet_bench read_wallet_bench_pair read_tool_catalog set_my_agent_name
             read_inbox acknowledge_inbox_item ask_credits_help list_credits_help
@@ -106,12 +106,6 @@ defmodule PatchbayWeb.MCP.Doors do
       arguments |> Map.delete("report_id") |> Map.put("id", id)
     )
   end
-
-  defp door("account_balances", _arguments, %{actor: actor}),
-    do: AgentAccountController.account_balances(actor)
-
-  defp door("account_credits_history", arguments, %{actor: actor}),
-    do: AgentAccountController.account_credits_history(actor, arguments)
 
   defp door("account_points", _arguments, %{actor: actor}),
     do: AgentAccountController.account_points(actor)

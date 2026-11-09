@@ -11,6 +11,17 @@ defmodule Patchbay.Patchbay.CanonicalJSON do
   @spec encode(term()) :: binary()
   def encode(value), do: encode_value(value)
 
+  @doc """
+  How many bytes `value` encodes to, for a value from outside Patchbay that
+  may hold something that is not JSON: `:error` then, where `encode/1` raises.
+  """
+  @spec encoded_size(term()) :: {:ok, non_neg_integer()} | :error
+  def encoded_size(value) do
+    {:ok, byte_size(encode_value(value))}
+  rescue
+    _ in [ArgumentError, Protocol.UndefinedError] -> :error
+  end
+
   defp encode_value(nil), do: "null"
   defp encode_value(true), do: "true"
   defp encode_value(false), do: "false"
