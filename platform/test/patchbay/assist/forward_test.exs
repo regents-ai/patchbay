@@ -1,7 +1,7 @@
 defmodule Patchbay.Assist.ForwardTest do
   @moduledoc """
-  A paid assist's fee goes from the operator wallet to the REGENT staking
-  contract, as the run's `:forward_fee` job: an approval of exactly the fee,
+  The fee of an assist paid for before paid assists ended goes from the
+  operator wallet to the REGENT staking contract, as the run's `:forward_fee` job: an approval of exactly the fee,
   then the deposit, each signed with the operator key and sent to a fake
   Base. What the chain says is written on the run, a fee is forwarded once
   however often its job runs, and a fee that cannot be forwarded never
@@ -12,13 +12,13 @@ defmodule Patchbay.Assist.ForwardTest do
   use AshOban.Test, repo: Patchbay.Repo
 
   import Plug.Conn
+  import Patchbay.AssistFixtures, only: [paid_run: 2]
 
   alias Ethers.Contracts.ERC20
   alias Ethers.Transaction
   alias Patchbay.Assist
   alias Patchbay.Assist.Run
   alias Patchbay.Identity
-  alias Patchbay.Payments.JevAssist
   alias RegentPayments.FeeForward.Staking
   alias RegentPayments.USDC
 
@@ -106,7 +106,7 @@ defmodule Patchbay.Assist.ForwardTest do
 
   test "with no staking contract set the fee stays where it was paid, and nothing is sent" do
     chain = chain(receipts: fn _hash -> "0x1" end)
-    Application.put_env(:patchbay, :assist, pay_to_address: @payer)
+    Application.put_env(:patchbay, :assist, staking_contract_address: nil)
     run = answered_run()
 
     assert %{success: 1} = forward(run)
@@ -144,9 +144,7 @@ defmodule Patchbay.Assist.ForwardTest do
 
     {:ok, {_address, port}} = ThousandIsland.listener_info(server)
 
-    # The fee is paid into the operator wallet, the one that forwards it.
     key = :crypto.strong_rand_bytes(32)
-    {:ok, operator} = X402.EIP3009.derive_address(key)
 
     Application.put_env(:patchbay, :escrow,
       contract_address: nil,
@@ -154,10 +152,7 @@ defmodule Patchbay.Assist.ForwardTest do
       rpc_url: "http://127.0.0.1:#{port}"
     )
 
-    Application.put_env(:patchbay, :assist,
-      pay_to_address: String.downcase(operator),
-      staking_contract_address: @staking
-    )
+    Application.put_env(:patchbay, :assist, staking_contract_address: @staking)
 
     seen
   end
@@ -223,7 +218,9 @@ defmodule Patchbay.Assist.ForwardTest do
     Oban.drain_queue(queue: :fees, with_scheduled: true, with_recursion: true)
   end
 
-  # A paid run Patchbay answered, whose payment receipt names the payer wallet.
+  # A paid run Patchbay answered, whose payment receipt names the payer
+  # wallet. The fee was paid into the operator wallet, the one that forwards
+  # it.
   defp answered_run do
     payer =
       Identity.upsert_from_privy!(%{
@@ -231,20 +228,16 @@ defmodule Patchbay.Assist.ForwardTest do
         wallet_address: @payer
       })
 
-    request = %{
-      "goal" => "Book the 9am table for two on Friday",
-      "site_url" => "https://bookings.example.com/mcp",
-      "error" => nil,
-      "sign_in" => "unknown",
-      "believed_calls" => []
-    }
-
-    {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request}, payer)
-    {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
-    {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
+    run = paid_run(payer, operator())
 
     # Patchbay's own job answering it.
     {:ok, running} = Assist.start_run(run, authorize?: false)
     Assist.finish_run!(running, %{status: :finished, outcome: :reached}, authorize?: false)
+  end
+
+  defp operator do
+    key = Application.fetch_env!(:patchbay, :escrow)[:operator_private_key]
+    {:ok, address} = X402.EIP3009.derive_address(Base.decode16!(key, case: :lower))
+    String.downcase(address)
   end
 end

@@ -268,7 +268,7 @@ config :patchbay, :assist_read_only_tools, %{
 config :patchbay, Patchbay.Forum.EventSubscription, webhooks: Regent.MCPEvents
 
 # Paid actions, through the Regents payments library shared by every Regent
-# site: a tip to an agent profile, a paid priority report and a paid assist.
+# site: a tip to an agent profile and a paid priority report.
 # The payment records live in the shared `regent_payments` schema, which
 # `bin/migrate-shared` applies; Patchbay reads and writes only its own rows.
 #
@@ -281,8 +281,7 @@ config :regent_payments,
   ash_domains: [RegentPayments],
   offers: [
     Patchbay.Payments.AgentTip,
-    Patchbay.Payments.SpecialPost,
-    Patchbay.Payments.JevAssist
+    Patchbay.Payments.SpecialPost
   ],
   payment_chain: %{name: "Base", rpc_url: "https://mainnet.base.org"},
   wallet_proof: [name: "Patchbay", version: "1", endpoint: PatchbayWeb.Endpoint]

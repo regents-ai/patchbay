@@ -19,8 +19,8 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
   @endpoint PatchbayWeb.Endpoint
   @funded_at 1_790_000_000
-  @assist_wallet "0x" <> String.duplicate("d", 40)
   @intents "/api/agent/payment_intents"
+  @escrow "0x" <> String.duplicate("c", 40)
 
   # What the synthetic Base node answers: every payment has landed, and every
   # transaction is taken.
@@ -125,14 +125,12 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     Application.put_env(:regent_agents, :req_options, [])
 
     Application.put_env(:patchbay, :escrow,
-      contract_address: "0x" <> String.duplicate("c", 40),
+      contract_address: @escrow,
       operator_private_key: Base.encode16(:crypto.strong_rand_bytes(32), case: :lower),
       rpc_url: payment <> "/rpc"
     )
 
     Patchbay.PaymentService.stand_in(payment)
-    old_assist = Application.get_env(:patchbay, :assist)
-    Application.put_env(:patchbay, :assist, pay_to_address: @assist_wallet)
 
     receipt = issue_receipt(secret, address)
     other_key = :crypto.strong_rand_bytes(32)
@@ -149,7 +147,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       Application.put_env(:regent_agents, :req_options, old_req_options)
       Application.put_env(:patchbay, :wallet_author, old_wallet)
       Application.put_env(:patchbay, :escrow, old_escrow)
-      Application.put_env(:patchbay, :assist, old_assist)
     end)
 
     %{
@@ -347,7 +344,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   end
 
   test "changed body and replay are refused by cryptographic verification", c do
-    body = prepare_body("jev_assist", assist_args())
+    body = prepare_body("special_post", report_args(c, "1.00"))
 
     request = signed(c, "POST", @intents, body)
     assert send_signed(c, request)["status"] == 201
@@ -362,7 +359,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   end
 
   test "a request signed for another site is refused here", c do
-    body = prepare_body("jev_assist", assist_args())
+    body = prepare_body("special_post", report_args(c, "1.00"))
 
     # Patchbay names the address the request reached it at, so a signature
     # over another site's address does not verify.
@@ -372,7 +369,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   end
 
   test "chunked JSON captures exact bytes and cookies confer no authority", c do
-    body = prepare_body("jev_assist", assist_args())
+    body = prepare_body("special_post", report_args(c, "1.00"))
 
     request = signed(c, "POST", @intents, body)
     headers = Map.put(request.headers, "cookie", "unrelated_browser_cookie=ignored")
@@ -390,10 +387,12 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   # hosted tools at /mcp call the same door as /api/agent/payment_intents (a
   # page's tools send those very requests), and /mcp admits a payment as that
   # door does, so each step answers alike.
-  test "a paired agent pays for an assist from its own wallet through /mcp, and every door answers alike",
+  test "a paired agent pays for a report from its own wallet through /mcp, and every door answers alike",
        c do
-    prepared = mcp(c, "request_assist", %{"kind" => "jev_assist", "args" => assist_args()})
-    assert {:ok, %{"id" => id, "amount_usdc" => "0.10", "kind" => "jev_assist"}} = prepared
+    prepared =
+      mcp(c, "post_priority_report", %{"kind" => "special_post", "args" => report_args(c, "1.00")})
+
+    assert {:ok, %{"id" => id, "amount_usdc" => "1.00", "kind" => "special_post"}} = prepared
 
     # The terms freeze the agent's own wallet as the one that pays.
     intent = Ash.get!(RegentPayments.PaymentIntent, id, authorize?: false)
@@ -406,15 +405,15 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
              {:ok, get(c, id)["body"]}
 
     # The x402 terms: an answer, the same at both doors, for exactly the
-    # frozen fee, paid to the assist wallet, whatever the caller sends.
+    # frozen amount, paid into the escrow contract, whatever the caller sends.
     challenge = execute(c, id)
     assert challenge["status"] == 402
     assert {:ok, offered} = mcp(c, "execute_payment", %{"payment_intent_id" => id})
     assert offered == challenge["body"]
     assert offered["status"] == "payment_required"
     [requirement] = offered["payment_terms"]["accepts"]
-    assert requirement["amount"] == "100000"
-    assert String.downcase(requirement["payTo"]) == @assist_wallet
+    assert requirement["amount"] == "1000000"
+    assert String.downcase(requirement["payTo"]) == @escrow
 
     # A payment the agent's person signed is not the agent's: a refusal, the
     # same at both doors, and nothing settles.
@@ -484,7 +483,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   # before anything runs.
   test "/mcp admits execute_payment only for a signed, currently paired wallet", c do
     {:ok, %{"id" => id}} =
-      mcp(c, "request_assist", %{"kind" => "jev_assist", "args" => assist_args()})
+      mcp(c, "post_priority_report", %{"kind" => "special_post", "args" => report_args(c, "1.00")})
 
     body =
       Jason.encode!(%{
@@ -524,17 +523,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
     assert {:error, %{"error" => %{"code" => "agent_not_paired"}}} =
              mcp(c, "execute_payment", %{"payment_intent_id" => id})
-  end
-
-  test "a paid assist is refused alike at both doors when not set up", c do
-    Application.delete_env(:patchbay, :assist)
-    over_http = prepare(c, "jev_assist", assist_args())
-
-    assert {:error, refusal} =
-             mcp(c, "request_assist", %{"kind" => "jev_assist", "args" => assist_args()})
-
-    assert over_http["status"] == 503
-    assert refusal == over_http["body"]
   end
 
   # Whatever amount an agent asks for within a report's bounds, the terms it is
@@ -585,22 +573,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
                })
 
       assert refusal == over_http["body"], written
-    end
-
-    assert intents(c.address) == []
-  end
-
-  # Whatever amount an agent names, an assist's fee stays fixed, at either door.
-  property "no amount from 0 to 200 USDC, nor a malformed one, changes an assist's fee", c do
-    check all(written <- amount_text(), max_runs: 15) do
-      assert {:error, %{"error" => %{"code" => "invalid"}}} =
-               mcp(c, "request_assist", %{
-                 "kind" => "jev_assist",
-                 "args" => Map.put(assist_args(), "amount_usdc", written)
-               })
-
-      assert prepare(c, "jev_assist", Map.put(assist_args(), "amount_usdc", written))["status"] ==
-               422
     end
 
     assert intents(c.address) == []
@@ -675,13 +647,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
   defp prepare_body(kind, args), do: Jason.encode!(%{kind: kind, args: args})
 
-  defp assist_args,
-    do: %{
-      "goal" => "Amend a booking.",
-      "site_url" => "https://quiet.example.net",
-      "sign_in" => "none"
-    }
-
   defp report_args(c, written),
     do: %{
       "amount_usdc" => written,
@@ -696,32 +661,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       "SELECT id FROM regent_payments.payment_intents WHERE payload->'__regent_payments_agent_authority'->>'wallet_address' = $1",
       [String.downcase(wallet)]
     ).rows
-  end
-
-  # Amounts written from 0 to 200 USDC with up to six places, and text that
-  # is no amount at all.
-  defp amount_text do
-    one_of([
-      map(tuple({integer(0..200_000_000), integer(0..6)}), fn {atomic, places} ->
-        written(atomic, places)
-      end),
-      member_of([
-        "0.999999",
-        "1",
-        "1.00",
-        "100",
-        "100.00",
-        "100.000001",
-        "",
-        "-1.00",
-        "1e2",
-        "1.0000001",
-        "abc",
-        " 5.00",
-        "5,00",
-        "0x10"
-      ])
-    ])
   end
 
   defp complete(c, id),

@@ -31,6 +31,8 @@ defmodule Patchbay.Security.AiInputCheckTest do
   use PatchbayWeb.ConnCase, async: false
   use AshOban.Test, repo: Patchbay.Repo
 
+  import Patchbay.AssistFixtures, only: [paired_agent: 0]
+
   @moduletag :capture_log
 
   require Ash.Query
@@ -41,10 +43,8 @@ defmodule Patchbay.Security.AiInputCheckTest do
   alias Patchbay.Forum.ModerationAction
   alias Patchbay.Forum.PostCheck
   alias Patchbay.Forum.Report
-  alias Patchbay.Identity
   alias Patchbay.Offers.Screening
   alias Patchbay.PageSite
-  alias Patchbay.Payments.JevAssist
   alias PatchbayWeb.SignedAgent
 
   # The hidden instructions: an HTML comment, zero-width text and plain lines.
@@ -365,21 +365,17 @@ defmodule Patchbay.Security.AiInputCheckTest do
   # ---------------------------------------------------------------------------
   # A Jev fix
 
-  @wallet "0x" <> String.duplicate("d", 40)
   @bookings "bookings.example.com"
 
   defp assist_setup do
     old = %{
-      assist: Application.get_env(:patchbay, :assist),
       target: Application.get_env(:patchbay, :assist_target),
       listed: Application.fetch_env!(:patchbay, :assist_read_only_tools)
     }
 
-    Application.put_env(:patchbay, :assist, pay_to_address: @wallet)
     Application.put_env(:patchbay, :assist_read_only_tools, %{@bookings => ~w(lookup)})
 
     on_exit(fn ->
-      Application.put_env(:patchbay, :assist, old.assist)
       Application.put_env(:patchbay, :assist_target, old.target)
       Application.put_env(:patchbay, :assist_read_only_tools, old.listed)
       Application.delete_env(:patchbay, :assist_model_options)
@@ -389,7 +385,7 @@ defmodule Patchbay.Security.AiInputCheckTest do
   test "a Jev fix: the site's descriptions and answers are evidence, and an injected answer calls nothing else" do
     assist_setup()
     site = mcp_site()
-    run = paid_run(site)
+    run = free_run(site)
     test = self()
 
     # The drafting model answers with the arguments, a tool call and a field
@@ -479,7 +475,7 @@ defmodule Patchbay.Security.AiInputCheckTest do
     # A tool the site does not list is no answer: nothing is called, and a
     # person at Patchbay finishes the run.
     second_site = mcp_site()
-    second = paid_run(second_site)
+    second = free_run(second_site)
 
     jev(fn _state, questions ->
       if Map.has_key?(questions, "tool"),
@@ -495,7 +491,7 @@ defmodule Patchbay.Security.AiInputCheckTest do
 
     # A confidence outside 0 to 1 is no answer either.
     third_site = mcp_site()
-    third = paid_run(third_site)
+    third = free_run(third_site)
 
     jev(fn _state, questions ->
       if Map.has_key?(questions, "tool"),
@@ -510,13 +506,7 @@ defmodule Patchbay.Security.AiInputCheckTest do
     assert calls(third_site, "tools/call") == []
   end
 
-  defp paid_run(site) do
-    payer =
-      Identity.upsert_from_privy!(%{
-        privy_user_id: "did:privy:ai-input-#{Ecto.UUID.generate()}",
-        wallet_address: "0x" <> String.duplicate("a", 40)
-      })
-
+  defp free_run(site) do
     request = %{
       "goal" => "Find the 9am table for two on Friday",
       "site_url" => "https://#{@bookings}/mcp",
@@ -525,9 +515,7 @@ defmodule Patchbay.Security.AiInputCheckTest do
       "believed_calls" => []
     }
 
-    {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request}, payer)
-    {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
-    {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
+    {:ok, run} = Assist.request_agent_free_run(request, paired_agent())
 
     Application.put_env(:patchbay, :assist_target,
       resolve: fn @bookings -> [{93, 184, 216, 34}] end,

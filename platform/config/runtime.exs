@@ -241,17 +241,12 @@ config :patchbay, :escrow,
   operator_private_key: System.get_env("OPERATOR_PRIVATE_KEY"),
   rpc_url: if(config_env() != :test, do: System.get_env("BASE_RPC_URL"))
 
-# Paid assists. ASSIST_WALLET_ADDRESS is the wallet on Base an assist's fixed
-# fee is paid to: the operator wallet, so the fee can be forwarded from it.
-# STAKING_CONTRACT_ADDRESS is the REGENT revenue staking contract each fee is
-# forwarded to, signed with OPERATOR_PRIVATE_KEY and sent through
-# BASE_RPC_URL from the escrow settings above. A machine started without the
-# wallet serves every unpaid part of Patchbay and says that paid assists are
-# not set up; one started without the staking contract takes the fee and
-# leaves forwarding it for a person to run.
-config :patchbay, :assist,
-  pay_to_address: System.get_env("ASSIST_WALLET_ADDRESS"),
-  staking_contract_address: System.get_env("STAKING_CONTRACT_ADDRESS")
+# Fees of the paid assists that ran before they ended. STAKING_CONTRACT_ADDRESS
+# is the REGENT revenue staking contract a fee still waiting is forwarded to,
+# signed with OPERATOR_PRIVATE_KEY and sent through BASE_RPC_URL from the
+# escrow settings above. A machine started without it leaves the fee in the
+# operator wallet for a person to forward.
+config :patchbay, :assist, staking_contract_address: System.get_env("STAKING_CONTRACT_ADDRESS")
 
 migrating? = System.get_env("PATCHBAY_RELEASE_COMMAND") == "migrate"
 
