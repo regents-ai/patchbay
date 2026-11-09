@@ -107,7 +107,7 @@ defmodule PatchbayWeb.DiscoveryController do
 
     body =
       @sources[@guides[edition]]
-      |> String.replace("{{facts}}", Patchbay.About.facts(edition))
+      |> String.replace("{{facts}}", Patchbay.WrittenPages.facts(edition))
       |> guide(edition)
 
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)
