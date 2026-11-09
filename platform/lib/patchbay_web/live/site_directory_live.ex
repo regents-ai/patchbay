@@ -70,12 +70,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
 
       site ->
         {status, check} =
-          SiteChecks.ask(
-            site.domain,
-            SiteChecks.current(site.domain),
-            socket.assigns.visitor,
-            :directory
-          )
+          SiteChecks.ask(site.domain, SiteChecks.current(site.domain), socket.assigns.visitor)
 
         page =
           if check,

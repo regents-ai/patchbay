@@ -5,11 +5,15 @@ defmodule Patchbay.Accounts.EnsIdentity do
   This is a copy of public chain state, not identity evidence: the account's
   own row keeps the verified Privy identity and wallet. Each sign-in asks again
   (`:request_lookup`), and one job, queued in the same transaction, reads the
-  chain outside any transaction (`LookUp`). A wallet with no verified name is
-  stored with none; a lookup that keeps failing leaves the last name standing.
+  account's current wallet and then the chain outside any transaction
+  (`LookUp`). A sweep every ten minutes queues a job for a lookup still asked
+  for whose job is gone. A wallet with no verified name is stored with none; a
+  lookup that keeps failing leaves the last answer standing.
 
-  `wallet_address` is the wallet the row was read for, so an account whose
-  wallet has since changed is never shown the old wallet's name.
+  `wallet_address` is the wallet the row was last read for. Asking again does
+  not change it; only a finished lookup does. An account whose wallet has
+  since changed is therefore never shown the old wallet's name, while the new
+  wallet's lookup runs or after it fails.
 
   Lookups run only while the server has an Ethereum endpoint
   (`ETHEREUM_READ_RPC_URL`).
@@ -22,6 +26,10 @@ defmodule Patchbay.Accounts.EnsIdentity do
     extensions: [AshOban]
 
   alias Patchbay.Accounts.EnsIdentity.LookUp
+
+  # Who reads a wallet's verified ENS name: `AgentEns.PrimaryName`; tests use
+  # `PatchbayWeb.EnsStandIn`.
+  @primary_name Application.compile_env!(:patchbay, [__MODULE__, :primary_name])
 
   postgres do
     table("account_ens_identities")
@@ -62,7 +70,8 @@ defmodule Patchbay.Accounts.EnsIdentity do
       change(run_oban_trigger(:look_up))
       upsert?(true)
       upsert_identity(:unique_human_account)
-      upsert_fields([:wallet_address, :lookup_state, :updated_at])
+      # The wallet is kept from the first ask and moved only by a finished lookup.
+      upsert_fields([:lookup_state, :updated_at])
     end
 
     update :look_up do
@@ -78,7 +87,9 @@ defmodule Patchbay.Accounts.EnsIdentity do
 
   oban do
     triggers do
-      # Every sign-in queues its own job, so there is no sweep to find missed ones.
+      # Every sign-in queues its own job. The ten-minute sweep picks up a
+      # lookup still asked for whose job is gone: one cancelled because a
+      # sign-in moved the row on while it ran, or discarded on its last attempt.
       trigger :look_up do
         action(:look_up)
         where(expr(lookup_state == :pending))
@@ -86,8 +97,9 @@ defmodule Patchbay.Accounts.EnsIdentity do
         max_attempts(3)
         on_error(:lookup_failed)
         lock_for_update?(false)
-        scheduler_cron(false)
+        scheduler_cron("*/10 * * * *")
         worker_module_name(Patchbay.Accounts.EnsIdentity.Workers.LookUp)
+        scheduler_module_name(Patchbay.Accounts.EnsIdentity.Schedulers.LookUp)
       end
     end
   end
@@ -113,4 +125,7 @@ defmodule Patchbay.Accounts.EnsIdentity do
 
   @doc "The Ethereum mainnet endpoint lookups read from."
   def rpc_url, do: Application.get_env(:patchbay, :ethereum_read_rpc_url)
+
+  @doc "The module that reads a wallet's verified ENS name and picture."
+  def primary_name, do: @primary_name
 end

@@ -80,6 +80,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
     assert version["raw_definition"] == %{"inputSchema" => schema}
     refute Map.has_key?(version, "__metadata__")
     refute Map.has_key?(version, "site_id")
+    refute Map.has_key?(version, "status")
     html = conn |> get("/schema.example/tools/checkout") |> html_response(200)
     assert html =~ String.duplicate("資料🌳", 5000)
     assert html =~ ~s(id="tool-schemas")

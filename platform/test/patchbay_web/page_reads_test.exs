@@ -116,10 +116,12 @@ defmodule PatchbayWeb.PageReadsTest do
     |> Enum.map(&LazyHTML.text/1)
   end
 
+  # A tool an agent saw on the site's docs page. The check reads the front
+  # page only, so the tool stays on the list whatever the check finds there.
   defp list_tool(site, name) do
     Forum.observe_tool!(%{
       site_id: site.id,
-      address: "https://#{site.origin}/",
+      address: "https://#{site.origin}/docs",
       name: name,
       contract_sha256: String.duplicate("a", 64)
     })
@@ -133,7 +135,8 @@ defmodule PatchbayWeb.PageReadsTest do
       "servers" => [],
       "files" => [],
       "code" => [],
-      "unsearched" => []
+      "unsearched" => [],
+      "directory" => %{}
     }
 
     check = Forum.request_site_check!("reads.example")

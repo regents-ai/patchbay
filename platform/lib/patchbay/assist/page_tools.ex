@@ -11,6 +11,9 @@ defmodule Patchbay.Assist.PageTools do
   put together at run time, or loaded from another company's site, is not
   seen, and none of them can be called from here.
 
+  `Patchbay.Forum.ToolName` alone decides what a tool name is: the reader
+  picks out every candidate and keeps only the names the board would store.
+
   Everything is fetched the way an assist reaches a site, through
   `Patchbay.Assist.Target`: public addresses only, nothing but a GET, no
   cookies, and every answer bounded.
@@ -18,6 +21,7 @@ defmodule Patchbay.Assist.PageTools do
 
   alias Patchbay.Assist.Target
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.ToolName
 
   @max_page_bytes 2 * 1024 * 1024
   @max_script_bytes 2 * 1024 * 1024
@@ -30,10 +34,13 @@ defmodule Patchbay.Assist.PageTools do
   # How far past a tool's name its description and schema are looked for.
   @tool_window_bytes 2_000
 
-  @tool_name ~r/["']?name["']?\s*:\s*["'`]([A-Za-z_][\w.\-]{0,63})["'`]/
+  # Any quoted name; `ToolName` decides which of them are tool names.
+  @tool_name ~r/["']?name["']?\s*:\s*["'`]([\w.\-]{1,64})["'`]/
   @takes_input ~r/["']?(inputSchema|input_schema|execute)["']?\s*[:(]/
   # A description in double, single or back quotes.
   @description ~r/["']?description["']?\s*:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|`([^`]*)`)/s
+
+  @type page :: %{url: String.t(), html: binary(), cut?: boolean()}
 
   @type tool :: %{
           name: String.t(),
@@ -49,59 +56,74 @@ defmodule Patchbay.Assist.PageTools do
   @spec read(String.t(), keyword()) ::
           {:ok, [tool()]} | {:error, :unresolvable | :not_public | :unreachable}
   def read(site_url, opts \\ []) do
-    with {:ok, page_url, html} <- page(site_url, opts), do: {:ok, tools(page_url, html, opts)}
+    with {:ok, page} <- page(site_url, opts), do: {:ok, inspect_tools(page, opts).tools}
   end
 
   @doc """
   The page at `site_url` after at most a few redirects, each one checked
-  again as a new address: the address it was read at and its HTML.
+  again as a new address: the address it was read at, its HTML, and whether
+  the HTML was cut at the page bound.
   """
   @spec page(String.t(), keyword()) ::
-          {:ok, String.t(), binary()} | {:error, :unresolvable | :not_public | :unreachable}
+          {:ok, page()} | {:error, :unresolvable | :not_public | :unreachable}
   def page(site_url, opts \\ []) do
     case Target.get(site_url, page_options(opts, @max_page_bytes, @max_redirects)) do
-      {:ok, %{status: 200, url: page_url, body: html}} -> {:ok, page_url, html}
-      {:ok, _not_a_page} -> {:error, :unreachable}
-      {:error, reason} -> {:error, reason}
+      {:ok, %{status: 200, url: url, body: html, cut?: cut?}} ->
+        {:ok, %{url: url, html: html, cut?: cut?}}
+
+      {:ok, _not_a_page} ->
+        {:error, :unreachable}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
-  @doc "The tools a page already read signs up in its code and in the scripts it loads."
-  @spec tools(String.t(), binary(), keyword()) :: [tool()]
-  def tools(page_url, html, opts \\ []) do
-    inspect_tools(page_url, html, opts).tools
-  end
-
-  @doc "Source declarations and whether every selected script/import was read within the bounds."
-  @spec inspect_tools(String.t(), binary(), keyword()) :: %{tools: [tool()], complete?: boolean()}
-  def inspect_tools(page_url, html, opts \\ []) do
+  @doc """
+  The tools a page already read signs up in its code, in the scripts it
+  loads and in the modules those import, and whether the read was complete:
+  the page and every script it loads or imports from its own site, at any
+  depth, read in full, each answering 200 within the time, size and count
+  bounds, and no more tools than are kept. A tool missing from an incomplete
+  read may still be on the page.
+  """
+  @spec inspect_tools(page(), keyword()) :: %{tools: [tool()], complete?: boolean()}
+  def inspect_tools(%{url: page_url, html: html, cut?: cut?}, opts \\ []) do
     host = URI.parse(page_url).host
     script_urls = html |> script_urls(page_url) |> own_site(host)
     loaded = Enum.take(script_urls, @max_scripts)
     {first, first_complete?} = fetch_all(loaded, opts)
 
-    import_urls =
-      first
-      |> Enum.flat_map(fn {url, code} -> imports(code, url) end)
-      |> own_site(host)
-      |> Enum.uniq()
-      |> Kernel.--(loaded)
-
+    import_urls = imported_urls(first, host) -- loaded
     imported = Enum.take(import_urls, @max_scripts - length(loaded))
     {second, second_complete?} = fetch_all(imported, opts)
-    codes = [html | Enum.map(first ++ second, &elem(&1, 1))]
+    read = [{page_url, html} | first ++ second]
+
+    # Own-site modules that code already read imports but that were never
+    # read themselves: those two imports deep, past the script count, or
+    # imported by a script written into the page.
+    unread = imported_urls(read, host) -- (loaded ++ imported)
 
     tools =
-      (form_tools(html) ++ Enum.flat_map(codes, &script_tools/1))
-      |> Enum.uniq_by(& &1.name)
-      |> Enum.take(@max_tools)
+      Enum.uniq_by(
+        form_tools(html) ++ Enum.flat_map(read, fn {_url, code} -> script_tools(code) end),
+        & &1.name
+      )
 
     %{
-      tools: tools,
+      tools: Enum.take(tools, @max_tools),
       complete?:
-        first_complete? and second_complete? and
-          length(loaded) == length(script_urls) and length(imported) == length(import_urls)
+        not cut? and first_complete? and second_complete? and
+          length(loaded) == length(script_urls) and unread == [] and
+          length(tools) <= @max_tools
     }
+  end
+
+  defp imported_urls(scripts, host) do
+    scripts
+    |> Enum.flat_map(fn {url, code} -> imports(code, url) end)
+    |> own_site(host)
+    |> Enum.uniq()
   end
 
   defp page_options(opts, bound, redirects) do
@@ -120,15 +142,19 @@ defmodule Patchbay.Assist.PageTools do
       on_timeout: :kill_task
     )
     |> Enum.reduce({[], true}, fn
-      {:ok, {:ok, fetched}}, {found, complete?} -> {[fetched | found], complete?}
-      _unread, {found, _complete?} -> {found, false}
+      {:ok, {:ok, fetched, whole?}}, {found, complete?} ->
+        {[fetched | found], complete? and whole?}
+
+      _unread, {found, _complete?} ->
+        {found, false}
     end)
     |> then(fn {found, complete?} -> {Enum.reverse(found), complete?} end)
   end
 
   defp script(url, opts) do
     case Target.get(url, page_options(opts, @max_script_bytes, 0)) do
-      {:ok, %{status: 200, body: body}} -> {:ok, {url, body}}
+      # A script cut at the bound is still searched, but the read is not complete.
+      {:ok, %{status: 200, body: body, cut?: cut?}} -> {:ok, {url, body}, not cut?}
       _unread -> :unread
     end
   end
@@ -183,7 +209,7 @@ defmodule Patchbay.Assist.PageTools do
   defp form_tools(html) do
     for [tag] <- Regex.scan(~r/<form\b[^>]*>/i, html),
         name = attribute(tag, "toolname"),
-        tool_name?(name),
+        ToolName.valid?(name),
         do: tool(name, attribute(tag, "tooldescription") || "")
   end
 
@@ -215,7 +241,8 @@ defmodule Patchbay.Assist.PageTools do
   end
 
   defp tool_object(name, window) do
-    with true <- window =~ @takes_input,
+    with true <- ToolName.valid?(name),
+         true <- window =~ @takes_input,
          [_ | _] = texts <- Regex.run(@description, window, capture: :all_but_first) do
       [tool(name, first_written(texts))]
     else
@@ -231,8 +258,6 @@ defmodule Patchbay.Assist.PageTools do
       read_only?: false
     }
   end
-
-  defp tool_name?(name), do: is_binary(name) and name =~ ~r/\A[A-Za-z_][\w.\-]{0,63}\z/
 
   defp unescape(text) do
     ~r/\\u([0-9a-fA-F]{4})/

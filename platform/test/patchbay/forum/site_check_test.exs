@@ -18,6 +18,7 @@ defmodule Patchbay.Forum.SiteCheckTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.Catalog
   alias Patchbay.Forum.Site
+  alias Patchbay.Forum.SiteCheck
   alias Patchbay.Forum.SiteScan
   alias Patchbay.OutsideLists
   alias Patchbay.PageSite
@@ -80,6 +81,67 @@ defmodule Patchbay.Forum.SiteCheckTest do
     post!(site)
     run_jobs()
     refute_received {:shot, _}
+  end
+
+  test "a check on its way whose job is gone is run by the sweep" do
+    PageSite.serve(%{"/" => PageSite.with_tool("search_docs")})
+    Forum.request_site_check!("example.com")
+    Patchbay.Repo.delete_all(Oban.Job)
+
+    {:ok, check} = Forum.get_site_check("example.com")
+    assert SiteCheck.pending?(check)
+
+    assert %{failure: 0} = schedule_and_run_triggers({SiteCheck, :run})
+
+    {:ok, check} = Forum.get_site_check("example.com")
+    refute SiteCheck.pending?(check)
+
+    assert %{"page_url" => "https://example.com/", "webmcp" => [%{"name" => "search_docs"}]} =
+             check.findings
+  end
+
+  test "a fresh check that read no directory pages is due, and asking writes; one that did is not" do
+    Forum.request_site_check!("example.com")
+    Patchbay.Repo.delete_all(Oban.Job)
+    {:ok, check} = Forum.get_site_check("example.com")
+
+    for findings <- [%{"webmcp" => []}, %{"webmcp" => [], "directory" => nil}] do
+      check = Forum.record_site_check!(check, %{findings: findings}, authorize?: false)
+      assert SiteCheck.due?(check)
+
+      asked = Forum.request_site_check!("example.com")
+      assert SiteCheck.pending?(asked)
+      check = Forum.record_site_check!(asked, %{findings: findings}, authorize?: false)
+      refute SiteCheck.pending?(check)
+    end
+
+    Forum.record_site_check!(check, %{findings: %{"directory" => %{}}}, authorize?: false)
+    {:ok, check} = Forum.get_site_check("example.com")
+    refute SiteCheck.due?(check)
+
+    Forum.request_site_check!("example.com")
+    {:ok, after_ask} = Forum.get_site_check("example.com")
+    assert after_ask.requested_at == check.requested_at
+    refute SiteCheck.pending?(after_ask)
+  end
+
+  test "giving up after the last try records the check as failed, keeping what it found before" do
+    PageSite.serve(%{"/" => PageSite.with_tool("search_docs")})
+    Forum.request_site_check!("example.com")
+    run_jobs()
+
+    {:ok, earlier} = Forum.get_site_check("example.com")
+    Forum.refresh_site_check!("example.com")
+    {:ok, check} = Forum.get_site_check("example.com")
+    assert SiteCheck.pending?(check)
+
+    # What the `:run` trigger does once its last try has failed.
+    given_up = Ash.update!(check, %{}, action: :give_up, authorize?: false)
+
+    refute SiteCheck.pending?(given_up)
+    assert given_up.findings["failed"] == true
+    assert given_up.findings["webmcp"] == earlier.findings["webmcp"]
+    assert Enum.all?(Map.values(given_up.findings["directory"]), & &1["failed"])
   end
 
   test "a site without tools gets its picture too" do

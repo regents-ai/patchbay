@@ -21,14 +21,14 @@ defmodule PatchbayWeb.Forum.SiteChecks do
   def current(domain), do: Forum.get_site_check!(domain, not_found_error?: false)
 
   @doc """
-  Asks for a check of `domain` when one is due for `reason` (`:open` or
-  `:directory`) and the visitor has share left. Answers the check as it now
-  stands, and whether this visitor's share was used up.
+  Asks for a check of `domain` when one is due and the visitor has share
+  left. Answers the check as it now stands, and whether this visitor's share
+  was used up.
   """
-  @spec ask(String.t(), Ash.Resource.record() | nil, String.t(), :open | :directory) ::
+  @spec ask(String.t(), Ash.Resource.record() | nil, String.t()) ::
           {:ok | :limited, Ash.Resource.record() | nil}
-  def ask(domain, check, visitor, reason) do
-    with true <- SiteCheck.due?(check, reason),
+  def ask(domain, check, visitor) do
+    with true <- SiteCheck.due?(check),
          {:allow, _count} <- ReadLimit.hit("site-check:" <> visitor, @window, @share) do
       {:ok, Forum.request_site_check!(domain)}
     else

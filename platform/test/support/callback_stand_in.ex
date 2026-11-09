@@ -12,6 +12,8 @@ defmodule PatchbayWeb.CallbackStandIn do
     the signing view and the envelope exactly as the real sender gets them.
   - A callback on `busy.test` answers its challenge at once and then is
     down: every event posted to it fails as a 503 would, so it stays owed.
+  - A callback on `recovers.test` is down like `busy.test` until the test
+    calls `recover/0`, then takes events like `echo.test`.
   - Every other callback is refused as not public, as the real challenge
     refuses `localhost`.
   """
@@ -28,7 +30,7 @@ defmodule PatchbayWeb.CallbackStandIn do
           :answer -> :ok
         end
 
-      host when host in ["echo.test", "busy.test"] ->
+      host when host in ["echo.test", "busy.test", "recovers.test"] ->
         :ok
 
       _other ->
@@ -46,9 +48,24 @@ defmodule PatchbayWeb.CallbackStandIn do
       "busy.test" ->
         {:retry, {:http_status, 503}}
 
+      "recovers.test" ->
+        if Application.get_env(:patchbay, __MODULE__) == :recovered do
+          send(test_process(), {:delivered, subscription, event})
+          :ok
+        else
+          {:retry, {:http_status, 503}}
+        end
+
       _other ->
         {:stop, :non_public_callback}
     end
+  end
+
+  @doc "Brings `recovers.test` up for the rest of the calling test."
+  @spec recover() :: :ok
+  def recover do
+    Application.put_env(:patchbay, __MODULE__, :recovered)
+    ExUnit.Callbacks.on_exit(fn -> Application.delete_env(:patchbay, __MODULE__) end)
   end
 
   # The test itself, whether the job runs in it or in a process it started.

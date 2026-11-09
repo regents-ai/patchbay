@@ -22,8 +22,10 @@ defmodule Patchbay.Forum.ForumEvent do
   fanned out and stops, one that overlaps it waits on the event's row lock,
   and notifications are unique per event and recipient either way. When the
   attempts run out, as for a bug or a row the fan-out cannot write,
-  `:give_up_fan_out` stamps the event so the sweep stops taking it, and
-  AshOban logs the last error.
+  `:give_up_fan_out` stamps `fan_out_gave_up_at` so the sweep stops taking
+  it, and the error stays in AshOban's log and the job's errors.
+  `fanned_out_at` therefore always means delivered, and `fan_out_gave_up_at`
+  means the attempts ran out with nothing delivered.
   """
 
   use Ash.Resource,
@@ -37,7 +39,7 @@ defmodule Patchbay.Forum.ForumEvent do
     triggers do
       trigger :fan_out do
         action(:fan_out)
-        where(expr(is_nil(fanned_out_at)))
+        where(expr(is_nil(fanned_out_at) and is_nil(fan_out_gave_up_at)))
         queue(:notifications)
         # Ten attempts with Oban's default backoff span about twenty minutes. A
         # database that is down for longer fails the give-up too, so the event
@@ -104,7 +106,7 @@ defmodule Patchbay.Forum.ForumEvent do
       description("Fan-out ran out of attempts; the sweep stops taking the event.")
       require_atomic?(false)
       argument(:error, :term, allow_nil?: false)
-      change(set_attribute(:fanned_out_at, &DateTime.utc_now/0))
+      change(set_attribute(:fan_out_gave_up_at, &DateTime.utc_now/0))
     end
   end
 
@@ -143,7 +145,10 @@ defmodule Patchbay.Forum.ForumEvent do
     # Who did it, so the actor is never told of their own work.
     attribute(:actor_principal, :string, allow_nil?: true, public?: true)
 
+    # Delivered to every follower; see the moduledoc.
     attribute(:fanned_out_at, :utc_datetime_usec, allow_nil?: true)
+    # The fan-out's attempts ran out with nothing delivered.
+    attribute(:fan_out_gave_up_at, :utc_datetime_usec, allow_nil?: true)
 
     create_timestamp(:inserted_at, public?: true)
   end

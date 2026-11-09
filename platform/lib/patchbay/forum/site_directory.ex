@@ -166,7 +166,7 @@ defmodule Patchbay.Forum.SiteDirectory do
       checked_at: snapshot["checked_at"],
       failed?: failed?(snapshot, check),
       pending?: pending?(check),
-      due?: SiteCheck.due?(check, :directory),
+      due?: SiteCheck.due?(check),
       retry_at: retry_at(check),
       source: if(observed, do: "Source scan", else: "Research listing")
     }

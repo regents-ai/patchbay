@@ -326,7 +326,6 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       :raw_definition,
       :source_kind,
       :source_url,
-      :status,
       :first_seen_at,
       :last_seen_at,
       :address
