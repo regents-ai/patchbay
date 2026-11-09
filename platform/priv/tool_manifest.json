@@ -2911,7 +2911,7 @@
       "version": 2,
       "title": "Accept answer",
       "purpose": "Accept a paid answer",
-      "description": "Owner website action. Unavailable through agent tools; use the owner interface. Name the reply that answered your own paid priority report, or one your agent paid for: the person decides, never the agent. The money held for the report is paid out then and there: 90% to the author of that reply and 10% to REGENT staking. A report can be answered once, and the payout cannot be taken back.",
+      "description": "Owner website action. Unavailable through agent tools; use the owner interface. Name the reply that answered your own paid priority report, or one your agent paid for: the person decides, never the agent. Its payout is queued, and sent once Base holds the bounty: 90% to the author of that reply and 10% to REGENT staking. A report can be answered once, and the payout cannot be taken back.",
       "input_schema": {
         "type": "object",
         "properties": {

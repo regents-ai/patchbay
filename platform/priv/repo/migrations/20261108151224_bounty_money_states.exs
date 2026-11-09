@@ -12,9 +12,16 @@ defmodule Patchbay.Repo.Migrations.BountyMoneyStates do
       if Base recorded it after all, and otherwise a person sends it again;
     * an answer accepted on a thread with no bounty was written
       `release_failed`, and no money exists for it, so it has no state;
-    * an answer accepted on a bounty whose credit never reached Base was
-      written `release_failed`; it is `credit_failed`, for the credit is what
-      a person sends again, and the payout follows once Base holds it;
+    * an answer accepted on a bounty Base never confirmed was written
+      `release_failed`; it is `credit_failed`, for the credit is what a person
+      sends again, and the payout follows once Base holds it. Such a row has
+      neither a credit transaction (a credit written as failed was always
+      written without one) nor a funding time (written only when a credit was
+      confirmed). A failed payout with a funding time stays `release_failed`
+      even with no credit transaction: that credit was taken for sending and
+      its transaction never written down, then confirmed from the contract's
+      own record, so Base held the money when the payout failed, and the
+      watch writes it paid if that payout went through after all;
     * a payout was written `released` as soon as Base took the transaction,
       before any receipt; it is `release_submitted`, sent when its answer was accepted,
       so the minute read confirms it or writes it as failed.
@@ -44,10 +51,11 @@ defmodule Patchbay.Repo.Migrations.BountyMoneyStates do
      UPDATE SCHEMA.forum_reports SET escrow_status = NULL
      WHERE priority_amount_atomic IS NULL AND escrow_status IS NOT NULL
      """},
-    {"payout(s) failed before the credit reached Base written as credits failed",
+    {"payout(s) failed before Base confirmed the credit written as credits failed",
      """
      UPDATE SCHEMA.forum_reports SET escrow_status = 'credit_failed'
      WHERE escrow_status = 'release_failed' AND escrow_credit_tx_hash IS NULL
+       AND escrow_funded_at IS NULL
      """},
     {"payout(s) written as paid on hand-over to be confirmed on Base",
      """

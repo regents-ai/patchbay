@@ -66,10 +66,8 @@ defmodule Patchbay.Escrow.Watch do
 
   defp settle(report, %{status: :refunded}), do: refunded(report)
 
-  # A credit written as failed can only be one from before the payout had
-  # states of its own, whose payout went through.
   defp settle(%{escrow_status: status} = report, %{status: :released})
-       when status in [:release_submitted, :release_failed, :credit_failed],
+       when status in [:release_submitted, :release_failed],
        do: released(report)
 
   defp settle(%{escrow_status: status} = report, %{status: :funded} = post)

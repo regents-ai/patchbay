@@ -15,6 +15,8 @@ defmodule PatchbayWeb.Forum.EscrowReleaseTest do
   use PatchbayWeb.ConnCase, async: false
   use AshOban.Test, repo: Patchbay.Repo
 
+  import ExUnit.CaptureIO
+
   alias Patchbay.Forum
   alias Patchbay.Forum.Report.Workers.SendEscrowRelease
   alias Patchbay.Forum.SolutionRefused
@@ -84,7 +86,7 @@ defmodule PatchbayWeb.Forum.EscrowReleaseTest do
       {:record_escrow_release, %{escrow_release_tx_hash: "0x02"}, [:credited]},
       {:fail_escrow_release, %{}, [:credited, :release_submitted]},
       {:retry_escrow_release, %{}, [:release_failed]},
-      {:confirm_escrow_release, %{}, [:release_submitted, :release_failed, :credit_failed]},
+      {:confirm_escrow_release, %{}, [:release_submitted, :release_failed]},
       {:record_escrow_refund, %{escrow_refund_tx_hash: "0x03"},
        [:credit_submitted, :credited, :credit_failed, :release_submitted, :release_failed]},
       {:name_escrow_refund, %{escrow_refund_tx_hash: "0x04"}, [:refunded]}
@@ -311,18 +313,6 @@ defmodule PatchbayWeb.Forum.EscrowReleaseTest do
   end
 
   describe "watching Base for a credit" do
-    test "a credit written as failed whose payout Base made is written as paid", %{
-      tool: tool,
-      node: node
-    } do
-      report = paid_report(tool, profile("aaa"))
-      store(report, :credit_failed)
-
-      holds(node, 2)
-      assert %{failure: 0} = held_sweep()
-      assert Forum.get_report!(report.id).escrow_status == :released
-    end
-
     test "a credit still not in a block an hour after it was sent is written as failed", %{
       tool: tool
     } do
@@ -340,6 +330,46 @@ defmodule PatchbayWeb.Forum.EscrowReleaseTest do
       credit_sent_ago(report, 61 * 60)
       assert %{failure: 0} = sent_sweep()
       assert Forum.get_report!(report.id).escrow_status == :credit_failed
+    end
+  end
+
+  describe "the money states migration" do
+    # A failed payout from before the payout had states of its own: the old
+    # payout wrote `release_failed` over whatever the credit said, with no
+    # payout transaction. The row is seeded as that code left it, the
+    # migration is undone and run again, and the row takes the state its
+    # columns prove.
+    test "an old failed payout is a failed credit only when Base never confirmed it", %{
+      tool: tool
+    } do
+      never_confirmed = old_failed_payout(tool, credit_tx: nil, funded_at: nil)
+
+      # Taken for sending, its transaction never written down, then confirmed
+      # from the contract's own record.
+      confirmed = old_failed_payout(tool, credit_tx: nil, funded_at: DateTime.utc_now())
+
+      sent_and_confirmed =
+        old_failed_payout(tool,
+          credit_tx: "0x" <> String.duplicate("1", 64),
+          funded_at: DateTime.utc_now()
+        )
+
+      first = capture_io(fn -> migrate_money_states() end)
+      assert first =~ "forum_reports: 1 payout(s) failed before Base confirmed the credit"
+
+      states = fn ->
+        Enum.map(
+          [never_confirmed, confirmed, sent_and_confirmed],
+          &Forum.get_report!(&1.id).escrow_status
+        )
+      end
+
+      assert states.() == [:credit_failed, :release_failed, :release_failed]
+
+      # Run again, it moves nothing more.
+      again = capture_io(fn -> migrate_money_states() end)
+      assert again =~ "forum_reports: 0 payout(s) failed before Base confirmed the credit"
+      assert states.() == [:credit_failed, :release_failed, :release_failed]
     end
   end
 
@@ -461,6 +491,44 @@ defmodule PatchbayWeb.Forum.EscrowReleaseTest do
       status && Atom.to_string(status),
       Ecto.UUID.dump!(report.id)
     ])
+  end
+
+  # An accepted answer whose payout the code before the payout's states wrote
+  # as failed, with the credit's columns as that code left them.
+  defp old_failed_payout(tool, credit_tx: credit_tx, funded_at: funded_at) do
+    asker = profile("aaa")
+    report = paid_report(tool, asker)
+    answer = reply(report, profile("bbb"))
+
+    Repo.query!(
+      """
+      UPDATE forum_reports
+      SET escrow_status = 'release_failed', escrow_credit_tx_hash = $1,
+          escrow_funded_at = $2, accepted_reply_id = $3, accepted_at = now()
+      WHERE id = $4
+      """,
+      [credit_tx, funded_at, Ecto.UUID.dump!(answer.id), Ecto.UUID.dump!(report.id)]
+    )
+
+    report
+  end
+
+  # The migration undone and run again. The migrator runs it in a task of its
+  # own, which shares this test's connection, so it takes no lock that would
+  # hold that connection.
+  defp migrate_money_states do
+    version = 20_261_108_151_224
+    migration = Patchbay.Repo.Migrations.BountyMoneyStates
+
+    unless Code.ensure_loaded?(migration) do
+      Repo
+      |> Ecto.Migrator.migrations_path()
+      |> Path.join("#{version}_bounty_money_states.exs")
+      |> Code.require_file()
+    end
+
+    Ecto.Migrator.down(Repo, version, migration, migration_lock: false, log: false)
+    Ecto.Migrator.up(Repo, version, migration, migration_lock: false, log: false)
   end
 
   # Inside its own savepoint, so the refused statement leaves the test's

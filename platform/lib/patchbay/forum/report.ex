@@ -1392,13 +1392,11 @@ defmodule Patchbay.Forum.Report do
     update :confirm_escrow_release do
       description("""
       The contract says the accepted answer's author has been paid: a payout
-      sent, or one written as failed that went through after all, including
-      one written before the payout's own states existed, whose credit was
-      written as failed.
+      sent, or one written as failed that went through after all.
       """)
 
       accept([])
-      validate({EscrowFrom, from: [:release_submitted, :release_failed, :credit_failed]})
+      validate({EscrowFrom, from: [:release_submitted, :release_failed]})
       change(set_attribute(:escrow_status, :released))
     end
 
