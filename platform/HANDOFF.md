@@ -292,12 +292,12 @@ is the Foundry suite over both payout paths and the refund window.
 
 The server side of that is `Patchbay.Escrow`, which signs one transaction
 locally per call and returns the hash without waiting for a receipt. A credit
-is sent only once the payment it records is in a Base block
-(`Escrow.await_landed/1`, up to 15 seconds): the facilitator answers a moment
-before its transaction lands, and the contract refuses to record USDC it does
-not hold yet. If a credit,
-release or refund fails, the failure is written on the report for a person to
-re-run. The money is never lost, and a report is never rolled back after being
+is a job of its own (`:send_escrow_credit`, queued when the report is filed),
+and it sends only once the payment it records is in a Base block: the
+facilitator answers a moment before its transaction lands, and the contract
+refuses to record USDC it does not hold yet, so until then the job tries
+again, up to ten times. If a credit, release or refund fails, the failure is
+written on the report for a person to re-run. The money is never lost, and a report is never rolled back after being
 paid for.
 
 The refund is the asker's own way out. On their own paid report they get a
