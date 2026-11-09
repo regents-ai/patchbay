@@ -338,9 +338,9 @@ work loads `.env.local`; production values are Fly secrets.
 | `ETHEREUM_READ_RPC_URL` | Reading a signed-in wallet's ENS name and picture, optional; https only |
 | `ESCROW_CONTRACT_ADDRESS`, `OPERATOR_PRIVATE_KEY` | Paid priority reports |
 | `OPENAI_API_KEY` | The weekly ChatGPT questions |
-| `OPENROUTER_API_KEY` | Jev's readings, and the drafting of a paid assist's tool arguments |
+| `OPENROUTER_API_KEY` | Jev's readings, and the drafting of an assist's tool arguments |
 | `SENTRY_DSN`, `SENTRY_RELEASE`, `SENTRY_ENVIRONMENT` | Error reports to Sentry, optional |
-| `ASSIST_WALLET_ADDRESS`, `STAKING_CONTRACT_ADDRESS` | Paid assists: the operator wallet the fee is paid to, and the REGENT staking contract it is forwarded to |
+| `STAKING_CONTRACT_ADDRESS` | The REGENT staking contract that the fee of an assist paid for before paid assists ended is forwarded to |
 | `PATCHBAY_DAILY_MODEL_CALLS`, `PATCHBAY_DAILY_FREE_FIXES` | Model-call and free-fix limits, both optional |
 | `PATCHBAY_DB_HOST`, `PATCHBAY_DB_USERNAME`, `PATCHBAY_DB_PASSWORD` | Local database, optional |
 | `DATABASE_POOLED_URL`, `DATABASE_DIRECT_URL`, `SECRET_KEY_BASE`, `PHX_HOST` | Production only |
@@ -393,18 +393,16 @@ agent's profile.
   address) or `member` (two a day per signed-in profile), with no payment
   intent; `Patchbay.Assist.Allowance` holds the numbers. The page at
   `/fixes/:id` is a LiveView fed by the run's own PubSub channel,
-  `Patchbay.Assist.Run.topic/1`. A stuck free run is handed back with the
-  same `rerun` command as a paid one.
-- A paid assist whose run did not open after the payment settled (the log
-  says "settled but its run did not open", with the intent, payer and
-  browser) is opened by executing the same intent again as that payer, from
-  that browser:
-  `PatchbayWeb.PaymentsAPI.Purchase.execute(Patchbay.Identity.get_profile!("<payer id>", authorize?: false), "<intent id>", %{payment: nil, payer: nil, browser_session_id: "<browser id or nil>"})`.
-  Nothing is paid twice; one payment opens at most one run.
-- A paid assist that waited on a person (`assessment_pending`, usually because
+  `Patchbay.Assist.Run.topic/1`. A stuck run is handed back with the
+  `rerun` command below.
+- Paid assists ended on 9 Nov 2026. An assist a payment opened before then
+  still reads back by its run id. A paid-assist payment that settled without
+  opening a run is found in the payment records and reviewed by a person:
+  refunds are not expected, but may be made case by case after that review.
+- An assist that waited on a person (`assessment_pending`, usually because
   a model provider was away) is handed back to Patchbay with
   `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Assist.rerun(\"<run id>\")'"`.
-  It is picked up as a paid run again; nothing is paid or forwarded twice.
+  It is picked up again as it was; nothing is paid or forwarded twice.
 - A paid report whose escrow credit Base would not take (`credit_failed`; the
   reason is in the log) is sent again from the payment that paid for it with
   `fly ssh console --app patchbay-regents -C "/app/bin/patchbay rpc 'Patchbay.Payments.SpecialPost.credit_again(\"<report id>\")'"`.

@@ -93,7 +93,7 @@ Payments are optional and only move USDC on Base with the payer's own wallet sig
 | Payments | Optional, in USDC on Base |
 | Token | REGENT, on Base |
 | Token contract | `0x6f89bcA4eA5931EdFCB09786267b251DeE752b07` |
-| Staking | All the USDC Patchbay earns, every paid assist's fee and its 10% share of priority reports, goes to people who stake REGENT on [regents.sh](https://regents.sh/stake) |
+| Staking | All the USDC Patchbay earns, its 10% share of priority reports, goes to people who stake REGENT on [regents.sh](https://regents.sh/stake) |
 
 Staking REGENT involves contract, network and financial risk. No return is guaranteed.
 

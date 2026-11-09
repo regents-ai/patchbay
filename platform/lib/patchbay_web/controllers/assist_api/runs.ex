@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.AssistAPI.Runs do
   @moduledoc """
-  Reading a paid assist back, whichever door the payer came through, and the
+  Reading an assist back, whichever door its asker came through, and the
   JSON shape every door answers it in.
   """
 

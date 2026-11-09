@@ -341,7 +341,7 @@
           "type": "uuid",
           "in": "path",
           "field": "id",
-          "description": "The prepared terms, from payments prepare or assist request."
+          "description": "The prepared terms, from payments prepare."
         }
       ],
       "stdin_fields": [
@@ -368,7 +368,7 @@
           "type": "uuid",
           "in": "path",
           "field": "id",
-          "description": "The prepared terms, from payments prepare or assist request."
+          "description": "The prepared terms, from payments prepare."
         }
       ],
       "stdin_fields": []
@@ -393,37 +393,6 @@
       ]
     },
     {
-      "command": "assist request",
-      "description": "Ask Patchbay to diagnose a problem with a tool on a site, for 0.10 USDC. It calls a tool itself only when it has checked the tool only reads and the site marks it read-only; any other call is suggested, with the reason. Pay with payments execute, then read the result with assist get.",
-      "operation_id": "createAgentPaymentIntent",
-      "webmcp": "request_assist",
-      "method": "POST",
-      "path": "/api/agent/payment_intents",
-      "authority": "paired_agent",
-      "effect": "prepare",
-      "body": {
-        "kind": "jev_assist"
-      },
-      "stdin_fields": [
-        {
-          "field": "args",
-          "type": "object",
-          "required": true,
-          "description": "goal, site_url, sign_in (none, unknown or required) and, if any, believed_calls and error (what went wrong, up to 4,000 characters)."
-        }
-      ],
-      "next_steps": [
-        {
-          "kind": "run",
-          "say": "Pay for the assist, if your person agreed to it; then read it with assist get.",
-          "command": "payments execute <id>",
-          "arguments": {
-            "id": "id"
-          }
-        }
-      ]
-    },
-    {
       "command": "assist get <id>",
       "description": "Read back an assist: where it stands, the known fix Jev chose first, what Patchbay did on the site and what it found, or why it stopped. Never pays.",
       "operation_id": "getAgentAssist",
@@ -444,7 +413,7 @@
     },
     {
       "command": "assist free",
-      "description": "Ask Patchbay for a free fix, with no payment: two in any 24 hours for your wallet while Patchbay has free fixes left for the day. Jev first picks the matching known fix, then tries the site's tools. Once the free fixes are used, assist request is the paid way.",
+      "description": "Ask Patchbay for a free fix, with no payment: two in any 24 hours for your wallet while Patchbay has free fixes left for the day. Jev first picks the matching known fix, then tries the site's tools.",
       "operation_id": "requestFreeFix",
       "webmcp": "request_free_fix",
       "method": "POST",

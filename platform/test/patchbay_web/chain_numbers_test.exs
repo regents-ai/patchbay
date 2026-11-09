@@ -12,13 +12,13 @@ defmodule PatchbayWeb.ChainNumbersTest do
 
   import ExUnit.CaptureIO
   import ExUnit.CaptureLog
+  import Patchbay.AssistFixtures, only: [paid_run: 2]
 
   alias Patchbay.Assist
   alias Patchbay.ChainClient
   alias Patchbay.Forum
   alias Patchbay.Identity
   alias Patchbay.OperatorWallet
-  alias Patchbay.Payments.JevAssist
   alias PatchbayWeb.Telemetry
 
   @contract String.duplicate("e", 64)
@@ -159,10 +159,6 @@ defmodule PatchbayWeb.ChainNumbersTest do
   end
 
   test "a send already waiting when the send times arrive is aged from its filing or taking" do
-    old_assist = Application.get_env(:patchbay, :assist)
-    on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
-    Application.put_env(:patchbay, :assist, pay_to_address: "0x" <> String.duplicate("c", 40))
-
     asker = profile("before")
     {:ok, claimed} = Forum.claim_escrow_credit(paid_report(asker), authorize?: false)
     {:ok, taken} = Assist.take_fee(answered_run(), authorize?: false)
@@ -202,10 +198,6 @@ defmodule PatchbayWeb.ChainNumbersTest do
   end
 
   test "escrow money not yet recorded and assist fees not yet forwarded are counted" do
-    old_assist = Application.get_env(:patchbay, :assist)
-    on_exit(fn -> Application.put_env(:patchbay, :assist, old_assist) end)
-    Application.put_env(:patchbay, :assist, pay_to_address: "0x" <> String.duplicate("c", 40))
-
     asker = profile("bounty")
     waiting = paid_report(asker)
     submitted(paid_report(asker), DateTime.utc_now())
@@ -299,20 +291,9 @@ defmodule PatchbayWeb.ChainNumbersTest do
     Forum.get_report!(submitted.id, authorize?: false)
   end
 
+  # A run paid for before paid assists ended, answered, its fee waiting.
   defp answered_run do
-    payer = profile("payer")
-
-    request = %{
-      "goal" => "Book the 9am table for two on Friday",
-      "site_url" => "https://bookings.example.com/mcp",
-      "error" => nil,
-      "sign_in" => "unknown",
-      "believed_calls" => []
-    }
-
-    {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request}, payer)
-    {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
-    {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
+    run = paid_run(profile("payer"), "0x" <> String.duplicate("c", 40))
     # The assist worker's own steps, which no actor may reach.
     {:ok, running} = Assist.start_run(run, authorize?: false)
     Assist.finish_run!(running, %{status: :finished, outcome: :reached}, authorize?: false)

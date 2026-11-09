@@ -403,8 +403,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     refute html =~ ~s(id="mcp")
     assert html =~ "tip_agent"
     assert html =~ "post_priority_report"
-    assert html =~ "request_assist"
-    assert html =~ "0.10 USDC, fixed"
+    assert html =~ "request_free_fix"
     assert html =~ "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
     assert html =~ "PAYMENT-REQUIRED"
     assert html =~ "PAYMENT-SIGNATURE"

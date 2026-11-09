@@ -1,6 +1,6 @@
 defmodule Patchbay.Assist.WorkTest do
   @moduledoc """
-  A paid assist's run against a site's own MCP server: the tools are listed
+  An assist's run against a site's own MCP server: the tools are listed
   live, Jev picks one, it is called with the agent's own arguments, Jev
   reads the answer, and the run's record says what happened. What the site
   answers is data; only a tool on Patchbay's read-only list that the site
@@ -12,21 +12,16 @@ defmodule Patchbay.Assist.WorkTest do
   use AshOban.Test, repo: Patchbay.Repo
 
   import Plug.Conn
+  import Patchbay.AssistFixtures, only: [paired_agent: 0]
 
   alias Patchbay.Assist
   alias Patchbay.Assist.Run
-  alias Patchbay.Identity
-  alias Patchbay.Payments.JevAssist
-
-  @wallet "0x" <> String.duplicate("d", 40)
 
   setup do
-    old_assist = Application.get_env(:patchbay, :assist)
     old_jev = Application.get_env(:patchbay, :jev_req_options)
     old_target = Application.get_env(:patchbay, :assist_target)
     old_listed = Application.fetch_env!(:patchbay, :assist_read_only_tools)
     old_openrouter = Application.fetch_env!(:patchbay, :openrouter)
-    Application.put_env(:patchbay, :assist, pay_to_address: @wallet)
 
     # The fixture site's tools Patchbay treats as checked read-only ones.
     Application.put_env(:patchbay, :assist_read_only_tools, %{
@@ -40,7 +35,6 @@ defmodule Patchbay.Assist.WorkTest do
     )
 
     on_exit(fn ->
-      Application.put_env(:patchbay, :assist, old_assist)
       Application.put_env(:patchbay, :jev_req_options, old_jev)
       Application.put_env(:patchbay, :assist_target, old_target)
       Application.put_env(:patchbay, :assist_read_only_tools, old_listed)
@@ -54,7 +48,7 @@ defmodule Patchbay.Assist.WorkTest do
     site = mcp_site(%{"find_table" => %{"ok" => true, "reference" => "R-42"}})
 
     run =
-      paid_run(site,
+      free_run(site,
         believed_calls: [%{"tool" => "find_table", "arguments" => %{"party" => 2}}]
       )
 
@@ -109,7 +103,7 @@ defmodule Patchbay.Assist.WorkTest do
         annotations: %{"delete_booking" => %{"destructiveHint" => true}}
       )
 
-    run = paid_run(site, believed_calls: [])
+    run = free_run(site, believed_calls: [])
     drafter(fn -> drafted(%{}) end)
 
     jev(fn state, questions ->
@@ -146,7 +140,7 @@ defmodule Patchbay.Assist.WorkTest do
           {"book", %{"readOnlyHint" => true, "destructiveHint" => true}}
         ] do
       site = mcp_site(%{name => %{"ok" => true}}, annotations: %{name => marks})
-      run = paid_run(site, believed_calls: [%{"tool" => name, "arguments" => %{}}])
+      run = free_run(site, believed_calls: [%{"tool" => name, "arguments" => %{}}])
 
       jev(fn _state, questions ->
         assert Map.has_key?(questions, "tool")
@@ -165,7 +159,7 @@ defmodule Patchbay.Assist.WorkTest do
 
   test "sign-in, provider failure and an unreachable site each end the run honestly" do
     site = mcp_site(%{"book" => %{"error" => "please sign in"}})
-    run = paid_run(site, believed_calls: [%{"tool" => "book", "arguments" => %{}}])
+    run = free_run(site, believed_calls: [%{"tool" => "book", "arguments" => %{}}])
 
     jev(fn _state, questions ->
       if Map.has_key?(questions, "tool"),
@@ -178,7 +172,7 @@ defmodule Patchbay.Assist.WorkTest do
     assert {done.status, done.outcome} == {:finished, :needs_sign_in}
 
     # Jev's provider refuses: the payment stands and a person finishes it.
-    away = paid_run(site, believed_calls: [])
+    away = free_run(site, believed_calls: [])
 
     Application.put_env(:patchbay, :jev_req_options,
       plug: fn conn -> send_resp(conn, 402, "no credit") end
@@ -190,7 +184,7 @@ defmodule Patchbay.Assist.WorkTest do
     assert Enum.any?(waiting.steps, &(&1["note"] =~ "person at Patchbay"))
 
     # A site that resolves nowhere public is never connected to.
-    private = paid_run(site, believed_calls: [])
+    private = free_run(site, believed_calls: [])
     Application.put_env(:patchbay, :assist_target, resolve: fn _ -> [{10, 0, 0, 1}] end)
     assert :ok = work(private)
     {:ok, unlisted} = Assist.get_run(private.id, authorize?: false)
@@ -199,7 +193,7 @@ defmodule Patchbay.Assist.WorkTest do
   end
 
   test "a site whose tools live in its pages: the tool in its code is suggested, never called" do
-    run = paid_run(mcp_site(%{}), believed_calls: [])
+    run = free_run(mcp_site(%{}), believed_calls: [])
     Patchbay.PageSite.serve(%{"/mcp" => Patchbay.PageSite.with_tool("reserve_table")})
     drafter(fn -> drafted(%{"party" => 2}) end)
 
@@ -218,7 +212,7 @@ defmodule Patchbay.Assist.WorkTest do
     assert suggested["answer"] == nil
 
     # A site with nothing in its pages ends the run without a suggestion.
-    empty = paid_run(mcp_site(%{}), believed_calls: [])
+    empty = free_run(mcp_site(%{}), believed_calls: [])
     Patchbay.PageSite.serve(%{"/mcp" => Patchbay.PageSite.without_tools()})
     assert :ok = work(empty)
     {:ok, unlisted} = Assist.get_run(empty.id, authorize?: false)
@@ -226,9 +220,9 @@ defmodule Patchbay.Assist.WorkTest do
     assert Enum.any?(unlisted.steps, &(&1["note"] =~ "no tools are written into its page"))
   end
 
-  test "a run that waited on a person is handed back and finished, with nothing paid twice" do
+  test "a run that waited on a person is handed back and finished, with nothing called twice" do
     site = mcp_site(%{"lookup" => %{"found" => true}})
-    run = paid_run(site, believed_calls: [])
+    run = free_run(site, believed_calls: [])
 
     jev(fn _state, questions ->
       if Map.has_key?(questions, "tool"),
@@ -265,7 +259,7 @@ defmodule Patchbay.Assist.WorkTest do
 
   test "a site's answer is kept as data: a stray NUL byte neither kills nor empties the run" do
     site = mcp_site(%{"lookup" => "found\0it"})
-    run = paid_run(site, believed_calls: [%{"tool" => "lookup", "arguments" => %{}}])
+    run = free_run(site, believed_calls: [%{"tool" => "lookup", "arguments" => %{}}])
 
     jev(fn _state, questions ->
       if Map.has_key?(questions, "tool"),
@@ -281,7 +275,7 @@ defmodule Patchbay.Assist.WorkTest do
 
   test "an error mid-run closes it as failed and keeps every step written before it" do
     site = mcp_site(%{"lookup" => %{"found" => true}})
-    run = paid_run(site, believed_calls: [%{"tool" => "lookup", "arguments" => %{}}])
+    run = free_run(site, believed_calls: [%{"tool" => "lookup", "arguments" => %{}}])
 
     jev(fn _state, questions ->
       if Map.has_key?(questions, "tool"),
@@ -298,11 +292,11 @@ defmodule Patchbay.Assist.WorkTest do
 
   test "a run whose work was lost is closed as failed; one still being worked on is left" do
     site = mcp_site(%{})
-    lost = paid_run(site, believed_calls: [])
+    lost = free_run(site, believed_calls: [])
     {:ok, _running} = Assist.start_run(lost, authorize?: false)
     lost_at(lost, ~U[2026-10-02 08:00:00Z])
 
-    fresh = paid_run(site, believed_calls: [])
+    fresh = free_run(site, believed_calls: [])
     {:ok, _running} = Assist.start_run(fresh, authorize?: false)
 
     assert %{failure: 0} = schedule_and_run_triggers({Run, :close_lost})
@@ -316,35 +310,27 @@ defmodule Patchbay.Assist.WorkTest do
     assert {:error, _not_open} = Ash.update(failed, %{}, action: :interrupt, authorize?: false)
   end
 
-  test "one open run per payer is the database's rule, not only the door's" do
+  test "one open run per asker is the database's rule, not only the door's" do
     site = mcp_site(%{})
-    payer = payer()
-    first = paid_run(site, payer: payer, believed_calls: [])
+    agent = paired_agent()
+    first = free_run(site, agent: agent, believed_calls: [])
 
-    {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request([])}, payer)
-    {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
+    assert {:error, %Ash.Error.Invalid{}} = Assist.request_agent_free_run(request([]), agent)
 
-    assert {:error, %Ash.Error.Invalid{}} =
-             Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
-
-    # Once the first has answered, the same payment opens its run.
+    # Once the first has answered, the next opens.
     {:ok, running} = Assist.start_run(first, authorize?: false)
 
     {:ok, _done} =
       Assist.finish_run(running, %{status: :finished, outcome: :reached}, authorize?: false)
 
-    assert {:ok, _second} =
-             Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
+    assert {:ok, _second} = Assist.request_agent_free_run(request([]), agent)
   end
 
-  # A paid, opened run for a fresh profile, pointed at the fixture site.
-  defp paid_run(site, opts) do
-    payer = Keyword.get_lazy(opts, :payer, &payer/0)
+  # A free run opened for a fresh paired agent, pointed at the fixture site.
+  defp free_run(site, opts) do
+    agent = Keyword.get_lazy(opts, :agent, &paired_agent/0)
     request = request(Keyword.fetch!(opts, :believed_calls))
-
-    {:ok, intent} = RegentPayments.Purchase.prepare(JevAssist, %{request: request}, payer)
-    {settled, _receipt} = Patchbay.SettledPayment.settle!(intent, payer)
-    {:ok, run} = Assist.open_run(%{intent: settled, browser_session_id: nil}, actor: payer)
+    {:ok, run} = Assist.request_agent_free_run(request, agent)
 
     # The site's name resolves to a public address, and the calls to it are
     # answered by the fixture in this process.
@@ -369,13 +355,6 @@ defmodule Patchbay.Assist.WorkTest do
       at,
       Ecto.UUID.dump!(run.id)
     ])
-  end
-
-  defp payer do
-    Identity.upsert_from_privy!(%{
-      privy_user_id: "did:privy:work-#{Ecto.UUID.generate()}",
-      wallet_address: "0x" <> String.duplicate("a", 40)
-    })
   end
 
   defp request(believed_calls) do

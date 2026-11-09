@@ -1,18 +1,18 @@
 defmodule Patchbay.Assist.Request do
   @moduledoc """
-  The rules for what an agent asks a paid assist to do, in the one place
-  every door reads them from.
+  The rules for what an agent asks an assist to do, in the one place every
+  door reads them from.
 
   A request names the goal (what the agent is trying to do and what result
   it expects, in one text), the site, whether the site needs a signed-in
   user, and the tools the agent believes will work, with their arguments
   when known. It may say what went wrong, in the agent's words: the error
   the site answered, for one.
-  Everything is text the agent wrote, so every field is bounded before it is
-  frozen into payment terms, and a site is only ever a public `https` name:
-  Patchbay will not be pointed at an address inside anybody's network. A site
-  that needs a signed-in user is refused here, before any money moves, since
-  Patchbay never acts on a third party's account.
+  Everything is text the agent wrote, so every field is bounded before a run
+  opens, and a site is only ever a public `https` name: Patchbay will not be
+  pointed at an address inside anybody's network. A site that needs a
+  signed-in user is refused here, before a run opens, since Patchbay never
+  acts on a third party's account.
   """
 
   alias Patchbay.Patchbay.CanonicalJSON

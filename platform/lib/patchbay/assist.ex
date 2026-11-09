@@ -3,11 +3,10 @@ defmodule Patchbay.Assist do
   Assists: somebody stuck on a site's tools tells Patchbay what they are
   trying to do, and Patchbay works out the right call for them.
 
-  An agent pays a fixed fee for one in USDC, like every other paid action,
-  to the one wallet this Patchbay is set up to take it at. Without that wallet, paid assists answer that they are not set up here
-  and nothing else changes. An agent signed in with SIWA gets a few free
-  ones a day, counted by `Patchbay.Assist.Allowance`, and pays the same fee
-  after that.
+  An agent signed in with SIWA gets a few free ones a day, counted by
+  `Patchbay.Assist.Allowance`. Paid assists have ended: the runs they bought
+  keep their records, and a fee still on its way to the staking contract is
+  forwarded as before.
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -16,13 +15,8 @@ defmodule Patchbay.Assist do
 
   alias Patchbay.Assist.Run
 
-  @doc "Founder-approved price of one standalone Jev search, in atomic USDC units."
-  @spec search_fee_atomic() :: pos_integer()
-  def search_fee_atomic, do: 100_000
-
   resources do
     resource Patchbay.Assist.Run do
-      define(:open_run, action: :open)
       define(:get_run, action: :read, get_by: [:id])
 
       define(:get_open_run_for_payer,
@@ -142,13 +136,6 @@ defmodule Patchbay.Assist do
            do: noted
     end)
   end
-
-  @doc """
-  The wallet a paid assist's fee is paid to, or nil when this Patchbay has
-  none set.
-  """
-  @spec pay_to_address() :: String.t() | nil
-  def pay_to_address, do: setting(:pay_to_address)
 
   @doc """
   The REGENT staking contract each fee is forwarded to as revenue, or nil

@@ -5,12 +5,21 @@ defmodule Patchbay.AssistFixtures do
   way that door does. `browser_run/1` writes a run straight into the table in
   the shape a free run asked from the page left behind: open, asked by a
   browser and, when `payer_profile_id` is given, by a signed-in person.
+  `paid_run/2` writes a run bought before paid assists ended, with the
+  payment that bought it.
   """
 
   alias Patchbay.Agents.Actor
   alias Patchbay.Assist.Run
   alias Patchbay.Identity
+  alias Patchbay.SettledPayment
   alias PatchbayWeb.SignedAgent
+  alias RegentPayments.PaymentIntent
+  alias RegentPayments.Steps
+  alias RegentPayments.USDC
+
+  # What a paid assist cost, in USDC's atomic units.
+  @fee_atomic 100_000
 
   @doc "The request every fixture run asks for."
   def request do
@@ -50,5 +59,51 @@ defmodule Patchbay.AssistFixtures do
         attrs
       )
     )
+  end
+
+  @doc """
+  An open run bought before paid assists ended, as such a run stands in the
+  tables: the `jev_assist` payment `payer` made into the wallet `pay_to`,
+  settled and applied, and the run it opened, waiting to be started, with
+  its fee still to forward.
+  """
+  def paid_run(payer, pay_to) do
+    request = request()
+    run_id = Ash.UUID.generate()
+    payload = %{"run_id" => run_id, "request" => request, "pay_to_address" => pay_to}
+
+    intent =
+      Ash.Seed.seed!(PaymentIntent, %{
+        site: RegentPayments.site(),
+        kind: :jev_assist,
+        actor_profile_id: payer.id,
+        target_type: :assist_run,
+        target_id: run_id,
+        amount_atomic: @fee_atomic,
+        asset: USDC.asset(),
+        network: USDC.network(),
+        payload: payload,
+        payload_digest:
+          :sha256 |> :crypto.hash(Jason.encode!(payload)) |> Base.encode16(case: :lower),
+        recipient_snapshot: [%{"wallet_address" => pay_to, "amount_atomic" => @fee_atomic}],
+        effect_summary:
+          "Ask Patchbay to work out the right tool call on bookings.example.com for 0.10 USDC",
+        expires_at: DateTime.add(DateTime.utc_now(), 15 * 60, :second)
+      })
+
+    {settled, _receipt} = SettledPayment.settle!(intent, payer)
+    {:ok, _applied} = Steps.step(settled, :mark_applied, payer)
+
+    Ash.Seed.seed!(Run, %{
+      id: run_id,
+      payment_intent_id: intent.id,
+      payer_profile_id: payer.id,
+      grant: :paid,
+      deposit_status: :pending,
+      goal: request["goal"],
+      site_url: request["site_url"],
+      sign_in: :unknown,
+      believed_calls: []
+    })
   end
 end
