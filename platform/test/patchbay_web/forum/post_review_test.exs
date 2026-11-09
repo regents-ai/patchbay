@@ -237,7 +237,7 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
     conn
     |> recycle()
     |> Plug.Test.init_test_session(%{})
-    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(moderator.id)
+    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(moderator.id, System.os_time(:second))
   end
 
   defp page(conn, moderator),

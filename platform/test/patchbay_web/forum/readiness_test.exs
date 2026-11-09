@@ -75,7 +75,7 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
   defp signed_in(conn, profile) do
     conn
     |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id)
+    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
   end
 
   defp readiness(conn), do: conn |> get("/forum/readiness") |> json_response(200)

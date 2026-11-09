@@ -12,8 +12,11 @@ defmodule Patchbay.Identity.AgentProfile do
   good; that number only groups the person's agents.
 
   A profile is active or suspended. Only a person at Patchbay's console
-  suspends or reinstates one (`Patchbay.Identity.suspend/2`, `reinstate/2`),
-  and every door a profile acts through asks `may_act?/1` the same question.
+  suspends or reinstates one, through the release commands
+  (`Patchbay.Release.suspend_profile/3`, `reinstate_profile/3`), and each
+  change leaves a row in `Patchbay.Identity.StatusChange`. Web sign-in,
+  connected apps, a paired agent's actions and wallet authors all ask
+  `may_act?/1` the same question.
   """
 
   use Ash.Resource,
@@ -111,13 +114,10 @@ defmodule Patchbay.Identity.AgentProfile do
 
     attribute(:status, ProfileStatus, allow_nil?: false, public?: true, default: :active)
 
-    # The words a person at Patchbay's console gave for the latest suspension
-    # or reinstatement. Nothing shows them.
-    attribute(:status_reason, :string, constraints: [max_length: 500])
-
     # A web sign-in made in this second or before it no longer holds
-    # (`PatchbayWeb.Plugs.CurrentProfile`). Suspending sets it; nothing else
-    # does, so reinstating never brings an old sign-in back.
+    # (`PatchbayWeb.Plugs.CurrentProfile`). Suspending sets it from the
+    # database's clock as the row is written; nothing else sets it, so
+    # reinstating never brings an old sign-in back.
     attribute(:sessions_valid_after, :utc_datetime)
 
     attribute :registry_url, :string do
@@ -303,10 +303,12 @@ defmodule Patchbay.Identity.AgentProfile do
 
     update :suspend do
       description("""
-      Suspends the profile for `reason`: it can no longer sign in on the web,
-      post or pay, every web sign-in it holds ends now, its agents are refused
-      and every app connected to it is disconnected. Suspending a suspended
-      profile again saves the new reason and disconnects any app still left.
+      Suspends an active profile for `reason`: it can no longer sign in on the
+      web, post or pay, every web sign-in it holds ends now, its agents'
+      posting, paying and other actions and its wallet author are refused, and
+      a job disconnects every app connected to it. The shared agent check-in,
+      whoami and pairing still answer. The reason is kept in the profile's
+      record of status changes.
       """)
 
       argument :reason, :string do
@@ -314,17 +316,28 @@ defmodule Patchbay.Identity.AgentProfile do
         constraints(max_length: 500)
       end
 
-      require_atomic?(false)
+      validate(attribute_equals(:status, :active), message: "is already suspended")
       change(set_attribute(:status, :suspended))
-      change(set_attribute(:status_reason, arg(:reason)))
-      change(set_attribute(:sessions_valid_after, &DateTime.utc_now/0))
-      change(Patchbay.Identity.Changes.DisconnectApps)
+
+      # The second the database's clock is in as it writes the row, after any
+      # sign-in holding the row has let go of it
+      # (`PatchbayWeb.Plugs.CurrentProfile`).
+      change(
+        atomic_update(
+          :sessions_valid_after,
+          expr(fragment("date_trunc('second', clock_timestamp() AT TIME ZONE 'UTC')"))
+        )
+      )
+
+      change(Patchbay.Identity.Changes.RecordStatusChange)
+      change(Patchbay.Identity.Changes.QueueDisconnectApps)
     end
 
     update :reinstate do
       description("""
       Reinstates a suspended profile for `reason`. Old web sign-ins and
-      disconnected apps stay ended: the person signs in and connects them again.
+      disconnected apps stay ended: the person signs in and connects them
+      again. The reason is kept in the profile's record of status changes.
       """)
 
       argument :reason, :string do
@@ -334,7 +347,7 @@ defmodule Patchbay.Identity.AgentProfile do
 
       validate(attribute_equals(:status, :suspended), message: "is not suspended")
       change(set_attribute(:status, :active))
-      change(set_attribute(:status_reason, arg(:reason)))
+      change(Patchbay.Identity.Changes.RecordStatusChange)
     end
   end
 
@@ -356,9 +369,11 @@ defmodule Patchbay.Identity.AgentProfile do
       authorize_if(expr(id == ^actor(:id) and authentication_origin == :privy))
     end
 
-    # `suspend` and `reinstate` are named by no policy, so nothing that
-    # arrives over HTTP can reach them; a person at Patchbay's console is
-    # their only caller and says so by skipping authorization deliberately.
+    # Only Patchbay's console suspends or reinstates: its release commands
+    # act as the system actor (`Patchbay.Release`), which no request carries.
+    policy action([:suspend, :reinstate]) do
+      authorize_if(actor_attribute_equals(:role, :system))
+    end
   end
 
   @doc """
@@ -379,8 +394,9 @@ defmodule Patchbay.Identity.AgentProfile do
   @doc """
   Whether this profile may act on Patchbay: sign in on the web, post, pay,
   and be acted for by its agents and connected apps. Web sign-in, connected
-  apps, paired agents and wallet authors all ask this, and a suspended
-  profile is refused at every one of them.
+  apps, a paired agent's actions and wallet authors all ask this, and a
+  suspended profile is refused at every one of them. The shared agent
+  check-in, whoami and pairing (`regent_agents`) do not ask it.
   """
   @spec may_act?(t()) :: boolean()
   def may_act?(%{status: status}), do: status == :active

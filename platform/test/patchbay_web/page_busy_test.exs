@@ -279,7 +279,7 @@ defmodule PatchbayWeb.PageBusyTest do
       signed_in =
         conn
         |> Plug.Test.init_test_session(%{})
-        |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id)
+        |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id, System.os_time(:second))
 
       %{person: person, signed_in: signed_in}
     end
@@ -295,7 +295,7 @@ defmodule PatchbayWeb.PageBusyTest do
         gone =
           conn
           |> Plug.Test.init_test_session(%{})
-          |> PatchbayWeb.Plugs.CurrentProfile.sign_in(id)
+          |> PatchbayWeb.Plugs.CurrentProfile.sign_in(id, System.os_time(:second))
           |> get("/about")
 
         assert gone.assigns.current_profile == nil

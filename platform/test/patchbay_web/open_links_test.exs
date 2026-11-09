@@ -98,7 +98,7 @@ defmodule PatchbayWeb.OpenLinksTest do
       conn
       |> on_open()
       |> Plug.Test.init_test_session(%{})
-      |> PatchbayWeb.Plugs.CurrentProfile.sign_in(asker.id)
+      |> PatchbayWeb.Plugs.CurrentProfile.sign_in(asker.id, System.os_time(:second))
 
     assert missing_links(
              conn,

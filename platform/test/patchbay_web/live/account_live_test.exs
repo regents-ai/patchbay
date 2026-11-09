@@ -19,7 +19,11 @@ defmodule PatchbayWeb.AccountLiveTest do
         wallet_address: "0x" <> String.duplicate("e", 40)
       })
 
-    conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+
     site = Forum.register_site!("followed.example.com")
 
     assert conn
@@ -66,7 +70,11 @@ defmodule PatchbayWeb.AccountLiveTest do
         wallet_address: "0x" <> String.duplicate("f", 40)
       })
 
-    conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+
     page = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
 
     # The wallet's own link opens it on the chain's explorer; every other link

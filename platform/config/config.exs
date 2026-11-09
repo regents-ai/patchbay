@@ -186,6 +186,9 @@ config :patchbay, Oban,
     escrow_reads: 2,
     # A refund Base accepted, written down (`Patchbay.Forum.RefundRelayRecord`).
     escrow_records: 1,
+    # A suspended person's connected apps, disconnected
+    # (`Patchbay.Identity.DisconnectApps`).
+    connected_apps: 1,
     # The template runs 5 here; Patchbay's only jobs on it are the minute's
     # SharedReading.Heal, which sends one message, and the ten-minute
     # SiteCheckSweep, which writes five asks, so one is enough.

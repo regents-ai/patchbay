@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+profile="${1:?usage: status-changes <public id>}"
+
+PATCHBAY_RELEASE_COMMAND=migrate PATCHBAY_STATUS_PROFILE="$profile" exec "$(dirname "$0")/patchbay" eval 'Patchbay.Release.status_changes(System.fetch_env!("PATCHBAY_STATUS_PROFILE"))'

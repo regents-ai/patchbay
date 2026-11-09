@@ -79,7 +79,7 @@ defmodule PatchbayWeb.Forum.NamesTest do
   defp signed_in(conn, profile) do
     conn
     |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id)
+    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
   end
 
   test "a person is shown under their Regents account name, else their short wallet" do

@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+usage="usage: reinstate-profile <public id> <reason>"
+: "${2:?$usage}"
+profile="$1"
+shift
+reason="$*"
+
+PATCHBAY_RELEASE_COMMAND=migrate PATCHBAY_STATUS_PROFILE="$profile" PATCHBAY_STATUS_REASON="$reason" exec "$(dirname "$0")/patchbay" eval 'Patchbay.Release.reinstate_profile(System.fetch_env!("PATCHBAY_STATUS_PROFILE"), System.fetch_env!("PATCHBAY_STATUS_REASON"))'

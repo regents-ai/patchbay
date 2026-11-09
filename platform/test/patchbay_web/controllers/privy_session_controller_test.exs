@@ -123,7 +123,7 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
       did = "did:privy:suspended-#{System.unique_integer([:positive])}"
       linked = [@email, wallet(@made, 1_001, "privy")]
       assert json_response(sign_in(key, did, linked), 200)
-      {:ok, _suspended} = Identity.suspend(public_id(did), "Spam")
+      {:ok, _suspended} = Identity.suspend_profile(profile(did), "Spam", actor: %{role: :system})
 
       refused = sign_in(key, did, linked)
 
@@ -139,13 +139,15 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
       {:ok, page, _html} = live(browser, "/account")
       refute has_element?(page, "#account-signed-out")
 
-      {:ok, _suspended} = Identity.suspend(public_id(did), "Spam")
+      {:ok, _suspended} = Identity.suspend_profile(profile(did), "Spam", actor: %{role: :system})
 
       assert browser |> get("/account") |> html_response(200) =~ @sign_in_button
       send(page.pid, :agents_changed)
       assert has_element?(page, "#account-signed-out")
 
-      {:ok, _reinstated} = Identity.reinstate(public_id(did), "Appeal upheld")
+      {:ok, _reinstated} =
+        Identity.reinstate_profile(profile(did), "Appeal upheld", actor: %{role: :system})
+
       assert browser |> get("/account") |> html_response(200) =~ @sign_in_button
 
       next_second()
@@ -156,7 +158,7 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
     end
   end
 
-  defp public_id(did), do: Identity.get_profile_by_privy_user_id!(did).public_id
+  defp profile(did), do: Identity.get_profile_by_privy_user_id!(did)
 
   # A sign-in made in the same second as a suspension stays ended with it.
   defp next_second, do: Process.sleep(1_001 - rem(System.os_time(:millisecond), 1_000))
