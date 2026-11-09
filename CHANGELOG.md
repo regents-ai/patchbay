@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-09 — Sites
+
+- On a phone, the category list on the Sites page shows the whole category, and long site names wrap onto a second line instead of being cut short.
+
 ## 2026-11-08 — Site matches
 
 - The sites and tools shown beside words you type on the home page now appear quickly, however many sites and tools Patchbay lists. The same sites and tools are found, in the same order.

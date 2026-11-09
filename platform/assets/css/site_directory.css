@@ -81,7 +81,8 @@
 .pb-directory-identity { display: flex; align-items: center; gap: .8rem; min-width: 0; }
 .pb-directory-mark { width: 28px; height: 28px; flex: 0 0 28px; display: grid; place-items: center; border: 1px solid var(--pb-line); background: var(--pb-surface); color: var(--pb-text-muted); font-family: var(--font-family-title); font-size: 1.1rem; }
 .pb-directory-mark img { width: 28px; height: 28px; padding: 2px; object-fit: contain; background: var(--pb-porcelain); }
-.pb-directory-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* A long name wraps rather than losing its end. */
+.pb-directory-name { min-width: 0; overflow-wrap: anywhere; }
 .pb-directory-expand, .pb-directory-count, .pb-directory-refresh { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; }
 .pb-directory-expand { display: flex; align-items: center; gap: .65rem; text-align: left; padding: 0; min-height: 32px; max-width: 55%; min-width: 0; flex-shrink: 0; }
 .pb-directory-url { display: flex; align-items: center; gap: .25rem; min-width: 0; min-height: 32px; color: var(--pb-text-muted); font-size: .72rem; }
@@ -120,9 +121,13 @@
   .pb-directory-intro { align-items: start; }
   .pb-directory-intro h2 { max-width: 13rem; }
   .pb-directory-total { padding-top: 2rem; }
-  .pb-directory-search { display: grid; grid-template-columns: minmax(0,1fr) auto; }
-  .pb-directory-search-field { grid-column: 1 / -1; max-width: none; }
-  .pb-directory-search select { max-width: 100%; }
+  /* The box takes a line of its own. The list keeps room for its longest
+     category beside Search, and when the two no longer fit, Search moves under
+     it and takes the whole line. */
+  .pb-directory-search { flex-wrap: wrap; }
+  .pb-directory-search-field { flex: 1 1 100%; max-width: none; }
+  .pb-directory-select { flex: 100 1 auto; }
+  .pb-directory-search .rg-button { flex: 1 0 auto; }
   .pb-directory-table th, .pb-directory-table td { padding-inline: .75rem; }
   .pb-directory-table thead th:first-child { width: auto; }
   .pb-directory-table thead th:not(:first-child) { width: 3.75rem; }
