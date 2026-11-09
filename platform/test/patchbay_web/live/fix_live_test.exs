@@ -87,7 +87,7 @@ defmodule PatchbayWeb.FixLiveTest do
   defp signed_in(conn, person) do
     conn
     |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(person.id)
+    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
   end
 
   defp person do

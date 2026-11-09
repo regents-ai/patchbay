@@ -470,7 +470,7 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
 
     conn
     |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(person.id)
+    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
     |> post("/api/payment_intents", %{
       "kind" => "special_post",
       "args" =>

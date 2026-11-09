@@ -55,14 +55,16 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
   end
 
   @doc """
-  Signs the session in as the profile, from now.
+  Signs the session in as the profile, from `signed_in_at` (Unix seconds),
+  which the caller takes before it reads the profile's status, so a sign-in
+  racing a suspension is ended by it (`after_cutoff?/2`).
   """
-  @spec sign_in(Plug.Conn.t(), String.t()) :: Plug.Conn.t()
-  def sign_in(conn, profile_id) do
+  @spec sign_in(Plug.Conn.t(), String.t(), integer()) :: Plug.Conn.t()
+  def sign_in(conn, profile_id, signed_in_at) when is_integer(signed_in_at) do
     conn
     |> disconnect_live_pages()
     |> put_session(@profile_key, profile_id)
-    |> put_session(@signed_in_at_key, System.os_time(:second))
+    |> put_session(@signed_in_at_key, signed_in_at)
     |> put_session(@live_key, "sign_in:" <> Base.url_encode64(:crypto.strong_rand_bytes(16)))
   end
 
@@ -130,8 +132,17 @@ defmodule PatchbayWeb.Plugs.CurrentProfile do
     end
   end
 
-  # Suspending ends every sign-in made up to the second it was saved, the
-  # same second included, so a sign-in racing the suspension never survives it.
+  # The cut-off is the second the database's clock is in as the suspension
+  # writes the row (`AgentProfile`'s `suspend`). A sign-in's time is taken, to
+  # the second, before it reads the profile's status (`PrivySessionController`),
+  # and a read that saw the profile active came before the suspension's write:
+  # each waits for the other while it holds the row. So the sign-in's second is
+  # no later than the cut-off, and ending every sign-in up to the cut-off, its
+  # own second included, ends it. This assumes the web machines' clocks and the
+  # database's agree to within a second: a web clock running ahead by part of a
+  # second could let a sign-in made up to that part of a second before the
+  # suspension outlive it. A sign-in after a reinstatement in the cut-off's own
+  # second is ended too; signing in again in the next second holds.
   defp after_cutoff?(%{sessions_valid_after: nil}, _signed_in_at), do: true
 
   defp after_cutoff?(%{sessions_valid_after: cutoff}, signed_in_at),

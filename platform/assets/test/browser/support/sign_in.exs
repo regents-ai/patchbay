@@ -52,7 +52,7 @@ signed_in = fn profile, file ->
     |> Map.put(:secret_key_base, PatchbayWeb.Endpoint.config(:secret_key_base))
     |> Plug.Session.call(options)
     |> Plug.Conn.fetch_session()
-    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
+    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id, System.os_time(:second))
     |> Plug.Conn.send_resp(200, "")
 
   %{value: value} = conn.resp_cookies["_patchbay_key"]

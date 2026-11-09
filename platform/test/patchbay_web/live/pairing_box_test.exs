@@ -111,7 +111,9 @@ defmodule PatchbayWeb.PairingBoxTest do
         wallet_address: "0x" <> String.duplicate(hex, 40)
       })
 
-    conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
+    conn
+    |> Plug.Test.init_test_session(%{})
+    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
   end
 
   defp at(conn, :main), do: conn

@@ -97,7 +97,9 @@ defmodule PatchbayWeb.PaymentsAPI.PriorityReportAmountsTest do
   end
 
   defp signed_in(conn, person) do
-    conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
+    conn
+    |> Plug.Test.init_test_session(%{})
+    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
   end
 
   defp prepare(conn, written) do

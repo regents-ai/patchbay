@@ -41,7 +41,7 @@ defmodule PatchbayWeb.PointsLiveTest do
     conn =
       build_conn()
       |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(agent.owner.id)
+      |> CurrentProfile.sign_in(agent.owner.id, System.os_time(:second))
 
     %{conn: conn, agent: agent, other: other}
   end

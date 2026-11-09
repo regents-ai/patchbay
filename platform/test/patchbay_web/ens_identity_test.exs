@@ -39,7 +39,11 @@ defmodule PatchbayWeb.EnsIdentityTest do
        %{conn: conn} do
     person = person()
     {:ok, account} = Accounts.establish(session(person))
-    conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(person.id)
+
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
 
     header = conn |> get(~p"/") |> html_response(200) |> header_picture()
     assert [{"svg", _attrs, _face}] = header

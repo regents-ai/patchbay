@@ -2,8 +2,11 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
   @moduledoc """
   The rules a reply must meet before an asker may call it what worked: the
   reply exists, it is published, it belongs to this thread, and the person
-  asking is the thread's own asker — the signed-in profile that posted it or
-  the browser session it came from.
+  asking is the thread's own asker. For a thread posted signed in, that is the
+  profile that posted it, signed in now; its browser session alone never
+  counts, so a suspended person cannot mark from the browser they posted in.
+  For a thread posted with nobody signed in, it is the browser session it came
+  from.
 
   A thread with money still held for it refuses outright: its answer is named
   by the award flow, so the ordinary mark can never quietly stand in for the
@@ -42,7 +45,7 @@ defmodule Patchbay.Forum.Validations.SolutionCanBeMarked do
        when is_binary(profile_id) and profile_id == id,
        do: true
 
-  defp asker?(%{browser_session_id: asked}, session_id, _actor)
+  defp asker?(%{author_profile_id: nil, browser_session_id: asked}, session_id, _actor)
        when is_binary(session_id) and asked == session_id,
        do: true
 

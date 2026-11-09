@@ -2,13 +2,15 @@ defmodule Patchbay.ReleaseTest do
   # The release commands every site carries, run against disposable databases:
   # the launchers, the staging bootstrap, the listing of what a database and the
   # release disagree about, and the shared changes a deployment never applies.
-  # Then Patchbay's own: the release connection and the imported history.
+  # Then Patchbay's own: the release connection, the imported history and the
+  # console's commands that suspend and reinstate a profile.
   # The bootstrap and listing cases point the application repository at a
   # disposable database, so this module runs alone.
   use ExUnit.Case, async: false
 
   import ExUnit.CaptureIO
 
+  alias Patchbay.Identity
   alias Patchbay.LocalDatabaseFixture
   alias Patchbay.Release
   alias Patchbay.Repo
@@ -221,6 +223,57 @@ defmodule Patchbay.ReleaseTest do
     assert Application.fetch_env!(:patchbay, Repo) == runtime
 
     assert applied_versions(config) == release_versions()
+  end
+
+  test "the console's launchers stop before the release starts when an argument is missing" do
+    for {path, given} <- [
+          {"rel/overlays/bin/suspend-profile", [[], ["ab12cd"]]},
+          {"rel/overlays/bin/reinstate-profile", [[], ["ab12cd"]]},
+          {"rel/overlays/bin/status-changes", [[]]}
+        ],
+        args <- given do
+      assert File.stat!(path).mode |> Bitwise.band(0o100) != 0
+      assert {_said, status} = System.cmd("sh", [path | args], stderr_to_stdout: true)
+      assert status != 0, "#{path} #{Enum.join(args, " ")} went on to start the release"
+    end
+  end
+
+  test "the console suspends and reinstates a profile once each, records both reasons and queues its apps' disconnection" do
+    # The release command starts its own Oban, which only queues jobs, under
+    # the same name the running site's has.
+    without_running_oban()
+    config = bootstrapped_database()
+
+    person =
+      with_repo(config, fn _repo ->
+        Identity.upsert_from_privy!(%{
+          privy_user_id: "did:privy:release-#{System.unique_integer([:positive])}",
+          wallet_address: "0x" <> String.duplicate("ab", 20)
+        })
+      end)
+
+    capture_io(fn -> Release.suspend_profile(person.public_id, "Spam", config: config) end)
+    assert profile_status(config, person) == "suspended"
+    assert status_changes(config, person) == [["suspend", "Spam"]]
+    assert queued_jobs(config) == [["Patchbay.Identity.DisconnectApps", person.id, "available"]]
+
+    # Nothing to do changes nothing.
+    capture_io(fn -> Release.suspend_profile(person.public_id, "Spam again", config: config) end)
+    capture_io(fn -> Release.suspend_profile("nobody", "Spam", config: config) end)
+    assert status_changes(config, person) == [["suspend", "Spam"]]
+    assert length(queued_jobs(config)) == 1
+
+    capture_io(fn ->
+      Release.reinstate_profile(person.public_id, "Appeal upheld", config: config)
+    end)
+
+    capture_io(fn -> Release.reinstate_profile(person.public_id, "Again", config: config) end)
+    assert profile_status(config, person) == "active"
+    assert status_changes(config, person) == [["suspend", "Spam"], ["reinstate", "Appeal upheld"]]
+
+    record = capture_io(fn -> Release.status_changes(person.public_id, config: config) end)
+    assert record =~ "Spam"
+    assert record =~ "Appeal upheld"
   end
 
   test "an index a stopped build left unusable stops the release, and its migration builds it again" do
@@ -494,6 +547,35 @@ defmodule Patchbay.ReleaseTest do
     end)
 
     config
+  end
+
+  # The running site's Oban stops for the test and starts again after it, once
+  # the application repository is back: a release command's own Oban never
+  # runs beside the site's in one VM.
+  defp without_running_oban do
+    :ok = Supervisor.terminate_child(Patchbay.Supervisor, Oban)
+    on_exit(fn -> {:ok, _pid} = Supervisor.restart_child(Patchbay.Supervisor, Oban) end)
+  end
+
+  defp profile_status(config, profile) do
+    %{rows: [[status]]} =
+      query!(config, "SELECT status FROM agent_profiles WHERE id = $1", [
+        Ecto.UUID.dump!(profile.id)
+      ])
+
+    status
+  end
+
+  defp status_changes(config, profile) do
+    query!(
+      config,
+      "SELECT action, reason FROM agent_profile_status_changes WHERE profile_id = $1 ORDER BY inserted_at",
+      [Ecto.UUID.dump!(profile.id)]
+    ).rows
+  end
+
+  defp queued_jobs(config) do
+    query!(config, "SELECT worker, args->>'profile_id', state FROM oban_jobs ORDER BY id").rows
   end
 
   # The database as a URL, the shape `DATABASE_DIRECT_URL` gives the release.

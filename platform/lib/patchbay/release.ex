@@ -1,9 +1,16 @@
 defmodule Patchbay.Release do
   @moduledoc """
-  Database tasks for the packaged release, where Mix is not available.
+  Database tasks for the packaged release, where Mix is not available, and the
+  console's commands for suspending and reinstating a profile.
   """
 
+  alias Patchbay.Identity
+
   @app :patchbay
+  # Patchbay's console: the release commands that change a profile act as the
+  # system actor, which no request carries (`Patchbay.Identity.AgentProfile`).
+  @system %{role: :system}
+  @console [actor: @system, not_found_error?: false]
   @platform_schema "regent_names"
   # Last migration already present in the preserved source. Its predecessors
   # contain public-qualified references and must never replay after relocation.
@@ -206,6 +213,115 @@ defmodule Patchbay.Release do
       do: IO.puts("applied-without-file: #{Enum.join(applied_without_file, " ")}")
 
     if shared != [], do: IO.puts("shared-pending: #{Enum.join(shared, ", ")}")
+  end
+
+  @doc """
+  Suspends the profile with this public id, for `reason`, as Patchbay's
+  console (`Patchbay.Identity.AgentProfile`'s `suspend` action): it can no
+  longer sign in on the web, post or pay, its live web sign-ins end, a paired
+  agent's posting, paying and other actions and its wallet are refused, and a
+  job disconnects its connected apps (`Patchbay.Identity.DisconnectApps`). The
+  shared agent check-in, whoami and pairing still answer. The suspension, its
+  record and its job are saved together. Run on the deployment as
+  `/app/bin/suspend-profile <public id> <reason>`.
+
+  It prints what it changed, and changes nothing when no profile has that id
+  or the profile is already suspended. It starts only the database connection
+  and an Oban that queues jobs without running any, so the running site does
+  the work. Its options are the bootstrap's: `:config` names another
+  connection.
+  """
+  def suspend_profile(public_id, reason, opts \\ []) when is_list(opts) do
+    with_release_repo(opts, fn _repo ->
+      with_inserting_oban(fn ->
+        public_id |> Identity.get_profile_by_public_id!(@console) |> suspend(public_id, reason)
+      end)
+    end)
+  end
+
+  defp suspend(nil, public_id, _reason),
+    do: IO.puts("No profile has the public id #{public_id}. Nothing changed.")
+
+  defp suspend(%{status: :suspended}, public_id, _reason),
+    do: IO.puts("#{public_id} is already suspended. Nothing changed.")
+
+  defp suspend(profile, public_id, reason) do
+    Identity.suspend_profile!(profile, reason, actor: @system)
+    IO.puts("#{public_id} is suspended.")
+  end
+
+  @doc """
+  Reinstates the suspended profile with this public id, for `reason`, as
+  Patchbay's console. Its old web sign-ins and disconnected apps stay ended:
+  the person signs in again and connects their apps again. The reinstatement
+  and its record are saved together. Run on the deployment as
+  `/app/bin/reinstate-profile <public id> <reason>`.
+
+  It prints what it changed, and changes nothing when no profile has that id
+  or the profile is not suspended. Its options are the bootstrap's.
+  """
+  def reinstate_profile(public_id, reason, opts \\ []) when is_list(opts) do
+    with_release_repo(opts, fn _repo ->
+      public_id |> Identity.get_profile_by_public_id!(@console) |> reinstate(public_id, reason)
+    end)
+  end
+
+  defp reinstate(nil, public_id, _reason),
+    do: IO.puts("No profile has the public id #{public_id}. Nothing changed.")
+
+  defp reinstate(%{status: :active}, public_id, _reason),
+    do: IO.puts("#{public_id} is not suspended. Nothing changed.")
+
+  defp reinstate(profile, public_id, reason) do
+    Identity.reinstate_profile!(profile, reason, actor: @system)
+    IO.puts("#{public_id} is reinstated.")
+  end
+
+  @doc """
+  Prints the record of the profile with this public id being suspended and
+  reinstated (`Patchbay.Identity.StatusChange`), oldest first: the time, which
+  of the two, and the reason. It changes nothing. Run on the deployment as
+  `/app/bin/status-changes <public id>`. Its options are the bootstrap's.
+  """
+  def status_changes(public_id, opts \\ []) when is_list(opts) do
+    with_release_repo(opts, fn _repo ->
+      public_id |> Identity.get_profile_by_public_id!(@console) |> print_status_changes(public_id)
+    end)
+  end
+
+  defp print_status_changes(nil, public_id),
+    do: IO.puts("No profile has the public id #{public_id}.")
+
+  defp print_status_changes(profile, public_id) do
+    case Identity.status_changes!(profile.id, actor: @system) do
+      [] -> IO.puts("#{public_id} has never been suspended.")
+      changes -> Enum.each(changes, &IO.puts(status_change_line(&1)))
+    end
+  end
+
+  defp status_change_line(%{inserted_at: at, action: action, reason: reason}),
+    do: "#{Calendar.strftime(at, "%Y-%m-%d %H:%M:%S UTC")}  #{status_word(action)}  #{reason}"
+
+  defp status_word(:suspend), do: "suspended"
+  defp status_word(:reinstate), do: "reinstated"
+
+  # An Oban that only queues jobs, for as long as `fun` runs: no queues, no
+  # plugins and never the leader, so the job a suspension queues in its own
+  # transaction waits for the running site to take it.
+  defp with_inserting_oban(fun) do
+    {:ok, _started} = Application.ensure_all_started(:oban)
+
+    {:ok, oban} =
+      @app
+      |> Application.fetch_env!(Oban)
+      |> Keyword.merge(queues: false, plugins: false, peer: false)
+      |> Oban.start_link()
+
+    try do
+      fun.()
+    after
+      Supervisor.stop(oban)
+    end
   end
 
   defp disagreements(repo, path) do

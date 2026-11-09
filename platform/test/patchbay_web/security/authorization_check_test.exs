@@ -57,7 +57,10 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   defp as(nil), do: build_conn()
 
   defp as(profile),
-    do: build_conn() |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(profile.id)
+    do:
+      build_conn()
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
 
   defp signed(agent), do: build_conn() |> SignedAgent.sign(agent)
 
@@ -290,10 +293,10 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       a_conn =
         build_conn()
         |> Plug.Test.init_test_session(%{"forum_session_id" => shared})
-        |> CurrentProfile.sign_in(a.id)
+        |> CurrentProfile.sign_in(a.id, System.os_time(:second))
         |> CurrentProfile.sign_out()
 
-      b_conn = CurrentProfile.sign_in(a_conn, b.id)
+      b_conn = CurrentProfile.sign_in(a_conn, b.id, System.os_time(:second))
 
       kept? = get_session(b_conn, "forum_session_id") == shared
       b_conn |> post("/posts/#{thread.id}/solution", %{"reply_id" => reply.id})
@@ -303,6 +306,31 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         {"the browser's forum identity after a signs out and b signs in", not kept?,
          "a fresh one", if(kept?, do: "a's", else: "a fresh one")},
         {"solution after b's press on a's browser", is_nil(marked), "nil", marked}
+      ])
+    end
+
+    test "a suspended a cannot mark the answer on a's thread from the browser a posted in", %{
+      a: a,
+      b: b
+    } do
+      browser = Ash.UUID.generate()
+      thread = thread!(a, %{browser_session_id: browser})
+      reply = reply!(thread, b)
+
+      a_conn =
+        build_conn()
+        |> Plug.Test.init_test_session(%{"forum_session_id" => browser})
+        |> CurrentProfile.sign_in(a.id, System.os_time(:second))
+
+      Identity.suspend_profile!(a, "Spam", actor: %{role: :system})
+      pressed = post(a_conn, "/posts/#{thread.id}/solution", %{"reply_id" => reply.id})
+
+      judge("suspended asker's browser", [
+        {"the browser's forum identity", get_session(pressed, "forum_session_id") == browser,
+         "the one a posted from", get_session(pressed, "forum_session_id")},
+        {"solution after the suspended a's press",
+         is_nil(Ash.get!(Report, thread.id).solution_reply_id), "nil",
+         Ash.get!(Report, thread.id).solution_reply_id}
       ])
     end
 

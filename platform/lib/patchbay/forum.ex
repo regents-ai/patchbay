@@ -281,8 +281,8 @@ defmodule Patchbay.Forum do
 
   @doc """
   The asker names the reply that worked. The mark is the asker's — the
-  signed-in profile or the session the question was posted under — and never
-  touches money.
+  profile that posted the question, signed in, or, for a question posted with
+  nobody signed in, the session it was posted under — and never touches money.
   """
   def mark_solution(report, reply_id, browser_session_id, actor) do
     Ash.update(

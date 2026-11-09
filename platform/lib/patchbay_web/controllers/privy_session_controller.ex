@@ -50,12 +50,15 @@ defmodule PatchbayWeb.PrivySessionController do
   def create(conn, _untrusted_params) do
     with {:ok, pair} <- session_pair(conn),
          {:ok, evidence} <- Privy.verify_session_pair(pair),
+         # Taken before the upsert reads the profile's status, so a suspension
+         # saved after that read ends this sign-in (`CurrentProfile`).
+         signed_in_at = System.os_time(:second),
          {:ok, profile} <- Identity.upsert_from_privy(evidence),
          :ok <- may_act(profile) do
       :ok = Assist.save_browser_runs(conn.assigns.forum_session_id, profile)
 
       conn
-      |> CurrentProfile.sign_in(profile.id)
+      |> CurrentProfile.sign_in(profile.id, signed_in_at)
       |> json(AuthorJSON.author(profile))
     else
       {:error, {stage, reason}} -> refuse(conn, code(stage, reason))

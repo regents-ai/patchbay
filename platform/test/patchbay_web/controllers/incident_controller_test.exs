@@ -38,7 +38,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
   defp signed_in(conn, profile) do
     conn
     |> Plug.Test.init_test_session(%{})
-    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
+    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id, System.os_time(:second))
   end
 
   defp say_worked(conn, thread, reply, person, wanted \\ "true") do

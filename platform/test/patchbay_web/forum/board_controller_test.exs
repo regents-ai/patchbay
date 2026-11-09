@@ -244,7 +244,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       signed_in =
         build_conn()
         |> Plug.Test.init_test_session(%{})
-        |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id)
+        |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id, System.os_time(:second))
         |> get(~p"/")
         |> html_response(200)
 
@@ -563,7 +563,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     defp signed_in(conn, profile) do
       conn
       |> Plug.Test.init_test_session(%{})
-      |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id)
+      |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id, System.os_time(:second))
     end
 
     defp person!(subject) do

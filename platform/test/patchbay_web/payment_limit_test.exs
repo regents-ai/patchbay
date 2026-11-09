@@ -29,7 +29,7 @@ defmodule PatchbayWeb.PaymentLimitTest do
       conn
       |> recycle()
       |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id)
+      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
     end
 
     create = fn -> signed_in.() |> post("/api/payment_intents", %{"kind" => "nothing"}) end

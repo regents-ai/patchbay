@@ -36,22 +36,16 @@ defmodule Patchbay.OAuth do
   Disconnects every app connected to `profile`'s person, ending each app's
   access and refresh tokens (`RegentOAuth.revoke_client/2`), so an app the
   person connected before a suspension stays disconnected after it is lifted.
-  A wallet author connects no apps. While connected apps are switched off
-  their tokens can be neither used nor refreshed, and there is nothing to
-  reach.
+  Only `Patchbay.Identity.DisconnectApps` calls it, and only while connected
+  apps are switched on. An app counts as connected once it holds a token; an
+  authorization code not yet exchanged is not listed.
   """
   @spec disconnect_apps(AgentProfile.t()) :: :ok
   def disconnect_apps(%{authentication_origin: :privy, privy_user_id: subject}) do
-    if RegentOAuth.enabled?() do
-      subject
-      |> RegentOAuth.connected_clients()
-      |> Enum.each(fn %{id: client_id} ->
-        {:ok, :ok} = RegentOAuth.revoke_client(subject, client_id)
-      end)
-    end
-
-    :ok
+    subject
+    |> RegentOAuth.connected_clients()
+    |> Enum.each(fn %{id: client_id} ->
+      {:ok, :ok} = RegentOAuth.revoke_client(subject, client_id)
+    end)
   end
-
-  def disconnect_apps(%{authentication_origin: :wallet}), do: :ok
 end

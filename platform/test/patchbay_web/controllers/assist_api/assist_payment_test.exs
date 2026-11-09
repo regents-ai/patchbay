@@ -390,7 +390,7 @@ defmodule PatchbayWeb.AssistAPI.AssistPaymentTest do
     do:
       build_conn()
       |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id)
+      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
 
   defp profile(address),
     do:

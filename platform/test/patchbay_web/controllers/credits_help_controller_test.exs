@@ -21,7 +21,7 @@ defmodule PatchbayWeb.CreditsHelpControllerTest do
     signed_in =
       conn
       |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(person.id)
+      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
 
     %{signed_in: signed_in, person: person}
   end
@@ -81,7 +81,11 @@ defmodule PatchbayWeb.CreditsHelpControllerTest do
           wallet_address: "0x" <> String.duplicate("e", 40)
         })
 
-      other_conn = conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(other.id)
+      other_conn =
+        conn
+        |> Plug.Test.init_test_session(%{})
+        |> CurrentProfile.sign_in(other.id, System.os_time(:second))
+
       assert redirected_to(ask(other_conn, "Mine")) =~ "/credits-help/"
     end
   end

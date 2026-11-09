@@ -116,7 +116,7 @@ defmodule PatchbayDev.PaymentsLab do
       })
 
     conn
-    |> CurrentProfile.sign_in(payer.id)
+    |> CurrentProfile.sign_in(payer.id, System.os_time(:second))
     |> put_session("payments_lab_recipient", tipped.public_id)
     |> redirect(to: "/dev/lab/payments")
   end

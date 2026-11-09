@@ -78,7 +78,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     cookie_conn =
       build_conn()
       |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(human.id)
+      |> CurrentProfile.sign_in(human.id, System.os_time(:second))
 
     assert post(cookie_conn, "/api/agent/payment_intents", %{kind: "special_post", args: %{}}).status in [
              401,
@@ -106,7 +106,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
 
     profile = accepted.assigns.current_profile
 
-    {:ok, _suspended} = Identity.suspend(profile.public_id, "Spam")
+    {:ok, _suspended} = Identity.suspend_profile(profile, "Spam", actor: %{role: :system})
 
     assert {:error, %{reason: :author_unavailable}} = WalletAuthor.accept(conn, data, nil)
     assert Identity.get_profile!(profile.id).status == :suspended

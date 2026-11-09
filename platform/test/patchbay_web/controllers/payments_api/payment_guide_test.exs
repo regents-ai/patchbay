@@ -26,7 +26,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentGuideTest do
     conn =
       conn
       |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id)
+      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
       |> get(~p"/api/me/usdc_balance")
 
     body = json_response(conn, conn.status)

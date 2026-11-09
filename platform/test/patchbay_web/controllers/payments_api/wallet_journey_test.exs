@@ -616,7 +616,10 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   defp signed_in(conn, nil), do: conn
 
   defp signed_in(conn, profile),
-    do: conn |> Plug.Test.init_test_session(%{}) |> CurrentProfile.sign_in(profile.id)
+    do:
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
 
   # The report page as `viewer` sees it.
   defp page(viewer, path) do
