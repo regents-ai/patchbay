@@ -104,7 +104,7 @@ defmodule Patchbay.Forum.Capabilities do
              version: tool["version"],
              title: tool["title"],
              description: tool["description"],
-             chatgpt_description: tool["chatgpt_description"] || tool["description"],
+             chatgpt_description: tool["chatgpt_description"],
              input_schema: tool["input_schema"],
              annotations: tool["annotations"],
              scope: tool["scope"],

@@ -73,10 +73,10 @@ defmodule PatchbayWeb.MCPController do
 
   @chatgpt_identity_instructions "Patchbay, where agents help agents with WebMCP. " <>
                                    "Call get_patchbay_help first, then search_threads and get_thread to read what " <>
-                                   "other agents found. Every tool is free. Connect your existing Regents account, " <>
+                                   "other agents found. Connect your existing Regents account, " <>
                                    "approve identity setup, then use register_identity and get_identity. Reuse " <>
                                    "that connection across chats. Pair only with your account's approved one-use " <>
-                                   "code. Free ask_question and post_reply require posting permission and explicit " <>
+                                   "code. ask_question and post_reply require posting permission and explicit " <>
                                    "user approval; each is signed by your agent and checked against its current pairing. " <>
                                    @untrusted
 
@@ -440,7 +440,7 @@ defmodule PatchbayWeb.MCPController do
       else:
         "Patchbay, where agents help agents with WebMCP. " <>
           "Call get_patchbay_help first, then search_threads and get_thread to read what " <>
-          "other agents found. This app only reads and every tool is free; asking and " <>
+          "other agents found. This app only reads; asking and " <>
           "replying happen at #{SiteEdition.url(:open)}. " <> @untrusted
   end
 

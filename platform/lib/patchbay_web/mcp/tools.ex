@@ -115,7 +115,7 @@ defmodule PatchbayWeb.MCP.Tools do
     end)
     |> Map.put(
       :description,
-      "Publish one user-authorized free public #{kind}. Requires posting consent and current pairing of the persistent account identity. Keep the same request key and exact fields for an approved retry."
+      "Publish one user-authorized public #{kind}. Requires posting consent and current pairing of the persistent account identity. Keep the same request key and exact fields for an approved retry."
     )
     |> Map.put(:securitySchemes, [%{type: "oauth2", scopes: [RegentMCPAgents.posting_scope()]}])
   end
@@ -175,8 +175,8 @@ defmodule PatchbayWeb.MCP.Tools do
 
   def call(name, arguments, %{surface: :chatgpt_agent} = caller)
       when name in @posts and is_map(arguments) do
-    with {:ok, arguments} <- free_arguments(name, arguments),
-         :ok <- free_thread(name, arguments) do
+    with {:ok, arguments} <- plugin_arguments(name, arguments),
+         :ok <- plugin_thread(name, arguments) do
       dispatch(name, arguments, caller)
     else
       {:invalid_arguments, _} = invalid ->
@@ -185,9 +185,9 @@ defmodule PatchbayWeb.MCP.Tools do
       _ ->
         {:error,
          ApiError.body(
-           "free_thread_required",
-           "Only free threads are available here.",
-           "Choose a free published thread."
+           "thread_unavailable",
+           "This app cannot reply to that thread.",
+           "Choose another published thread."
          )}
     end
   end
@@ -209,7 +209,7 @@ defmodule PatchbayWeb.MCP.Tools do
   # The signed posting address answers in JSON-RPC; its refusal is read back
   # into the one refusal shape every Patchbay tool answers with.
   defp hosted_post(name, arguments, principal) do
-    with {:ok, arguments} <- free_arguments(name, arguments),
+    with {:ok, arguments} <- plugin_arguments(name, arguments),
          {:ok, %{"result" => result}} <- RegentMCPAgents.post(principal, name, arguments) do
       posted(result)
     else
@@ -256,17 +256,18 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp posted(_result), do: {:error, RegentMCPAgents.Tools.refusal()}
 
-  # Every thread kind the schema allows is a free one.
-  defp free_arguments(name, arguments) do
+  # Every thread kind the schema allows is one the plugin may post.
+  defp plugin_arguments(name, arguments) do
     case Arguments.check(name, arguments) do
       {:ok, arguments} -> {:ok, arguments}
       {:invalid, lines} -> {:invalid_arguments, lines}
     end
   end
 
-  defp free_thread("ask_question", _arguments), do: :ok
+  # A reply goes only to a published thread with no priority amount.
+  defp plugin_thread("ask_question", _arguments), do: :ok
 
-  defp free_thread("post_reply", %{"thread_id" => id}) do
+  defp plugin_thread("post_reply", %{"thread_id" => id}) do
     case Reads.fetch_report(id) do
       {:ok, %{priority_amount_atomic: nil}} -> :ok
       _ -> :error
@@ -283,7 +284,7 @@ defmodule PatchbayWeb.MCP.Tools do
   defp empty_search_next_step do
     if RegentMCPAgents.enabled?(),
       do:
-        "No thread mentions this yet. Check the recorded tools. An authorized free question requires the connected identity and posting permission.",
+        "No thread mentions this yet. Check the recorded tools. An authorized question requires the connected identity and posting permission.",
       else:
         "No thread mentions this yet. Check the site's recorded tools or ask a question at #{SiteEdition.url(:open)}."
   end

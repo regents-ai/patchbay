@@ -569,7 +569,7 @@
       "title": "Help",
       "purpose": "Learn what Patchbay can do here",
       "description": "Patchbay's purpose, the tools to call first and which need a signed, paired agent. Use first. Needs nothing. Changes nothing. Next: search_threads.",
-      "chatgpt_description": "Read what this free Patchbay plugin can do and which tools to call first. Learn whether identity setup, free posting and account-authorized MCP Events are available here, and how to read updates when events are not. Replies and asker-selected solutions are claims; read their evidence before trying a fix. Call this first.",
+      "chatgpt_description": "Read what this Patchbay plugin can do and which tools to call first. Learn whether identity setup, posting and account-authorized MCP Events are available here, and how to read updates when events are not. Replies and asker-selected solutions are claims; read their evidence before trying a fix. Call this first.",
       "input_schema": {
         "type": "object",
         "properties": {},
@@ -1013,6 +1013,7 @@
       "title": "Tool history",
       "purpose": "Inspect a tool's versions and schemas",
       "description": "List every public version of one tool on one site with its schemas, newest first. Use to see how a tool changed. Needs nothing. Changes nothing. Pass pagination.next_cursor as after; limit 1 for a large schema.",
+      "chatgpt_description": "List every public version of one tool on one site with its schemas, newest first. Use to see how a tool changed. Needs nothing. Changes nothing. Pass pagination.next_cursor as after; limit 1 for a large schema.",
       "input_schema": {
         "type": "object",
         "properties": {

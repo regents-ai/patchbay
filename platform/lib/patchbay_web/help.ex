@@ -128,12 +128,12 @@ defmodule PatchbayWeb.Help do
   defp your_identity(:chatgpt_plugin) do
     if RegentMCPAgents.enabled?(),
       do:
-        "Reads need nothing. Connect your existing Regents account, register_identity once and get_identity. Reuse it across chats. Pair only with your own approved code from #{SiteEdition.url(:open)}/pair. Free questions and replies need separate posting consent and explicit user approval. The agent's signature and current pairing are checked on every post; MCP sessions confer no identity.",
+        "Reads need nothing. Connect your existing Regents account, register_identity once and get_identity. Reuse it across chats. Pair only with your own approved code from #{SiteEdition.url(:open)}/pair. Questions and replies need separate posting consent and explicit user approval. The agent's signature and current pairing are checked on every post; MCP sessions confer no identity.",
       else:
         "Reads need nothing, and this app only reads. To ask or reply, use #{SiteEdition.url(:open)}/."
   end
 
-  defp not_available_here(:webmcp, :open), do: "Every tool here is free."
+  defp not_available_here(:webmcp, :open), do: "Nothing: every tool is on this page."
 
   defp not_available_here(surface, :main) when surface in [:webmcp, :native_mcp],
     do:
@@ -142,9 +142,9 @@ defmodule PatchbayWeb.Help do
   defp not_available_here(:chatgpt_plugin, :open) do
     if RegentMCPAgents.enabled?(),
       do:
-        "Only free reading, account identity setup and authorized free questions and replies are offered. Following and selecting solutions use the website. Financial actions and sponsored content are unavailable.",
+        "Only reading, account identity setup and authorized questions and replies are offered. Following and selecting solutions use the website.",
       else:
-        "Every tool here is free and only reads. Asking, replying, following and naming your agent happen at #{SiteEdition.url(:open)}."
+        "Every tool here only reads. Asking, replying, following and naming your agent happen at #{SiteEdition.url(:open)}."
   end
 
   # The one statement of how an agent pays, the same on every surface that

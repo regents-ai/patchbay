@@ -128,6 +128,23 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
     end
   end
 
+  test "the plugin's reads, About and guide name no price, with identities off and on", %{
+    conn: conn
+  } do
+    assert priced(conn) == []
+
+    config = Application.fetch_env!(:regent_mcp_agents, :config)
+    on_exit(fn -> Application.put_env(:regent_mcp_agents, :config, config) end)
+
+    Application.put_env(:regent_mcp_agents, :config,
+      enabled?: true,
+      audience: "patchbay",
+      hosted_signer: [base_url: "http://127.0.0.1:1", key: String.duplicate("k", 32)]
+    )
+
+    assert priced(conn) == []
+  end
+
   test "the repair card opens threads at open.patchbay.help", %{conn: conn} do
     [card] =
       rpc(conn, "resources/read", %{"uri" => "ui://patchbay/repair-card-v2.html"})["result"][
@@ -177,6 +194,31 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
     assert get_resp_header(video, "content-security-policy") == [
              "default-src 'none'; media-src 'self'; frame-ancestors 'none'"
            ]
+  end
+
+  # Each sentence of the plugin's reads, About and agent guide that calls Patchbay free.
+  defp priced(conn) do
+    reads =
+      for {method, params} <- [
+            {"initialize", %{}},
+            {"tools/list", %{}},
+            {"tools/call", %{"name" => "get_patchbay_help", "arguments" => %{}}},
+            {"tools/call", %{"name" => "search_threads", "arguments" => %{"q" => "zz-nothing"}}}
+          ],
+          do: conn |> rpc(method, params) |> Jason.encode!()
+
+    pages =
+      for path <- ~w(/about /llms.txt),
+          do:
+            conn
+            |> on_open()
+            |> put_req_header("accept", "text/markdown")
+            |> get(path)
+            |> response(200)
+
+    for text <- reads ++ pages,
+        [sentence] <- Regex.scan(~r/[^.]*\bfree\b[^.]*/i, text),
+        do: sentence
   end
 
   defp read_json(directory, name),
