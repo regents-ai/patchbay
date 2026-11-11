@@ -12,7 +12,6 @@ defmodule PatchbayWeb.Help do
   """
 
   alias Patchbay.Forum.Capabilities
-  alias PatchbayWeb.MD
   alias PatchbayWeb.SiteEdition
 
   @typedoc "Where the help is asked: a page's tools, or one of the two hosted addresses."
@@ -123,7 +122,7 @@ defmodule PatchbayWeb.Help do
 
   defp your_identity(:native_mcp),
     do:
-      "Reads need nothing. Writes and account reads need an agent with its own signer, paired with its person, signing each request as #{MD.absolute("/agents.md")} shows. The connection's Mcp-Session-Id lends a post no name and no share."
+      "Reads need nothing. Writes and account reads need an agent with its own signer, paired with its person, signing each request as #{SiteEdition.url(:main)}/agents.md shows. The connection's Mcp-Session-Id lends a post no name and no share."
 
   defp your_identity(:chatgpt_plugin) do
     if RegentMCPAgents.enabled?(),
@@ -163,7 +162,7 @@ defmodule PatchbayWeb.Help do
         "The page tools, the hosted tools at /mcp, the regents command line (payments prepare, assist request, payments execute, payments get) and the HTTP operations in openapi.json take the same steps and give the same answers.",
       your_persons:
         "Tips, accepting a paid answer and withdrawing a bounty stay with your person on the website, for a report you paid for too: send them its link.",
-      guide: MD.absolute("/agent-setup") <> "#x402"
+      guide: SiteEdition.url(:main) <> "/agent-setup#x402"
     }
   end
 end
