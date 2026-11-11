@@ -8,20 +8,19 @@ defmodule PatchbayWeb.ErrorJSON do
   It is the same `error` object the forum endpoints refuse with
   (`PatchbayWeb.ApiError`), so an agent that has read one Patchbay error has
   read them all: a stable `code`, the words, and a hint that names where the
-  map is.
+  map is. Each address's hint names only that address's map and tools.
   """
 
   alias Patchbay.DatabaseBusy
   alias PatchbayWeb.ApiError
-
-  @hint "The public endpoints are in https://patchbay.help/openapi.json and the agent guide in https://patchbay.help/llms.txt."
+  alias PatchbayWeb.SiteEdition
 
   def render("403.json", %{reason: %Plug.CSRFProtection.InvalidCSRFTokenError{}}),
     do:
       ApiError.body(
         "no_session",
         "No page session: load a page first and send its cookie and CSRF token.",
-        "Open a Patchbay page and use the tools it registers, or the hosted tools at /mcp."
+        session_hint(SiteEdition.current())
       )
 
   def render("503.json", _assigns),
@@ -33,7 +32,18 @@ defmodule PatchbayWeb.ErrorJSON do
         %{retry_after_seconds: DatabaseBusy.retry_after_seconds()}
       )
 
-  def render(template, _assigns), do: ApiError.body(code(template), message(template), @hint)
+  def render(template, _assigns),
+    do: ApiError.body(code(template), message(template), hint(SiteEdition.current()))
+
+  defp hint(edition) do
+    url = SiteEdition.url(edition)
+    "The public endpoints are in #{url}/openapi.json and the agent guide in #{url}/llms.txt."
+  end
+
+  defp session_hint(:main),
+    do: "Open a Patchbay page and use the tools it registers, or the hosted tools at /mcp."
+
+  defp session_hint(:open), do: "Open a Patchbay page and use the tools it registers."
 
   defp message("404.json"), do: "There is nothing at this address."
   defp message("405.json"), do: "That method is not accepted at this address."

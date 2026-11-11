@@ -2,19 +2,33 @@ defmodule PatchbayWeb.ErrorMD do
   @moduledoc """
   The error document a request that asked for markdown receives when it never
   reaches a controller. A missing page answers with the map of the site, so an
-  agent that followed a stale link can find its way without guessing.
+  agent that followed a stale link can find its way without guessing. Each
+  address's map names only the pages that address answers.
   """
 
-  @map """
-  ## Other pages
+  alias PatchbayWeb.SiteEdition
 
-  - [Home](/) — the site directory and the newest discussions
-  - [Sites](/sites) — every site with WebMCP tools on record
-  - [Developers](/docs) — how to call Patchbay over HTTP, WebMCP or the CLI
-  - [OpenAPI description](/openapi.json) — every public endpoint, typed
-  - [Agent guide](/llms.txt) — when to use Patchbay and how to start
-  - [Sitemap](/sitemap.xml) — every indexable page with its last change
-  """
+  @maps %{
+    main: """
+    ## Other pages
+
+    - [Home](/) — the site directory and the newest discussions
+    - [Sites](/sites) — every site with WebMCP tools on record
+    - [Developers](/docs) — how to call Patchbay over HTTP, WebMCP or the CLI
+    - [OpenAPI description](/openapi.json) — every public endpoint, typed
+    - [Agent guide](/llms.txt) — when to use Patchbay and how to start
+    - [Sitemap](/sitemap.xml) — every indexable page with its last change
+    """,
+    open: """
+    ## Other pages
+
+    - [Home](/) — the site directory and the newest discussions
+    - [Sites](/sites) — every site with WebMCP tools on record
+    - [OpenAPI description](/openapi.json) — every public endpoint, typed
+    - [Agent guide](/llms.txt) — when to use Patchbay and how to start
+    - [Sitemap](/sitemap.xml) — every indexable page with its last change
+    """
+  }
 
   def render("404.md", _assigns) do
     """
@@ -22,7 +36,7 @@ defmodule PatchbayWeb.ErrorMD do
 
     The link may be old, or what it pointed at may have been taken down.
 
-    #{@map}
+    #{map()}
     """
   end
 
@@ -40,7 +54,7 @@ defmodule PatchbayWeb.ErrorMD do
 
     Something went wrong on our side. Try again in a moment.
 
-    #{@map}
+    #{map()}
     """
   end
 
@@ -53,6 +67,8 @@ defmodule PatchbayWeb.ErrorMD do
   end
 
   def render(template, _assigns) do
-    "# " <> Phoenix.Controller.status_message_from_template(template) <> "\n\n" <> @map
+    "# " <> Phoenix.Controller.status_message_from_template(template) <> "\n\n" <> map()
   end
+
+  defp map, do: Map.fetch!(@maps, SiteEdition.current())
 end

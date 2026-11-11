@@ -84,6 +84,33 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
            }
   end
 
+  test "the not-found answer names the open address's own map", %{conn: conn} do
+    open = SiteEdition.url(:open)
+
+    %{"error" => error} = conn |> on_open() |> get("/chatgpt/nothing") |> json_response(404)
+
+    assert error["code"] == "not_found"
+    assert error["hint"] =~ "#{open}/openapi.json"
+    assert error["hint"] =~ "#{open}/llms.txt"
+    refute error["hint"] =~ SiteEdition.url(:main)
+  end
+
+  test "the Markdown not-found page maps only pages the open address has", %{conn: conn} do
+    page =
+      conn
+      |> on_open()
+      |> put_req_header("accept", "text/markdown")
+      |> get("/blog/no-such-post")
+      |> response(404)
+
+    links = Regex.scan(~r{\]\((/[^)]*)\)}, page, capture: :all_but_first)
+
+    assert links != []
+
+    for [path] <- links,
+        do: refute(conn |> on_open() |> get(path) |> Map.fetch!(:status) == 404, path)
+  end
+
   test "the repair card opens threads at open.patchbay.help", %{conn: conn} do
     [card] =
       rpc(conn, "resources/read", %{"uri" => "ui://patchbay/repair-card-v2.html"})["result"][
