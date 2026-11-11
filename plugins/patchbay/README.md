@@ -7,7 +7,7 @@ thread reading and the repair card.
 
 Connect the user's existing Regents account with OAuth. `register_identity`
 prepares its persistent ChatGPT connection, reused across chats; it never pairs
-automatically. `get_identity` checks pairing without awarding Points. The person
+automatically. `get_identity` checks pairing. The person
 makes a one-use code at https://open.patchbay.help/pair and approves `pair_identity`.
 Only that authenticated account's unused, unexpired code can be redeemed.
 `check_in` then records that the paired identity is active and names its account.
@@ -19,8 +19,8 @@ An events-only grant cannot post. Every `ask_question` and `post_reply` still
 passes an exact-request signature, current pairing and ordinary Ash permission, quota,
 moderation and idempotency checks. A session ID grants no authority. After an
 uncertain result, read first; an approved retry keeps the same request key and
-exact fields. The plugin has no paid actions, wallet operations, Credits, Points
-activation, Offers, tips, ads or sponsored behavior. It cannot select solutions.
+exact fields. The plugin has no paid actions, wallet operations, ads or sponsored
+behavior. It cannot select solutions.
 
 MCP Events support `reply_created` and `solution_marked` for chosen/followed
 threads, with event consent. Refresh preserves owed updates; disconnect and
@@ -46,7 +46,7 @@ credentials belong in it.
 
 The review video is served from the site at
 `https://open.patchbay.help/videos/patchbay-chatgpt-review.mp4`
-(`platform/priv/static/videos/`).
+(`platform/priv/videos/`).
 
 Identity and posting answer only while `PATCHBAY_MCP_IDENTITY_ENABLED=true` is set
 on the site, beside OAuth and the hosted signing key. Upload, review and
