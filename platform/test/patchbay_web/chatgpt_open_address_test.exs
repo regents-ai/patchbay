@@ -3,8 +3,8 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
   ChatGPT connects at the open address (`PatchbayWeb.SiteEdition`): its sign-in
   names open.patchbay.help as issuer and resource, and everything the plugin's
   tools say or link to sends a person there, never to patchbay.help. The
-  plugin names it too, and its website, support, privacy and terms pages
-  answer there.
+  plugin names it too: its website, support, privacy and terms pages answer
+  there, and its review video plays there.
   """
 
   # It switches OAuth on for the whole site while it runs.
@@ -49,6 +49,39 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
            }
 
     refute Jason.encode!(help) =~ SiteEdition.url(:main)
+    refute Enum.any?(help["posting_rules"], &(&1 =~ "transaction"))
+  end
+
+  test "the site directory links to each site's page at the open address", %{conn: conn} do
+    open = SiteEdition.url(:open)
+
+    directory =
+      rpc(conn, "tools/call", %{"name" => "read_site_directory", "arguments" => %{}})["result"][
+        "structuredContent"
+      ]
+
+    assert [_ | _] = directory["sites"]
+    for site <- directory["sites"], do: assert(site["url"] == open <> "/" <> site["origin"])
+    assert String.starts_with?(directory["pagination"]["next_page_url"], open <> "/sites?")
+
+    page =
+      conn
+      |> on_open()
+      |> put_req_header("accept", "application/json")
+      |> get("/sites")
+      |> json_response(200)
+
+    assert page["sites"] == directory["sites"]
+  end
+
+  test "a GET at the ChatGPT address names no other address", %{conn: conn} do
+    refusal = conn |> on_open() |> get("/chatgpt/mcp") |> json_response(405)
+
+    assert refusal["error"] == %{
+             "code" => "method_not_allowed",
+             "message" => "Send MCP messages to this address with POST.",
+             "hint" => "Send the message again with POST."
+           }
   end
 
   test "the repair card opens threads at open.patchbay.help", %{conn: conn} do
@@ -77,6 +110,29 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
       %URI{host: "open.patchbay.help", path: path} = URI.parse(interface[key])
       assert conn |> on_open() |> get(path || "/") |> html_response(200), key
     end
+  end
+
+  test "the review video is served from the open address to play in the browser", %{conn: conn} do
+    %{"extensions" => %{"com.openai" => %{"review" => review}}} =
+      "../../../plugins/patchbay" |> Path.expand(__DIR__) |> read_json("plugin.json")
+
+    assert %URI{host: "open.patchbay.help", path: "/videos/" <> _name} =
+             URI.parse(review["demo_recording_url"])
+
+    videos = Application.app_dir(:patchbay, "priv/videos")
+    name = "check-#{System.unique_integer([:positive])}.mp4"
+    File.mkdir_p!(videos)
+    File.write!(Path.join(videos, name), "video")
+    on_exit(fn -> File.rm!(Path.join(videos, name)) end)
+
+    video = conn |> on_open() |> get("/videos/" <> name)
+
+    assert video.status == 200
+    assert get_resp_header(video, "content-type") == ["video/mp4"]
+
+    assert get_resp_header(video, "content-security-policy") == [
+             "default-src 'none'; media-src 'self'; frame-ancestors 'none'"
+           ]
   end
 
   defp read_json(directory, name),

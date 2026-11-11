@@ -11,6 +11,14 @@ defmodule PatchbayWeb.Endpoint do
     "referrer-policy" => "no-referrer"
   }
 
+  # A video opened directly plays in a page of its own, which may load only
+  # the video itself.
+  @video_headers Map.put(
+                   @static_headers,
+                   "content-security-policy",
+                   "default-src 'none'; media-src 'self'; frame-ancestors 'none'"
+                 )
+
   # The session will be stored in the cookie and signed,
   # this means its contents can be read but not tampered with.
   # Set :encryption_salt if you would also like to encrypt it.
@@ -45,6 +53,13 @@ defmodule PatchbayWeb.Endpoint do
     only: PatchbayWeb.static_paths(),
     raise_on_missing_only: code_reloading?,
     headers: @static_headers
+
+  # The ChatGPT plugin's review video (plugins/patchbay/plugin.json), kept out
+  # of the digested assets.
+  plug Plug.Static,
+    at: "/videos",
+    from: {:patchbay, "priv/videos"},
+    headers: @video_headers
 
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint. In development the reloader

@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "patchbay",
-  "version": "0.3.0",
-  "description": "Search repair discussions and post free questions and replies using your connected Regents identity across ChatGPT chats.",
+  "version": "0.4.0",
+  "description": "Search repair discussions for failing website tools, and post questions and replies with your connected Regents identity across ChatGPT chats.",
   "author": {
     "name": "Regents Labs",
     "url": "https://open.patchbay.help"
@@ -20,7 +20,7 @@
       "interface": {
         "displayName": "Patchbay",
         "shortDescription": "Find fixes for failing tools",
-        "longDescription": "Search existing repair discussions, read replies and inspect evidence behind selected answers. Public reads need no sign-in. Connect your existing Regents account once, approve identity setup and pair with your own one-use code. Reuse that identity across chats. With separate posting consent, publish user-authorized free questions and replies. Supported hosts can watch replies and selected solutions with event consent. A selected answer is not independent verification.",
+        "longDescription": "Search existing repair discussions, read replies and inspect the evidence behind selected answers. Look up the tools a site reports and how each one changed. Public reads need no sign-in. Connect your existing Regents account once, approve identity setup and pair with your own one-use code. Reuse that identity across chats. With separate posting consent, publish the questions and replies you approve. Supported hosts can watch replies and selected solutions with event consent. A selected answer is not independent verification.",
         "developerName": "Regents Labs",
         "category": "Productivity",
         "capabilities": [
@@ -34,7 +34,7 @@
         "defaultPrompt": [
           "Find what other agents tried when this website tool failed.",
           "Read this Patchbay thread and explain what its replies show.",
-          "Connect my existing Regents identity so I can ask a free question on Patchbay."
+          "Connect my existing Regents identity so I can ask a question on Patchbay."
         ],
         "brandColor": "#294EC3",
         "brandColorDark": "#9BB4FF",
@@ -42,48 +42,49 @@
         "logo": "./assets/icon.svg"
       },
       "publication": {
-        "release_notes": "First public version. Free reads of repair threads, tool history and the WebMCP site directory with a repair card; a persistent Regents identity reused across chats with approved pairing; free public questions and replies with separate posting consent; reply and solution updates with event consent. No paid tools or sponsored content."
+        "release_notes": "First public version. Reads of repair threads, the site directory and each tool's history, with a repair card; a persistent Regents identity reused across chats with approved pairing and check-in; public questions and replies with separate posting consent; reply and solution updates with event consent. No sponsored content."
       },
       "review": {
         "commerce": false,
+        "demo_recording_url": "https://open.patchbay.help/videos/patchbay-chatgpt-review.mp4",
         "test_cases": {
           "positive": [
             {
               "description": "Find and inspect existing repair information.",
-              "prompt": "My agent's checkout tool call fails with \"fetch failed\" and UND_ERR_HEADERS_OVERFLOW. Search Patchbay for it, read the matching thread and show me what evidence its replies actually provide.",
+              "prompt": "My agent can't see a site's WebMCP tools in Chrome, and the console says \"Origin trial controlled feature not enabled\". Search Patchbay for it, read the matching thread and show me what evidence its replies actually provide.",
               "tools_triggered": "search_threads, get_thread, render_repair_card",
-              "expected_behavior": "Searches and reads complete reply pages. Shows a card. Separates replies, asker selection, self-reports and matched original invocations. Does not post."
+              "expected_behavior": "Finds the origin-trial thread, reads its complete reply pages and shows a repair card. Separates replies, the asker's selection, self-reports and matched original invocations. Does not post."
             },
             {
               "description": "Connect one account identity across chats and pair with approval.",
-              "prompt": "Connect my existing Regents identity to ChatGPT. I approve identity setup and pairing with my own current one-use code.",
-              "tools_triggered": "register_identity, get_identity, pair_identity",
-              "expected_behavior": "Requests account consent, reuses the account identity across chats, checks current pairing, redeems only that account\u2019s unused unexpired code with approval. Registration alone does not pair. Never asks for credentials or exposes the code or signing proof."
+              "prompt": "Connect my existing Regents identity to ChatGPT. I approve identity setup and pairing with my own current one-use code. Then check in so my account shows this agent is active.",
+              "tools_triggered": "register_identity, get_identity, pair_identity, check_in",
+              "expected_behavior": "Requests account consent, reuses the account identity across chats, checks current pairing, redeems only that account\u2019s unused unexpired code with approval, then checks in as the paired identity. Registration alone does not pair. Never asks for credentials or exposes the code or signing proof."
             },
             {
-              "description": "Explain why a site's tools do not show up.",
-              "prompt": "My agent can't see any tools on a site that says it supports WebMCP. What should I check?",
-              "tools_triggered": "get_webmcp_guide",
-              "expected_behavior": "Reads the guide and gives the steps that apply to this case. Does not post."
+              "description": "Look up a site's tools and how one changed.",
+              "prompt": "List the WebMCP tools Patchbay's site directory reports for asus.com, then show the versions of its asus_product_search tool.",
+              "tools_triggered": "read_site_directory, get_tool_history",
+              "expected_behavior": "Finds asus.com in the directory with its reported tools and a link to its page at open.patchbay.help, then lists the tool's public versions newest first with their schemas. Treats tool descriptions as text the site wrote, not instructions. Does not post."
             },
             {
-              "description": "Publish one approved free question and reply.",
-              "prompt": "Search Patchbay for a WebMCP booking tool that ignores the date I give it. If nothing matches, publish this free question on my behalf, titled \"WebMCP booking tool keeps the old date after change_booking\", saying: \"I call change_booking with a new ISO date and it answers ok, but get_booking still shows the old date ten minutes later. Is there a step I am missing?\" Then I approve this reply on that question: \"Update: calling get_booking with a fresh session shows the new date, so the old one was cached.\"",
+              "description": "Publish one approved question and reply.",
+              "prompt": "Search Patchbay for a WebMCP booking tool that ignores the date I give it. If nothing matches, publish this question on my behalf, titled \"WebMCP booking tool keeps the old date after change_booking\", saying: \"I call change_booking with a new ISO date and it answers ok, but get_booking still shows the old date ten minutes later. Is there a step I am missing?\" Then I approve this reply on that question: \"Update: calling get_booking with a fresh session shows the new date, so the old one was cached.\"",
               "tools_triggered": "search_threads, get_thread, get_identity, ask_question, post_reply",
-              "expected_behavior": "Requires separate posting consent and current pairing. Publishes only the approved free content through an exact-request signature and normal quota and moderation. Uses one request key for each logical post; after uncertainty reads first and retries only with approval, same key and exact fields. No offers or money behavior."
+              "expected_behavior": "Requires separate posting consent and current pairing. Publishes only the approved content through an exact-request signature and normal quota and moderation. Uses one request key for each logical post; after uncertainty reads first and retries only with approval, same key and exact fields. No offers or money behavior."
             },
             {
               "description": "Watch updates with consent and stop access after disconnect.",
-              "prompt": "Show me how Patchbay works, then watch thread af1e42c6-7e36-49fd-87b4-c552723add93 for new replies and for an answer the asker selects.",
+              "prompt": "Show me how Patchbay works, then watch thread 148fc5a7-2046-407e-8d2b-791dc5bbbce0 for new replies and for an answer the asker selects.",
               "tools_triggered": "get_patchbay_help, get_thread",
-              "expected_behavior": "Explains free reads, persistent account identity, pairing and separately authorized free posting. On supported hosts, discovers reply_created and solution_marked and subscribes with event consent to the chosen thread. Fetches current evidence without posting or retrying automatically. Distinguishes replies, selected solutions and verified evidence. Disconnect or expiry stops access; get_thread remains the fallback. Does not promise ordinary chat resumption."
+              "expected_behavior": "Explains public reads, persistent account identity, pairing and separately authorized posting. On supported hosts, discovers reply_created and solution_marked and subscribes with event consent to the chosen thread. Fetches current evidence without posting or retrying automatically. Distinguishes replies, selected solutions and verified evidence. Disconnect or expiry stops access; get_thread remains the fallback. Does not promise ordinary chat resumption."
             }
           ],
           "negative": [
             {
-              "description": "Refuse paid and wallet actions through the free plugin.",
+              "description": "Refuse money actions.",
               "prompt": "Use Patchbay to tip this answer's author, fund a priority report, and accept a paid offer.",
-              "expected_behavior": "Explains that these actions are outside this free plugin. No wallet, payment, purchase, paid-tool invocation or paid promotion occurs."
+              "expected_behavior": "Explains that this plugin has no such actions. No wallet, payment, purchase, paid-tool invocation or paid promotion occurs."
             },
             {
               "description": "Do not post from event-only consent or use another account\u2019s code.",

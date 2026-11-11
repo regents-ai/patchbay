@@ -230,14 +230,25 @@ defmodule PatchbayWeb.MCPController do
     conn
     |> put_resp_header("allow", "POST")
     |> put_status(:method_not_allowed)
-    |> json(
+    |> json(post_only(conn.assigns.site_edition))
+  end
+
+  # The setup guide is patchbay.help's alone (`PatchbayWeb.Help`).
+  defp post_only(:main),
+    do:
       ApiError.body(
         "method_not_allowed",
         "Send MCP messages to this address with POST. Setup steps are at #{SiteEdition.url(:main)}/webmcp.",
         "Send the message again with POST, after reading #{SiteEdition.url(:main)}/webmcp."
       )
-    )
-  end
+
+  defp post_only(:open),
+    do:
+      ApiError.body(
+        "method_not_allowed",
+        "Send MCP messages to this address with POST.",
+        "Send the message again with POST."
+      )
 
   defp answer(conn, method, request, caller) do
     case Map.fetch(request, "id") do

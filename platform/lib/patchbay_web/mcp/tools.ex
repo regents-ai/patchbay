@@ -69,10 +69,11 @@ defmodule PatchbayWeb.MCP.Tools do
   @search_instead "Check the id, or search the board with search_threads."
 
   # The ChatGPT plugin's anonymous reads, named one by one: a newly hosted
-  # tool joins the plugin only by being added here. Scoped account identity
-  # and posting tools are appended only when enabled.
-  @chatgpt_names ~w(get_patchbay_help get_webmcp_guide search_threads get_thread
-                    render_repair_card get_tool_history read_site_directory)
+  # tool joins the plugin only by being added here. The WebMCP guide is
+  # patchbay.help's alone (`PatchbayWeb.Help`). Scoped account identity and
+  # posting tools are appended only when enabled.
+  @chatgpt_names ~w(get_patchbay_help search_threads get_thread render_repair_card
+                    get_tool_history read_site_directory)
 
   # The account identity tools the shared library hosts at the ChatGPT address.
   @identity_names RegentMCPAgents.Tools.names()

@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = ["jsonschema==4.25.1"]
 # ///
-"""Validate and package the free Patchbay plugin without publishing it."""
+"""Validate and package the Patchbay plugin without publishing it."""
 
 import argparse
 import copy
@@ -56,23 +56,26 @@ def package(output: Path) -> str:
         Draft202012Validator(schema).validate(document)
 
     settings = plugin["extensions"]["com.openai"]
-    check(settings["interface"]["capabilities"] == ["Read", "Write"], "Only free reading and authorized participation are supported.")
+    check(settings["interface"]["capabilities"] == ["Read", "Write"], "Only reading and authorized participation are supported.")
     check(settings["review"]["commerce"] is False, "Commerce must stay off.")
+    check(settings["review"]["demo_recording_url"]
+          == "https://open.patchbay.help/videos/patchbay-chatgpt-review.mp4",
+          "The review video is the one the site serves.")
     cases = settings["review"]["test_cases"]
     check(len(cases["positive"]) == 5 and len(cases["negative"]) == 3,
           "Review requires five positive and three negative cases.")
 
-
-    # The plugin's seven anonymous reads, named one by one as
+    # The plugin's six anonymous reads, named one by one as
     # PatchbayWeb.MCP.Tools names them; each is a hosted public read.
     manifest = json.loads((ROOT / "platform" / "priv" / "tool_manifest.json").read_text())
-    reads = {"get_patchbay_help", "get_webmcp_guide", "search_threads", "get_thread",
+    reads = {"get_patchbay_help", "search_threads", "get_thread",
              "render_repair_card", "get_tool_history", "read_site_directory"}
     hosted_reads = {tool["name"] for tool in manifest["tools"]
                     if tool.get("hosted") and tool["authentication"] == "public"
                     and tool["annotations"].get("readOnlyHint")}
-    check(reads <= hosted_reads, "Each of the seven reads must be a hosted public read.")
-    available = reads | {"register_identity", "get_identity", "pair_identity", "ask_question", "post_reply"}
+    check(reads <= hosted_reads, "Each of the six reads must be a hosted public read.")
+    available = reads | {"register_identity", "get_identity", "pair_identity", "check_in",
+                         "ask_question", "post_reply"}
     for case in cases["positive"]:
         names = {name.strip() for name in case["tools_triggered"].split(",")}
         check(names and names <= available, "A positive case names an unavailable public tool.")

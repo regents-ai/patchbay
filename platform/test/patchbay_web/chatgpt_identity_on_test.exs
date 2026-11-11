@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.ChatGPTIdentityOnTest do
   @moduledoc """
-  The ChatGPT address with identities on: every tool states its three review
-  hints, and a connected account has a share of identity and posting calls a
+  The ChatGPT address with identities on: its twelve tools, each stating its
+  three review hints, and a connected account has a share of identity and posting calls a
   minute, counted before the hosted signer is asked to sign for it. Reads
   stay uncounted.
   """
@@ -89,10 +89,13 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
     %{client: client}
   end
 
-  test "every tool states whether it reads, destroys and reaches the open world" do
+  test "the plugin's tools, each stating whether it reads, destroys and reaches the open world" do
     tools = PatchbayWeb.MCP.Tools.list(:chatgpt_plugin)
 
-    assert length(tools) == 13
+    assert Enum.map(tools, & &1.name) ==
+             ~w(search_threads get_thread get_patchbay_help get_tool_history
+                read_site_directory render_repair_card register_identity get_identity
+                pair_identity check_in ask_question post_reply)
 
     for tool <- tools do
       hints = tool.annotations |> Jason.encode!() |> Jason.decode!()
