@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-11 — Privacy page
+
+- The privacy page no longer describes repair rooms, which Patchbay retired on 29 October. Nothing else on the page changed.
+
 ## 2026-11-08 — Site matches
 
 - The sites and tools shown beside words you type on the home page now appear quickly, however many sites and tools Patchbay lists. The same sites and tools are found, in the same order.
