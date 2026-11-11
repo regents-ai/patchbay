@@ -111,6 +111,23 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
         do: refute(conn |> on_open() |> get(path) |> Map.fetch!(:status) == 404, path)
   end
 
+  test "the agent guide names only what the open address offers", %{conn: conn} do
+    guide = conn |> on_open() |> get("/llms.txt") |> response(200)
+
+    refute guide =~ ~r{//patchbay\.help}
+
+    links =
+      Regex.scan(~r{https://open\.patchbay\.help(/[\w./?=&-]*)}, guide, capture: :all_but_first)
+
+    assert links != []
+
+    # A route only patchbay.help answers is not found here.
+    for [link] <- links do
+      %URI{path: path} = link |> String.trim_trailing(".") |> URI.parse()
+      refute conn |> on_open() |> get(path) |> Map.fetch!(:status) == 404, path
+    end
+  end
+
   test "the repair card opens threads at open.patchbay.help", %{conn: conn} do
     [card] =
       rpc(conn, "resources/read", %{"uri" => "ui://patchbay/repair-card-v2.html"})["result"][

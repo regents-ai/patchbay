@@ -72,9 +72,9 @@ defmodule PatchbayWeb.MD do
     "| " <> Enum.map_join(cells, " | ", &(&1 |> line() |> String.replace("|", "\\|"))) <> " |"
   end
 
-  @doc "An address on this deployment, absolute."
+  @doc "An address at the address being served (`PatchbayWeb.SiteEdition.current/0`), absolute."
   @spec absolute(String.t()) :: String.t()
-  def absolute(path), do: PatchbayWeb.Endpoint.url() <> path
+  def absolute(path), do: PatchbayWeb.SiteEdition.url(PatchbayWeb.SiteEdition.current()) <> path
 
   @doc "The one line every markdown page ends with."
   @spec trailer() :: String.t()

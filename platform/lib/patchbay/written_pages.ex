@@ -1,15 +1,17 @@
 defmodule Patchbay.WrittenPages do
   @moduledoc """
   The pages written once as Markdown and built into the release: About
-  (`priv/public/about.md`), the Terms of Use (`priv/legal/`) and the long-form
-  agent guide (`priv/public/docs_agents.md`). Each page answers both as HTML
-  and as its Markdown, and the HTML starts below the first heading, since the
-  page's own header carries the title.
+  (`priv/public/`), the Terms of Use (`priv/legal/`) and the long-form agent
+  guide (`priv/public/docs_agents.md`). Each page answers both as HTML and as
+  its Markdown, and the HTML starts below the first heading, since the page's
+  own header carries the title.
 
   About and the Terms differ by address (`PatchbayWeb.SiteEdition`). The open
-  address's About leaves out the Payments section, and it serves its own
-  terms (`terms_open.md`): the same promises and limits for the services it
-  offers, which name no payments. patchbay.help serves the Regents Labs Terms
+  address serves its own About (`about_open.md`), the same page without its
+  Payments section, its prices or links to patchbay.help, and its own terms
+  (`terms_open.md`): the same promises and limits for the services it
+  offers, which name no payments. A change to `about.md` is made to
+  `about_open.md` too. patchbay.help serves the Regents Labs Terms
   of Use, the text regents.sh serves, copied word for word from the Regents
   repository's `platform/priv/legal/terms.md`; change it there first and
   copy it here.
@@ -19,14 +21,17 @@ defmodule Patchbay.WrittenPages do
   AI tools read the same facts (`facts/1`).
   """
 
-  @about_path Application.app_dir(:patchbay, "priv/public/about.md")
+  @about_paths %{
+    main: Application.app_dir(:patchbay, "priv/public/about.md"),
+    open: Application.app_dir(:patchbay, "priv/public/about_open.md")
+  }
   @guide_path Application.app_dir(:patchbay, "priv/public/docs_agents.md")
   @terms_paths %{
     main: Application.app_dir(:patchbay, "priv/legal/terms.md"),
     open: Application.app_dir(:patchbay, "priv/legal/terms_open.md")
   }
 
-  @external_resource @about_path
+  for {_edition, path} <- @about_paths, do: @external_resource(path)
   @external_resource @guide_path
   for {_edition, path} <- @terms_paths, do: @external_resource(path)
 
@@ -36,11 +41,13 @@ defmodule Patchbay.WrittenPages do
     %{document | nodes: Enum.reject(document.nodes, &match?(%MDEx.Heading{level: 1}, &1))}
   end
 
-  about = File.read!(@about_path)
-  [before_payments, payments_on] = String.split(about, "\n## Payments\n")
-  [payments, after_payments] = String.split(payments_on, "\n## ", parts: 2)
-  [_before, facts] = String.split(about, "\n## Key facts\n")
-  key_facts = "## Key facts\n" <> String.trim_trailing(hd(String.split(facts, "\n## ", parts: 2)))
+  # One `## ` section of a page, from its heading to the next one.
+  section = fn markdown, heading ->
+    [_before, on] = String.split(markdown, "\n## #{heading}\n")
+    "## #{heading}\n" <> String.trim_trailing(hd(String.split(on, "\n## ", parts: 2)))
+  end
+
+  about = Map.new(@about_paths, fn {edition, path} -> {edition, File.read!(path)} end)
 
   about_options = [
     extension: [table: true, inline_code_attributes: false],
@@ -48,17 +55,14 @@ defmodule Patchbay.WrittenPages do
   ]
 
   # The About page's text has its addresses cut out (`Patchbay.AddressText.html/1`).
-  @about Map.new(
-           %{main: about, open: before_payments <> "\n## " <> after_payments},
-           fn {edition, markdown} ->
-             html = Patchbay.AddressText.html(below_title.(markdown, about_options))
-             {edition, %{html: html, markdown: markdown}}
-           end
-         )
+  @about Map.new(about, fn {edition, markdown} ->
+           html = Patchbay.AddressText.html(below_title.(markdown, about_options))
+           {edition, %{html: html, markdown: markdown}}
+         end)
 
   @facts %{
-    main: key_facts <> "\n\n" <> "## Payments\n" <> String.trim_trailing(payments),
-    open: key_facts
+    main: section.(about.main, "Key facts") <> "\n\n" <> section.(about.main, "Payments"),
+    open: section.(about.open, "Key facts")
   }
 
   @terms Map.new(@terms_paths, fn {edition, path} ->
