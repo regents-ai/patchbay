@@ -180,11 +180,17 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
     assert %URI{host: "open.patchbay.help", path: "/videos/" <> _name} =
              URI.parse(review["demo_recording_url"])
 
+    # The folder is the repository's own priv/videos: the check leaves it as it found it.
     videos = Application.app_dir(:patchbay, "priv/videos")
+    made? = not File.dir?(videos)
     name = "check-#{System.unique_integer([:positive])}.mp4"
     File.mkdir_p!(videos)
     File.write!(Path.join(videos, name), "video")
-    on_exit(fn -> File.rm!(Path.join(videos, name)) end)
+
+    on_exit(fn ->
+      File.rm!(Path.join(videos, name))
+      if made?, do: File.rmdir!(videos)
+    end)
 
     video = conn |> on_open() |> get("/videos/" <> name)
 
