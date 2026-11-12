@@ -1,13 +1,14 @@
 defmodule Patchbay.Identity.StatusChange do
   @moduledoc """
-  The record of a profile being suspended or reinstated at Patchbay's console:
+  The record of a profile being suspended or reinstated by Patchbay's staff:
   which profile, which of the two, the reason given, and when. Each row is
   written in the same transaction as the change it records, and rows are never
   updated or deleted: a profile suspended again later gets a new row.
 
   Nothing public reads these. They hold ids and the reason, never a copy of
   anything the person wrote. The console reads a profile's rows with
-  `Patchbay.Release.status_changes/2`.
+  `Patchbay.Release.status_changes/2`, and a moderator reads them on the
+  person's admin page (`PatchbayWeb.PersonAdminLive`).
   """
 
   use Ash.Resource,
@@ -46,11 +47,16 @@ defmodule Patchbay.Identity.StatusChange do
   end
 
   policies do
-    # The suspension and reinstatement that write a row and the console that
-    # reads them all act as the system actor (`Patchbay.Release`), which code
-    # builds and no request supplies.
+    # A row is written by the suspension or reinstatement it records, as that
+    # action's own actor, and read by the same staff: the console's system
+    # actor (`Patchbay.Release`), which code builds and no request supplies,
+    # or a moderator's own active web sign-in
+    # (`Patchbay.Identity.AgentProfile`'s policy for the two actions).
     policy always() do
       authorize_if(actor_attribute_equals(:role, :system))
+      forbid_unless(actor_attribute_equals(:authentication_origin, :privy))
+      forbid_unless(actor_attribute_equals(:status, :active))
+      authorize_if(Patchbay.Checks.Moderator)
     end
   end
 
