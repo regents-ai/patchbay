@@ -5,15 +5,15 @@ import {expect, test, watch} from "./support/test"
 // the template's 16px side padding, every control at least 44px each way, and the
 // places to go and Ask in a Menu that keeps the page behind it out of reach until
 // it closes. Found on 29 Oct (the UI audit): the header's side padding was 12px,
-// 8px at 320, and the wordmark link was 23px wide. The theme switch stays off
-// phones (Sean, 16 Oct) and is in the header on a desktop.
+// 8px at 320, and the wordmark link was 23px wide. Signed out, the theme switch
+// is in the header at every width (theme_switch.spec.ts walks its presses).
 
 const theme = (page: Page) =>
   page.evaluate(() =>
     document.documentElement.dataset.theme ??
     (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"))
 
-test("on a phone the header is 56px tall, every control 44px each way, and no theme switch", async ({page, isMobile}) => {
+test("on a phone the header is 56px tall and every control 44px each way, the theme switch included", async ({page, isMobile}) => {
   test.skip(!isMobile, "the phone header")
   const problems = watch(page)
   await page.goto("/sites")
@@ -29,8 +29,7 @@ test("on a phone the header is 56px tall, every control 44px each way, and no th
     expect(size.x + size.width).toBeLessThanOrEqual(box.x + box.width)
   }
 
-  // Nowhere on the page, header or footer, is there a theme switch to press.
-  await expect(page.locator("[data-pb-theme-toggle]:visible")).toHaveCount(0)
+  await expect(header.getByRole("switch", {name: "Light theme"})).toBeVisible()
   await problems.expect()
 })
 
@@ -76,10 +75,9 @@ test("on a desktop the places to go are in the header, with the theme switch", a
   const header = page.locator("header.pb-masthead")
   await expect(header.getByRole("navigation", {name: "Patchbay"}).getByRole("link", {name: "Questions"})).toBeVisible()
   await expect(page.getByRole("button", {name: "Menu"})).toBeHidden()
-  await expect(page.locator("[data-pb-theme-toggle]:visible")).toHaveCount(1)
   const before = await theme(page)
-  await header.locator(".pb-theme-toggle").click()
-  expect(await theme(page)).not.toBe(before)
+  await header.getByRole("switch", {name: "Light theme"}).click()
+  await expect.poll(() => theme(page)).not.toBe(before)
   await problems.expect()
 })
 

@@ -110,8 +110,6 @@ test("the Wallet Bench board takes the sheet's width", async ({page, isMobile}) 
 })
 
 // Layers: one weight, 400, and nothing floats on a blurred shadow.
-// The theme switch is design-system's artwork (its laser's glow is drawn
-// there), so it is left to design-system's own checks.
 for (const path of ["/", "/sites", "/wallet-bench", "/offers", "/keyfleet.ai", "/changelog", "/agent-setup"]) {
   test(`${path} draws text at 400 only, with no soft shadows`, async ({page}) => {
     await page.goto(path)
@@ -120,7 +118,7 @@ for (const path of ["/", "/sites", "/wallet-bench", "/offers", "/keyfleet.ai", "
       const shadows: string[] = []
       for (const element of document.querySelectorAll<HTMLElement>("body *")) {
         const box = element.getBoundingClientRect()
-        if (box.width === 0 || box.height === 0 || element.closest(".rg-theme-toggle")) continue
+        if (box.width === 0 || box.height === 0) continue
         const style = getComputedStyle(element)
         const words = [...element.childNodes].some(node => node.nodeType === Node.TEXT_NODE && node.textContent!.trim())
         if (words && style.fontWeight !== "400") weights.push(`${element.tagName} ${style.fontWeight}`)
