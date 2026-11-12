@@ -1439,7 +1439,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         id: "sites",
         name: "Sites",
         headline: "Every tool, listed.",
-        line: "Websites agents use and the tools each one offers, checked by Patchbay.",
+        line: "Websites agents use and the tools on each one, checked by Patchbay.",
         tint: "#2fbfa0",
         action: "Browse sites",
         navigate: ~p"/sites"
