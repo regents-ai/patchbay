@@ -341,15 +341,21 @@ defmodule PatchbayWeb.Router do
   end
 
   # Agent Offers moderation is live, so a report shows the moment it is
-  # filed. The page answers as though it does not exist to anyone but a
-  # moderator.
+  # filed, and a person's admin page suspends or reinstates them. Both answer
+  # as though they do not exist to anyone but a moderator
+  # (PatchbayWeb.Moderators).
   scope "/admin", PatchbayWeb do
     pipe_through [:main_only, :browser, :html_only]
 
     live_session :offer_moderation,
-      on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :default}],
+      on_mount: [
+        {PatchbayWeb.SiteEdition, :main},
+        {PatchbayWeb.CurrentProfile, :default},
+        PatchbayWeb.Moderators
+      ],
       session: {PatchbayWeb.VisitLog, :session, []} do
       live "/offers", OfferModerationLive, :index
+      live "/people/:public_id", PersonAdminLive, :show
     end
   end
 

@@ -6,9 +6,9 @@ defmodule PatchbayWeb.SuspensionTest do
   (`Patchbay.Identity.AgentProfile.may_act?/1`). Suspending queues a job that
   disconnects their apps, waiting in a paused queue while connected apps are
   switched off, so once it has run reinstating them brings their paired
-  agents back and not their apps. Nothing a request carries can suspend or
-  reinstate anyone: only Patchbay's console can, and each change is recorded
-  with its reason.
+  agents back and not their apps. Only Patchbay's staff suspend or reinstate
+  anyone, here at the console, and each change is recorded with its reason;
+  a moderator's page is `PatchbayWeb.PersonAdminLiveTest`'s.
 
   Their own web sign-in is `PatchbayWeb.PrivySessionControllerTest`'s, a
   suspended wallet author `PatchbayWeb.PaymentsAPI.WalletAuthorTest`'s, and
@@ -140,7 +140,7 @@ defmodule PatchbayWeb.SuspensionTest do
   end
 
   describe "suspending and reinstating" do
-    test "answer only Patchbay's console, whoever else asks, and change nothing for them" do
+    test "answer Patchbay's console and nobody who is not staff, and change nothing for them" do
       person = person!()
 
       senders = [
@@ -174,7 +174,7 @@ defmodule PatchbayWeb.SuspensionTest do
                Identity.reinstate_profile(suspended, "Appeal upheld", actor: @console)
     end
 
-    test "each leave a record with their reason, which only the console reads" do
+    test "each leave a record with their reason, which nobody but staff reads" do
       person = person!()
 
       person |> suspend!("Spam") |> reinstate!("Appeal upheld")

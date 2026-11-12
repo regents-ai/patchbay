@@ -116,8 +116,8 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
   end
 
   # Sean, 9 Nov 2026 ("100. a"): a suspended person cannot sign in on the web,
-  # and every live web sign-in they hold ends. Only Patchbay's console
-  # suspends and reinstates.
+  # and every live web sign-in they hold ends. Only Patchbay's staff
+  # suspend and reinstate.
   describe "a suspended person" do
     test "is refused at sign-in and stays signed out", %{key: key} do
       did = "did:privy:suspended-#{System.unique_integer([:positive])}"

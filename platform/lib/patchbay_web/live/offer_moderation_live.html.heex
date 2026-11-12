@@ -45,7 +45,8 @@
           <header class="pb-offmod-head">
             <strong>{offer.label}</strong>
             <span>
-              {offer.owner.agent_name} · {moment(offer.inserted_at)} · version {offer.current_version.version}
+              <a href={"/admin/people/#{offer.owner.public_id}"}>{offer.owner.agent_name}</a>
+              · {moment(offer.inserted_at)} · version {offer.current_version.version}
             </span>
             <span class="pb-offmod-status">{if offer.has_bids?, do: "Has bids", else: "No bids"}</span>
           </header>
@@ -71,7 +72,8 @@
         <li :for={bid <- board.bids} id={"pb-offmod-bid-#{bid.id}"} class="pb-offmod-item">
           <header class="pb-offmod-head">
             <strong>{credits(bid.amount_minor)} for {lane_label(bid.lane)}</strong>
-            <span>{bid.owner.agent_name} · {moment(bid.inserted_at)}</span>
+            <span><a href={"/admin/people/#{bid.owner.public_id}"}>{bid.owner.agent_name}</a>
+            · {moment(bid.inserted_at)}</span>
             <span class="pb-offmod-status">{bid_status_label(bid.status)}</span>
           </header>
 
@@ -105,7 +107,8 @@
         >
           <header class="pb-offmod-head">
             <strong>{turn_down_label(turn_down)}</strong>
-            <span>{turn_down.owner.agent_name} · {moment(turn_down.inserted_at)}</span>
+            <span><a href={"/admin/people/#{turn_down.owner.public_id}"}>{turn_down.owner.agent_name}</a>
+            · {moment(turn_down.inserted_at)}</span>
             <span :if={is_nil(turn_down.version_id)} class="pb-offmod-status">Offer deleted</span>
           </header>
 
