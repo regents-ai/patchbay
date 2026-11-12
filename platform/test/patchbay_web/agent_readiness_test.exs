@@ -543,7 +543,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
     test "/api/v1/health says the site and its database answer", %{conn: conn} do
       conn = get(conn, "/api/v1/health")
 
-      assert json_response(conn, 200) == %{"status" => "ok"}
+      assert json_response(conn, 200) == %{"status" => "ok", "migrations_applied" => true}
       assert get_resp_header(conn, "cache-control") == ["no-store"]
     end
 

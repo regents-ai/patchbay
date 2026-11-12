@@ -4,8 +4,10 @@ defmodule PatchbayWeb.HealthController do
   host's health check, `/api/v1/health` in JSON for agents and the command line,
   as on every Regent site, and `/webmcp/health` in JSON for deploy checks.
 
-  `/webmcp/health` answers 200 only when the database responds and every
-  migration has run. The commit the running release was built from is at
+  `/api/v1/health` also says whether every migration this release carries has
+  run; pending ones leave its answer at 200, so the host does not restart a
+  site that is serving. `/webmcp/health` answers 200 only when the database
+  responds and every migration has run. The commit the running release was built from is at
   `/capabilities.json`.
   """
 
@@ -33,7 +35,7 @@ defmodule PatchbayWeb.HealthController do
     conn = put_resp_header(conn, "cache-control", "no-store")
 
     if database_status() == "ok" do
-      json(conn, %{status: "ok"})
+      json(conn, %{status: "ok", migrations_applied: migrations_status("ok") == "current"})
     else
       conn
       |> put_status(:service_unavailable)

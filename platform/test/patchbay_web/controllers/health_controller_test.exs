@@ -80,6 +80,26 @@ defmodule PatchbayWeb.HealthControllerTest do
     assert log =~ "health check: database is unreachable"
   end
 
+  test "/api/v1/health says every migration is applied", %{conn: conn} do
+    assert json_response(get(conn, ~p"/api/v1/health"), 200) ==
+             %{"status" => "ok", "migrations_applied" => true}
+  end
+
+  # Invariant: the health answer says when a release carries a migration its
+  # database has not applied, and still answers 200, so the host keeps serving.
+  test "/api/v1/health stays 200 and says so while a migration is still pending", %{conn: conn} do
+    Ecto.Adapters.SQL.query!(
+      Patchbay.Repo,
+      "DELETE FROM schema_migrations WHERE version = (SELECT MAX(version) FROM schema_migrations)",
+      []
+    )
+
+    assert json_response(get(conn, ~p"/api/v1/health"), 200) ==
+             %{"status" => "ok", "migrations_applied" => false}
+
+    assert response(get(conn, ~p"/healthz"), 200) == "ok"
+  end
+
   test "/api/v1/health answers 503 and logs when the database cannot be reached", %{conn: conn} do
     Ecto.Adapters.SQL.Sandbox.mode(Patchbay.Repo, :manual)
 
