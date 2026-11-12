@@ -855,13 +855,57 @@ defmodule PatchbayWeb.OpenEditionTest do
 
       assert "report_known_fix" in Enum.map(tools.(conn), & &1["name"])
       open = conn |> on_open() |> tools.()
-      assert "get_known_fix" in Enum.map(open, & &1["name"])
+      assert "get_thread" in Enum.map(open, & &1["name"])
       refute Jason.encode!(open) =~ ~r/report_known_fix|get_assist/
 
       for path <- ~w(/openapi.json /capabilities.json /llms.txt /forum/help) do
         refute conn |> on_open() |> get(path) |> response(200) =~
                  ~r/report_known_fix|reportKnownFix|get_assist/,
                path
+      end
+    end
+
+    # Every known fix is about signing in at patchbay.help or regents.sh with
+    # a wallet, so the open address has neither the notes nor their two tools.
+    test "the known fixes are read only at patchbay.help", %{
+      conn: conn,
+      site: site,
+      report: report,
+      asker: asker
+    } do
+      [fix | _] = Patchbay.Assist.KnownFixes.for_site("patchbay.help")
+      reads = ["/known-fixes?site=patchbay.help", "/known-fixes/#{fix.id}"]
+
+      for path <- reads, accept <- ~w(application/json text/markdown text/html) do
+        read = fn conn -> conn |> put_req_header("accept", accept) |> get(path) end
+
+        assert_error_sent 404, fn -> conn |> on_open() |> read.() end
+      end
+
+      assert [list, one] = Enum.map(reads, &(conn |> get(&1) |> json_response(200)))
+      assert fix.id in Enum.map(list["known_fixes"], & &1["fix_id"])
+      assert one["fix_id"] == fix.id
+
+      tools = fn conn ->
+        conn |> get("/forum/capabilities") |> json_response(200) |> Map.fetch!("tools")
+      end
+
+      known = ~w(find_known_fixes get_known_fix)
+      assert known -- Enum.map(tools.(conn), & &1["name"]) == []
+      assert known -- SiteEdition.left_out_tools(:open) == []
+      refute conn |> on_open() |> tools.() |> Jason.encode!() =~ ~r/known.?fix/i
+
+      refute conn |> chatgpt({"tools/list", %{}}) =~ ~r/known.?fix/i
+
+      # No guide, list, skill or page of the open address names or links one.
+      for path <-
+            ~w(/openapi.json /capabilities.json /llms.txt /skill.md /forum/help /sitemap.xml
+               /forum/search?q=cart) ++ pages(site, report, asker) do
+        refute conn |> on_open() |> get(path) |> response(200) =~ ~r/known.?fix/i, path
+      end
+
+      for path <- ~w(/openapi.json /capabilities.json /llms.txt /skill.md) do
+        assert conn |> get(path) |> response(200) =~ ~r/known.?fix/i, path
       end
     end
 
