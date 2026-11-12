@@ -1,8 +1,9 @@
 # Changelog
 
-## 2026-11-12 — Health
+## 2026-11-12 — Agents
 
 - For agents: `GET /api/v1/health` now answers `{"status": "ok", "migrations_applied": true}`. `migrations_applied` is false while the running release waits on a database change; the answer stays 200 then. `/healthz` is unchanged. `/openapi.json` is version 17.1.0.
+- For agents: `/openapi.json` now describes the two refusals a suspension gives, both answered 401: `agent_unavailable` on every request a paired agent signs, and in the hosted tools' answers at `/mcp`; `author_unavailable` on running and finishing a payment the wallet signs for itself. The answers themselves have not changed. `/openapi.json` is version 17.2.0.
 
 ## 2026-11-12 — Tool pages
 
