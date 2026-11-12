@@ -9,7 +9,8 @@ defmodule Patchbay.Assist.PageTools do
   scripts it loads from its own site and the scripts those import, and
   picks those out. It finds the tools a page writes into its code; a tool
   put together at run time, or loaded from another company's site, is not
-  seen, and none of them can be called from here.
+  seen, and none of them can be called from here. The call that signs tools
+  up may be in one script and the tools in another it imports, at any depth.
 
   `Patchbay.Forum.ToolName` alone decides what a tool name is: the reader
   picks out every candidate and keeps only the names the board would store.
@@ -90,33 +91,48 @@ defmodule Patchbay.Assist.PageTools do
   @spec inspect_tools(page(), keyword()) :: %{tools: [tool()], complete?: boolean()}
   def inspect_tools(%{url: page_url, html: html, cut?: cut?}, opts \\ []) do
     host = URI.parse(page_url).host
-    script_urls = html |> script_urls(page_url) |> own_site(host)
-    loaded = Enum.take(script_urls, @max_scripts)
-    {first, first_complete?} = fetch_all(loaded, opts)
+    page = {page_url, html}
+    wanted = Enum.uniq(own_site(script_urls(html, page_url), host) ++ imported_urls([page], host))
+    {scripts, scripts_complete?} = read_scripts(wanted, [], [], true, host, opts)
+    read = [page | scripts]
 
-    import_urls = imported_urls(first, host) -- loaded
-    imported = Enum.take(import_urls, @max_scripts - length(loaded))
-    {second, second_complete?} = fetch_all(imported, opts)
-    read = [{page_url, html} | first ++ second]
-
-    # Own-site modules that code already read imports but that were never
-    # read themselves: those two imports deep, past the script count, or
-    # imported by a script written into the page.
-    unread = imported_urls(read, host) -- (loaded ++ imported)
-
+    # The call that signs tools up and the tools it is handed are often in
+    # different scripts, so the page as a whole is asked whether it signs any up.
     tools =
-      Enum.uniq_by(
-        form_tools(html) ++ Enum.flat_map(read, fn {_url, code} -> script_tools(code) end),
-        & &1.name
-      )
+      if Enum.any?(read, fn {_url, code} -> code =~ ~r/registerTool|provideContext/ end),
+        do: Enum.flat_map(read, fn {_url, code} -> script_tools(code) end),
+        else: []
+
+    tools = Enum.uniq_by(form_tools(html) ++ tools, & &1.name)
 
     %{
       tools: Enum.take(tools, @max_tools),
-      complete?:
-        not cut? and first_complete? and second_complete? and
-          length(loaded) == length(script_urls) and unread == [] and
-          length(tools) <= @max_tools
+      complete?: not cut? and scripts_complete? and length(tools) <= @max_tools
     }
+  end
+
+  # Reads `wanted` and then, round by round, the own-site modules those
+  # import, until a round names nothing new or the script count is reached.
+  # Complete when every script named was read in full.
+  defp read_scripts(wanted, asked, read, complete?, host, opts) do
+    new = wanted -- asked
+
+    case Enum.take(new, @max_scripts - length(asked)) do
+      [] ->
+        {read, complete? and new == []}
+
+      round ->
+        {fetched, whole?} = fetch_all(round, opts)
+
+        read_scripts(
+          imported_urls(fetched, host),
+          asked ++ round,
+          read ++ fetched,
+          complete? and whole? and length(round) == length(new),
+          host,
+          opts
+        )
+    end
   end
 
   defp imported_urls(scripts, host) do
@@ -213,21 +229,17 @@ defmodule Patchbay.Assist.PageTools do
         do: tool(name, attribute(tag, "tooldescription") || "")
   end
 
-  # Tool objects in code that signs tools up: a name, then within the same
-  # object a description and either an input schema or the function run.
+  # Tool objects in a page's code: a name, then within the same object a
+  # description and either an input schema or the function run.
   defp script_tools(code) do
-    if code =~ ~r/registerTool|provideContext/ do
-      starts = Regex.scan(@tool_name, code, return: :index)
+    starts = Regex.scan(@tool_name, code, return: :index)
 
-      starts
-      |> Enum.with_index()
-      |> Enum.flat_map(fn {[{at, _length}, {name_at, name_length}], index} ->
-        window = window(code, at, Enum.at(starts, index + 1))
-        tool_object(binary_part(code, name_at, name_length), window)
-      end)
-    else
-      []
-    end
+    starts
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {[{at, _length}, {name_at, name_length}], index} ->
+      window = window(code, at, Enum.at(starts, index + 1))
+      tool_object(binary_part(code, name_at, name_length), window)
+    end)
   end
 
   defp window(code, at, next) do
