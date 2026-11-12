@@ -72,6 +72,54 @@ defmodule Patchbay.Assist.PageToolsTest do
     refute "cdn.elsewhere.net" in hosts
   end
 
+  # keyfleet.ai as it answered on 12 November 2026, cut down to two of its
+  # tools: the page loads app.js, which imports the list it signs up, which
+  # imports the script the tools are written in.
+  @keyfleet_page """
+  <html><head>
+  <script defer phx-track-static type="module" src="/assets/js/app-639e64e1.js?vsn=d"></script>
+  <link rel="modulepreload" href="/assets/js/chunks/chunk-WYBSCXA6.js">
+  </head><body></body></html>
+  """
+
+  @keyfleet_app """
+  import"./chunks/chunk-WYBSCXA6.js";function rs(){let e=document.documentElement.dataset;
+  if(!("modelContext"in document)){e.webmcpStatus="unsupported";return}let t;
+  window.addEventListener("pageshow",()=>{let i=new AbortController;t=i;let{signal:n}=i;
+  import("./chunks/public_tool_list-2YZ2HGI6.js").then(({tools:s})=>{if(!n.aborted)
+  return Promise.all(s.map(r=>document.modelContext.registerTool(r,{signal:n})))})})}
+  """
+
+  @keyfleet_list """
+  import{a as E,b as v,c as I}from"./chunk-EKSAZ6HN.js";import"./chunk-WYBSCXA6.js";
+  var H=E.tools,te=H.filter(e=>e.scope==="site").map(e=>({name:e.name,title:e.title,
+  description:v(e),inputSchema:e.input_schema,annotations:e.annotations,
+  async execute(t,{signal:s}){return I(t,e.input_schema)}}));export{te as tools};
+  """
+
+  @keyfleet_tools """
+  var u={tools:[{name:"about",title:"About",description:"Read the About page, its title and its Markdown: what Keyfleet is, who uses it and who runs it. No sign-in; changes nothing.",input_schema:{type:"object",properties:{},required:[],additionalProperties:!1},annotations:{readOnlyHint:!0},requires:"none",scope:"site",authentication:"public"},{name:"fleets_list",title:"Fleets",description:"List the fleets. No sign-in; changes nothing.",input_schema:{type:"object",properties:{},required:[],additionalProperties:!1},annotations:{readOnlyHint:!0},requires:"none",scope:"site",authentication:"public"}]};export{u as a};
+  """
+
+  test "finds tools written in one script and signed up by another, three imports deep" do
+    PageSite.serve(%{
+      "/" => @keyfleet_page,
+      "/assets/js/app-639e64e1.js" => @keyfleet_app,
+      "/assets/js/chunks/chunk-WYBSCXA6.js" => "export const w = 1",
+      "/assets/js/chunks/public_tool_list-2YZ2HGI6.js" => @keyfleet_list,
+      "/assets/js/chunks/chunk-EKSAZ6HN.js" => @keyfleet_tools
+    })
+
+    {:ok, page} = PageTools.page("https://keyfleet.ai/", target_options())
+
+    assert %{complete?: true, tools: [about, fleets]} =
+             PageTools.inspect_tools(page, target_options())
+
+    assert about.name == "about"
+    assert about.description =~ "Read the About page"
+    assert fleets.name == "fleets_list"
+  end
+
   test "follows a redirect to the page, and says why a page cannot be read" do
     PageSite.serve(%{
       "/" => {301, [{"location", "/docs"}], ""},
@@ -125,24 +173,29 @@ defmodule Patchbay.Assist.PageToolsTest do
       "/down" => tool <> loads.("down.js"),
       "/big" => tool <> loads.("big.js"),
       "/deep" => tool <> loads.("chain.js"),
+      "/lost" => tool <> loads.("broken.js"),
       "/inline" => tool <> ~s(<script type="module">import "/one.js";</script>),
       "/app.js" => ~s(import "./one.js";),
       "/one.js" => "export const one = 1",
       "/down.js" => {503, [], "away"},
       # One byte past the script bound: read up to it, then cut.
       "/big.js" => String.duplicate("x", 2 * 1024 * 1024 + 1),
-      # b.js is two imports deep, past what the reader follows.
+      # Imports are followed however deep they go.
       "/chain.js" => ~s(import "./a.js";),
       "/a.js" => ~s(import "./b.js";),
-      "/b.js" => "export const b = 1"
+      "/b.js" => "export const b = 1",
+      # gone.js, two imports deep, is not there.
+      "/broken.js" => ~s(import "./c.js";),
+      "/c.js" => ~s(import "./gone.js";)
     })
 
     for {path, complete?} <- [
           {"/", true},
           {"/down", false},
           {"/big", false},
-          {"/deep", false},
-          {"/inline", false}
+          {"/deep", true},
+          {"/lost", false},
+          {"/inline", true}
         ] do
       {:ok, page} = PageTools.page("https://bookings.example.com" <> path, target_options())
 

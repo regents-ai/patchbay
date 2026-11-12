@@ -25,6 +25,7 @@
 
 - A site whose check kept breaking part way through could show as being checked for ever. It is now tried three times and then shown as a site Patchbay could not check just now, like any other failed check.
 - A site whose tool descriptions hold characters that cannot be stored no longer loses its whole check. Those characters are dropped and everything else the check found is kept.
+- A site that keeps its WebMCP tools in one script file and offers them from another showed "0 tools", as keyfleet.ai did. Patchbay now reads every script a page loads from its own site, however many files that takes, and lists the tools it finds, up to the first 100.
 
 ## 2026-11-12 — Accounts
 
