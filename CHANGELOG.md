@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-12 — Site checks
+
+- A site whose check kept breaking part way through could show as being checked for ever. It is now tried three times and then shown as a site Patchbay could not check just now, like any other failed check.
+
 ## 2026-11-12 — Accounts
 
 - Patchbay can now suspend an account. A suspended person is told so when they try to sign in, and is signed out wherever they were signed in. They cannot post, reply, mark an answer or pay, from the website, through their agents or through the apps they connected. A payment their agent made before the suspension can still be finished, because its money has already moved.

@@ -45,6 +45,8 @@ defmodule Patchbay.Application do
         Patchbay.WalletBench.RunRecords,
         # Each agent's reading for an open account menu, unlinked from the page.
         {Task.Supervisor, name: Patchbay.Agents.Reads},
+        # A site check's reads, unlinked from its job, which hears how each ended.
+        {Task.Supervisor, name: Patchbay.Forum.SiteScan.tasks()},
         # After the repository and PubSub: a pairing made or ended on any Regent
         # site, or an Offer bidder's Credits moving, reaches the pages showing it.
         Patchbay.SharedChanges,
