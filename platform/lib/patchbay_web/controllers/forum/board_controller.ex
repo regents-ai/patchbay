@@ -51,6 +51,7 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   @not_posted "That reply could not be posted."
   @thread_not_posted "That post could not be published. Try again in a moment."
+  @site_fix "Use the site's public address, like shop.example.com/cart."
   @agent_page_posts 8
 
   # A read the database is too busy to answer asks to be opened again shortly,
@@ -552,13 +553,13 @@ defmodule PatchbayWeb.Forum.BoardController do
           {:error, _failure} -> {:error, %{said: "That site could not be opened for a question."}}
         end
 
-      {:error, message} ->
-        {:error, %{said: "Site: #{message}"}}
+      {:error, _unreadable} ->
+        {:error, %{said: @site_fix, field: :site}}
     end
   end
 
   defp ask_site(_site) do
-    {:error, %{said: "Name the site the post is about."}}
+    {:error, %{said: "Name the site the post is about.", field: :site}}
   end
 
   defp require_signed_in(%{assigns: %{current_profile: nil}}) do
@@ -612,7 +613,10 @@ defmodule PatchbayWeb.Forum.BoardController do
         {:error, refused}
 
       {:error, refused} ->
-        {:error, %{said: not_admitted(refused) || thread_refusal(refused)}}
+        case not_admitted(refused) do
+          nil -> {:error, thread_refusal(refused)}
+          said -> {:error, %{said: said}}
+        end
     end
   end
 
@@ -625,32 +629,40 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp not_admitted({:unavailable, said}), do: said
   defp not_admitted(_refused), do: nil
 
+  # What the write refused, with the form field it is said under. The tools
+  # are picked from a list that stops at five, so theirs is about no field a
+  # person can type in.
   defp thread_refusal(%Ash.Error.Invalid{errors: errors}) do
+    refused = MapSet.new(errors, &Map.get(&1, :field))
+
     cond do
-      Enum.any?(errors, &(Map.get(&1, :field) == :title)) ->
-        "Say what you are trying to do in one short line."
+      :title in refused ->
+        %{said: "Say what you are trying to do in one short line.", field: :goal}
 
-      Enum.any?(errors, &(Map.get(&1, :field) == :body_markdown)) ->
-        "Say what happened in up to about 16,000 characters."
+      :body_markdown in refused ->
+        %{said: "Say what happened in up to about 16,000 characters.", field: :details}
 
-      Enum.any?(errors, &(Map.get(&1, :field) == :tool_names)) ->
-        "Pick up to 5 of the site's tools."
+      :tool_names in refused ->
+        %{said: "Pick up to 5 of the site's tools."}
 
-      Enum.any?(errors, &(Map.get(&1, :field) in [:pictures, :image])) ->
-        "Pictures can be PNG, JPEG or WebP, up to 3 MB each, and up to 3 of them."
+      :pictures in refused or :image in refused ->
+        %{
+          said: "Pictures can be PNG, JPEG or WebP, up to 3 MB each, and up to 3 of them.",
+          field: :pictures
+        }
 
-      Enum.any?(errors, &(Map.get(&1, :field) == :page_url)) ->
-        "The site's address needs to name a public site, like shop.example.com/cart."
+      :page_url in refused ->
+        %{said: @site_fix, field: :site}
 
-      Enum.any?(errors, &(Map.get(&1, :field) == :topic_tags)) ->
-        "Tags are short words or hyphenated phrases, at most five."
+      :topic_tags in refused ->
+        %{said: "Use short words or hyphenated phrases, five at most.", field: :tags}
 
       true ->
-        @thread_not_posted
+        %{said: @thread_not_posted}
     end
   end
 
-  defp thread_refusal(_refused), do: @thread_not_posted
+  defp thread_refusal(_refused), do: %{said: @thread_not_posted}
 
   @doc """
   A person's conversational reply on a thread — an answer, not a verdict on a

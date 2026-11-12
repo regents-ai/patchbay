@@ -15,6 +15,21 @@ defmodule PatchbayWeb.Forum.Hero do
 
   @type draft :: %{String.t() => String.t() | [String.t()]}
 
+  @typedoc """
+  Why a post was turned down, in words that say what to do. `field` names the
+  form field the words belong under; a refusal that is about no one field has
+  none.
+  """
+  @type problem :: %{required(:said) => String.t(), optional(:field) => atom()}
+
+  @doc "The longest title a post takes, counted in characters."
+  @spec max_title() :: pos_integer()
+  def max_title, do: @max_title
+
+  @doc "What to do about a title that is too long."
+  @spec title_fix() :: String.t()
+  def title_fix, do: "Use #{@max_title} characters or fewer. Put the rest in Steps."
+
   @doc """
   The form's fields as sent. Opened from a link instead, the site, a tool,
   what to ask about and tags can be filled in already.
@@ -53,14 +68,10 @@ defmodule PatchbayWeb.Forum.Hero do
   The forum post the form's words make, in the fields a question is posted
   with, or why they cannot be one.
   """
-  @spec thread(draft()) :: {:ok, map()} | {:error, %{said: String.t()}}
+  @spec thread(draft()) :: {:ok, map()} | {:error, problem()}
   def thread(draft) do
     if String.length(draft["goal"]) > @max_title do
-      {:error,
-       %{
-         said:
-           "A forum post's title is what you are trying to do, in up to #{@max_title} characters. Put the rest in the details."
-       }}
+      {:error, %{said: title_fix(), field: :goal}}
     else
       {:ok,
        %{
@@ -79,7 +90,7 @@ defmodule PatchbayWeb.Forum.Hero do
   The pictures sent with a post, read from the uploads: at most three, each
   up to 3 MB. An empty picture field sends nothing.
   """
-  @spec pictures(term()) :: {:ok, [binary()]} | {:error, %{said: String.t()}}
+  @spec pictures(term()) :: {:ok, [binary()]} | {:error, problem()}
   # The paths are the upload files Plug wrote for this request, never a name
   # the sender chose.
   # sobelow_skip ["Traversal.FileModule"]
@@ -88,10 +99,10 @@ defmodule PatchbayWeb.Forum.Hero do
 
     cond do
       length(chosen) > PostPicture.max_per_post() ->
-        {:error, %{said: "Add up to #{PostPicture.max_per_post()} pictures."}}
+        {:error, %{said: "Add up to #{PostPicture.max_per_post()} pictures.", field: :pictures}}
 
       Enum.any?(chosen, &(File.stat!(&1.path).size > PostPicture.max_bytes())) ->
-        {:error, %{said: "Each picture can be up to 3 MB."}}
+        {:error, %{said: "Each picture can be up to 3 MB.", field: :pictures}}
 
       true ->
         {:ok, Enum.map(chosen, &File.read!(&1.path))}
@@ -100,10 +111,15 @@ defmodule PatchbayWeb.Forum.Hero do
 
   def pictures(_none), do: {:ok, []}
 
-  @doc "Whether any of the optional details already hold something."
-  @spec details?(draft()) :: boolean()
-  def details?(draft),
-    do: Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] != ""))
+  @doc """
+  Whether the optional details are shown: any of them already holds something,
+  or the post was turned down over one of them.
+  """
+  @spec details?(draft(), problem() | nil) :: boolean()
+  def details?(draft, problem),
+    do:
+      Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] != "")) or
+        (problem != nil and problem[:field] in [:details, :pictures, :tags])
 
   # Tags arrive as one comma-separated line and are split here, where the
   # form ends.

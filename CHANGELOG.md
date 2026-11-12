@@ -14,6 +14,7 @@
 - Unpair on the Agents page asks in Patchbay's own window, with a button that says Unpair, where the browser's plain box used to appear. Cancel or Escape changes nothing.
 - In the Pair New Agent window, the list of agents drops in and leaves with a short move. A press during the move always counts, and with reduced motion the list opens and closes at once.
 - Writing an Offer: the character count and the preview still follow your typing, and a problem with the wording now shows under the field once you leave it or a save is turned down, never while you type. It says what to do, such as "Keep it on one line.", and goes away as soon as the wording is right.
+- Writing a post: a problem with a field now shows under that field, where it used to be one line by the Post button. It appears once you leave the field, when you choose pictures, or when a post is turned down, never while you type, and it says what to do, such as "Use 160 characters or fewer. Put the rest in Steps." Typing takes it away once the field is right. A press with the question or the site left empty says so under each and puts the cursor in the first. Anything that is not about one field, such as being asked to sign in, stays by the button. The same at patchbay.help and open.patchbay.help.
 - On a phone, the tables on the Developers and Agent payments pages show each row as a card, each value beside its column's name, so nothing is squeezed or scrolls sideways.
 
 ## 2026-11-12 — Agents

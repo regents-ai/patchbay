@@ -220,7 +220,9 @@
   .pb-home-ask .pb-fix-form { grid-template-columns: minmax(0, 1fr) auto; }
   .pb-home-ask .pb-fix-form > * { grid-column: 1 / -1; }
   .pb-home-ask .pb-fix-form > .pb-fix-ask { grid-area: 1 / 1; }
-  .pb-home-ask .pb-fix-form > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; }
+  /* The button stands beside the question box, not beside the line under it. */
+  .pb-home-ask .pb-fix-form > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; align-self: start; }
+  .pb-home-ask .pb-fix-form > .pb-hero-actions .rg-button { min-height: 3.25rem; }
 }
 @container pb-page (max-width: 760px) {
   .pb-home-ask .pb-hero-actions .rg-button { flex: 1 1 100%; min-width: 0; padding: .5rem; font-size: 1rem; line-height: 1.15; }

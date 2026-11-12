@@ -1194,7 +1194,17 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         |> post(~p"/threads", %{"ask" => typed, "step" => "post", "previewed" => digest})
         |> html_response(200)
 
-      assert body =~ "Site: must contain a host"
+      # The refusal is said under the site's own field, and nowhere else.
+      form = body |> LazyHTML.from_document() |> LazyHTML.query("#pb-hero-form")
+      refute LazyHTML.text(LazyHTML.query(form, "#pb-fix-site-errors")) == ""
+      assert LazyHTML.attribute(LazyHTML.query(form, "#pb-fix-site"), "aria-invalid") == ["true"]
+
+      assert [described] =
+               LazyHTML.attribute(LazyHTML.query(form, "#pb-fix-site"), "aria-describedby")
+
+      assert "pb-fix-site-errors" in String.split(described)
+      assert LazyHTML.attribute(LazyHTML.query(form, "#pb-fix-goal"), "aria-invalid") == ["false"]
+      assert Enum.empty?(LazyHTML.query(form, ".pb-reply-form-problem"))
       refute_received {:jev_was_asked, _questions}
       assert Forum.list_recent_reports!().results == []
       assert Site |> Ash.read!(authorize?: false) == []
@@ -1221,6 +1231,11 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         |> html_response(200)
 
       assert body =~ "Sign in at the top of the page to post"
+
+      # A refusal about no one field keeps its place by the buttons, and marks no field.
+      form = body |> LazyHTML.from_document() |> LazyHTML.query("#pb-hero-form")
+      refute Enum.empty?(LazyHTML.query(form, "#pb-hero-preview > .pb-reply-form-problem"))
+      assert Enum.empty?(LazyHTML.query(form, "[aria-invalid=true]"))
       assert body =~ "a kept title"
       assert body =~ "the question that stays typed"
       assert Forum.list_recent_reports!().results == []
@@ -1228,6 +1243,79 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       # A refused post opens no board: the site it named is not on the
       # directory until someone actually posts on it.
       assert PatchbayWeb.Forum.Board.fetch_site_ref("checkout.example") == :error
+    end
+
+    test "a title that is too long is said under the title, in the page and in the preview alone",
+         %{conn: conn} do
+      typed = %{
+        "goal" => String.duplicate("a", PatchbayWeb.Forum.Hero.max_title() + 1),
+        "site_url" => "checkout.example"
+      }
+
+      form =
+        conn
+        |> post(~p"/threads", %{"ask" => typed, "step" => "preview"})
+        |> html_response(200)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-hero-form")
+
+      assert LazyHTML.text(LazyHTML.query(form, "#pb-fix-goal-errors")) =~
+               PatchbayWeb.Forum.Hero.title_fix()
+
+      assert LazyHTML.attribute(LazyHTML.query(form, "#pb-fix-goal"), "aria-invalid") == ["true"]
+      assert Enum.empty?(LazyHTML.query(form, ".pb-reply-form-problem"))
+      assert Enum.empty?(LazyHTML.query(form, "#pb-hero-post"))
+
+      # The preview on its own names the field, for the page to say it there.
+      alone =
+        build_conn()
+        |> post(~p"/threads/preview", %{"ask" => typed})
+        |> html_response(200)
+        |> LazyHTML.from_fragment()
+
+      assert LazyHTML.attribute(LazyHTML.query(alone, "[role=alert]"), "data-pb-field") ==
+               ["pb-fix-goal"]
+
+      assert Enum.empty?(LazyHTML.query(alone, "#pb-hero-post"))
+    end
+
+    test "too many pictures are said under Pictures, with the folded fields opened", %{conn: conn} do
+      conn = signed_in(conn, person!("aaa"))
+      typed = %{"goal" => "Where does a declined card go?", "site_url" => "checkout.example"}
+
+      preview =
+        conn
+        |> post(~p"/threads", %{"ask" => typed, "step" => "preview"})
+        |> html_response(200)
+
+      [_, digest] = Regex.run(~r/name="previewed" value="([^"]+)"/, preview)
+
+      picture =
+        Path.join(System.tmp_dir!(), "pb-picture-#{System.unique_integer([:positive])}.png")
+
+      File.write!(picture, <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, "a small picture">>)
+      on_exit(fn -> File.rm(picture) end)
+      upload = %Plug.Upload{path: picture, filename: "cart.png", content_type: "image/png"}
+
+      form =
+        conn
+        |> post(~p"/threads", %{
+          "ask" => Map.put(typed, "pictures", List.duplicate(upload, 4)),
+          "step" => "post",
+          "previewed" => digest
+        })
+        |> html_response(200)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#pb-hero-form")
+
+      refute LazyHTML.text(LazyHTML.query(form, "#pb-hero-pictures-errors")) == ""
+
+      assert LazyHTML.attribute(LazyHTML.query(form, "#pb-hero-pictures"), "aria-invalid") ==
+               ["true"]
+
+      assert LazyHTML.attribute(LazyHTML.query(form, "#pb-hero-details"), "open") == [""]
+      assert Enum.empty?(LazyHTML.query(form, ".pb-reply-form-problem"))
+      assert Forum.list_recent_reports!().results == []
     end
 
     test "a signed-in person answers a thread with words, not a verdict", %{conn: conn} do

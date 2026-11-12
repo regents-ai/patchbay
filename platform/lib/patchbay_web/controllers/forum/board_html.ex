@@ -922,7 +922,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   """
   def hero_preview(assigns) do
     ~H"""
-    <p :if={@problem} class="pb-reply-form-problem" role="alert">{@problem.said}</p>
+    <p
+      :if={@problem}
+      class="pb-reply-form-problem"
+      role="alert"
+      data-pb-field={hero_field_id(@problem)}
+    >
+      {@problem.said}
+    </p>
     <section
       :if={@preview}
       id="pb-hero-post"
@@ -971,6 +978,25 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     </section>
     """
   end
+
+  # The post form's fields a refusal can be said under, by the id of each.
+  @hero_fields %{
+    goal: "pb-fix-goal",
+    site: "pb-fix-site",
+    details: "pb-hero-body",
+    pictures: "pb-hero-pictures",
+    tags: "pb-hero-tags"
+  }
+
+  defp hero_field_id(problem), do: @hero_fields[problem[:field]]
+
+  # What is said under one field of the post form: the refusal that names it.
+  defp hero_errors(%{field: field, said: said}, field), do: [said]
+  defp hero_errors(_problem, _field), do: []
+
+  # A refusal that is about no one field, which keeps its place by the buttons.
+  defp hero_unplaced(%{field: _field}), do: nil
+  defp hero_unplaced(problem), do: problem
 
   # The site a post will be filed under, as the board names it.
   defp preview_site(address) do
