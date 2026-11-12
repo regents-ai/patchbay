@@ -113,17 +113,24 @@ Push the commit to `main` first, then from a clean checkout of it:
 scripts/deploy.sh
 ```
 
-Every Regent site shares one production database, and a release briefly doubles
-a site's connections, so releases take turns. Before deploying, read the newest
-release of each other app on it (`fly releases --app <app> --json` for
-autolaunch-sh, keyfleet, keyfleet-code, regents-sh-web, techtree-sh,
-template-regents-sh and sentinel-regent) and wait while any shows
-`"InProgress": true`. The script then builds and releases under
-`lockf -k /tmp/regent-shared-db-release.lock`, which every site's deploy on the
-same Mac takes and waits for, since Fly lists a release only after its build.
-Run anything done by hand that builds, releases or restarts `patchbay-regents`
-or `patchbay-shots`, such as `fly secrets set` or an image redeploy, under the
-same lock: `lockf -k /tmp/regent-shared-db-release.lock fly ...`.
+Sites release at the same time (Sean, 12 Nov 2026). The script holds
+`/tmp/regent-release-patchbay-regents.lock` for its whole run, so two Patchbay
+deploys take turns and no other site waits on it. The build takes no shared
+lock. Only the switch to the new image, which runs the migrations and briefly
+adds a second machine's connections to the production database every Regent
+site shares, takes a place: `/tmp/regent-shared-db-release.lock` when it is
+free, otherwise `/tmp/regent-shared-db-release-2.lock`. Two switches fit that
+database at once; a third waits.
+
+Never wrap the script in `lockf`. Anything done by hand that releases or
+restarts `patchbay-regents`, such as an unstaged `fly secrets set`, a
+`fly machine restart` or an image redeploy, takes a place the same way:
+
+```sh
+place=/tmp/regent-shared-db-release.lock
+lockf -k -s -t 0 "$place" true || place=/tmp/regent-shared-db-release-2.lock
+lockf -k "$place" fly ...
+```
 
 It refuses a checkout with any change and a commit that `origin/main` does not
 contain. It builds `git archive` of the commit, so `SOURCE_COMMIT` is always
@@ -244,7 +251,9 @@ fly releases --app patchbay-regents --image
 Redeploy that image:
 
 ```sh
-lockf -k /tmp/regent-shared-db-release.lock fly deploy --config platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:deployment-<id>
+place=/tmp/regent-shared-db-release.lock
+lockf -k -s -t 0 "$place" true || place=/tmp/regent-shared-db-release-2.lock
+lockf -k "$place" fly deploy --config platform/fly.toml --app patchbay-regents --image registry.fly.io/patchbay-regents:<short commit> --ha=false
 ```
 
 A rollback replays no migrations. When the bad release only added tables or

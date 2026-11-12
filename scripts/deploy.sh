@@ -8,9 +8,12 @@
 # to main first. The build context is `git archive` of this commit with
 # platform/fly.toml beside it, as the Dockerfile copies from the whole
 # repository. Fly's remote builder builds the image without cached layers,
-# labelled with the short commit, and runs /app/bin/migrate before the new
-# machine takes traffic (platform/docs/DEPLOY.md). An earlier image goes back
-# with `fly deploy --app patchbay-regents --image <previous image>`.
+# labelled with the short commit; the switch to it then runs /app/bin/migrate
+# before the new machine takes traffic (platform/docs/DEPLOY.md). An earlier
+# image goes back with `fly deploy --app patchbay-regents --image <previous
+# image>`, run under a database place as DEPLOY.md shows.
+#
+# Never wrap this script in `lockf`: it takes its own locks.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -35,12 +38,33 @@ echo "==> Assembling the build context from commit ${commit:0:7}"
 git archive --format=tar "$commit" | tar -x -C "$context"
 cp "$context/platform/fly.toml" "$context/fly.toml"
 
-# Every site shares one production database, and a release briefly doubles a
-# site's connections, so releases from this machine take turns: the build and
-# release run under one lock that every site's deploy takes, and wait for it.
-lock=/tmp/regent-shared-db-release.lock
-echo "==> Deploying ${commit:0:7} to patchbay-regents (waits for any other release holding $lock)"
-cd "$context"
-lockf -k "$lock" fly deploy --config fly.toml --app patchbay-regents --remote-only --ha=false --no-cache \
-  --build-arg SOURCE_COMMIT="$commit" \
-  --image-label "${commit:0:7}"
+app=patchbay-regents
+image="registry.fly.io/$app:${commit:0:7}"
+
+# The switch to the new image runs the migrations and briefly adds a second
+# machine's connections to the production database every site shares, which
+# fits two switches at once. It takes whichever of the two places is free, or
+# waits for the second.
+switch() {
+  local place=/tmp/regent-shared-db-release.lock
+  lockf -k -s -t 0 "$place" true || place=/tmp/regent-shared-db-release-2.lock
+  echo "==> Deploying $image (waits for $place if it is taken)"
+  lockf -k "$place" fly deploy --config fly.toml --app "$app" --image "$image" --ha=false
+}
+
+# The build touches no database, so it takes no shared place.
+release() {
+  cd "$context"
+  echo "==> Building $image from commit $commit"
+  fly deploy --config fly.toml --app "$app" --build-only --push --remote-only --no-cache \
+    --build-arg SOURCE_COMMIT="$commit" \
+    --image-label "${commit:0:7}"
+  switch
+}
+
+# One Patchbay deploy at a time; other sites' deploys never wait on it.
+lock="/tmp/regent-release-$app.lock"
+echo "==> Waiting for any other Patchbay deploy holding $lock"
+export app commit image context
+export -f release switch
+lockf -k "$lock" bash -euo pipefail -c release
