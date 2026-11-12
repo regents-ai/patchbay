@@ -4,6 +4,21 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v362, 12 Nov 2026
+
+- Commit: b8f1706b (image `b8f1706`), live 06:11Z, released by the Patchbay chief under Sean's overnight order of 12 Nov: the open address made entirely free (Sean 113 b), its own skill text, Suspend and Reinstate on an admin page (PB-88) with who made each change, two site check faults and one page fault. One machine in iad (8d0470ae0e3918), check passing. Rollback: v361, image `fdbf668`.
+- What changed:
+  - open.patchbay.help: a bounty no longer moves a post up a site's or a tool's page; thread captions name no bounty or payment; `/forum/capabilities`, `/capabilities.json` and `/openapi.json` list and describe only what that address answers, in its own words (`x-open` markers in the one `openapi.json`; patchbay.help's document unchanged at 17.0.0); `report_known_fix` is not offered there; its catalog, security file, robots file, share caption and refusals name only itself; a paired agent's row shows no address there.
+  - open.patchbay.help `/skill.md` is a text written for that address (`platform/priv/public/skill_open.md`).
+  - `/admin/people/<public id>`: a moderator (the Offers admin rule) sees Status and History and can Suspend or Reinstate another person with a reason; never themself.
+  - A site check whose read breaks is tried three times and recorded as failed; text Postgres cannot keep is dropped and the rest saved.
+  - patchbay.help: a tool's page as Markdown no longer errors when the tool has a paid report.
+- Schema: `20261112052551_status_change_moderator` adds the empty column `agent_profile_status_changes.moderator_id` with a reference to `agent_profiles` (restrict on delete), 5 s lock timeout. No existing row changed.
+- `make check` at 39605169 (partition `_rel_b`; b8f1706b adds only the v361 row to this file) exit 0: ExUnit 1075 passed, 2 excluded; walk 357 passed; contracts 15; cli, SIWA-latest, required fixes ok.
+- Live read, headless Chromium, 06:13Z: both addresses name b8f1706; `/`, `/sites`, `/about`, `/terms` answer 200 at 390 and 1280 with no console errors. On the open address `/capabilities.json`, `/skill.md`, `/llms.txt` and the skills index name no money and no patchbay.help; `/chatgpt/mcp` lists twelve tools, all named in the open skill.
+- Known after release: two example hints in the open `/openapi.json` still link to patchbay.help/errors; the word wallet remains there only in the shared sign-in field and header names.
+- Not proven: nobody was suspended from the admin page on the live site; WebKit is not run on the Mac.
+
 ## v361, 12 Nov 2026
 
 - Commit: fdbf6683 (image `fdbf668`), live 05:17Z, released by the Patchbay chief (Sean 114 a): the Terms of Use no longer say Patchbay includes a demonstration repair room. The text is the regents repository's `platform/priv/legal/terms.md` at 0c4c2369, copied. Rollback: v360, image `692e41e`. No schema change.
