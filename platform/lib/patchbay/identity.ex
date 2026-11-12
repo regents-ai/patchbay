@@ -3,9 +3,9 @@ defmodule Patchbay.Identity do
   Patchbay's public attribution identities. Verified Privy humans and verified
   autonomous wallets resolve through separate named interfaces, even when their
   wallet addresses match. Only humans can rename their own profile names. Only
-  a person at Patchbay's console suspends or reinstates a profile, through the
-  release commands in `Patchbay.Release`, and each change is recorded as a
-  `Patchbay.Identity.StatusChange`.
+  Patchbay's staff suspend or reinstate a profile, through the release commands
+  in `Patchbay.Release` or a moderator's admin page, and each change is
+  recorded as a `Patchbay.Identity.StatusChange`.
   """
 
   use Ash.Domain, otp_app: :patchbay

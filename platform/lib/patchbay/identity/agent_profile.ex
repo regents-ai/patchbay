@@ -11,9 +11,11 @@ defmodule Patchbay.Identity.AgentProfile do
   The first World ID person a verified sign-in names stays linked to it for
   good; that number only groups the person's agents.
 
-  A profile is active or suspended. Only a person at Patchbay's console
-  suspends or reinstates one, through the release commands
-  (`Patchbay.Release.suspend_profile/3`, `reinstate_profile/3`), and each
+  A profile is active or suspended. Patchbay's staff suspend or reinstate
+  one: at the console, through the release commands
+  (`Patchbay.Release.suspend_profile/3`, `reinstate_profile/3`), or as a
+  signed-in moderator on the person's admin page
+  (`PatchbayWeb.PersonAdminLive`). Both run the same two actions, and each
   change leaves a row in `Patchbay.Identity.StatusChange`. Web sign-in,
   connected apps, each door that asks whom an agent acts for, and wallet
   authors ask `may_act?/1` the same question.
@@ -371,12 +373,19 @@ defmodule Patchbay.Identity.AgentProfile do
       authorize_if(expr(id == ^actor(:id) and authentication_origin == :privy))
     end
 
-    # Only Patchbay's console suspends or reinstates: its release commands
-    # act as the system actor (`Patchbay.Release`). Code builds that actor and
-    # no request supplies it; request code uses it only to read or save
-    # Regent accounts (`Patchbay.Accounts`).
+    # Patchbay's staff suspend or reinstate. The console's release commands act
+    # as the system actor (`Patchbay.Release`), which code builds and no
+    # request supplies; request code uses it only to read or save Regent
+    # accounts (`Patchbay.Accounts`). A moderator acts as their own web
+    # sign-in (`PatchbayWeb.PersonAdminLive`): a person's profile that is
+    # active, and never on itself, so a suspended moderator cannot reinstate
+    # themself and no moderator suspends themself by mistake.
     policy action([:suspend, :reinstate]) do
       authorize_if(actor_attribute_equals(:role, :system))
+      forbid_if(expr(id == ^actor(:id)))
+      forbid_unless(actor_attribute_equals(:authentication_origin, :privy))
+      forbid_unless(actor_attribute_equals(:status, :active))
+      authorize_if(Patchbay.Checks.Moderator)
     end
   end
 

@@ -7,8 +7,8 @@ defmodule Patchbay.Release do
   alias Patchbay.Identity
 
   @app :patchbay
-  # Patchbay's console acts as the system actor, the only actor that may
-  # suspend, reinstate or read their record (`Patchbay.Identity.AgentProfile`,
+  # Patchbay's console acts as the system actor, which may suspend, reinstate
+  # and read their record (`Patchbay.Identity.AgentProfile`,
   # `Patchbay.Identity.StatusChange`). Code builds it; no request supplies it.
   @system %{role: :system}
   @console [actor: @system, not_found_error?: false]
