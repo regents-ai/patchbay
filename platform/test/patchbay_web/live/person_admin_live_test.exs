@@ -233,12 +233,14 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
       person = person!()
       row = %{profile_id: person.id, action: :suspend, reason: "Spam"}
 
-      for actor <- [moderator, @console, person, nil] do
-        assert {:error, %Ash.Error.Forbidden{}} =
-                 StatusChange
-                 |> Ash.Changeset.for_create(:record, row, actor: actor)
-                 |> Ash.create()
+      refused? = fn actor ->
+        match?(
+          {:error, %Ash.Error.Forbidden{}},
+          StatusChange |> Ash.Changeset.for_create(:record, row, actor: actor) |> Ash.create()
+        )
       end
+
+      assert Enum.all?([moderator, @console, person, nil], refused?)
 
       # Nor can a row be asked to name a moderator.
       assert {:error, %Ash.Error.Invalid{}} =

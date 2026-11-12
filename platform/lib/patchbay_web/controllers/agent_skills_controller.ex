@@ -16,7 +16,7 @@ defmodule PatchbayWeb.AgentSkillsController do
 
   @paths %{
     main: Path.expand("../../../../skills/patchbay/SKILL.md", __DIR__),
-    open: Path.expand("../../../priv/public/skill_open.md", __DIR__)
+    open: Application.app_dir(:patchbay, "priv/public/skill_open.md")
   }
 
   for {_edition, path} <- @paths, do: @external_resource(path)

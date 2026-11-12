@@ -373,14 +373,17 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
     Patchbay.Forum.Capabilities.manifest(:open)
     |> Map.update!("tools", fn tools ->
-      for tool <- tools, PatchbayWeb.SiteEdition.answers?(:open, tool["route"]) do
-        if tool["name"] in hosted,
-          do: Map.put(tool, "hosted", true),
-          else: tool |> Map.put("hosted", false) |> Map.delete("output_schema")
-      end
+      for tool <- tools,
+          PatchbayWeb.SiteEdition.answers?(:open, tool["route"]),
+          do: hosted_tool(tool, tool["name"] in hosted)
     end)
     |> Map.put("posting_rules", PatchbayWeb.Help.posting_rules(:open))
   end
+
+  defp hosted_tool(tool, true), do: Map.put(tool, "hosted", true)
+
+  defp hosted_tool(tool, false),
+    do: tool |> Map.put("hosted", false) |> Map.delete("output_schema")
 
   @doc "What Patchbay verified about this connection; nothing here signs or spends."
   def readiness(conn, _params) do
