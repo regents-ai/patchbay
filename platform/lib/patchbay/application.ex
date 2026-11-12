@@ -24,7 +24,6 @@ defmodule Patchbay.Application do
       [
         PatchbayWeb.Telemetry,
         Patchbay.Repo,
-        if(RegentOAuth.enabled?(), do: RegentOAuth.Repo),
         {DNSCluster, query: Application.get_env(:patchbay, :dns_cluster_query) || :ignore},
         {Phoenix.PubSub, name: Patchbay.PubSub},
         # The figures every visitor sees alike, then the readers that keep them.

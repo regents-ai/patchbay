@@ -13,7 +13,6 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
   import Plug.Conn
 
   alias Boruta.Ecto.Token
-  alias Ecto.Adapters.SQL.Sandbox
 
   defmodule HostedSigner do
     @moduledoc "The hosted signer, saying each time it was asked and what for."
@@ -63,16 +62,6 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
 
     put_env(:regent_agents, :hosted_pairing, [:chatgpt])
     put_env(:patchbay, :chatgpt_account_per_minute, 5)
-
-    put_env(
-      :regent_oauth,
-      RegentOAuth.Repo,
-      Keyword.put(Application.fetch_env!(:regent_oauth, RegentOAuth.Repo), :pool, Sandbox)
-    )
-
-    start_supervised!(RegentOAuth.Repo)
-    :ok = Sandbox.checkout(RegentOAuth.Repo)
-    Sandbox.mode(RegentOAuth.Repo, {:shared, self()})
 
     {:ok, client} =
       Boruta.Ecto.Admin.Clients.create_client(%{
@@ -179,7 +168,7 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
     bearer = Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
 
     token =
-      RegentOAuth.Repo.insert!(%Token{
+      Patchbay.Repo.insert!(%Token{
         type: "access_token",
         value: RegentOAuth.hash_token(bearer),
         client_id: client.id,

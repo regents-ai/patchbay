@@ -9,7 +9,6 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
   # It switches ChatGPT identities on for the whole site while it runs.
   use PatchbayWeb.ConnCase, async: false
 
-  alias Ecto.Adapters.SQL.Sandbox
   alias Patchbay.Forum.Report
   alias PatchbayWeb.SignedAgent
 
@@ -38,16 +37,6 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
     )
 
     put_env(:regent_agents, :hosted_pairing, [:chatgpt])
-
-    put_env(
-      :regent_oauth,
-      RegentOAuth.Repo,
-      Keyword.put(Application.fetch_env!(:regent_oauth, RegentOAuth.Repo), :pool, Sandbox)
-    )
-
-    start_supervised!(RegentOAuth.Repo)
-    :ok = Sandbox.checkout(RegentOAuth.Repo)
-    Sandbox.mode(RegentOAuth.Repo, {:shared, self()})
 
     :ok
   end
