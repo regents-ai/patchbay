@@ -177,6 +177,40 @@ defmodule Patchbay.Forum.SiteCheckTest do
     end
   end
 
+  test "text a database cannot keep is dropped from what a check found, and the rest is saved" do
+    page = """
+    <html><body><script type="module">
+    navigator.modelContext.registerTool({name: "search_docs", description: "Finds\\u0000 docs.",
+      inputSchema: {type: "object"}, execute: async () => ({})})
+    navigator.modelContext.registerTool({name: "open_page", description: "Opens #{<<0, 0xFF>>}a page.",
+      inputSchema: {type: "object"}, execute: async () => ({})})
+    navigator.modelContext.registerTool({name: "list_pages", description: "Lists pages.",
+      inputSchema: {type: "object"}, execute: async () => ({})})
+    </script></body></html>
+    """
+
+    PageSite.serve(%{"/" => page})
+    site = Forum.register_site!("docs.example.com")
+    Forum.request_site_check!("example.com")
+
+    Oban.drain_queue(queue: :site_checks, with_scheduled: true, with_recursion: true)
+
+    {:ok, check} = Forum.get_site_check("example.com")
+    refute check.findings["failed"]
+
+    assert %{
+             "search_docs" => "Finds docs.",
+             "open_page" => "Opens a page.",
+             "list_pages" => "Lists pages."
+           } = Map.new(check.findings["webmcp"], &{&1["name"], &1["description"]})
+
+    assert %{
+             "search_docs" => "Finds docs.",
+             "open_page" => "Opens a page.",
+             "list_pages" => "Lists pages."
+           } = Map.new(Forum.list_tools_for_site!(site.id).results, &{&1.name, &1.description})
+  end
+
   test "a site without tools gets its picture too" do
     PageSite.serve(%{"/" => PageSite.without_tools()})
     site = Forum.register_site!("plain.example.com")

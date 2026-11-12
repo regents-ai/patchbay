@@ -104,7 +104,7 @@ defmodule Patchbay.Forum.SiteScan do
 
     {page_url, complete?, webmcp, links} = found.page
 
-    %{
+    storable(%{
       "page_url" => page_url,
       "page_complete" => complete?,
       "webmcp" => webmcp,
@@ -116,7 +116,7 @@ defmodule Patchbay.Forum.SiteScan do
           {source, :busy} <- [registry: found.registry, github: found.github, npm: found.npm],
           do: Atom.to_string(source)
         )
-    }
+    })
   end
 
   @doc "Read the directory's exact public pages without calling any discovered tool."
@@ -154,6 +154,7 @@ defmodule Patchbay.Forum.SiteScan do
       {{:exit, :timeout}, url} ->
         {url, Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})}
     end)
+    |> storable()
   end
 
   # Several reads at once, each given `@all_timeout_ms`: `{:ok, answer}` in
@@ -540,4 +541,15 @@ defmodule Patchbay.Forum.SiteScan do
     do: text |> String.trim() |> String.slice(0, chars)
 
   defp short(_absent, _chars), do: nil
+
+  # What was found, as it can be stored: a stranger's text may hold bytes
+  # that are no text and the NUL character, and Postgres keeps neither. Both
+  # are dropped here, once, from everything a check hands back.
+  defp storable(%{} = found), do: Map.new(found, fn {key, value} -> {key, storable(value)} end)
+  defp storable(found) when is_list(found), do: Enum.map(found, &storable/1)
+
+  defp storable(text) when is_binary(text),
+    do: text |> String.replace_invalid("") |> String.replace(<<0>>, "")
+
+  defp storable(other), do: other
 end
