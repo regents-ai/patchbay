@@ -4,6 +4,38 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v356, 11 Nov 2026
+
+- Commit: 915fe39831185fe802199b29f6ba86b75edbbac4 (image `915fe39`), live 09:01Z, released by the Patchbay lane lead's release worker. One file on top of v355: `platform/priv/videos/patchbay-chatgpt-review.mp4`, the ChatGPT plugin's review video (102 s, 1920x1080, 2,573,322 bytes; the 08:49Z render compressed with x264 CRF 24 to fit the 25 MB limit). One machine in iad (811d197c640568), check passing. Rollback: v355, image `775f3d0`. No schema change.
+- Live read, headless Chromium, 09:01Z: both addresses serve 915fe398; `https://open.patchbay.help/videos/patchbay-chatgpt-review.mp4` answers 200 `video/mp4` (206 for a range request) and plays, with no console or page errors. Sentinel: no new crash notices.
+- Not proven: no full check was run on 915fe398 itself (it adds one video file to 775f3d0c, which had one); WebKit is not run on the Mac.
+- This row was written on 12 Nov from the release worker's entries in control `coordination/patchbay.md`.
+
+## v355, 11 Nov 2026
+
+- Commit: 775f3d0c (image `775f3d0`), live 07:44Z, released by the Patchbay lane lead's release worker: the ChatGPT plugin made ready for upload on open.patchbay.help, plus the privacy page change and one lasting check. One machine in iad (8edd222b120e98), check passing. Rollback: v353, image `9930cee`. No schema change.
+- Commits:
+  - c08642e1 Give the release tests' scratch databases names no other run shares
+  - 2b56eb79 Privacy page: no repair rooms section (Sean 82 a; PB-89)
+  - e3387817 Lasting check: the signed-in header on an old tab reloads too
+  - 328f6097 ChatGPT plugin ready for upload: open-address fixes, package 0.4.0, review video address
+  - e9517891 Open address errors name only its own guide and pages
+  - 65c375dc Open address About and agent guide: no prices, no patchbay.help links
+  - 582608fa ChatGPT plugin: no "free" in its instructions, help, tools or refusals
+  - 66e7a357 OpenAPI: the plugin's two addresses no longer say free
+  - 97d1af1d Plugin README: the video's real folder, no Credits or Offers
+  - 72479a0b Video check leaves priv/videos as it found it
+  - 05cbd9cb Sobelow skips: the two websocket findings at their lines after the video plug
+  - 775f3d0c Help: the hosted /mcp lines name patchbay.help outright
+- `make check` at 775f3d0c (partition `_pblead`) exit 0: ExUnit 1010 passed, 2 excluded; walk 347 passed, 37 skipped; contracts 15; cli, SIWA-latest, required fixes (template 8ae64187) ok.
+- Live read, headless Chromium, 07:44Z, 43 of 43 clean: both addresses serve 775f3d0c; open `/chatgpt/mcp` lists exactly its twelve tools; directory links stay on open.patchbay.help; no repair rooms section on either privacy page; patchbay.help `/mcp` and its WebMCP guide unchanged; no sideways scroll at 390 or 1280; no page or console errors. Sentinel: no new crash notices.
+- Not proven: WebKit is not run on the Mac.
+- This row was written on 12 Nov from the release worker's entries in control `coordination/patchbay.md`.
+
+## v354, 11 Nov 2026 (failed, nothing changed)
+
+- First try at 775f3d0c, 07:24Z. The image built and pushed, then Fly refused to start the machine for the database step ("machine still active, refusing to start") and aborted before any app machine changed; `/app/bin/migrate` never ran. Live stayed v353. The second try is v355.
+
 ## v353, 9 Nov 2026
 
 - Commit: 9930cee287a488ae01717cd9640f5db154b9080c (image `9930cee`), the "Simplify the Patchbay codebase" thread's seven behaviour-preserving commits fast-forwarded onto main above the v352 record, plus the gate's two doc notes. One machine in iad (8d99357b2d5dd8), check passing. Rollback: v352, image `3cdbd87`. No schema change.
