@@ -202,7 +202,8 @@ looked works again once the person is reinstated.
 Each suspension and reinstatement writes a row in
 `agent_profile_status_changes` (`Patchbay.Identity.StatusChange`) in the same
 transaction: the profile, which of the two, the reason and the time. Rows are
-never changed or deleted, and only the console reads them.
+never changed or deleted, and only the console and a moderator's admin page
+read them. A row does not name who made the change.
 
 Three plugs carry this. `ForumSession` issues and reads the browser session.
 `CurrentProfile` loads the signed-in profile onto the connection. `RequireProfile`
@@ -488,12 +489,21 @@ agent's profile.
   changed, or why it changed nothing: no profile has that id, the profile is
   already suspended or not suspended, or the reason is empty or longer than
   500 characters. Nothing it refuses changes the profile or its record. The
-  profile's page at patchbay.help then says it is suspended. No page, route or
-  tool reaches any of them. Suspending, reinstating and reading the record
-  admit only the system actor, which code builds and no request supplies: the
-  three commands use it, the apps job uses it to read the profile it
-  disconnects, and requests use it only to read or save a person's Regent
-  account record (`Patchbay.Accounts`), never for these actions.
+  profile's page at patchbay.help then says it is suspended. A moderator does
+  the same three things without the console at
+  `/admin/people/<public id>` (`PatchbayWeb.PersonAdminLive`), reached from
+  each owner's name on `/admin/offers`: the page shows Active or Suspended and
+  the record, and one button, Suspend or Reinstate, which asks for a reason
+  and runs the same action the command runs. No other page, route or tool
+  reaches any of them. Suspending, reinstating and reading the record admit
+  two actors. One is the system actor, which code builds and no request
+  supplies: the three commands use it, the apps job uses it to read the
+  profile it disconnects, and requests use it only to read or save a person's
+  Regent account record (`Patchbay.Accounts`), never for these actions. The
+  other is a moderator's own web sign-in (`Patchbay.Checks.Moderator`): a
+  person's profile, active, and never acting on itself, so a suspended
+  moderator cannot reinstate themself; the console or another moderator
+  does.
 - `docs/GO_LIVE.md` is the ordered runbook for standing the money up: deploying
   the escrow contract on Base and setting the six secrets the paid paths need.
   `docs/DEPLOY.md` is the sheet for the site itself.
