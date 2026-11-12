@@ -225,17 +225,34 @@ test.describe("saving an Offer", () => {
       use(signInFile(`offers-${info.project.name.replace(/\W+/g, "-")}`)),
   })
 
-  test("a refused save shakes its reason, then rests", async ({page}) => {
+  // What is wrong with a wording is said under its field, in words that say
+  // what to do: never while it is typed, once the field is left, and when a
+  // save is refused. Typing takes the line away once the wording is right.
+  test("a wording's problem shows under its field once the field is left, and on a refused save", async ({page}) => {
     const problems = watch(page)
     await page.goto("/offers/create")
     await connected(page)
+    const wording = page.getByRole("textbox", {name: "Offer text"})
+    const reason = page.locator("#pb-offers-text-errors p")
+    const saved = await page.getByRole("region", {name: "Saved Offers"}).getByRole("listitem").count()
+
     await page.getByRole("textbox", {name: "Private name"}).fill("Two lines")
-    await page.getByRole("textbox", {name: "Offer text"}).fill("Try Patchbay.\nOn two lines.")
-    await page.getByRole("button", {name: "Save Offer"}).click()
-    const reason = page.getByRole("alert").filter({hasText: "The wording must be a single line."})
+    await wording.fill("Try Patchbay.\nOn two lines.")
+    await expect(page.locator("#pb-offers-text-hint")).toContainText("27/160 characters")
+    await expect(reason).toHaveCount(0)
+
+    await wording.blur()
     await expect(reason).toBeVisible()
-    await toRest(reason)
-    expect(shakes(await movesOf(reason))).toBe(true)
+    await expect(wording).toHaveAttribute("aria-invalid", "true")
+
+    await wording.fill("Try Patchbay on one line.")
+    await expect(reason).toHaveCount(0)
+
+    await wording.fill("Try Patchbay.\nOn two lines.")
+    await page.getByRole("button", {name: "Save Offer"}).click()
+    await expect(reason).toBeVisible()
+    await expect(page.locator("#pb-offers-create-problem")).toHaveCount(0)
+    await expect(page.getByRole("region", {name: "Saved Offers"}).getByRole("listitem")).toHaveCount(saved)
     await problems.expect()
   })
 

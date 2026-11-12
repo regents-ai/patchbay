@@ -1,12 +1,14 @@
 defmodule PatchbayWeb.OffersLive.Create do
   @moduledoc """
-  An advertiser's own Offers: write a new one, see it checked as it is
-  typed, follow each saved Offer through screening, and delete one that
-  was never bid with.
+  An advertiser's own Offers: write a new one, see its counts and preview as
+  it is typed, follow each saved Offer through screening, and delete one
+  that was never bid with.
 
-  The check as you type is the same rule the save applies
-  (`Patchbay.Offers.CreativeText`), so the counts, the links found and the
-  preview are exactly what will be kept and shown. A change of wording is
+  The counts, the links found and the preview follow the typing, by the same
+  rule the save applies (`Patchbay.Offers.CreativeText`), so they are exactly
+  what will be kept and shown. What is wrong with a wording is said under its
+  field once the field is left or a save is refused, never while it is being
+  typed; typing only takes that line away once the wording is right. A change of wording is
   saved as a new version, screened again, and never alters a version that
   is already bid or showing.
 
@@ -31,6 +33,18 @@ defmodule PatchbayWeb.OffersLive.Create do
   @not_saved "That could not be saved. Try again in a moment."
   @not_deleted "That Offer could not be deleted. Try again in a moment."
 
+  # What to do about a wording the rule refuses, under its field.
+  @fixes %{
+    invalid_utf8: "Use plain text.",
+    blank: "Write the Offer.",
+    not_one_line: "Keep it on one line.",
+    invisible_or_control: "Remove the invisible character.",
+    unusual_space: "Use ordinary spaces only.",
+    too_long: "Use #{CreativeText.max_code_points()} characters or fewer.",
+    too_many_bytes: "Use #{CreativeText.max_bytes()} bytes or fewer.",
+    too_many_links: "Use #{CreativeText.max_links()} links or fewer."
+  }
+
   @impl true
   def mount(_params, _session, socket),
     do:
@@ -50,6 +64,8 @@ defmodule PatchbayWeb.OffersLive.Create do
     socket
     |> assign(
       problem: nil,
+      name_problems: [],
+      text_left?: false,
       rewording: nil,
       deleting: nil,
       screening_paused?: Offers.screening_paused?()
@@ -98,7 +114,8 @@ defmodule PatchbayWeb.OffersLive.Create do
           rewording: %{
             id: creative.id,
             text: creative.current_version.text,
-            request_key: request_key()
+            request_key: request_key(),
+            left?: false
           }
         )
     end
@@ -132,7 +149,15 @@ defmodule PatchbayWeb.OffersLive.Create do
       when is_binary(label) and is_binary(text) and is_binary(key),
       do:
         {:noreply,
-         assign_new_offer(socket, %{"label" => label, "text" => text, "request_key" => key})}
+         socket
+         |> assign(text_left?: still_wrong?(socket.assigns.text_left?, text))
+         |> assign_new_offer(%{"label" => label, "text" => text, "request_key" => key})}
+
+  def handle_event("leave_text", _params, socket),
+    do: {:noreply, assign(socket, text_left?: true)}
+
+  def handle_event("leave_reword", _params, %{assigns: %{rewording: %{} = rewording}} = socket),
+    do: {:noreply, assign(socket, rewording: %{rewording | left?: true})}
 
   def handle_event(
         "save",
@@ -146,13 +171,14 @@ defmodule PatchbayWeb.OffersLive.Create do
       {:ok, _creative} ->
         {:noreply,
          socket
-         |> assign(problem: nil, saved: saved(profile))
+         |> assign(problem: nil, name_problems: [], text_left?: false, saved: saved(profile))
          |> assign_new_offer(blank_offer())}
 
       {:error, error} ->
         {:noreply,
          socket
-         |> assign(problem: words(error))
+         |> assign(refusal(error, text))
+         |> assign(text_left?: true)
          |> assign_new_offer(%{"label" => label, "text" => text, "request_key" => key})}
     end
   end
@@ -166,10 +192,19 @@ defmodule PatchbayWeb.OffersLive.Create do
   def handle_event(
         "check_reword",
         %{"reword" => %{"creative_id" => id, "text" => text, "request_key" => key}},
-        %{assigns: %{rewording: %{id: id}}} = socket
+        %{assigns: %{rewording: %{id: id, left?: left?}}} = socket
       )
       when is_binary(text) and is_binary(key),
-      do: {:noreply, assign(socket, rewording: %{id: id, text: text, request_key: key})}
+      do:
+        {:noreply,
+         assign(socket,
+           rewording: %{
+             id: id,
+             text: text,
+             request_key: key,
+             left?: still_wrong?(left?, text)
+           }
+         )}
 
   def handle_event("cancel_reword", _params, socket),
     do: {:noreply, socket |> assign(problem: nil) |> patch_editor(%{"reword" => nil})}
@@ -191,10 +226,9 @@ defmodule PatchbayWeb.OffersLive.Create do
 
       {:error, error} ->
         {:noreply,
-         assign(socket,
-           problem: words(error),
-           rewording: %{id: id, text: text, request_key: key}
-         )}
+         socket
+         |> assign(refusal(error, text))
+         |> assign(rewording: %{id: id, text: text, request_key: key, left?: true})}
     end
   end
 
@@ -231,7 +265,7 @@ defmodule PatchbayWeb.OffersLive.Create do
     do: {:noreply, assign(socket, problem: @not_saved)}
 
   def handle_event(event, _params, socket)
-      when event in ["check", "reword", "check_reword", "ask_delete"],
+      when event in ["check", "reword", "check_reword", "leave_reword", "ask_delete"],
       do: {:noreply, socket}
 
   defp assign_new_offer(socket, params) do
@@ -255,6 +289,29 @@ defmodule PatchbayWeb.OffersLive.Create do
     |> Enum.reject(& &1.archived_at)
   end
 
+  # A wording's problem stays under its field while it is typed only until the
+  # wording is right; typing never brings one up.
+  defp still_wrong?(left?, text), do: left? and not is_nil(check(text).problem)
+
+  # A refused save, split by where it is said: the name's problem goes under
+  # the name, the wording's is under its field when `check/1` names it (it
+  # applies the save's rule), and anything else stands above the form.
+  defp refusal(%Ash.Error.Invalid{errors: errors}, text) do
+    {named, rest} = Enum.split_with(errors, &(Map.get(&1, :field) == :label))
+
+    above =
+      if check(text).problem,
+        do: Enum.reject(rest, &(Map.get(&1, :field) == :text)),
+        else: rest
+
+    [
+      name_problems: Enum.map(named, &"The name #{&1.message}."),
+      problem: if(above != [], do: words(%Ash.Error.Invalid{errors: above}))
+    ]
+  end
+
+  defp refusal(_problem, _text), do: [name_problems: [], problem: @not_saved]
+
   @doc "Why an Offer or a new wording was not saved, in words."
   def words(%Ash.Error.Invalid{errors: errors}) do
     Enum.map_join(errors, " ", fn
@@ -273,8 +330,8 @@ defmodule PatchbayWeb.OffersLive.Create do
   defp deletion_words(_problem), do: @not_deleted
 
   @doc """
-  The text as it will be kept, its counts and its links, or what is wrong
-  with it: the same rule the save applies.
+  The text as it will be kept, its counts and its links, or what to do about
+  it: the same rule the save applies.
   """
   def check(text) do
     case CreativeText.normalize(text) do
@@ -291,7 +348,7 @@ defmodule PatchbayWeb.OffersLive.Create do
       {:error, reason} ->
         %{
           text: nil,
-          problem: if(text == "", do: nil, else: "The wording #{CreativeText.problem(reason)}."),
+          problem: if(text == "", do: nil, else: Map.fetch!(@fixes, reason)),
           code_points: if(String.valid?(text), do: CreativeText.code_points(text), else: 0),
           bytes: byte_size(text),
           urls: [],

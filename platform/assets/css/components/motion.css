@@ -9,3 +9,9 @@
 /* These page-owned labels take the kit's press, keeping the control and its
    focus outline in place. Inline text needs a box for its transform. */
 .pb-action-label { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); max-inline-size: 100%; }
+
+/* A dropdown's list leaving (`unlist` in the motion kit): its closed <details>
+   still draws it until it has faded out, and a press on it lands on what is under
+   it. Opened again, it takes presses at once. */
+details:not([open]):has(> [data-panel="list"][data-leaving])::details-content { content-visibility: visible; }
+details:not([open]) > [data-panel="list"][data-leaving] { pointer-events: none; }

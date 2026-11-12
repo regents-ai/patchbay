@@ -1277,6 +1277,17 @@ html:has(.pb-site-post-dialog[open]) { overflow: hidden; }
 .pb-setup-page table { table-layout: fixed; }
 .pb-setup-page td, .pb-setup-page th, .pb-setup-page p, .pb-setup-page li { overflow-wrap: anywhere; }
 .pb-setup-page section > * + * { margin-top: var(--space-1); }
+/* Under 768 wide a reference table's rows stand as cards, each value beside
+   its column's name; the head row stays for a screen reader. */
+@media (max-width: 47.99rem) {
+  .pb-setup-page .pb-card-table, .pb-setup-page .pb-card-table tbody { display: block; }
+  .pb-setup-page .pb-card-table thead { position: absolute; inline-size: 1px; block-size: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .pb-setup-page .pb-card-table tr { display: grid; gap: var(--space-1); padding-block: var(--space-2); border-bottom: 1px solid color-mix(in srgb, var(--pb-text) 12%, transparent); }
+  /* The cell stays a block, so words and code inside it run on as one sentence;
+     its column's name stands in the room kept at its start. */
+  .pb-setup-page .pb-card-table td { display: block; position: relative; padding: 0; padding-inline-start: calc(6rem + var(--space-2)); border: 0; }
+  .pb-setup-page .pb-card-table td::before { content: attr(data-label); position: absolute; inset-inline-start: 0; inline-size: 6rem; color: var(--pb-text-muted); }
+}
 .pb-guide h2 { margin-top: var(--space-3); }
 .pb-guide h2, .pb-guide h3 { scroll-margin-top: var(--pb-header-height); }
 .pb-guide ol { list-style: decimal; }

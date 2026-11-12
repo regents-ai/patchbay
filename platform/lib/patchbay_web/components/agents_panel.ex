@@ -79,6 +79,7 @@ defmodule PatchbayWeb.AgentsPanel do
             phx-value-id={agent.id}
             phx-target={@myself}
             data-confirm={"Unpair #{agent.name}? It needs a new code to pair again."}
+            data-confirm-action="Unpair"
           >
             Unpair
           </P.button>

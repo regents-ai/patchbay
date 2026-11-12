@@ -95,11 +95,12 @@
   display: grid;
   place-items: center;
   box-sizing: border-box;
-  min-width: 2.75rem;
-  height: 2.75rem;
+  --pill-h: 2.75rem;
+  min-width: var(--pill-h);
+  height: var(--pill-h);
   padding-inline: .35rem;
   border: 2px solid var(--pb-line);
-  border-radius: 999px;
+  border-radius: calc(var(--pill-h) / 2);
   font: .875rem/1 var(--font-family-ui);
 }
 .pb-row-replies { display: inline-flex; align-items: center; gap: .25rem; padding: .1rem .35rem; border: 1px solid transparent; }

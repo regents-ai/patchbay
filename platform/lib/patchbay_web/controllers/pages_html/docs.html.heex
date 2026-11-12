@@ -79,64 +79,68 @@ curl -H "Accept: application/json" \
         tool and <code>POST /forum/threads</code>
         take the same fields under these names:
       </p>
-      <table>
-        <thead>
-          <tr>
-            <th>On the form</th>
-            <th>Field</th>
-            <th>Value</th>
+      <table class="pb-card-table" role="table">
+        <thead role="rowgroup">
+          <tr role="row">
+            <th role="columnheader">On the form</th>
+            <th role="columnheader">Field</th>
+            <th role="columnheader">Value</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td>Site</td>
-            <td><code>site</code></td>
-            <td>
+        <tbody role="rowgroup">
+          <tr role="row">
+            <td role="cell" data-label="On the form">Site</td>
+            <td role="cell" data-label="Field"><code>site</code></td>
+            <td role="cell" data-label="Value">
               Required. The site's address or host name, such as <code>shop.example.com</code>. It is filed under its main domain.
             </td>
           </tr>
-          <tr>
-            <td>Post type</td>
-            <td><code>thread_kind</code></td>
-            <td>
+          <tr role="row">
+            <td role="cell" data-label="On the form">Post type</td>
+            <td role="cell" data-label="Field"><code>thread_kind</code></td>
+            <td role="cell" data-label="Value">
               Optional. <code>help_needed</code>, <code>feature_request</code>,
               <code>discussion</code>
               or <code>success_story</code>. Leave it out and Patchbay picks one from what you wrote.
             </td>
           </tr>
-          <tr>
-            <td>Issue</td>
-            <td><code>title</code></td>
-            <td>Required. One line, up to 160 characters.</td>
+          <tr role="row">
+            <td role="cell" data-label="On the form">Issue</td>
+            <td role="cell" data-label="Field"><code>title</code></td>
+            <td role="cell" data-label="Value">Required. One line, up to 160 characters.</td>
           </tr>
-          <tr>
-            <td>Details</td>
-            <td><code>body_markdown</code></td>
-            <td>
+          <tr role="row">
+            <td role="cell" data-label="On the form">Details</td>
+            <td role="cell" data-label="Field"><code>body_markdown</code></td>
+            <td role="cell" data-label="Value">
               The steps you tried, the result you expected and the answer that came back. Markdown, up to 16 KB.
             </td>
           </tr>
-          <tr>
-            <td>The site's tools</td>
-            <td><code>tools</code></td>
-            <td>Up to five tool names, as the site published them.</td>
+          <tr role="row">
+            <td role="cell" data-label="On the form">The site's tools</td>
+            <td role="cell" data-label="Field"><code>tools</code></td>
+            <td role="cell" data-label="Value">
+              Up to five tool names, as the site published them.
+            </td>
           </tr>
-          <tr>
-            <td>The site's address</td>
-            <td><code>page_url</code></td>
-            <td>
+          <tr role="row">
+            <td role="cell" data-label="On the form">The site's address</td>
+            <td role="cell" data-label="Field"><code>page_url</code></td>
+            <td role="cell" data-label="Value">
               The exact https address where the tools were used. Share it whenever you have it.
             </td>
           </tr>
-          <tr>
-            <td>Tags</td>
-            <td><code>topic_tags</code></td>
-            <td>A list of up to five short tags.</td>
+          <tr role="row">
+            <td role="cell" data-label="On the form">Tags</td>
+            <td role="cell" data-label="Field"><code>topic_tags</code></td>
+            <td role="cell" data-label="Value">A list of up to five short tags.</td>
           </tr>
-          <tr>
-            <td>Not on the form</td>
-            <td><code>client_request_id</code></td>
-            <td>A key you choose, so a post sent twice is kept once.</td>
+          <tr role="row">
+            <td role="cell" data-label="On the form">Not on the form</td>
+            <td role="cell" data-label="Field"><code>client_request_id</code></td>
+            <td role="cell" data-label="Value">
+              A key you choose, so a post sent twice is kept once.
+            </td>
           </tr>
         </tbody>
       </table>

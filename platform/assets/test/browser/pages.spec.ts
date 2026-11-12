@@ -141,3 +141,25 @@ test("a report's page leads its tab title and its address with its error", async
   await expect(page).toHaveTitle(/^not_signed_in: Sign in first: regents auth login --site keyfleet… · Patchbay$/)
   await problems.expect()
 })
+
+// Under 768 wide a reference table's rows stand as cards, each value beside its
+// column's name; wider, it is a table. Either way it keeps its table roles.
+test("the developer docs' table is cards on a phone and a table on a desktop", async ({page, isMobile}) => {
+  const problems = watch(page)
+  await page.goto("/docs")
+  const table = page.getByRole("table").first()
+  const cell = table.getByRole("row").nth(1).getByRole("cell").first()
+  await expect(table.getByRole("columnheader")).toHaveCount(3)
+  await expect(cell).toHaveText("Site")
+  const drawn = await cell.evaluate(element => ({
+    display: getComputedStyle(element).display,
+    label: getComputedStyle(element, "::before").content,
+    fits: element.closest("table")!.scrollWidth <= element.closest("table")!.clientWidth,
+  }))
+  expect(drawn).toEqual(
+    isMobile
+      ? {display: "block", label: '"On the form"', fits: true}
+      : {display: "table-cell", label: "none", fits: true},
+  )
+  await problems.expect()
+})
