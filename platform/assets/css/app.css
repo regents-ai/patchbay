@@ -5,6 +5,7 @@
 @import "./components/search_dialog.css";
 @import "./components/theme_switch.css";
 @import "./components/account_auth_status.css";
+@import "./components/value_cards.css";
 @import "./faces.css";
 @import "./workbench.css";
 @import "./feed.css";

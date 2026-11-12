@@ -35,6 +35,7 @@ import {SearchDialog} from "./hooks/search_dialog.ts"
 import {MenuAgents} from "./hooks/menu_agents.ts"
 import {PublicName} from "./hooks/public_name.ts"
 import {ThemeSwitch} from "./hooks/theme_switch.ts"
+import {ValueCard} from "./hooks/value_card.ts"
 import {mountMotion} from "./motion.ts"
 import {hooks as labHooks} from "./motion_lab.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
@@ -73,6 +74,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     MenuAgents,
     PublicName,
     ThemeSwitch,
+    ValueCard,
     // The motion lab's own presses and moments, used only on /animations.
     ...labHooks,
   },
