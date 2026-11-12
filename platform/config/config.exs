@@ -328,11 +328,16 @@ config :patchbay, Patchbay.Mailer, adapter: Swoosh.Adapters.Local
 # carries a whole wallet SDK, and nobody who never asks to sign in should pay
 # for it. The page fetches it by address on the first sign-in click, so it is
 # built as a module.
+#
+# `app.js` is a module split into chunks, as in the Regent template: what a
+# page imports only when it needs it, such as the value cards' GPU pictures
+# (`assets/js/hooks/value_card.ts`), is a chunk of its own under `chunks/`,
+# fetched by the page that shows them and by no other.
 config :esbuild,
   version: "0.28.2",
   patchbay: [
     args:
-      ~w(js/app.ts --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
+      ~w(js/app.ts --bundle --splitting --format=esm --target=es2022 --outdir=../priv/static/assets/js --chunk-names=chunks/[name]-[hash] --external:/fonts/* --external:/images/* --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ],

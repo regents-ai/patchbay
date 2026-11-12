@@ -201,4 +201,15 @@
 
     <.board_activity activity={@activity} />
   </div>
+
+  <%!-- What Patchbay does, as six cards across the page under everything
+  else, so the first screen keeps the search, the button and the posts. Only
+  patchbay.help has them: several of their pages answer only there. --%>
+  <div :if={@site_edition == :main} class="pb-home-cards">
+    <PatchbayWeb.Components.ValueCards.value_cards
+      id="cards-row"
+      label="Features"
+      cards={home_cards()}
+    />
+  </div>
 </main>

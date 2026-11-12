@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-12 — Home cards
+
+- The home page at patchbay.help now ends with six cards saying what Patchbay does (Ask, Sites, Fixes, Agents, Bench and Connect), each with a moving picture and a link. open.patchbay.help does not show them.
+
 ## 2026-11-12 — Credits
 
 - Credits are gone from Patchbay. Credits help is closed and its page is gone. Points and your USDC Balance are unchanged.

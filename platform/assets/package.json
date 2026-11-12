@@ -4,7 +4,8 @@
   "scripts": {
     "test": "node --test test/webmcp/*.test.ts test/hooks/*.test.ts test/privy/*.test.ts test/dev/*.test.ts",
     "typecheck": "tsc --project tsconfig.json && tsc --project test/tsconfig.json && tsc --project test/browser/tsconfig.json",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "stills:value-cards": "node js/value_cards/stills.mjs"
   },
   "dependencies": {
     "@privy-io/react-auth": "3.51.1",

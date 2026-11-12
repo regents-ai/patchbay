@@ -44,11 +44,14 @@ export const signInFile = (person: string) => `test/browser/.auth/${process.env.
 export const signedIn = {storageState: signInFile("person")}
 
 // What a broken page shows: an uncaught error, or content wider than the screen.
+// The width is read once the page has loaded: a page a link has only just opened
+// may not have its styles yet, and is laid out as plain HTML that no visitor sees.
 export function watch(page: Page) {
   const problems: string[] = []
   page.on("pageerror", error => problems.push(`page error: ${error.message}`))
   return {
     expect: async () => {
+      await page.waitForLoadState()
       const overflow = await page.evaluate(
         () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
       )
