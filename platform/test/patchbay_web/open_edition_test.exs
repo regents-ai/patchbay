@@ -20,6 +20,7 @@ defmodule PatchbayWeb.OpenEditionTest do
   alias Patchbay.Offers
   alias Patchbay.Payments.AgentTip
   alias PatchbayTest.SharedBench
+  alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.SignedAgent
   alias PatchbayWeb.SiteEdition
 
@@ -182,8 +183,95 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert money_on(~w(/llms.txt /forum/help), &(conn |> get(&1) |> response(200))) == %{}
   end
 
-  # capabilities.json and /forum/capabilities are the template's, which
-  # Sentinel reads; they stay as they are.
+  test "the open address's tool list names only the tools it offers", %{conn: conn} do
+    names = fn conn ->
+      conn |> get("/forum/capabilities") |> json_response(200) |> Map.fetch!("tools")
+    end
+
+    open = conn |> on_open() |> names.()
+    assert open != []
+
+    for tool <- open do
+      assert SiteEdition.answers?(:open, tool["route"]), tool["name"]
+    end
+
+    main = Enum.map(names.(conn), & &1["name"])
+    assert main == Patchbay.Forum.Capabilities.names()
+
+    # Every tool patchbay.help alone offers is missing, and nothing else is.
+    assert main -- Enum.map(open, & &1["name"]) ==
+             for(
+               tool <- Patchbay.Forum.Capabilities.tools(),
+               not SiteEdition.answers?(:open, tool.route),
+               do: tool.name
+             )
+
+    assert "post_priority_report" in main
+    refute "post_priority_report" in Enum.map(open, & &1["name"])
+  end
+
+  test "the open address's operations list names only what it answers", %{conn: conn} do
+    open = conn |> on_open() |> get("/capabilities.json") |> json_response(200)
+    main = conn |> get("/capabilities.json") |> json_response(200)
+
+    assert open["base_url"] == SiteEdition.url(:open)
+    assert open["operations"] != []
+
+    for operation <- open["operations"] do
+      assert SiteEdition.answers?(:open, operation["interfaces"]["http"]), operation["operation"]
+    end
+
+    # Who may run them and on what conditions are the ones those operations name.
+    assert Enum.map(open["authorities"], & &1["name"]) ==
+             Enum.filter(
+               Enum.map(main["authorities"], & &1["name"]),
+               &(&1 in Enum.map(open["operations"], fn operation -> operation["authority"] end))
+             )
+
+    assert Enum.map(open["conditions"], & &1["name"]) --
+             Enum.flat_map(open["operations"], & &1["conditions"]) ==
+             []
+
+    # The greeting an agent signs with its own key keeps the API's name for it.
+    assert words_for_money([Jason.encode!(Map.delete(open, "cli"))]) -- ["siwa", "SIWA", "wallet"] ==
+             []
+
+    # patchbay.help keeps every operation, the paid ones among them.
+    assert length(main["operations"]) == length(Patchbay.Forum.Capabilities.operations())
+    assert "createAgentPaymentIntent" in Enum.map(main["operations"], & &1["operation"])
+    refute "createAgentPaymentIntent" in Enum.map(open["operations"], & &1["operation"])
+  end
+
+  test "the open address's catalog, security contact and robots file name only itself", %{
+    conn: conn
+  } do
+    open = SiteEdition.url(:open)
+    conn = on_open(conn)
+
+    [catalog] =
+      conn
+      |> get("/.well-known/api-catalog")
+      |> response(200)
+      |> Jason.decode!()
+      |> Map.fetch!("linkset")
+
+    links = [
+      catalog["anchor"]
+      | Enum.map(catalog["service-desc"] ++ catalog["service-doc"], & &1["href"])
+    ]
+
+    for link <- links do
+      assert String.starts_with?(link, open <> "/"), link
+      assert conn |> get(URI.parse(link).path) |> response(200)
+    end
+
+    for path <- ~w(/.well-known/security.txt /robots.txt),
+        [link] <- Regex.scan(~r{https?://\S+}, conn |> get(path) |> response(200)),
+        not String.starts_with?(link, "https://www.robotstxt.org/") do
+      assert String.starts_with?(link, open <> "/"), link
+    end
+  end
+
   test "the open address's API description leaves out what only patchbay.help answers", %{
     conn: conn
   } do
@@ -396,6 +484,128 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert markdown == File.read!(Application.app_dir(:patchbay, "priv/legal/terms_open.md"))
   end
 
+  describe "a paid report with its money in escrow, beside a post whose answer worked" do
+    # The paid report's money is recorded, Jev has read it, and two people say
+    # an answer on the other post worked for them.
+    setup %{report: report, own_post: own_post, asker: asker} do
+      {:ok, submitted} =
+        Forum.record_escrow_credit(
+          report,
+          %{
+            escrow_status: :credit_submitted,
+            escrow_credit_tx_hash: "0x" <> String.duplicate("1", 64)
+          },
+          authorize?: false
+        )
+
+      {:ok, credited} =
+        Forum.confirm_escrow_credit(submitted, %{escrow_funded_at: DateTime.utc_now()},
+          authorize?: false
+        )
+
+      {:ok, _reading} =
+        Forum.record_jev_reading(
+          %{
+            report_id: report.id,
+            model: "jev-stand-in",
+            kind: :tool_defect,
+            kind_confidence: 0.9,
+            detail_score: 2.0
+          },
+          authorize?: false
+        )
+
+      reply =
+        Forum.add_reply!(
+          %{
+            report_id: own_post.id,
+            browser_session_id: Ash.UUID.generate(),
+            verdict: :verified_success,
+            note: "Wait a minute and read it again."
+          },
+          actor: asker
+        )
+
+      for letter <- ~w(d e) do
+        reader =
+          Identity.upsert_from_privy!(%{
+            privy_user_id: "did:privy:open-worked-" <> letter,
+            wallet_address: "0x" <> String.duplicate(letter, 40)
+          })
+
+        {:ok, _use} =
+          Participation.record_answer_use(reader, reply.id, %{
+            "outcome" => "worked",
+            "task_token" => letter
+          })
+      end
+
+      %{report: credited}
+    end
+
+    test "the bounty leads a site's and a tool's posts only at patchbay.help", %{
+      conn: conn,
+      site: site,
+      report: report,
+      own_post: own_post
+    } do
+      bounty = PostAddress.path(report)
+      worked = PostAddress.path(own_post)
+      markdown = &put_req_header(&1, "accept", "text/markdown")
+
+      assert conn
+             |> markdown.()
+             |> get("/#{site.origin}")
+             |> response(200)
+             |> listed([bounty, worked]) == [bounty, worked]
+
+      for path <- ["/#{site.origin}", "/#{site.origin}/tools/checkout"] do
+        assert conn |> get(path) |> html_response(200) |> listed([bounty, worked]) ==
+                 [bounty, worked]
+
+        assert conn |> on_open() |> get(path) |> html_response(200) |> listed([bounty, worked]) ==
+                 [worked, bounty]
+
+        assert conn
+               |> on_open()
+               |> markdown.()
+               |> get(path)
+               |> response(200)
+               |> listed([bounty, worked]) == [worked, bounty]
+      end
+    end
+
+    test "the open address shows none of its money, before and after its answer is chosen", %{
+      conn: conn,
+      site: site,
+      report: report,
+      asker: asker,
+      answerer: answerer
+    } do
+      open = on_open(conn)
+      as_markdown = put_req_header(open, "accept", "text/markdown")
+      pages = pages(site, report, asker)
+
+      unpaid = fn ->
+        {money_on(pages, &(open |> get(&1) |> html_response(200))),
+         money_on(pages, &(as_markdown |> get(&1) |> response(200)))}
+      end
+
+      assert unpaid.() == {%{}, %{}}
+
+      [reply] = Forum.list_replies_for_report!(report.id).results
+      assert reply.author_profile_id == answerer.id
+      {:ok, _named} = Forum.set_reward_eligibility(reply, :eligible, authorize?: false)
+      {:ok, _accepted} = Forum.accept_reply(report, reply.id, actor: asker)
+
+      assert unpaid.() == {%{}, %{}}
+
+      # patchbay.help still says what was held for it.
+      assert conn |> get(PostAddress.path(report)) |> html_response(200) =~
+               "5.00 USDC on this report"
+    end
+  end
+
   describe "the reads and posts agents make as JSON" do
     # The site shows an Offer, and the asker has tipped the answerer.
     setup %{site: site, asker: asker, answerer: answerer} do
@@ -468,6 +678,23 @@ defmodule PatchbayWeb.OpenEditionTest do
       refute Map.has_key?(open, "agent_offers")
       assert [_delivery] = Ash.read!(Offers.Delivery, authorize?: false)
     end
+  end
+
+  # The posts among `paths` in the order a site's or a tool's page lists them,
+  # as HTML or as Markdown.
+  defp listed("<" <> _ = html, paths) do
+    list =
+      html |> LazyHTML.from_document() |> LazyHTML.query(".pb-feed-list") |> LazyHTML.to_html()
+
+    Enum.sort_by(paths, fn path -> list |> :binary.match(path <> "\"") |> elem(0) end)
+  end
+
+  defp listed(markdown, paths) do
+    ~r/^- \[.*\]\(([^)]+)\) — /m
+    |> Regex.scan(markdown, capture: :all_but_first)
+    |> Enum.map(&hd/1)
+    |> Enum.filter(&(&1 in paths))
+    |> Enum.uniq()
   end
 
   defp json_get(conn, path),
