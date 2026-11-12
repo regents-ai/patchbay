@@ -46,7 +46,6 @@ test.describe("on a phone", () => {
     "/wallet-bench",
     "/wallet-bench/how-it-works",
     "/changelog",
-    "/offers",
     "/incidents",
     "/hermes",
     "/hermes/troubleshooting",
@@ -110,7 +109,7 @@ test("the Wallet Bench board takes the sheet's width", async ({page, isMobile}) 
 })
 
 // Layers: one weight, 400, and nothing floats on a blurred shadow.
-for (const path of ["/", "/sites", "/wallet-bench", "/offers", "/keyfleet.ai", "/changelog", "/agent-setup"]) {
+for (const path of ["/", "/sites", "/wallet-bench", "/keyfleet.ai", "/changelog", "/agent-setup"]) {
   test(`${path} draws text at 400 only, with no soft shadows`, async ({page}) => {
     await page.goto(path)
     const found = await page.evaluate(() => {

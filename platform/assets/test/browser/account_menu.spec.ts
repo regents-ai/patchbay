@@ -132,7 +132,7 @@ test("asked for less motion, the account menu appears at once", async ({page}) =
 test("Manage Account opens this site's Account page and the menu closes", async ({page}) => {
   const problems = watch(page)
   // From a live page and from a page with no live part of its own.
-  for (const start of ["/offers", "/about"]) {
+  for (const start of ["/points", "/about"]) {
     await page.goto(start)
     await ready(page)
     await openMenu(page)

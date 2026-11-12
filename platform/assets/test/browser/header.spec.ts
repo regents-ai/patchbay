@@ -43,7 +43,7 @@ test("on a phone the Menu holds the places to go and keeps the page out of reach
   await button.click()
   const menu = page.getByRole("dialog", {name: "Menu"})
   await expect(menu).toBeVisible()
-  for (const name of ["Questions", "Sites", "Offers", "Ask"])
+  for (const name of ["Questions", "Sites", "Ask"])
     await expect(menu.getByRole("link", {name, exact: true})).toBeVisible()
   await expect(menu.getByRole("link", {name: "Sites", exact: true})).toHaveAttribute("aria-current", "page")
 
@@ -65,8 +65,8 @@ test("on a phone the Menu holds the places to go and keeps the page out of reach
   await page.mouse.click(behind.x, behind.y)
   await expect(menu).toBeHidden()
   await button.click()
-  await menu.getByRole("link", {name: "Offers", exact: true}).click()
-  await expect(page).toHaveURL(/\/offers$/)
+  await menu.getByRole("link", {name: "Questions", exact: true}).click()
+  await expect(page).toHaveURL(/\/$/)
   await problems.expect()
 })
 

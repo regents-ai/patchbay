@@ -102,7 +102,7 @@ test.describe("signed in", () => {
 // header: of a page no live view draws, and of a live page. Each press turns it
 // once. It stays off phones signed out (Sean, 16 Oct).
 test.describe("signed out", () => {
-  for (const path of ["/sites", "/offers"]) {
+  for (const path of ["/sites", "/points"]) {
     test(`the header's theme switch on ${path} turns the theme once a press, and the choice holds`, async ({page, isMobile}) => {
       test.skip(isMobile, "signed out, a phone has no theme switch")
       const problems = watch(page)

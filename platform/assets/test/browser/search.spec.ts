@@ -5,7 +5,7 @@ import {expect, test, watch} from "./support/test"
 // it fits the screen at every width.
 test("search opens in the shared window frame and opens what is chosen", async ({page, isMobile}) => {
   const problems = watch(page)
-  await page.goto("/offers")
+  await page.goto("/agents")
   const search = page.locator("#shell-search")
   await expect(page.locator("[data-phx-session].phx-connected:has(#shell-search)")).toBeAttached()
 
