@@ -92,7 +92,6 @@ defmodule Patchbay.Security.OutboundFetchCheckTest do
   alias Patchbay.Assist.Request
   alias Patchbay.Assist.Target
   alias Patchbay.Forum
-  alias Patchbay.Offers.Destination
   alias PatchbayWeb.Forum.SiteChecks
 
   # `Patchbay.PageSite`'s address: the one every public-looking name here has.
@@ -386,20 +385,6 @@ defmodule Patchbay.Security.OutboundFetchCheckTest do
         {422, "invalid", _said} -> true
         {200, "unreachable", said} -> said =~ "off the public internet"
         _other -> false
-      end
-    )
-  end
-
-  test "an Offer's link check visits nothing off the public internet", %{port: port} do
-    run_feature(
-      "Offer destination check (Screening -> Destination.visit)",
-      targets(port),
-      fn url ->
-        {evidence, excerpt} = Destination.visit(url, target_options())
-        {evidence["outcome"], evidence["hops"], excerpt}
-      end,
-      fn {outcome, _hops, excerpt} ->
-        outcome in ["not_https", "not_public"] and is_nil(excerpt)
       end
     )
   end

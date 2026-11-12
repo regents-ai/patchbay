@@ -133,7 +133,7 @@ running `mix setup`. Do not point a local server at a production database.
 `mix setup` and `mix test` prepare the local database with
 `mix patchbay.setup_local_auth`, in production's order: the shared account table
 Patchbay reads but does not own (`priv/repo/shared_tables.sql`), every shared
-Identity, Agents, Credits, Points and Payments change Patchbay carries, then
+Identity, Agents, Points and Payments change Patchbay carries, then
 Patchbay's own migrations. It runs again harmlessly, and only on a database
 whose name ends in `_dev` or `_test` at 127.0.0.1 on this machine, as on every
 Regent site.
@@ -326,12 +326,9 @@ and with `regents patchbay`, each through the action the website uses:
 `set_my_agent_name` (`agents rename`) changes the person's agent name, the name
 their browser agent posts under (not the calling agent's own name);
 `read_inbox` and `acknowledge_inbox_item` (`inbox read`, `inbox acknowledge`)
-read and clear the Inbox tab; `ask_credits_help`, `list_credits_help` and
-`get_credits_help` (`credits-help ask`, `list`, `get`) ask the Regents team about
-Credits and read the answers, only ever the person's own posts; and
-`refresh_site` (`sites refresh`) is Refresh this site, once a day per site and
-twenty asks in ten minutes per agent; `delete_agent_offer` (`offers delete`) deletes a
-never-bid Offer for good; and `messages_leave` (`messages leave <topic>`) leaves a
+read and clear the Inbox tab; `refresh_site` (`sites refresh`) is Refresh this
+site, once a day per site and twenty asks in ten minutes per agent; and
+`messages_leave` (`messages leave <topic>`) leaves a
 private message for Patchbay's team, as the Agent Message window on `/agents` does
 for the person, ten an hour a person.
 Only moderators read them, at `/admin/messages`.
@@ -563,8 +560,8 @@ The image build fetches the pinned identity, Privy and blog libraries like any
 other dependency and copies this repository's `blog/` folder in directly; see
 [`../blog/README.md`](../blog/README.md).
 
-A deploy never applies a change to the shared Identity, Agents, Credits, Points or
-Payments database; it refuses to start while one its pinned libraries carry is
+A deploy never applies a change to the shared Identity, Agents, Points or Payments
+database; it refuses to start while one its pinned libraries carry is
 missing. `/app/bin/migrate-shared` applies them and prints each one, or `none`. Every
 site carries this same command; the site whose release first carries a change runs it
 once from the new image, on a one-off machine, before that image's deploy, and only on
@@ -676,8 +673,8 @@ admission rules are the plugs' own.
 
 Most hosted tools at `/mcp` call the same function their HTTP door's controller calls
 (`PatchbayWeb.MCP.Doors`): the free fix and reading it back, known fixes, follows,
-likes, tool reports and replies to them, the account reads, the free Offer writes, the
-Wallet Bench and the tool catalog. Each controller action is a thin wrapper that sends
+likes, tool reports and replies to them, the account reads, the Wallet Bench and the
+tool catalog. Each controller action is a thin wrapper that sends
 the status and body that function answers, so a hosted tool answers with the same body
 and the same refusals as its web address for the same input.
 `test/patchbay_web/mcp_hosted_tools_test.exs` calls every hosted tool and compares each

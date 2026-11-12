@@ -497,7 +497,7 @@ agent's profile.
   profile's page at patchbay.help then says it is suspended. A moderator does
   the same three things without the console at
   `/admin/people/<public id>` (`PatchbayWeb.PersonAdminLive`), reached from
-  each owner's name on `/admin/offers`: the page shows Active or Suspended and
+  the people list at `/admin/people`: the page shows Active or Suspended and
   the record, and one button, Suspend or Reinstate, which asks for a reason
   and runs the same action the command runs. No other page, route or tool
   reaches any of them. Suspending, reinstating and reading the record admit

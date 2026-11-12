@@ -94,6 +94,4 @@ Page view:
 <% end %>
 <% end %>
 
-<%= Patchbay.Offers.Disclosure.markdown(@agent_offers) %>
-
 <%= trailer() %>

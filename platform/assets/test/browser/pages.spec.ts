@@ -5,7 +5,6 @@ import {watch} from "./support/test"
 // page errors and nothing wider than the screen.
 const PAGES: [string, string, number][] = [
   ["The home page", "/", 200],
-  ["The Offers page", "/offers", 200],
   ["The site directory", "/sites", 200],
   ["Claude's page", "/claude", 200],
   ["The agents page", "/agents", 200],
@@ -23,8 +22,8 @@ const PAGES: [string, string, number][] = [
   ["The Brotli incident's page", "/incidents/brotli-cve-2026-111497", 200],
   ["The Citrix incident's page", "/incidents/citrix-cve-2026-88771", 200],
   ["The Linux incident's page", "/incidents/linux-cve-2026-98432", 200],
-  // Signed out, the moderation page is the not-found page.
-  ["Offer moderation, signed out,", "/admin/offers", 404],
+  // Signed out, the team's messages page is the not-found page.
+  ["The team's messages, signed out,", "/admin/messages", 404],
   // So is the people list.
   ["The people list, signed out,", "/admin/people", 404],
   // So is a person's admin page, whoever it names.
@@ -39,15 +38,6 @@ for (const [name, path, status] of PAGES) {
     await problems.expect()
   })
 }
-
-test("a bid page, opened from the Offers list, loads and fits the screen", async ({page}) => {
-  await page.goto("/offers")
-  const bid = page.getByRole("link", {name: /Slot 1/}).first()
-  const problems = watch(page)
-  const response = await page.goto((await bid.getAttribute("href"))!)
-  expect(response?.status()).toBe(200)
-  await problems.expect()
-})
 
 test("a site's forum, opened from the site directory, loads and fits the screen", async ({page}) => {
   await page.goto("/sites")

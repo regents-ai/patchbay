@@ -28,11 +28,9 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/patchbay"
 import {PatchbayRelativeTime} from "./hooks/relative_time.ts"
-import {PatchbayOfferResultDialog} from "./hooks/offer_result.ts"
 import {PatchbayConfirmDialog} from "./hooks/confirm_dialog.ts"
 import {MotionCount, MotionList, MotionRefusal} from "./hooks/motion/moments.ts"
 import {MotionCascade} from "./hooks/motion/reveals.ts"
-import {OfferSlots} from "./hooks/offer_slots.ts"
 import {SearchDialog} from "./hooks/search_dialog.ts"
 import {MenuAgents} from "./hooks/menu_agents.ts"
 import {PublicName} from "./hooks/public_name.ts"
@@ -66,13 +64,11 @@ const liveSocket = new LiveSocket("/live", Socket, {
   hooks: {
     ...colocatedHooks,
     PatchbayRelativeTime,
-    PatchbayOfferResultDialog,
     PatchbayConfirmDialog,
     MotionCount,
     MotionList,
     MotionRefusal,
     MotionCascade,
-    OfferSlots,
     SearchDialog,
     MenuAgents,
     PublicName,

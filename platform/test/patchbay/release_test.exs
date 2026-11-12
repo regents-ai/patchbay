@@ -667,7 +667,7 @@ defmodule Patchbay.ReleaseTest do
 
   # Every shared ledger's newest applied change, one per shared schema.
   defp applied_shared(config) do
-    for schema <- ~w(regent_identity regent_agents regent_credits regent_points regent_payments),
+    for schema <- ~w(regent_identity regent_agents regent_points regent_payments),
         query!(config, "SELECT to_regclass($1) IS NOT NULL", ["#{schema}.schema_migrations"]).rows ==
           [[true]],
         %{rows: [[version]]} =
@@ -678,13 +678,7 @@ defmodule Patchbay.ReleaseTest do
   # Every change the shared libraries this site carries ship, as the release
   # names them, in the order they apply.
   defp shipped_shared do
-    for app <- [
-          :regent_identity,
-          :regent_agents,
-          :regent_credits,
-          :regent_points,
-          :regent_payments
-        ],
+    for app <- [:regent_identity, :regent_agents, :regent_points, :regent_payments],
         file <-
           app
           |> Application.app_dir("priv/repo/migrations")

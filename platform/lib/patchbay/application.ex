@@ -48,7 +48,7 @@ defmodule Patchbay.Application do
         # A site check's reads, unlinked from its job, which hears how each ended.
         {Task.Supervisor, name: Patchbay.Forum.SiteScan.tasks()},
         # After the repository and PubSub: a pairing made or ended on any Regent
-        # site, or an Offer bidder's Credits moving, reaches the pages showing it.
+        # site reaches the pages showing it.
         Patchbay.SharedChanges,
         RegentPayments.Supervisor,
         # The paid-call test page's record of payments it has already seen.
@@ -58,7 +58,6 @@ defmodule Patchbay.Application do
         Patchbay.Forum.SearchSlots,
         {PatchbayWeb.ReadLimit, clean_period: :timer.minutes(1)},
         {PatchbayWeb.PaymentLimit, clean_period: :timer.minutes(1)},
-        {PatchbayWeb.OfferReportLimit, clean_period: :timer.minutes(10)},
         PatchbayWeb.FixCheckLimit,
         # AshOban adds a sweep for every trigger in Patchbay's domains.
         {Oban,

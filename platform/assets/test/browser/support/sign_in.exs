@@ -1,9 +1,8 @@
 # The browser walk's people, on the walk's own local database: the person the walk
 # signs in as, with four paired agents, a second person whose agent already goes by
-# "taken-name", one person per screen width who saves Offers, since each account
-# saves five wordings a day and the widths run at once, a moderator (serve.sh puts
-# their wallet on the moderator list), and one person per screen width for the
-# moderator to suspend and reinstate, whose public ids go in admin-people.json. Writes the signed cookie the walk sends for
+# "taken-name", a moderator (serve.sh puts their wallet on the moderator list), and
+# one person per screen width for the moderator to suspend and reinstate, whose
+# public ids go in admin-people.json. Writes the signed cookie the walk sends for
 # each person it signs in as. Run by playwright.config.ts before the server
 # starts; PatchbayDev.WalkDatabase refuses any database but the walk's local one.
 alias Patchbay.Identity
@@ -80,15 +79,6 @@ signed_in = fn profile, file ->
 end
 
 signed_in.(person, "person")
-
-# The saved Offer check signs in as offers-<width>.json (motion.spec.ts).
-for {width, wallet} <- [{"desktop", "d"}, {"phone", "e"}, {"small-phone", "f"}] do
-  Identity.upsert_from_privy!(%{
-    privy_user_id: "did:privy:browser-walk-offers-#{width}",
-    wallet_address: "0x" <> String.duplicate(wallet, 40)
-  })
-  |> signed_in.("offers-#{width}")
-end
 
 # The moderator's admin page for a person (person_admin.spec.ts).
 Identity.upsert_from_privy!(%{

@@ -470,6 +470,7 @@
       "up": "ALTER TABLE offer_bids\n  ADD CONSTRAINT offer_bids_window_same_slot_and_lane\n  FOREIGN KEY (window_id, slot_id, lane)\n  REFERENCES offer_bid_windows (id, slot_id, lane)\n  ON DELETE RESTRICT\n"
     }
   ],
+  "drop_table_opted_out": true,
   "has_create_action": true,
   "hash": "2269F9DC55EB8B855C3BD4380C41FE01A5A57A2A24FD019B78CFC50BEEB2E894",
   "identities": [

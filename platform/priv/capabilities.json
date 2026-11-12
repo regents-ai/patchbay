@@ -32,10 +32,6 @@
     {
       "name": "pairing_code",
       "words": "A pairing code the person made with Pair New Agent on their Agents page."
-    },
-    {
-      "name": "spending_allowed",
-      "words": "Spending the person allowed on their Regents account."
     }
   ],
   "switches": [],
@@ -493,71 +489,6 @@
       "cli_release": "1.10.20"
     },
     {
-      "operation": "reportAgentOffer",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
-      "operation": "listOfferSlots",
-      "effect": "read",
-      "authority": "public",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
-      "operation": "getOfferBidOptions",
-      "effect": "read",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
-      "operation": "createOfferBid",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [
-        "spending_allowed"
-      ],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
-      "operation": "createOfferFitCheck",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
-      "operation": "createAgentOffer",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
-      "operation": "createAgentOfferVersion",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
       "operation": "readWalletBench",
       "effect": "read",
       "authority": "public",
@@ -610,24 +541,6 @@
       "person_page": null,
       "switch": null,
       "cli_release": null
-    },
-    {
-      "operation": "listMyActiveOffers",
-      "effect": "read",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
-    },
-    {
-      "operation": "listMyOfferHistory",
-      "effect": "read",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.20"
     },
     {
       "operation": "findKnownFixes",
@@ -693,43 +606,7 @@
       "cli_release": "1.10.25"
     },
     {
-      "operation": "askCreditsHelp",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.21"
-    },
-    {
-      "operation": "listCreditsHelp",
-      "effect": "read",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.21"
-    },
-    {
-      "operation": "getCreditsHelp",
-      "effect": "read",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.21"
-    },
-    {
       "operation": "refreshSite",
-      "effect": "write",
-      "authority": "paired_agent",
-      "conditions": [],
-      "person_page": null,
-      "switch": null,
-      "cli_release": "1.10.21"
-    },
-    {
-      "operation": "deleteAgentOffer",
       "effect": "write",
       "authority": "paired_agent",
       "conditions": [],

@@ -944,7 +944,6 @@ defmodule PatchbayWeb.Forum.BoardController do
             },
             refresh_session: board.site && %{"origin" => board.site.origin},
             standing: board.site && Board.site_standing(board.site),
-            agent_offers: agent_offers(conn, board.site),
             posts_cursor: params["posts_after"],
             earned_tips:
               Board.earned_tips(Enum.map(board.posts, & &1.author), conn.assigns.site_edition),
@@ -1452,7 +1451,6 @@ defmodule PatchbayWeb.Forum.BoardController do
         report: report,
         # Only the reply the asker marked is shown above the question.
         answer: report.solution_reply,
-        agent_offers: agent_offers(conn, report.site),
         following: followed_sites(conn),
         reply_filter: filter,
         replies: replies,
@@ -1544,11 +1542,4 @@ defmodule PatchbayWeb.Forum.BoardController do
        )}
     end
   end
-
-  # Agent Offers are patchbay.help's alone (PatchbayWeb.SiteEdition), so the
-  # open address neither shows nor serves them.
-  defp agent_offers(%{assigns: %{site_edition: :main}}, site),
-    do: Patchbay.Offers.Serving.for_site(site)
-
-  defp agent_offers(_open, _site), do: nil
 end

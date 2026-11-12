@@ -10,14 +10,12 @@ defmodule PatchbayWeb.OpenEditionTest do
 
   use PatchbayWeb.ConnCase, async: false
 
-  import Patchbay.OffersFixtures
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
-  alias Patchbay.Offers
   alias Patchbay.Payments.AgentTip
   alias PatchbayTest.SharedBench
   alias PatchbayWeb.ForumAPI.Participation
@@ -289,7 +287,6 @@ defmodule PatchbayWeb.OpenEditionTest do
 
     assert api["paths"]["/forum/threads"]["post"]
     refute api["paths"]["/api/agent/payment_intents"]
-    refute api["paths"]["/forum/offer-slots"]
     assert api["servers"] == [%{"url" => SiteEdition.url(:open)}]
 
     described = Jason.encode!(Map.drop(api, ["components"]))
@@ -828,11 +825,8 @@ defmodule PatchbayWeb.OpenEditionTest do
   end
 
   describe "the reads and posts agents make as JSON" do
-    # The site shows an Offer, and the asker has tipped the answerer.
-    setup %{site: site, asker: asker, answerer: answerer} do
-      market = Offers.open_site_market!(site.id, authorize?: false)
-      place(market, 1, approved_version(advertiser(), "Site one", market))
-
+    # The asker has tipped the answerer.
+    setup %{asker: asker, answerer: answerer} do
       {:ok, intent} =
         RegentPayments.Purchase.prepare(
           AgentTip,
@@ -844,13 +838,13 @@ defmodule PatchbayWeb.OpenEditionTest do
       :ok
     end
 
-    test "a paid thread carries its money and Offers only at patchbay.help", %{
+    test "a paid thread carries its money only at patchbay.help", %{
       conn: conn,
       report: report
     } do
       path = "/forum/threads/#{report.id}"
 
-      assert ~w(agent_offers can_receive_usdc escrowed_usdc reward_eligibility) --
+      assert ~w(can_receive_usdc escrowed_usdc reward_eligibility) --
                money_keys(json_get(conn, path)) == []
 
       open = conn |> on_open() |> json_get(path)
@@ -858,11 +852,10 @@ defmodule PatchbayWeb.OpenEditionTest do
       assert {money_keys(open), money_words(open)} == {[], []}
     end
 
-    test "a search carries money and Offers only at patchbay.help", %{conn: conn, site: site} do
+    test "a search carries money only at patchbay.help", %{conn: conn, site: site} do
       path = "/forum/search?q=cart&origin=#{site.origin}"
 
-      assert ~w(agent_offers can_receive_usdc escrowed_usdc) -- money_keys(json_get(conn, path)) ==
-               []
+      assert ~w(can_receive_usdc escrowed_usdc) -- money_keys(json_get(conn, path)) == []
 
       open = conn |> on_open() |> json_get(path)
       assert open =~ "The cart never changed."
@@ -1017,20 +1010,6 @@ defmodule PatchbayWeb.OpenEditionTest do
         assert conn |> get(path) |> response(200) =~ ~r/known.?fix/i, path
       end
     end
-
-    test "a new post is followed by Offers only at patchbay.help", %{conn: conn, site: site} do
-      SignedAgent.stub_siwa()
-      agent = SignedAgent.pair!()
-
-      main = conn |> ask(agent, site.origin) |> json_response(201)
-      assert main["agent_offers"]["items"] |> Enum.map(& &1["text"]) == ["Site one"]
-      assert [_delivery] = Ash.read!(Offers.Delivery, authorize?: false)
-
-      open = conn |> on_open() |> ask(agent, site.origin) |> json_response(201)
-      assert open["thread_id"]
-      refute Map.has_key?(open, "agent_offers")
-      assert [_delivery] = Ash.read!(Offers.Delivery, authorize?: false)
-    end
   end
 
   # The posts among `paths` in the order a site's or a tool's page lists them,
@@ -1091,9 +1070,9 @@ defmodule PatchbayWeb.OpenEditionTest do
     )
   end
 
-  # The keys of a JSON answer that name money or Offers.
+  # The keys of a JSON answer that name money.
   defp money_keys(json) do
-    ~r/"([a-z_]*(usdc|offers|reward|tip|wallet|bount)[a-z_]*)":/
+    ~r/"([a-z_]*(usdc|reward|tip|wallet|bount)[a-z_]*)":/
     |> Regex.scan(json, capture: :all_but_first)
     |> Enum.map(&hd/1)
     |> Enum.uniq()

@@ -30,7 +30,6 @@ defmodule PatchbayWeb.VisitLog.Events do
   @domain_apps [
     :patchbay,
     :regent_identity,
-    :regent_credits,
     :regent_agents,
     :regent_points,
     :regent_payments

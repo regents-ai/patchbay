@@ -1,7 +1,7 @@
 import {expect, signedIn, test, watch} from "./support/test"
 
 // Found on 28 Oct (the design chief's live check): at 390 wide, a tip in the page
-// (an agent's card, the Offers question mark, the Wallet Bench filter) drew over the
+// (an agent's card, the Wallet Bench filter) drew over the
 // header and over the account's panel opened from it, because the page content made
 // no stacking place of its own. The page content is one place now, under the header
 // and the account menu; the motion lab's drawer, sheet and note are lifted above the
@@ -29,16 +29,17 @@ test.describe("signed in, at 390 wide", () => {
     await expect(menu).toBeVisible()
     await expect.poll(() => menu.evaluate(element => element.getAnimations().length)).toBe(0)
 
-    // A tip shown at the top of the page content, under the open menu.
+    // An agent's card shown at the top of the page content, under the open menu,
+    // and hit by the pointer as a shown tip is.
     const panel = (await menu.boundingBox())!
     await page.evaluate(left => {
       const content = document.querySelector<HTMLElement>("#pb-content")!
       const host = document.createElement("span")
-      host.className = "pb-offers-tip-host"
+      host.className = "pb-badge"
       host.style.display = "block"
       host.style.marginInlineStart = `${left - content.getBoundingClientRect().left}px`
       host.innerHTML =
-        '<span class="pb-offers-tip"><span id="walk-tip" role="tooltip" class="pb-offers-tip-text" style="display: block">A tip</span></span>'
+        '<span id="walk-tip" role="tooltip" class="pb-agent-card" style="opacity: 1; pointer-events: auto">A tip</span>'
       content.prepend(host)
     }, panel.x + 16)
     const tip = (await page.locator("#walk-tip").boundingBox())!

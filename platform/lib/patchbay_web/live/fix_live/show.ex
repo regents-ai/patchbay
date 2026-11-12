@@ -75,7 +75,6 @@ defmodule PatchbayWeb.FixLive.Show do
   defp show(socket, run) do
     known_fix = KnownFixAnswer.for_run(run)
     headline = Panel.headline(run)
-    offers = PatchbayWeb.AssistAPI.Runs.offers(run)
     host = URI.parse(run.site_url).host
 
     socket
@@ -88,7 +87,7 @@ defmodule PatchbayWeb.FixLive.Show do
       working?: Panel.working?(run),
       lines: Panel.lines(run),
       known_fix: known_fix,
-      answer: Panel.answer(run, known_fix, url(~p"/fixes/#{run.id}"), offers),
+      answer: Panel.answer(run, known_fix, url(~p"/fixes/#{run.id}")),
       host: host
     )
   end

@@ -14,7 +14,7 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
   use PatchbayWeb.ConnCase, async: false
   use Oban.Testing, repo: Patchbay.Repo
 
-  import Patchbay.OffersFixtures, only: [moderator: 0]
+  import Patchbay.ModeratorFixtures, only: [moderator: 0]
   import Phoenix.LiveViewTest
 
   alias Patchbay.Identity

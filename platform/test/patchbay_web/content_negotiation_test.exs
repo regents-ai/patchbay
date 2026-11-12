@@ -20,7 +20,7 @@ defmodule PatchbayWeb.ContentNegotiationTest do
 
   test "a browser or an Accept header with an HTML fallback still gets LiveView HTML" do
     for accept <- ["text/html", "application/json, text/html;q=0.9"] do
-      response = request("/offers/how-it-works", accept)
+      response = request("/account", accept)
       assert response.status == 200
       assert [content_type] = get_resp_header(response, "content-type")
       assert content_type =~ "text/html"

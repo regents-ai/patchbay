@@ -18,7 +18,7 @@ defmodule PatchbayWeb.MessagesPagesTest do
   use PatchbayWeb.ConnCase, async: false
 
   import Patchbay.AssistFixtures, only: [paired_agent: 0]
-  import Patchbay.OffersFixtures, only: [moderator: 0]
+  import Patchbay.ModeratorFixtures, only: [moderator: 0]
   import Phoenix.LiveViewTest
 
   alias Patchbay.Identity

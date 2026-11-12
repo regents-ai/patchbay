@@ -16,13 +16,9 @@ defmodule PatchbayWeb.MCP.Tools do
   alias Patchbay.DatabaseBusy
   alias Patchbay.Forum.Capabilities
   alias Patchbay.Forum.SiteDirectory
-  alias Patchbay.Offers.Disclosure
-  alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.Forum.BoardJSON
   alias PatchbayWeb.Forum.Readiness
-  alias PatchbayWeb.ForumAPI.MyOffers
-  alias PatchbayWeb.ForumAPI.OfferSlots
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
@@ -278,8 +274,8 @@ defmodule PatchbayWeb.MCP.Tools do
     end
   end
 
-  # The ChatGPT plugin reads the open address's record, which never carries
-  # Agent Offers; an empty search there names the plugin's own next step.
+  # The ChatGPT plugin reads the open address's record; an empty search there
+  # names the plugin's own next step.
   defp for_surface({:ok, %{results: [], next_step: _} = answer}, :chatgpt_plugin),
     do: {:ok, Map.put(answer, :next_step, empty_search_next_step())}
 
@@ -293,9 +289,6 @@ defmodule PatchbayWeb.MCP.Tools do
         "No thread mentions this yet. Check the site's recorded tools or ask a question at #{SiteEdition.url(:open)}."
   end
 
-  defp dispatch("report_agent_offer", arguments, caller),
-    do: report_agent_offer(arguments, caller)
-
   defp dispatch("get_patchbay_help", _arguments, caller) do
     names = caller.surface |> list() |> Enum.map(& &1.name)
     readiness = Readiness.for_hosted(caller.session_id, caller.surface)
@@ -305,7 +298,7 @@ defmodule PatchbayWeb.MCP.Tools do
   defp dispatch(name, arguments, caller) when name in @posts do
     name
     |> post(arguments, caller)
-    |> with_offers(caller.surface)
+    |> for_plugin(caller.surface)
   end
 
   defp dispatch(name, arguments, %{surface: :chatgpt_plugin})
@@ -333,27 +326,13 @@ defmodule PatchbayWeb.MCP.Tools do
   # read when called, so this module does not compile against every door.
   defp dispatch(name, arguments, caller) do
     if name in Doors.names(),
-      do: name |> Doors.call(arguments, caller) |> with_offers(caller.surface),
+      do: Doors.call(name, arguments, caller),
       else: run(name, arguments, caller.session_id, Map.get(caller, :actor))
   end
 
-  # A new post's answer, with Agent Offers after it. Posts are made only at
-  # native hosted address; the ChatGPT participation door skips Offer selection.
-  defp with_offers({:posted, answer, post}, :native_mcp) do
-    offers =
-      post
-      |> Map.put(:surface, :native_mcp)
-      |> Serving.after_post()
-      |> Disclosure.section()
-
-    {:ok, if(offers, do: Map.put(answer, :agent_offers, offers), else: answer)}
-  end
-
-  defp with_offers({:posted, answer, _post}, :chatgpt_agent),
-    do: {:ok, plugin_post_answer(answer)}
-
-  defp with_offers({:ok, answer}, :chatgpt_agent), do: {:ok, plugin_post_answer(answer)}
-  defp with_offers(answer, _surface), do: answer
+  # A post from the ChatGPT app's signed address names that app's next step.
+  defp for_plugin({:ok, answer}, :chatgpt_agent), do: {:ok, plugin_post_answer(answer)}
+  defp for_plugin(answer, _surface), do: answer
 
   defp plugin_post_answer(answer) do
     Map.put(
@@ -361,13 +340,6 @@ defmodule PatchbayWeb.MCP.Tools do
       :next_step,
       "Keep the thread ID and request key. Read current replies with get_thread, or use an authorized MCP Events watch where supported."
     )
-  end
-
-  defp report_agent_offer(arguments, caller) do
-    case Participation.report_offer(caller.actor, caller.surface, arguments) do
-      {:ok, report} -> {:ok, Participation.offer_report_answer(report)}
-      {:error, failure} -> write_refusal(failure)
-    end
   end
 
   # These reads take what a query string would carry, so a number is sent as
@@ -393,15 +365,6 @@ defmodule PatchbayWeb.MCP.Tools do
            do: {:ok, BoardJSON.sites(%{directory: directory})}
     )
   end
-
-  defp run("list_offer_slots", arguments, _session_id, _actor),
-    do: forum_answer(OfferSlots.read(arguments))
-
-  defp run("list_my_active_offers", arguments, _session_id, actor),
-    do: my_offers_answer(MyOffers.active(actor, arguments))
-
-  defp run("list_my_offer_history", arguments, _session_id, actor),
-    do: my_offers_answer(MyOffers.history(actor, arguments))
 
   defp run("search_threads", arguments, _session_id, _actor),
     do: forum_answer(Reads.search(arguments, :free))
@@ -525,14 +488,12 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   # The free writes. The door has already admitted the caller as a signed,
-  # paired agent (`PatchbayWeb.MCPController`).
-  # A new post answers `{:posted, answer, post}` so Offers can follow it; the
-  # same post sent again answers as it did, without them.
+  # paired agent (`PatchbayWeb.MCPController`). The same post sent again
+  # answers as it did, marked `repeated`.
   defp post("ask_question", arguments, caller) do
     case Participation.ask_question(caller.session_id, Map.get(caller, :actor), arguments) do
       {:ok, thread} ->
-        {:posted, thread_posted(thread, caller.surface),
-         %{operation: :thread, site_id: thread.site_id, report_id: thread.id, reply_id: nil}}
+        {:ok, thread_posted(thread, caller.surface)}
 
       {:repeated, thread} ->
         {:ok, thread |> thread_posted(caller.surface) |> Map.put(:repeated, true)}
@@ -545,8 +506,7 @@ defmodule PatchbayWeb.MCP.Tools do
   defp post("post_reply", %{"thread_id" => id} = arguments, caller) do
     case Participation.post_reply(caller.session_id, Map.get(caller, :actor), id, arguments) do
       {:ok, {thread, reply}} ->
-        {:posted, reply_posted(thread, reply, caller.surface),
-         %{operation: :reply, site_id: thread.site_id, report_id: thread.id, reply_id: reply.id}}
+        {:ok, reply_posted(thread, reply, caller.surface)}
 
       {:repeated, {thread, reply}} ->
         {:ok, thread |> reply_posted(reply, caller.surface) |> Map.put(:repeated, true)}
@@ -652,12 +612,6 @@ defmodule PatchbayWeb.MCP.Tools do
 
   defp solution_hint(:award_pending),
     do: "This thread's asker chooses its answer on the Patchbay website."
-
-  defp my_offers_answer({:ok, answer}), do: {:ok, answer}
-  defp my_offers_answer({:error, :invalid_cursor}), do: {:error, MyOffers.invalid_cursor()}
-
-  defp my_offers_answer({:error, {:invalid, messages}}),
-    do: {:error, ApiError.invalid(messages)}
 
   defp forum_answer({:ok, payload}), do: {:ok, payload}
 

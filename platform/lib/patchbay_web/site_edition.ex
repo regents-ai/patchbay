@@ -49,8 +49,7 @@ defmodule PatchbayWeb.SiteEdition do
   @doc """
   The page tools an edition does not offer: at the open address, every one
   whose route answers only at patchbay.help (`only: :main` in the router), such
-  as each Offer, Credits help and Points tool. The page's help lists none of
-  them.
+  as each Points tool. The page's help lists none of them.
   """
   @spec left_out_tools(t()) :: [String.t()]
   def left_out_tools(edition),

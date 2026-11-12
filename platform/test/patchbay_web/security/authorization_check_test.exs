@@ -4,10 +4,9 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
   Three people take part: `a`, who owns the posts, agents and records under
   test; `b`, another signed-in person who tries to reach them; and a moderator
-  on the moderator list, set the way the Offers tests set it
-  (`Patchbay.OffersFixtures.moderator/0`). Every check says what it expected
-  and what it saw. The moderator list is application-wide, so this file runs
-  alone (`async: false`).
+  on the moderator list (`Patchbay.ModeratorFixtures.moderator/0`). Every
+  check says what it expected and what it saw. The moderator list is
+  application-wide, so this file runs alone (`async: false`).
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -23,7 +22,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   alias Patchbay.Forum.Report
   alias Patchbay.Identity
   alias Patchbay.JevStandIn
-  alias Patchbay.OffersFixtures
+  alias Patchbay.ModeratorFixtures
   alias Patchbay.Points.Board
   alias Patchbay.Repo
   alias Patchbay.SharedReading
@@ -41,7 +40,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
     a_agent = SignedAgent.pair!(a)
     b_agent = SignedAgent.pair!(b)
 
-    %{a: a, b: b, a_agent: a_agent, b_agent: b_agent, moderator: OffersFixtures.moderator()}
+    %{a: a, b: b, a_agent: a_agent, b_agent: b_agent, moderator: ModeratorFixtures.moderator()}
   end
 
   # ---------------------------------------------------------------------------
@@ -811,31 +810,6 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         |> length()
 
       expect("threads kept", 3, kept)
-    end
-
-    test "Credits holds in parallel never spend more than the balance" do
-      market = Patchbay.Offers.global_market!()
-      advertiser = OffersFixtures.advertiser()
-      OffersFixtures.give_credits(advertiser, "10")
-      version = OffersFixtures.approved_version(advertiser, "Authz fixes flaky builds.", market)
-
-      results =
-        for(slot <- 1..3, _ <- 1..2, do: slot)
-        |> Task.async_stream(
-          &OffersFixtures.bid(advertiser, market, &1, version, "4.00"),
-          max_concurrency: 6,
-          timeout: 60_000
-        )
-        |> Enum.map(fn {:ok, result} -> elem(result, 0) end)
-
-      placed = Enum.count(results, &(&1 == :ok))
-      %{available: available, held: held} = OffersFixtures.credits(advertiser)
-
-      expect(
-        "bids placed, Credits held and left from 10 with six 4.00 bids",
-        {2, "8", "2"},
-        {placed, held, available}
-      )
     end
   end
 

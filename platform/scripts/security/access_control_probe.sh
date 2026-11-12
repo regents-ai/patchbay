@@ -26,7 +26,7 @@ expect() { # path expected-code label
 
 echo "== private gates answer as absent =="
 expect "/moderation"   404 "moderation page must be invisible to non-moderators"
-expect "/admin/offers" 404 "offer moderation must be invisible to non-moderators"
+expect "/admin/people" 404 "people admin must be invisible to non-moderators"
 
 echo "== media / thread reads for unknown id =="
 expect "/post-pictures/$RUID"    404 "unknown picture"

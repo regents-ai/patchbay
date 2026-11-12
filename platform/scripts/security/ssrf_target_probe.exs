@@ -1,6 +1,6 @@
 # SSRF regression probe for Patchbay.Assist.Target (the one guard every
 # site-fetch feature routes through: site checks, the site refresh button,
-# the For-agents panel scan, MCP tool reads, offer-destination checks).
+# the For-agents panel scan, MCP tool reads).
 #
 # Run:  direnv exec . mix run --no-start scripts/security/ssrf_target_probe.exs
 #

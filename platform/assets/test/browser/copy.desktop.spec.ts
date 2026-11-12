@@ -88,15 +88,7 @@ test("every fixed page, a site, a tool and a thread name things plainly", async 
 test.describe("signed in", () => {
   test.use(signedIn)
 
-  test("the account and Offers pages name things plainly", async ({page}) => {
-    await expectPlainCopy(page, [
-      "/account/inbox",
-      "/account/profile",
-      "/points",
-      "/credits-help",
-      "/offers/create",
-      "/offers/active",
-      "/offers/history",
-    ])
+  test("the account pages name things plainly", async ({page}) => {
+    await expectPlainCopy(page, ["/account/inbox", "/account/profile", "/points"])
   })
 })

@@ -35,7 +35,7 @@ export const test = walk.extend<{faults: void}>({
   ],
 })
 
-type Recorded = Element & {pbMoves?: string[]; pbInside?: string[]}
+type Recorded = Element & {pbMoves?: string[]}
 
 // Installed before any page script runs: each inline transform, translate or
 // opacity written onto an element is kept on the element, in order, and so is each
@@ -66,25 +66,6 @@ function recordMoves() {
   document.addEventListener("transitionstart", started("transition"), true)
 }
 
-/**
- * Starts keeping, on this element, the moves written onto anything inside it,
- * including pieces that are gone again by the time the check reads them.
- */
-export const watchInside = (locator: Locator) =>
-  locator.evaluate(root => {
-    const kept: string[] = ((root as Recorded).pbInside = [])
-    new MutationObserver(changes => {
-      for (const change of changes) {
-        const {transform, translate, opacity} = (change.target as HTMLElement).style
-        if (change.target !== root && (transform || (translate && translate !== "none") || opacity))
-          kept.push(`${transform} ${translate} ${opacity}`.trim())
-      }
-    }).observe(root, {subtree: true, attributes: true, attributeFilter: ["style"]})
-  })
-
-/** The moves written inside this element since `watchInside`. */
-export const movesInside = (locator: Locator) => locator.evaluate(el => (el as Recorded).pbInside ?? [])
-
 /** The moves written onto this element since the page loaded. */
 export const movesOf = (locator: Locator) => locator.evaluate(el => (el as Recorded).pbMoves ?? [])
 
@@ -93,10 +74,6 @@ export const movesWithin = (locator: Locator) =>
   locator.evaluate(root =>
     [root, ...root.querySelectorAll("*")].flatMap(el => (el as Recorded).pbMoves ?? []),
   )
-
-/** Forgets the moves recorded so far on every element of the page. */
-export const forgetMoves = (page: Page) =>
-  page.evaluate(() => document.querySelectorAll("*").forEach(el => delete (el as Recorded).pbMoves))
 
 /** The element's inline style, "" when it has none. */
 export const inlineStyle = (locator: Locator) => locator.evaluate(el => (el.getAttribute("style") ?? "").trim())

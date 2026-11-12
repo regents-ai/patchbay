@@ -182,8 +182,7 @@ defmodule PatchbayWeb.Router do
   # The hosted MCP tools. Each address takes every message for its door; it
   # keeps no stream open, so anything but a POST is told so. `/mcp` is every
   # agent's, at patchbay.help; `/chatgpt/mcp` is the ChatGPT plugin's, at the
-  # open address, and never carries Agent Offers. The route, not the caller,
-  # says which door it is.
+  # open address. The route, not the caller, says which door it is.
   # Sobelow's "CSRF via action reuse" for GET and DELETE sharing :not_allowed
   # is recorded in .sobelow-skips: that action only refuses and changes nothing.
   # Neither address is logged: an events subscription carries its webhook
@@ -327,39 +326,20 @@ defmodule PatchbayWeb.Router do
     plug :put_no_store
   end
 
-  # The Offers pages are live: the market list searches as a visitor types,
-  # and an advertiser's own page shows a screening the moment it is decided.
-  scope "/offers", PatchbayWeb do
-    pipe_through [:main_only, :browser, :html_only]
-
-    live_session :offers,
-      on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :default}],
-      session: {PatchbayWeb.VisitLog, :session, []} do
-      live "/", OffersLive.List, :index
-      live "/how-it-works", OffersLive.Index, :index
-      live "/bid", OffersLive.Bid, :index
-      live "/active", OffersLive.Active, :index
-      live "/history", OffersLive.Expired, :index
-      live "/create", OffersLive.Create, :index
-    end
-  end
-
-  # Agent Offers moderation is live, so a report shows the moment it is
-  # filed, the people list finds a person, a person's admin page suspends or
-  # reinstates them, and the team's inbox lists the messages left for it. All
-  # four answer as though they do not exist to anyone but a moderator
-  # (PatchbayWeb.Moderators).
+  # The admin pages are live, so the people list finds a person, a person's
+  # admin page suspends or reinstates them, and the team's inbox lists the
+  # messages left for it. All three answer as though they do not exist to
+  # anyone but a moderator (PatchbayWeb.Moderators).
   scope "/admin", PatchbayWeb do
     pipe_through [:main_only, :browser, :html_only]
 
-    live_session :offer_moderation,
+    live_session :moderation,
       on_mount: [
         {PatchbayWeb.SiteEdition, :main},
         {PatchbayWeb.CurrentProfile, :default},
         PatchbayWeb.Moderators
       ],
       session: {PatchbayWeb.VisitLog, :session, []} do
-      live "/offers", OfferModerationLive, :index
       live "/people", PeopleAdminLive, :index
       live "/people/:public_id", PersonAdminLive, :show
       live "/messages", AdminMessagesLive, :index
@@ -486,22 +466,6 @@ defmodule PatchbayWeb.Router do
     post "/sites/:site/refresh", SiteRefreshController, :create
   end
 
-  scope "/forum", PatchbayWeb.ForumAPI do
-    pipe_through [:main_only, :api, :paired_agent]
-    post "/offer-reports", ReportController, :report_offer
-    post "/offer-bid-options", OfferBidController, :options
-    post "/offer-bids", OfferBidController, :create
-    post "/offer-fit-checks", OfferBidController, :fit
-    post "/my-offers", OfferBidController, :save
-    post "/my-offers/:creative_id/versions", OfferBidController, :reword
-    delete "/my-offers/:creative_id", OfferBidController, :delete
-    get "/my-offers/active", OfferBidController, :active
-    post "/my-offers/history", OfferBidController, :history
-    post "/credits-help", CreditsHelpController, :create
-    post "/credits-help/list", CreditsHelpController, :index
-    get "/credits-help/:id", CreditsHelpController, :show
-  end
-
   # A paired agent names the agent its person posts under, as the person does
   # on their Account page.
   scope "/forum", PatchbayWeb.IdentityAPI do
@@ -519,11 +483,6 @@ defmodule PatchbayWeb.Router do
     get "/tool-history", ToolController, :index
     get "/capabilities", ReportController, :capabilities
     get "/help", ReportController, :help
-  end
-
-  scope "/forum", PatchbayWeb.ForumAPI do
-    pipe_through [:main_only, :api]
-    get "/offer-slots", OfferSlotController, :index
   end
 
   # What Patchbay verified about the page's own session and signed-in profile.
@@ -685,17 +644,6 @@ defmodule PatchbayWeb.Router do
       post "/facilitator/verify", LabFacilitator, :verify
       post "/facilitator/settle", LabFacilitator, :settle
     end
-  end
-
-  # Credits help is private to the person who asked and the Regents team, so
-  # it answers as a page only, never as markdown.
-  scope "/", PatchbayWeb do
-    pipe_through [:main_only, :browser, :html_only]
-
-    get "/credits-help", CreditsHelpController, :index
-    post "/credits-help", CreditsHelpController, :create
-    get "/credits-help/:id", CreditsHelpController, :show
-    post "/credits-help/:id/answers", CreditsHelpController, :answer
   end
 
   scope "/", PatchbayWeb do

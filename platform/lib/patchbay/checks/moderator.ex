@@ -1,8 +1,8 @@
 defmodule Patchbay.Checks.Moderator do
   @moduledoc """
   Who may moderate Patchbay: a signed-in profile whose verified wallet is in
-  this deployment's moderator allowlist. Moderators review Offers and answer
-  every Credits help post.
+  this deployment's moderator allowlist. Moderators hold posts out of view,
+  find and suspend people, and read the messages left for the team.
 
   The check reads the wallet recorded on the signed-in profile, never an
   address a request sends. It depends on no other Patchbay module, so the

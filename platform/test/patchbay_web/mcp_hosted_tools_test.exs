@@ -9,8 +9,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   - every hosted tool answers a signed, paired agent from its own code;
   - a tool answers with the same body its HTTP door does for the same
     input, and both answer or both refuse: every read, and each write whose
-    second sending changes nothing (a like, a saved Offer under its request
-    key, a refused report).
+    second sending changes nothing (a like, a refused report).
 
   Each hosted tool needs a row in `calls/1`, so a new tool cannot be hosted
   without being called here.
@@ -135,9 +134,6 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   #     on (an id that names nothing), which still shows the call reached it.
   defp calls(world) do
     %{thread: thread, reply: reply, key: key, profile: profile, run: run, taken: taken} = world
-    offer_key = Ecto.UUID.generate()
-    # A wording that is not the person's: refused alike at both doors.
-    fit = %{"origin" => "quiet.example.net", "version_id" => Ecto.UUID.generate()}
     # An id that names nothing of the asker's.
     missing = Ecto.UUID.generate()
 
@@ -153,13 +149,10 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
        {:http, :refusal, :get,
         "/forum/tool-history?origin=https://quiet.example.net&tool_name=amend"}},
       {"read_site_directory", %{}, {:http, :answer, :get, "/sites"}},
-      {"list_offer_slots", %{}, {:http, :answer, :get, "/forum/offer-slots"}},
       {"get_agent_profile", %{"profile_id" => profile},
        {:http, :answer, :get, "/api/agents/#{profile}"}},
       {"get_request_status", %{"client_request_id" => key},
        {:http, :answer, :get, "/forum/requests/#{key}"}},
-      {"list_my_active_offers", %{}, {:http, :answer, :get, "/forum/my-offers/active"}},
-      {"list_my_offer_history", %{}, :ok},
       {"get_updates", %{}, :ok},
       {"ask_question", question(), :ok},
       {"post_reply",
@@ -176,12 +169,6 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       {"unfollow_scope", %{"subscription_id" => Ecto.UUID.generate()}, {:refused, "not_found"}},
       {"report_known_fix", %{"decision_id" => Ecto.UUID.generate(), "result" => "worked"},
        :answered},
-      {"report_agent_offer",
-       %{
-         "placement_id" => Ecto.UUID.generate(),
-         "creative_version_id" => Ecto.UUID.generate(),
-         "reason" => "misleading"
-       }, :answered},
       # The fix `world!/3` opened is still running, so a second is refused
       # with it, at either door.
       {"request_free_fix", %{"args" => free_fix()},
@@ -215,14 +202,6 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
          "client_request_id" => Ecto.UUID.generate()
        }, :ok},
       {"account_points", %{}, {:http, :answer, :get, "/tools/account/points"}},
-      {"get_offer_bid_options", %{"slot" => 1},
-       {:http, :answer, :post, "/forum/offer-bid-options", %{"slot" => 1}}},
-      {"ask_offer_fit", fit, {:http, :refusal, :post, "/forum/offer-fit-checks", fit}},
-      {"save_agent_offer", offer(offer_key),
-       {:http, :answer, :post, "/forum/my-offers", offer(offer_key)}},
-      {"reword_agent_offer", reword(thread),
-       {:http, :refusal, :post, "/forum/my-offers/#{thread}/versions",
-        Map.delete(reword(thread), "creative_id")}},
       # The helper's person's agent name, which no other profile may take:
       # refused alike at both doors.
       {"set_my_agent_name", %{"agent_name" => taken},
@@ -230,14 +209,8 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       {"read_inbox", %{}, {:http, :answer, :post, "/forum/inbox", %{}}},
       {"acknowledge_inbox_item", %{"notification_id" => missing},
        {:http, :refusal, :post, "/forum/inbox/#{missing}/acknowledge", %{}}},
-      {"ask_credits_help", credits_help(), :ok},
       {"messages_leave",
        %{"topic" => "agents", "body" => "A note", "operation_id" => Ecto.UUID.generate()}, :ok},
-      {"list_credits_help", %{}, {:http, :answer, :post, "/forum/credits-help/list", %{}}},
-      {"get_credits_help", %{"post_id" => missing},
-       {:http, :refusal, :get, "/forum/credits-help/#{missing}"}},
-      {"delete_agent_offer", %{"creative_id" => missing},
-       {:http, :refusal, :delete, "/forum/my-offers/#{missing}", %{}}},
       {"refresh_site", %{"site" => "nowhere.example.org"},
        {:http, :refusal, :post, "/forum/sites/nowhere.example.org/refresh", %{}}},
       {"read_wallet_bench", %{}, {:http, :answer, :get, "/api/wallet-bench"}},
@@ -254,9 +227,6 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       "site_url" => "https://quiet.example.net",
       "sign_in" => "none"
     }
-
-  defp credits_help,
-    do: %{"title" => "Credits went missing", "body" => "A top-up shows on Base but not here."}
 
   defp paid_report,
     do: %{
@@ -278,20 +248,6 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       "client_request_id" => Ecto.UUID.generate()
     }
   end
-
-  defp offer(key),
-    do: %{
-      "label" => "Booking help",
-      "text" => "Bookings amended in one call.",
-      "request_key" => key
-    }
-
-  defp reword(creative_id),
-    do: %{
-      "creative_id" => creative_id,
-      "text" => "Bookings amended fast.",
-      "request_key" => "reword-#{creative_id}"
-    }
 
   defp answered(name, result, {:http, outcome, method, path}, conn, agent),
     do: answered(name, result, {:http, outcome, method, path, nil}, conn, agent)

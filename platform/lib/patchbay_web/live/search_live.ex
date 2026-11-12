@@ -48,8 +48,8 @@ defmodule PatchbayWeb.SearchLive do
   end
 
   # A search spends the visitor's search allowance (`Patchbay.Limits`), as in
-  # ash-template. Past it, the window says to wait, as Agent Offers does, and
-  # shows no results until a search goes through.
+  # ash-template. Past it, the window says to wait and shows no results until
+  # a search goes through.
   def handle_event("search", %{"q" => q}, socket) do
     q = normalize(q)
 
@@ -88,25 +88,19 @@ defmodule PatchbayWeb.SearchLive do
       {"Pages",
        [
          %{kind: :page, label: "Questions", path: ~p"/"},
-         %{kind: :page, label: "Sites", path: ~p"/sites"}
+         %{kind: :page, label: "Sites", path: ~p"/sites"},
+         %{kind: :page, label: "Account", path: ~p"/account"}
        ] ++
-         main_only(site_edition, [%{kind: :page, label: "Agent Offers", path: ~p"/offers"}]) ++
-         [%{kind: :page, label: "Account", path: ~p"/account"}] ++
          main_only(site_edition, [%{kind: :page, label: "Agent guide", path: ~p"/agents.md"}]) ++
          [%{kind: :page, label: "Help", path: ~p"/help"}]},
-      {"Actions",
-       [%{kind: :action, label: "Ask a question", path: ~p"/?ask=1" <> "#pb-hero"}] ++
-         main_only(site_edition, [
-           %{kind: :action, label: "Create Offer", path: ~p"/offers/create"}
-         ])}
+      {"Actions", [%{kind: :action, label: "Ask a question", path: ~p"/?ask=1" <> "#pb-hero"}]}
     ]
     |> Enum.map(fn {group, items} ->
       {group, Enum.filter(items, &String.contains?(String.downcase(&1.label), needle))}
     end)
   end
 
-  # Agent Offers and the agent guide are patchbay.help's alone
-  # (PatchbayWeb.SiteEdition).
+  # The agent guide is patchbay.help's alone (PatchbayWeb.SiteEdition).
   defp main_only(:main, items), do: items
   defp main_only(:open, _items), do: []
 
