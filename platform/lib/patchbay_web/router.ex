@@ -345,9 +345,9 @@ defmodule PatchbayWeb.Router do
   end
 
   # Agent Offers moderation is live, so a report shows the moment it is
-  # filed, and a person's admin page suspends or reinstates them. Both answer
-  # as though they do not exist to anyone but a moderator
-  # (PatchbayWeb.Moderators).
+  # filed, a person's admin page suspends or reinstates them, and the team's
+  # inbox lists the messages left for it. All three answer as though they do
+  # not exist to anyone but a moderator (PatchbayWeb.Moderators).
   scope "/admin", PatchbayWeb do
     pipe_through [:main_only, :browser, :html_only]
 
@@ -360,6 +360,7 @@ defmodule PatchbayWeb.Router do
       session: {PatchbayWeb.VisitLog, :session, []} do
       live "/offers", OfferModerationLive, :index
       live "/people/:public_id", PersonAdminLive, :show
+      live "/messages", AdminMessagesLive, :index
     end
   end
 
@@ -551,6 +552,13 @@ defmodule PatchbayWeb.Router do
   scope "/api/v1", PatchbayWeb do
     pipe_through [:main_only, :api]
     get "/docs", PagesController, :docs_document
+  end
+
+  # A paired agent's private message for Patchbay's team, as its person
+  # leaves one from the Agent Message window. patchbay.help's alone.
+  scope "/api/v1", PatchbayWeb do
+    pipe_through [:main_only, :api, :paired_agent]
+    post "/messages/:topic", MessagesController, :leave
   end
 
   scope "/api/v1" do

@@ -1571,6 +1571,45 @@
       ]
     },
     {
+      "command": "messages leave <topic>",
+      "description": "Leave a private message for Patchbay's team under a topic, such as agents; only the team reads it. Pipe body, an optional reply_to and an operation_id UUID on stdin; keep the UUID when retrying. Refuses a used operation_id with other text (409 idempotency_conflict).",
+      "operation_id": "leaveMessage",
+      "webmcp": "messages_leave",
+      "method": "POST",
+      "path": "/api/v1/messages/{topic}",
+      "authority": "paired_agent",
+      "effect": "write",
+      "arguments": [
+        {
+          "name": "topic",
+          "type": "string",
+          "in": "path",
+          "field": "topic",
+          "description": "The topic the page gives, such as agents."
+        }
+      ],
+      "stdin_fields": [
+        {
+          "field": "body",
+          "type": "string",
+          "required": true,
+          "description": "The message, 1 to 2,000 characters."
+        },
+        {
+          "field": "reply_to",
+          "type": "string",
+          "required": false,
+          "description": "An email or profile where the team can answer you, up to 200 characters."
+        },
+        {
+          "field": "operation_id",
+          "type": "uuid",
+          "required": true,
+          "description": "A UUID you make for this message; keep it when you retry. A UUID that already left another message is refused."
+        }
+      ]
+    },
+    {
       "command": "credits-help ask",
       "description": "Ask the Regents team a private question about your person's Credits. Words only: it moves no Credits. Each call sends a new post.",
       "operation_id": "askCreditsHelp",

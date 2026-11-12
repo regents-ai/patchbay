@@ -169,6 +169,9 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
 
   defp patterned("^[a-z][a-z0-9-]*$"), do: string(?a..?z, min_length: 3, max_length: 20)
 
+  defp patterned("^[a-z0-9]+(-[a-z0-9]+)*$"),
+    do: string(Enum.concat([?a..?z, ?0..?9]), min_length: 1, max_length: 20)
+
   defp patterned("^\\S+$"), do: string(:alphanumeric, min_length: 1, max_length: 10)
 
   defp patterned("^https?://" <> _rest),

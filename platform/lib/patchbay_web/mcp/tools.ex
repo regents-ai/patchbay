@@ -130,11 +130,15 @@ defmodule PatchbayWeb.MCP.Tools do
   pairing's for a signed, paired agent; otherwise the connection's session,
   or `nil` when it has none), the signed, paired agent (`nil` when the
   request carried no proof), the address it came in at
-  (`PatchbayWeb.MCP.Session.surface/0`), and at the ChatGPT address the
-  connected account's OAuth grant (`principal`), when there is one.
+  (`PatchbayWeb.MCP.Session.surface/0`), at the ChatGPT address the
+  connected account's OAuth grant (`principal`), when there is one, and the
+  key its client address is counted by (`visitor`,
+  `PatchbayWeb.ClientAddress.visitor_key/1`), which only a message for the
+  team reads.
   """
   @type caller :: %{
           optional(:principal) => map() | nil,
+          optional(:visitor) => String.t(),
           session_id: String.t() | nil,
           actor: %Patchbay.Agents.Actor{} | nil,
           surface: PatchbayWeb.MCP.Session.surface() | :chatgpt_agent

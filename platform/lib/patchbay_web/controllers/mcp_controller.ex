@@ -198,7 +198,8 @@ defmodule PatchbayWeb.MCPController do
             if(conn.assigns[:agent_actor], do: conn.assigns.forum_session_id, else: session_id),
           actor: conn.assigns[:event_actor] || conn.assigns[:agent_actor],
           surface: conn.assigns.mcp_surface,
-          principal: conn.assigns[:mcp_agent_principal]
+          principal: conn.assigns[:mcp_agent_principal],
+          visitor: PatchbayWeb.ClientAddress.visitor_key(conn)
         })
 
       :unknown_session ->

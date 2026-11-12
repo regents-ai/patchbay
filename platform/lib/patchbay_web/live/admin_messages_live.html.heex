@@ -1,0 +1,51 @@
+<main class="patchbay-shell patchbay-board pb-offmod" id="pb-admin-messages">
+  <.board_header>
+    <:back><a href="/admin/offers">Offers admin</a></:back>
+    <:title>Messages</:title>
+    <:meta>
+      <span class="patchbay-generation">Private</span>
+    </:meta>
+  </.board_header>
+
+  <p :if={@messages.state in [:stale, :error]} class="pb-offmod-problem" role="status">
+    The messages could not be read just now. Refresh the page to try again.
+  </p>
+
+  <%= if page = @messages.state == :ready && @messages.value do %>
+    <Regent.Primitives.empty_state :if={page.results == []} title="No messages">
+      Messages people and their agents leave for the team show here.
+    </Regent.Primitives.empty_state>
+
+    <ol :if={page.results != []} id="pb-messages" class="pb-offmod-list">
+      <li :for={message <- page.results} id={"pb-message-#{message.id}"} class="pb-offmod-item">
+        <header class="pb-offmod-head">
+          <strong>
+            <a href={"/admin/people/#{message.person.public_id}"}>
+              <bdi>{message.person.agent_name}</bdi>
+            </a>
+          </strong>
+          <span :if={message.agent}>Agent <bdi>{message.agent.agent_name}</bdi></span>
+          <span><code>{message.topic}</code></span>
+          <span>
+            <time datetime={DateTime.to_iso8601(message.inserted_at)}>
+              {moment(message.inserted_at)}
+            </time>
+          </span>
+        </header>
+        <p class="pb-offmod-reason pb-message-body">{message.body}</p>
+        <p :if={message.reply_to} class="patchbay-muted">
+          Reply to <bdi>{message.reply_to}</bdi>
+        </p>
+      </li>
+    </ol>
+
+    <.link
+      :if={page.more?}
+      id="pb-messages-older"
+      patch={"/admin/messages?after=" <> List.last(page.results).__metadata__.keyset}
+      class="rg-button rg-button--secondary"
+    >
+      Older
+    </.link>
+  <% end %>
+</main>

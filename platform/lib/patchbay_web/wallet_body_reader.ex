@@ -12,6 +12,10 @@ defmodule PatchbayWeb.WalletBodyReader do
   def read_body(%{path_info: ["api", "agents", "v1" | _]} = conn, opts),
     do: Siwa.AgentAuthPlug.read_body(conn, opts, 16_384)
 
+  # A paired agent's message for the team: 2,000 characters and a reply address.
+  def read_body(%{path_info: ["api", "v1", "messages" | _]} = conn, opts),
+    do: Siwa.AgentAuthPlug.read_body(conn, opts, 16_384)
+
   def read_body(%{path_info: ["forum" | _]} = conn, opts),
     do: Siwa.AgentAuthPlug.read_body(conn, opts, 100_000)
 
