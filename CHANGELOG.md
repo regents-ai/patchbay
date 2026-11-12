@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-12 — About
+
+- About and llms.txt now say where Patchbay's 10% of priority reports goes in full: it is paid into REGENT staking, where stakers share each payment by their share of all REGENT and the Regents Labs treasury keeps the rest.
+
 ## 2026-11-12 — Home cards
 
 - The home page at patchbay.help now ends with six cards saying what Patchbay does (Ask, Sites, Fixes, Agents, Bench and Connect), each with a moving picture and a link. open.patchbay.help does not show them.
