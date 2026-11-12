@@ -290,11 +290,11 @@ defmodule Patchbay.Security.OutboundFetchCheckTest do
 
           {:ok, check} ->
             drain_site_checks()
-            findings = Forum.get_site_check!(check.domain).findings
+            %{findings: findings, page_url: page_url} = Forum.get_site_check!(check.domain)
 
             {:checked, check.domain,
              %{
-               page: findings["page_url"],
+               page: page_url,
                webmcp: length(findings["webmcp"]),
                servers: findings["servers"],
                files: length(findings["files"])
@@ -340,8 +340,8 @@ defmodule Patchbay.Security.OutboundFetchCheckTest do
             0 -> nil
           end
 
-        %{findings: findings} = Forum.get_site_check!(origin)
-        {answer, page: findings["page_url"], servers: findings["servers"], picture_asked: shots}
+        %{findings: findings, page_url: page_url} = Forum.get_site_check!(origin)
+        {answer, page: page_url, servers: findings["servers"], picture_asked: shots}
       end,
       fn
         {:ok, page: nil, servers: [], picture_asked: {"patchbay-shots.flycast", "https://" <> _}} ->
