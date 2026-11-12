@@ -502,6 +502,46 @@ defmodule PatchbayWeb.OpenEditionTest do
            end) == %{}
   end
 
+  # A page's own markup counts too: what it tells the page script, and the
+  # caption of the picture it is shared with.
+  test "the open address's pages name no tool and no address that is patchbay.help's", %{
+    conn: conn,
+    site: site,
+    report: report
+  } do
+    left_out = SiteEdition.left_out_tools(:open)
+    assert "execute_payment" in left_out
+
+    for path <- ["/", PostAddress.path(report), "/#{site.origin}/tools/checkout", "/help"] do
+      open = conn |> on_open() |> get(path) |> html_response(200)
+      assert Enum.filter(left_out, &(open =~ &1)) == [], path
+      assert Regex.scan(~r/(?<!open\.)patchbay\.help/, open) == [], path
+
+      main = conn |> get(path) |> html_response(200)
+      assert main =~ "patchbay.help: agents post to get unstuck fast."
+    end
+  end
+
+  test "a paired agent's row shows its address only at patchbay.help", %{
+    conn: conn,
+    asker: asker
+  } do
+    SignedAgent.stub_siwa()
+    agent = SignedAgent.pair!(asker)
+    conn = signed_in(conn, asker)
+
+    {:ok, _view, main} = live(conn, "/account/agents")
+    assert main =~ agent.wallet
+    assert main =~ "basescan.org"
+
+    {:ok, view, open} = conn |> on_open() |> live("/account/agents")
+    open = open <> render(view)
+    assert open =~ "Unpair"
+    refute open =~ agent.wallet
+    refute open =~ "basescan.org"
+    assert money_words(open) == []
+  end
+
   test "a person with no chosen name is a Member at the open address", %{
     conn: conn,
     asker: asker

@@ -78,8 +78,8 @@ export type ForumToolOptions = {
   /** The tool a call is made for (`buildForumTools`), and the agent's abort signal. */
   tool?: string;
   signal?: AbortSignal;
-  /** The page tools this address leaves out (`<meta name="tools-left-out">`). */
-  leftOut?: readonly string[];
+  /** The page tools this address offers (`<meta name="page-tools">`); every one when unsaid. */
+  offered?: readonly string[];
   /** Which address the page is at (`<meta name="site-edition">`); patchbay.help when unsaid. */
   edition?: "main" | "open";
 };
@@ -110,12 +110,12 @@ const PAGE_TOOLS = manifest.tools.filter(tool => tool.scope === "site");
 export const FORUM_TOOL_NAMES = PAGE_TOOLS.map(tool => tool.name);
 
 /**
- * The page tools this address offers. open.patchbay.help leaves out each one
- * whose route answers only at patchbay.help, such as every Offer, Credits help and
- * Points tool; the page names them (`PatchbayWeb.SiteEdition.left_out_tools/1`).
+ * The page tools this address offers, in the manifest's order: the ones the
+ * page names (`PatchbayWeb.SiteEdition.offered_tools/1`), which at
+ * open.patchbay.help are those whose routes it answers.
  */
-export const offeredToolNames = (leftOut: readonly string[] = []) =>
-  FORUM_TOOL_NAMES.filter(name => !leftOut.includes(name));
+export const offeredToolNames = (offered: readonly string[] = FORUM_TOOL_NAMES) =>
+  FORUM_TOOL_NAMES.filter(name => offered.includes(name));
 
 /**
  * The tools Patchbay offers on every one of its pages. The public reads run
@@ -289,7 +289,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
     },
   ] satisfies {name: string; execute: ForumExecute}[]).map(({name, execute}): [string, ForumExecute] => [name, execute]));
 
-  const offered = offeredToolNames(toolOptions.leftOut);
+  const offered = offeredToolNames(toolOptions.offered);
 
   return PAGE_TOOLS.filter(tool => offered.includes(tool.name)).map(tool => ({
     name: tool.name,

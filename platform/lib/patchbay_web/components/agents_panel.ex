@@ -64,7 +64,7 @@ defmodule PatchbayWeb.AgentsPanel do
   def render(assigns) do
     ~H"""
     <div id={@id}>
-      <Regent.Account.agents id={"#{@id}-list"} agents={rows(@agents)} notice={@notice}>
+      <Regent.Account.agents id={"#{@id}-list"} agents={rows(@agents, @site_edition)} notice={@notice}>
         <:about>
           Pairing lets an agent post and answer on Patchbay for you.
           Each thing it does is marked as its own.
@@ -100,9 +100,10 @@ defmodule PatchbayWeb.AgentsPanel do
     """
   end
 
-  defp rows(:unavailable), do: :unavailable
+  defp rows(:unavailable, _site_edition), do: :unavailable
 
-  defp rows(agents) do
+  # The open address names no wallet, so a row there carries no address.
+  defp rows(agents, site_edition) do
     now = DateTime.utc_now()
 
     Enum.map(
@@ -112,7 +113,7 @@ defmodule PatchbayWeb.AgentsPanel do
         name: &1.name,
         kind: to_string(&1.harness),
         harness: Harness.label(&1.harness),
-        wallet: &1.wallet,
+        wallet: if(site_edition == :main, do: &1.wallet),
         backed: not is_nil(&1.human_id),
         last_contact_iso: DateTime.to_iso8601(&1.last_contact_at),
         last_contact: RegentFormat.relative_time(&1.last_contact_at, now),

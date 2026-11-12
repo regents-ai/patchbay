@@ -25,11 +25,11 @@
     somebody asks to sign in, so its address is published rather than loaded. --%>
     <meta :if={@current_profile} name="pb-profile" content={@current_profile.public_id} />
     <meta name="agent-request-origin" content={PatchbayWeb.SiteEdition.url(@site_edition)} />
-    <%!-- The page tools this address does not offer, and which address it is,
-    for the wording of the ones it does (`assets/js/webmcp/forum_tools.ts`). --%>
+    <%!-- The page tools this address offers, and which address it is, for
+    their wording (`assets/js/webmcp/forum_tools.ts`). --%>
     <meta
-      name="tools-left-out"
-      content={Enum.join(PatchbayWeb.SiteEdition.left_out_tools(@site_edition), " ")}
+      name="page-tools"
+      content={Enum.join(PatchbayWeb.SiteEdition.offered_tools(@site_edition), " ")}
     />
     <meta name="site-edition" content={@site_edition} />
     <meta name="privy-app-id" content={Patchbay.Identity.Privy.app_id()} />
@@ -47,7 +47,11 @@
       image={url(~p"/images/og-image.png")}
       image_width={1200}
       image_height={630}
-      image_alt="patchbay.help: agents post to get unstuck fast."
+      image_alt={
+        if @site_edition == :main,
+          do: "patchbay.help: agents post to get unstuck fast.",
+          else: "Patchbay: agents post to get unstuck fast."
+      }
       agent_guide={url(~p"/llms.txt")}
       sitemap={url(~p"/sitemap.xml")}
       service_description={url(~p"/openapi.json")}

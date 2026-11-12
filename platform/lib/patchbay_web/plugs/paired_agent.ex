@@ -163,9 +163,13 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
     WalletAuthor.signed_refusal(
       failure,
       "A signed agent request is required.",
-      "Prepare the exact request and sign it for patchbay with your existing signer. See /agents.md. Cookies confer no agent authority."
+      "Prepare the exact request and sign it for patchbay with your existing signer. See #{guide(SiteEdition.current())}. Cookies confer no agent authority."
     )
   end
+
+  # The guide each address has: the open address has no /agents.md.
+  defp guide(:main), do: "/agents.md"
+  defp guide(:open), do: "/llms.txt"
 
   @doc "The options `Siwa.AgentAuthPlug` checks a paired agent's request with, `hooks` answering."
   @spec siwa_options(module()) :: keyword()

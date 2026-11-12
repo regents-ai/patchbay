@@ -73,13 +73,23 @@ defmodule PatchbayWeb.SiteEditionTest do
                 read_wallet_bench read_wallet_bench_pair)
   end
 
-  test "a page names the tools its address leaves out", %{conn: conn} do
-    left_out = Enum.join(SiteEdition.left_out_tools(:open), " ")
+  test "a page names the tools its address offers, and no others", %{conn: conn} do
+    named = fn conn ->
+      [names] =
+        conn
+        |> get("/")
+        |> html_response(200)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query(~s(meta[name="page-tools"]))
+        |> LazyHTML.attribute("content")
 
-    assert conn |> get("/") |> html_response(200) =~ ~s(name="tools-left-out" content="")
+      String.split(names)
+    end
 
-    assert conn |> on_open() |> get("/") |> html_response(200) =~
-             ~s(name="tools-left-out" content="#{left_out}")
+    every = for tool <- Patchbay.Forum.Capabilities.site(), do: tool.name
+    assert named.(conn) == every
+    assert named.(on_open(conn)) == every -- SiteEdition.left_out_tools(:open)
+    assert named.(on_open(conn)) == SiteEdition.offered_tools(:open)
   end
 
   test "a connected page the other address does not have goes to the home page" do

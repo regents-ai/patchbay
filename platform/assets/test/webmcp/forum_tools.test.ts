@@ -213,11 +213,11 @@ test("registers the forum tools with the contract an agent needs", async () => {
   assert.equal(modelContext.tools.size, 0);
 });
 
-test("a page offers every tool but those its address leaves out", () => {
-  const leftOut = ["list_offer_slots", "account_points"];
+test("a page offers the tools its address names, and no others", () => {
+  const offered = ["get_thread", "search_threads", "no_such_tool"];
 
-  assert.deepEqual([...toolsByName({leftOut}).keys()], offeredToolNames(leftOut));
-  assert.deepEqual(offeredToolNames(leftOut), FORUM_TOOL_NAMES.filter(name => !leftOut.includes(name)));
+  assert.deepEqual([...toolsByName({offered}).keys()], ["search_threads", "get_thread"]);
+  assert.deepEqual(offeredToolNames(offered), ["search_threads", "get_thread"]);
   assert.deepEqual([...toolsByName({}).keys()], FORUM_TOOL_NAMES);
 });
 
