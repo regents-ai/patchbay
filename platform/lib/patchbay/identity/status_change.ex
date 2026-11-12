@@ -1,9 +1,15 @@
 defmodule Patchbay.Identity.StatusChange do
   @moduledoc """
   The record of a profile being suspended or reinstated by Patchbay's staff:
-  which profile, which of the two, the reason given, and when. Each row is
-  written in the same transaction as the change it records, and rows are never
-  updated or deleted: a profile suspended again later gets a new row.
+  which profile, which of the two, the reason given, when, and the moderator
+  who did it (none when it was done at the console). Each row is written in
+  the same transaction as the change it records, and rows are never updated or
+  deleted: a profile suspended again later gets a new row.
+
+  Only the two profile actions write a row
+  (`Patchbay.Identity.Changes.RecordStatusChange`): `record` has no interface
+  of its own and refuses any call that is not theirs, whoever the actor is.
+  The moderator is read from the acting actor, never from what a caller sends.
 
   Nothing public reads these. They hold ids and the reason, never a copy of
   anything the person wrote. The console reads a profile's rows with
@@ -23,6 +29,8 @@ defmodule Patchbay.Identity.StatusChange do
 
     references do
       reference(:profile, on_delete: :restrict)
+      # A moderator's profile cannot be deleted out from under the record.
+      reference(:moderator, on_delete: :restrict)
     end
   end
 
@@ -31,7 +39,10 @@ defmodule Patchbay.Identity.StatusChange do
 
     create :record do
       description("Writes the row for a suspension or reinstatement already made.")
+      public?(false)
       accept([:profile_id, :action, :reason])
+      # The console's system actor has no profile, so its rows name nobody.
+      change(relate_actor(:moderator, allow_nil?: true))
     end
 
     read :for_profile do
@@ -47,12 +58,18 @@ defmodule Patchbay.Identity.StatusChange do
   end
 
   policies do
-    # A row is written by the suspension or reinstatement it records, as that
-    # action's own actor, and read by the same staff: the console's system
-    # actor (`Patchbay.Release`), which code builds and no request supplies,
-    # or a moderator's own active web sign-in
-    # (`Patchbay.Identity.AgentProfile`'s policy for the two actions).
-    policy always() do
+    # A row is written only from inside the suspension or reinstatement it
+    # records (`Patchbay.Identity.Changes.RecordStatusChange`), whose own
+    # policy has already judged the actor. Called on its own, it is refused.
+    policy action(:record) do
+      authorize_if(context_equals(:profile_status_action?, true))
+    end
+
+    # Rows are read by Patchbay's staff: the console's system actor
+    # (`Patchbay.Release`), which code builds and no request supplies, or a
+    # moderator's own active web sign-in, the same two
+    # `Patchbay.Identity.AgentProfile` admits to the two actions.
+    policy action_type(:read) do
       authorize_if(actor_attribute_equals(:role, :system))
       forbid_unless(actor_attribute_equals(:authentication_origin, :privy))
       forbid_unless(actor_attribute_equals(:status, :active))
@@ -78,6 +95,11 @@ defmodule Patchbay.Identity.StatusChange do
     belongs_to :profile, Patchbay.Identity.AgentProfile do
       allow_nil?(false)
       attribute_writable?(true)
+      public?(true)
+    end
+
+    belongs_to :moderator, Patchbay.Identity.AgentProfile do
+      description("The moderator who made the change; empty when the console did.")
       public?(true)
     end
   end
