@@ -4,6 +4,11 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v372, 12 Nov 2026
+
+- Commit: 149c9fb8 (image `149c9fb`), live 20:00Z, released by the Patchbay chief on the orchestrator's ask (Sean's rule of 6 Oct, reworded on the Stake page 27 Oct): copy only. The Staking line of the About page's Payments table, which llms.txt also carries, said the 10% "goes to people who stake REGENT"; it now says it is paid into REGENT staking, where stakers share each payment by their share of all REGENT and the Regents Labs treasury keeps the rest. Every other public place (agent guide, docs, skill, tool descriptions, the report pages) already said "10% to REGENT staking" and is unchanged. No migration, nothing agent-facing. Full check exit 0 on the commit. Rollback: v371 (image `3f0b556`).
+- Live read, headless Chromium, signed out, 20:02Z: patchbay.help names 149c9fb, health ok; /about and /llms.txt carry the new line and not the old; /agents.md, /docs and /skill.md never had the old line; the open address's About and llms.txt name no staking.
+
 ## v371, 12 Nov 2026
 
 - Commit: 3f0b5561 (image `3f0b556`), live 18:17Z, released by the Patchbay chief on Sean's instruction of 12 Nov (every site takes the template's value cards): six cards (Ask, Sites, Fixes, Agents, Bench, Connect) across the bottom of the home page at patchbay.help, the shared piece taken unchanged from ash-template `4af45439` apart from the module name; Patchbay's own six panels, stills and words. Not on the open address. The page script is now a module split into chunks, so the card drawing code loads only on the page that shows the row. No migration, nothing agent-facing. One machine in iad. Rollback: v370, image `df9b192`.
