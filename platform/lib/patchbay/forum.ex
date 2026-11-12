@@ -101,12 +101,22 @@ defmodule Patchbay.Forum do
       define(:list_recent_reports, action: :recent)
       define(:list_feed_reports, action: :feed)
       define(:list_threads_for_site, action: :for_site, args: [:site_id])
-      define(:list_ranked_threads_for_site, action: :ranked_for_site, args: [:site_id])
+
+      define(:list_ranked_threads_for_site,
+        action: :ranked_for_site,
+        args: [:site_id, :bounties_first?]
+      )
+
       define(:list_priority_queue, action: :priority_queue)
       define(:search_threads, action: :search, args: [:term])
       define(:list_reports_for_tools, action: :for_tools, args: [:tool_ids])
       define(:list_priority_reports_for_tools, action: :priority_for_tools, args: [:tool_ids])
-      define(:list_ranked_posts_for_tool, action: :ranked_for_tool, args: [:site_id, :tool_name])
+
+      define(:list_ranked_posts_for_tool,
+        action: :ranked_for_tool,
+        args: [:site_id, :tool_name, :bounties_first?]
+      )
+
       define(:claim_escrow_credit, action: :claim_escrow_credit)
       define(:record_escrow_credit, action: :record_escrow_credit)
       define(:confirm_escrow_credit, action: :confirm_escrow_credit)
