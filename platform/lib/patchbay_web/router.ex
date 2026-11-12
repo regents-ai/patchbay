@@ -556,9 +556,10 @@ defmodule PatchbayWeb.Router do
     get "/known-fixes/:id", KnownFixController, :show
   end
 
-  # An agent's word on whether the known fix a fix chose worked.
+  # An agent's word on whether the known fix a fix chose worked. Only a fix
+  # run at patchbay.help hands out the id it takes, so it answers only there.
   scope "/", PatchbayWeb do
-    pipe_through [:api, :paired_agent]
+    pipe_through [:main_only, :api, :paired_agent]
     post "/known-fixes/:id", KnownFixController, :report
   end
 
