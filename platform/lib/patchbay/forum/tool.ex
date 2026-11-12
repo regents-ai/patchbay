@@ -114,6 +114,15 @@ defmodule Patchbay.Forum.Tool do
       public?(true)
       constraints(max_length: Origin.max_address_length(), match: ~r/\Ahttps:\/\/\S+\z/)
     end
+
+    # When a check of the site last found this tool on the page it read; empty
+    # for a tool known only from what agents saw. Only a tool a check once
+    # found can be retired by a later check (`SiteCheck.record_tools/2`).
+    attribute(:check_found_at, :utc_datetime_usec, allow_nil?: true)
+
+    # When a check that read the whole page no longer found the tool there;
+    # empty while it is offered. Seeing the tool again empties it.
+    attribute(:retired_at, :utc_datetime_usec, allow_nil?: true)
   end
 
   identities do
@@ -168,18 +177,14 @@ defmodule Patchbay.Forum.Tool do
 
   calculations do
     # On a site with no published list: a site in the researched directory
-    # keeps its list, since the check records nothing there
-    # (`SiteCheck.record_tools/2`). Then `is_nil(page_read_at)`: a site never
-    # checked, or whose check read no page, has no NULL left to compare, so
-    # nothing an agent saw is retired by a missing check.
+    # keeps its list, since the check records and retires nothing there
+    # (`SiteCheck.record_tools/2`).
     calculate(
       :current?,
       :boolean,
       expr(
         if is_nil(site.latest_check_at) do
-          not is_nil(site.support_relationship) or is_nil(site.site_check.page_read_at) or
-            address != site.site_check.read_page_url or
-            last_seen_at >= site.site_check.page_read_at
+          not is_nil(site.support_relationship) or is_nil(retired_at)
         else
           last_seen_at >= site.latest_check_at
         end
@@ -188,11 +193,11 @@ defmodule Patchbay.Forum.Tool do
       Whether the tool is still offered. On a site with a published tool list:
       seen at or after the latest check of that list. On a site in Patchbay's
       researched directory without one: always. On any other site: not
-      missing from the page Patchbay's last check read, that is, seen on
-      another page or seen again since. Only a check that read the whole page,
-      every script on the site's own domain included, and found at least one
-      tool there retires anything; a failed or partial read, or one that found
-      no tools, does not.
+      retired. A check retires a tool it once found on the page it reads and
+      no longer finds there, and only when it read the whole page, every
+      script on the site's own domain included, and found at least one tool;
+      a tool known only from what agents saw is never retired, and a retired
+      tool is offered again once it is seen again.
       """
     )
   end
@@ -273,6 +278,26 @@ defmodule Patchbay.Forum.Tool do
       prepare(build(sort: [first_seen_at: :desc, id: :asc]))
     end
 
+    read :missed_by_check do
+      description("""
+      The tools a check may retire: the ones a check once found on the page
+      it has now read whole, still offered, and not among those it found
+      there this time.
+      """)
+
+      argument(:site_id, :uuid, allow_nil?: false)
+      argument(:page_url, :string, allow_nil?: false)
+      argument(:found_ids, {:array, :uuid}, allow_nil?: false)
+
+      filter(
+        expr(
+          site_id == ^arg(:site_id) and address == ^arg(:page_url) and
+            not is_nil(check_found_at) and is_nil(retired_at) and
+            id not in ^arg(:found_ids)
+        )
+      )
+    end
+
     create :observe_tool do
       description("Records that an agent saw this tool contract on this site.")
       accept([:site_id, :name, :contract_sha256, :title, :description, :address])
@@ -283,12 +308,36 @@ defmodule Patchbay.Forum.Tool do
       # title and description are part of the contract digest this row is
       # keyed by, so a later caller reporting the same digest must not be able
       # to rewrite the copy the thread is displayed under, and first_seen_at
-      # must never advance.
-      upsert_fields([:last_seen_at, :address])
+      # must never advance. A retired tool seen again is offered again.
+      upsert_fields([:last_seen_at, :address, :retired_at])
 
       change(set_attribute(:last_seen_at, &DateTime.utc_now/0))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :description]})
       change(Patchbay.Forum.Changes.AssignToolIdentity)
+    end
+
+    create :find_on_page do
+      description("""
+      Records that a check of the site found this tool contract on the page
+      it read: an agent's sighting in every way, and marked as a check's own.
+      """)
+
+      accept([:site_id, :name, :contract_sha256, :description, :address])
+
+      upsert?(true)
+      upsert_identity(:unique_contract)
+      upsert_fields([:last_seen_at, :address, :check_found_at, :retired_at])
+
+      change(set_attribute(:last_seen_at, &DateTime.utc_now/0))
+      change(set_attribute(:check_found_at, &DateTime.utc_now/0))
+      change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:description]})
+      change(Patchbay.Forum.Changes.AssignToolIdentity)
+    end
+
+    update :retire do
+      description("A check that read the whole page no longer found the tool there.")
+      accept([])
+      change(set_attribute(:retired_at, &DateTime.utc_now/0))
     end
 
     create :publish_catalog_tool do

@@ -130,7 +130,6 @@ defmodule PatchbayWeb.PageReadsTest do
   # A finished check of the site that found `names` on its front page.
   defp find_tools(names) do
     findings = %{
-      "page_url" => "https://reads.example/",
       "webmcp" => Enum.map(names, &%{"name" => &1}),
       "servers" => [],
       "files" => [],
@@ -140,7 +139,12 @@ defmodule PatchbayWeb.PageReadsTest do
     }
 
     check = Forum.request_site_check!("reads.example")
-    Forum.record_site_check!(check, %{findings: findings}, authorize?: false)
+
+    Forum.record_site_check!(
+      check,
+      %{findings: findings, page_url: "https://reads.example/"},
+      authorize?: false
+    )
   end
 
   # The tables `view`, as drawn on `page`, reads for one draw of its own. A

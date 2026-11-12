@@ -24,12 +24,12 @@ defmodule Patchbay.Forum.SiteScan do
   cookies, every answer bounded. Everything found is a stranger's text,
   kept short and only ever shown.
 
-  The answer is a map with string keys, as it is stored: `"page_url"` (the
-  front page that was read, or nil), `"page_complete"` (whether the front
-  page and every script it loads or imports from the site's own domain were
-  read in full, `Patchbay.Assist.PageTools.inspect_tools/2`), `"webmcp"`,
-  `"servers"`, `"files"`, `"code"` and `"unsearched"` (the outside lists that
-  could not be searched just now).
+  The answer is the front page that was read (or nil), whether that page and
+  every script it loads or imports from the site's own domain were read in
+  full (`Patchbay.Assist.PageTools.inspect_tools/2`), and what was found: a
+  map with string keys, as it is stored, of `"webmcp"`, `"servers"`,
+  `"files"`, `"code"` and `"unsearched"` (the outside lists that could not be
+  searched just now).
   """
 
   alias Patchbay.Assist.McpClient
@@ -81,7 +81,7 @@ defmodule Patchbay.Forum.SiteScan do
   What `domain`, a registrable domain, offers agents. `opts` are
   `Patchbay.Assist.Target.connect/2`'s, for the site's own addresses.
   """
-  @spec findings(String.t(), keyword()) :: findings()
+  @spec findings(String.t(), keyword()) :: {String.t() | nil, boolean(), findings()}
   def findings(domain, opts) do
     site = "https://" <> domain
     label = label(domain)
@@ -104,19 +104,18 @@ defmodule Patchbay.Forum.SiteScan do
 
     {page_url, complete?, webmcp, links} = found.page
 
-    storable(%{
-      "page_url" => page_url,
-      "page_complete" => complete?,
-      "webmcp" => webmcp,
-      "servers" => servers(found.cards, found.registry, site, domain, opts),
-      "files" => found.files,
-      "code" => links ++ listed(found.registry) ++ listed(found.github) ++ listed(found.npm),
-      "unsearched" =>
-        for(
-          {source, :busy} <- [registry: found.registry, github: found.github, npm: found.npm],
-          do: Atom.to_string(source)
-        )
-    })
+    {storable(page_url), complete?,
+     storable(%{
+       "webmcp" => webmcp,
+       "servers" => servers(found.cards, found.registry, site, domain, opts),
+       "files" => found.files,
+       "code" => links ++ listed(found.registry) ++ listed(found.github) ++ listed(found.npm),
+       "unsearched" =>
+         for(
+           {source, :busy} <- [registry: found.registry, github: found.github, npm: found.npm],
+           do: Atom.to_string(source)
+         )
+     })}
   end
 
   @doc "Read the directory's exact public pages without calling any discovered tool."
