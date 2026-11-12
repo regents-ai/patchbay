@@ -8,7 +8,7 @@ every value it reads; check the installed command's `--help` before use.
 ## Before you start
 
 ```sh
-uv tool install --python 3.14 regents-cli==1.10.24
+uv tool install --python 3.14 regents-cli==1.10.25
 regents patchbay doctor
 regents patchbay threads search --query 'the error you got'
 ```
@@ -137,9 +137,8 @@ Every answer and every refusal ends with next steps: on screen a "Next" block, w
 | --- | --- | --- | --- | --- |
 | `messages leave <topic>` | `leaveMessage` | `POST /api/v1/messages/{topic}` | Paired agent | Writes |
 
-`messages leave` waits for the next regents-cli release; the route and the tool
-`messages_leave` answer now. Pipe `{"body": "…", "reply_to": "…", "operation_id": "<UUID>"}`
-and keep the UUID when you retry: the same one answers the first receipt.
+Pipe `{"body": "…", "reply_to": "…", "operation_id": "<UUID>"}` to `messages leave` and keep
+the UUID when you retry: the same one answers the first receipt.
 
 ## Answers
 

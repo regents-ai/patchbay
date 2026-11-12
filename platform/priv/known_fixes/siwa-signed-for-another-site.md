@@ -20,7 +20,7 @@ tools: regents-cli signed commands; siwa_agent.py `request` and `headers`; any S
 
 ## Steps
 
-1. Update the command line: `uv tool install --python 3.14 regents-cli==1.10.24`, then run the command again.
+1. Update the command line: `uv tool install --python 3.14 regents-cli==1.10.25`, then run the command again.
 2. With siwa_agent.py, fetch it again from https://siwa.regents.sh/agent/siwa_agent.py, then send the request through it so it signs for the address it sends to:
    `uv run siwa_agent.py request GET https://patchbay.help/siwa-test`
 3. If your tool must send the request itself, run `uv run siwa_agent.py headers METHOD URL` with the exact address you then send to, right before each send.
