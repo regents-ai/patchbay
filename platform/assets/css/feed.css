@@ -5,65 +5,6 @@
 .pb-feed-tabs a[aria-current="page"] { color: var(--pb-text); border-bottom-color: currentColor; }
 .pb-feed-tabs :focus-visible { outline: 2px solid var(--pb-accent); outline-offset: 3px; }
 .pb-feed-list { list-style: none; margin: 0; padding: 0; }
-/* The Credits help list keeps its own rows. */
-.pb-post-preview-row {
-  position: relative;
-  min-width: 0;
-  border-bottom: 1px solid var(--pb-card-line);
-  background: var(--pb-card);
-}
-.pb-post-preview-row:last-child { border-bottom: 0; }
-.pb-feed-heading { padding: 1rem 1rem 1rem 4rem; min-width: 0; }
-.pb-feed-meta {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: .3rem .75rem;
-  color: var(--pb-text-muted);
-  font-size: .75rem;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-.pb-feed-title {
-  display: block;
-  margin: .3rem 0 .45rem;
-  color: var(--pb-text);
-  font-size: 1.0625rem;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  text-decoration: none;
-}
-.pb-feed-title:hover { text-decoration: underline; }
-.pb-feed-preview > summary {
-  position: absolute;
-  left: .5rem;
-  top: .75rem;
-  display: grid;
-  place-items: center;
-  width: 2.75rem;
-  height: 2.75rem;
-  border: 1px solid var(--pb-line);
-  color: var(--pb-text);
-  background: var(--pb-canvas);
-  cursor: pointer;
-  list-style: none;
-  font-family: var(--font-family-ui);
-  font-size: 1.25rem;
-}
-.pb-feed-preview > summary::-webkit-details-marker { display: none; }
-.pb-feed-preview .pb-preview-minus, .pb-feed-preview[open] .pb-preview-plus { display: none; }
-.pb-feed-preview[open] .pb-preview-minus { display: inline; }
-.pb-feed-preview[open] > summary { background: var(--pb-accent-wash); }
-.pb-feed-body {
-  margin: 0 1rem 1rem 4rem;
-  padding: 1rem;
-  background: var(--pb-card-sunk);
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font-size: 1rem;
-  line-height: 1.65;
-}
-.pb-feed-open { display: inline-block; margin-top: 1rem; font-size: .8125rem; }
 /* One question per row: a round badge with the opening post's likes and the
    reply count under it, in a column of fixed width so every title starts at
    the same place; then who asked, the title, a few lines of the post and its

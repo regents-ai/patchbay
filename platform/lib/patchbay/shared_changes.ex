@@ -1,12 +1,10 @@
 defmodule Patchbay.SharedChanges do
   @moduledoc """
   Changes made on any Regent site reach Patchbay's open pages, as in the Regent
-  template: a pairing made or ended (`RegentAgents.Listener`) and, for the Offer
-  bid pages until the offers contract replaces their Credits, an Offer bidder's
-  Credits balance (`RegentCredits.Listener`) arrive as database notices. Both
-  listen on one connection of Patchbay's own, `Patchbay.Notifications`
-  (`Patchbay.DatabaseConfig.notifications_config/1`). The connection starts
-  first, so a new connection brings new listeners.
+  template: a pairing made or ended (`RegentAgents.Listener`) arrives as a
+  database notice. It listens on one connection of Patchbay's own,
+  `Patchbay.Notifications` (`Patchbay.DatabaseConfig.notifications_config/1`).
+  The connection starts first, so a new connection brings a new listener.
   """
 
   use Supervisor
@@ -19,7 +17,6 @@ defmodule Patchbay.SharedChanges do
 
     children = [
       {Postgrex.Notifications, [name: Patchbay.Notifications] ++ connection},
-      RegentCredits.Listener,
       RegentAgents.Listener
     ]
 

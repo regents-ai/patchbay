@@ -9,7 +9,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   The hosted tools are free, so they ask for the `:free` audience: the same
   record without anything about money (tips, bounties, held USDC, rewards).
   The open address, and the ChatGPT plugin served there, ask for `:open`: the
-  free record with no Agent Offers and no wallet.
+  free record with no wallet.
   Every title, body and note in an answer is text a stranger wrote; the
   answers say so themselves.
   """
@@ -25,8 +25,6 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   alias Patchbay.Forum.SearchUnavailable
   alias Patchbay.Forum.Tool
   alias Patchbay.Identity
-  alias Patchbay.Offers.Disclosure
-  alias Patchbay.Offers.Serving
   alias Patchbay.Payments
   alias PatchbayWeb.AuthorJSON
   alias PatchbayWeb.Forum.Board
@@ -132,8 +130,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         },
         tools,
         page,
-        audience,
-        offers_for(site, audience)
+        audience
       )
     end
   end
@@ -625,7 +622,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       ]}}
   end
 
-  defp search_payload(looked_for, tools, page, audience, offers) do
+  defp search_payload(looked_for, tools, page, audience) do
     payload =
       %{
         about_this_data:
@@ -640,8 +637,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       }
       |> nothing_on_record(page)
 
-    with {:ok, bounded} <- within_size(payload, page.offset),
-         do: {:ok, attach_within_size(bounded, offers, @max_answer_bytes)}
+    within_size(payload, page.offset)
   end
 
   # An empty answer says what to do next, so a caller with nothing to read is
@@ -693,15 +689,10 @@ defmodule PatchbayWeb.ForumAPI.Reads do
         report_entry(report, audience),
         participants,
         entries,
-        page.more?,
-        offers_for(report.site, audience)
+        page.more?
       )
     end
   end
-
-  # The open address's record never even selects Offers.
-  defp offers_for(_site, :open), do: nil
-  defp offers_for(site, _audience), do: Serving.for_site(site)
 
   # Everyone who wrote on the thread, named once each — asker first, then the
   # reply authors in the order they first appear, across every published reply
@@ -737,14 +728,13 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     }
   end
 
-  defp fit_thread_page(report, participants, entries, more?, offers) do
+  defp fit_thread_page(report, participants, entries, more?) do
     Enum.find_value(@thread_steps, {:error, :response_too_large}, fn {length, limit} ->
       fit_replies(
         shortened(report, length, limit),
         %{participants | named: Enum.take(participants.named, limit)},
         Enum.map(entries, fn {entry, keyset} -> {shortened(entry, length, limit), keyset} end),
-        more?,
-        offers
+        more?
       )
     end)
   end
@@ -752,7 +742,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   # Keep the entries this step leaves. A cursor must follow the last returned
   # row, including when the byte budget leaves some of the fetched page for the
   # next request.
-  defp fit_replies(report, participants, entries, more?, offers) do
+  defp fit_replies(report, participants, entries, more?) do
     payload = %{
       report: report,
       participants: participants,
@@ -765,10 +755,10 @@ defmodule PatchbayWeb.ForumAPI.Reads do
 
     cond do
       byte_size(Jason.encode!(payload)) <= @thread_payload_bytes ->
-        {:ok, attach_within_size(payload, offers, @thread_payload_bytes)}
+        {:ok, payload}
 
       match?([_first, _second | _rest], entries) ->
-        fit_replies(report, participants, Enum.drop(entries, -1), true, offers)
+        fit_replies(report, participants, Enum.drop(entries, -1), true)
 
       true ->
         nil
@@ -795,12 +785,6 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp sign_thread_cursor(report_id, entries) do
     {_entry, keyset} = List.last(entries)
     ReplyCursor.sign(report_id, keyset)
-  end
-
-  # Ads never displace requested results or make an otherwise valid read fail.
-  defp attach_within_size(payload, offers, limit) do
-    with_offers = Disclosure.attach(payload, offers)
-    if byte_size(Jason.encode!(with_offers)) <= limit, do: with_offers, else: payload
   end
 
   # A card is a summary kept beside its source: it cites the reply it was

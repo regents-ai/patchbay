@@ -6,7 +6,7 @@ defmodule PatchbayDev.WalkOffline do
   list of outside requests and refused by raising, so the walk fails at its end
   (assets/test/browser/support/teardown.ts), whichever page caused it.
   No name outside this machine resolves (`:assist_target`), so looking at a
-  site's tools, a site's check and refresh, Offers screening and Jev's work
+  site's tools, a site's check and refresh, and Jev's work
   find the site unreachable without asking the outside resolver.
   """
 

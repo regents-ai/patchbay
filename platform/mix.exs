@@ -63,9 +63,6 @@ defmodule Patchbay.MixProject do
       # regent_payments names regent_chain by a sibling path; this pin replaces it.
       {:regent_chain,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "chain", override: true},
-      # The Offer bid path holds its bids in Regent Credits until the offers
-      # contract replaces it (Patchbay.Offers.Holds).
-      {:regent_credits, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credits"},
       {:regent_points, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "points"},
       {:regent_http, git: @elixir_utils, ref: @elixir_utils_ref, sparse: "http"},
       # regent_mcp_agents names regent_agent_access by a sibling path; this pin replaces it.
@@ -83,7 +80,7 @@ defmodule Patchbay.MixProject do
       {:ash, "~> 3.37"},
       # ash_postgres main with #910 until a Hex release carries it: upserts use the
       # repo's prefix, which picks each site's schema on the shared database. It
-      # stands in for the Hex release that ash_money and ash_double_entry ask for.
+      # stands in for the copy the shared libraries pin.
       {:ash_postgres,
        git: "https://github.com/ash-project/ash_postgres.git",
        ref: "55db7d449aad351d200c5f300fca2a83e0a8734c",
@@ -216,8 +213,8 @@ defmodule Patchbay.MixProject do
         # Canonical accounts and the two owned-subscription policy checks add
         # three required compile connections to the previous 59-connection budget;
         # the saved-errors page's admin check (a router plug and mount hook) adds one.
-        # The moderator check depends on no other Patchbay module, so the Offers
-        # and Credits help policies that name it add none. The bench's set
+        # The moderator check depends on no other Patchbay module, so the
+        # policies that name it add none. The bench's set
         # summaries are one more resource its domain must name, which adds one,
         # and so are the forum's record of each post Jev read, the bench's
         # extra notes and an account's ENS name and picture. The weekly answer

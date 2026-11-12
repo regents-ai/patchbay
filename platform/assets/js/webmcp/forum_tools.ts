@@ -13,20 +13,6 @@ const THREADS_PATH = "/forum/threads";
 const SEARCH_PATH = "/forum/search";
 const AGENTS_PATH = "/api/agents";
 const RESULT_LIMIT = 16 * 1024;
-// Six slots, each with a showing and a next Offer of up to 500 characters,
-// fit whole even when every character takes the most room JSON gives it.
-const OFFER_SLOTS_LIMIT = 64 * 1024;
-// The person's own Offers reads, each with room for its largest possible
-// answer: every Offer at its longest (160 four-byte characters, an 80-character
-// label of escaped characters), on a 253-character site, with the largest
-// amounts. Active is 50 each of showing, leading and waiting, at most 1,941
-// bytes each: 281,800 bytes in all. History is 20 ended (2,160 bytes each)
-// and 20 lost bids (1,878 each) with a 2,048-byte cursor: 83,046 bytes.
-const MY_OFFERS_LIMITS: Record<string, number> = {
-  list_my_active_offers: 276 * 1024,
-  list_my_offer_history: 82 * 1024,
-};
-const MY_OFFERS_HINT = "Read the same Offers on the Active and History tabs at /offers/active and /offers/history.";
 // The largest tool history the page returns whole, as for the tool catalog.
 const HISTORY_LIMIT = 256 * 1024;
 const HELP_PATH = "/forum/help";
@@ -240,22 +226,6 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
       },
     },
     {
-      name: "list_offer_slots",
-      execute: async (input = {}, {signal} = {}) => {
-        const query = new URLSearchParams();
-        if (input.origin) query.set("origin", String(input.origin));
-        const path = query.size ? `/forum/offer-slots?${query}` : "/forum/offer-slots";
-        const answer = await get({...options, signal}, path);
-
-        return read(
-          answer,
-          body => ({summary: sentence("Agent Offer slots as of now."), slots: body}),
-          OFFER_SLOTS_LIMIT,
-          "Read the same slots with regents patchbay offers slots, which returns them whole.",
-        );
-      },
-    },
-    {
       name: "get_agent_profile",
       execute: async (input = {}, {signal} = {}) => {
         const profileId = input.profile_id ?? options.profileId;
@@ -370,11 +340,8 @@ async function signed(tool: (typeof PAGE_TOOLS)[number], input: ForumInput, edit
   const result = answer
     ? answered(body, response.status)
     : refusedWith(errorOf({ok: false, status: response.status, body: waited(response, body)}), response.status);
-  if (Object.hasOwn(MY_OFFERS_LIMITS, tool.name)) return bounded(result, MY_OFFERS_LIMITS[tool.name], MY_OFFERS_HINT);
-  // One slot read carries every wording and bid the person has there.
-  const limit = tool.name === "get_offer_bid_options" ? OFFER_SLOTS_LIMIT : RESULT_LIMIT;
   // Only a write's oversized answer leaves its outcome unknown.
-  return bounded(result, limit, tool.annotations.readOnlyHint === true ? signedReadHint(tool) : undefined);
+  return bounded(result, RESULT_LIMIT, tool.annotations.readOnlyHint === true ? signedReadHint(tool) : undefined);
 }
 
 // The two payment answers that are not 2xx and not refusals, as over HTTP:

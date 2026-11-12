@@ -19,10 +19,8 @@ defmodule PatchbayWeb.MCP.Doors do
   alias PatchbayWeb.AgentAccountController
   alias PatchbayWeb.AssistAPI.RunController
   alias PatchbayWeb.Forum.BoardController
-  alias PatchbayWeb.ForumAPI.CreditsHelpController
   alias PatchbayWeb.ForumAPI.InboxController
   alias PatchbayWeb.ForumAPI.LikeController
-  alias PatchbayWeb.ForumAPI.OfferBidController
   alias PatchbayWeb.ForumAPI.ReportController
   alias PatchbayWeb.ForumAPI.SiteRefreshController
   alias PatchbayWeb.IdentityAPI.NameController
@@ -34,11 +32,8 @@ defmodule PatchbayWeb.MCP.Doors do
 
   @names ~w(request_free_fix get_assist find_known_fixes get_known_fix get_subscriptions
             like_post unlike_post report_tool_on_another_site reply_to_report
-            account_points
-            get_offer_bid_options ask_offer_fit save_agent_offer reword_agent_offer
-            read_wallet_bench read_wallet_bench_pair read_tool_catalog set_my_agent_name
-            read_inbox acknowledge_inbox_item ask_credits_help list_credits_help
-            get_credits_help refresh_site delete_agent_offer messages_leave
+            account_points read_wallet_bench read_wallet_bench_pair read_tool_catalog
+            set_my_agent_name read_inbox acknowledge_inbox_item refresh_site messages_leave
             post_priority_report execute_payment get_payment_status)
 
   @doc "The hosted tools answered here."
@@ -47,12 +42,9 @@ defmodule PatchbayWeb.MCP.Doors do
 
   @doc """
   Runs `name` for `caller` (`PatchbayWeb.MCP.Tools.caller/0`): `{:ok, body}`
-  or `{:error, body}`, with the body its HTTP door answers, or
-  `{:posted, body, post}` for a new report or reply, which Agent Offers may
-  follow.
+  or `{:error, body}`, with the body its HTTP door answers.
   """
-  @spec call(String.t(), map(), map()) ::
-          {:ok, map()} | {:error, map()} | {:posted, map(), map()}
+  @spec call(String.t(), map(), map()) :: {:ok, map()} | {:error, map()}
   def call(name, arguments, caller), do: name |> door(arguments, caller) |> answered()
 
   defp door("request_free_fix", %{"args" => args}, %{actor: actor}),
@@ -109,18 +101,6 @@ defmodule PatchbayWeb.MCP.Doors do
   defp door("account_points", _arguments, %{actor: actor}),
     do: AgentAccountController.account_points(actor)
 
-  defp door("get_offer_bid_options", arguments, %{actor: actor}),
-    do: OfferBidController.get_offer_bid_options(actor, arguments)
-
-  defp door("ask_offer_fit", arguments, %{actor: actor}),
-    do: OfferBidController.ask_offer_fit(actor, arguments)
-
-  defp door("save_agent_offer", arguments, %{actor: actor}),
-    do: OfferBidController.save_agent_offer(actor, arguments)
-
-  defp door("reword_agent_offer", arguments, %{actor: actor}),
-    do: OfferBidController.reword_agent_offer(actor, arguments)
-
   defp door("read_wallet_bench", arguments, _caller),
     do: WalletBenchController.read_wallet_bench(arguments)
 
@@ -142,20 +122,8 @@ defmodule PatchbayWeb.MCP.Doors do
   defp door("messages_leave", %{"topic" => topic} = arguments, caller),
     do: MessagesController.leave_message(caller.actor, topic, arguments, caller.visitor)
 
-  defp door("ask_credits_help", arguments, %{actor: actor}),
-    do: CreditsHelpController.ask_credits_help(actor, arguments)
-
-  defp door("list_credits_help", arguments, %{actor: actor}),
-    do: CreditsHelpController.list_credits_help(actor, arguments)
-
-  defp door("get_credits_help", %{"post_id" => id}, %{actor: actor}),
-    do: CreditsHelpController.get_credits_help(actor, id)
-
   defp door("refresh_site", %{"site" => site}, %{actor: actor}),
     do: SiteRefreshController.refresh_site(actor, site)
-
-  defp door("delete_agent_offer", %{"creative_id" => id}, %{actor: actor}),
-    do: OfferBidController.delete_agent_offer(actor, id)
 
   # New terms and reads draw on the paying wallet's share, as at
   # `/api/agent/payment_intents` (`PatchbayWeb.Plugs.PaymentBudget`).
@@ -166,9 +134,9 @@ defmodule PatchbayWeb.MCP.Doors do
     end
   end
 
-  # A new report or reply answers `{:posted, body, post}`; the same one sent
-  # again answers as it did; a refusal is worded as its HTTP door words it.
-  defp answered({:posted, body, post}), do: {:posted, body, post}
+  # A new report or reply, or the same one sent again, answers its body; a
+  # refusal is worded as its HTTP door words it.
+  defp answered({:posted, body}), do: {:ok, body}
   defp answered({:repeated, body}), do: {:ok, body}
 
   # A payment door's answer is the body alone. Terms to sign (402), and a

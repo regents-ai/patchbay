@@ -11,12 +11,9 @@ defmodule PatchbayWeb.SiteEditionTest do
   alias PatchbayWeb.SiteEdition
 
   @main_only ~w(
-    /offers /offers/bid /offers/create /admin/offers /admin/people /admin/people/:public_id
-    /admin/messages
-    /api/v1/messages/:topic /points /credits-help /priority /changelog
+    /admin/people /admin/people/:public_id /admin/messages
+    /api/v1/messages/:topic /points /priority /changelog
     /fixes/:id /bench/x402-test /siwa-test /mcp /tools/account/points
-    /forum/offer-slots /forum/offer-reports /forum/offer-bids /forum/my-offers
-    /forum/my-offers/:creative_id /forum/credits-help /forum/credits-help/:id
     /forum/reports/:id/accept /forum/reports/:id/refund /reports/:id/refund /posts/:id/refund
     /api/agent/payment_intents /api/agent/assists /api/payment_intents /api/assists/:id
     /api/me/usdc_balance /agent-setup /docs /developers /webmcp /start /agents /agents.md
@@ -67,12 +64,9 @@ defmodule PatchbayWeb.SiteEditionTest do
     assert SiteEdition.left_out_tools(:main) == []
 
     assert SiteEdition.left_out_tools(:open) ==
-             ~w(report_known_fix find_known_fixes get_known_fix get_webmcp_guide report_agent_offer list_offer_slots get_offer_bid_options
-                bid_on_offer_slot ask_offer_fit save_agent_offer reword_agent_offer delete_agent_offer
-                list_my_active_offers list_my_offer_history post_priority_report
+             ~w(report_known_fix find_known_fixes get_known_fix get_webmcp_guide post_priority_report
                 execute_payment complete_payment get_payment_status request_free_fix get_assist
-                account_points messages_leave ask_credits_help list_credits_help get_credits_help
-                read_wallet_bench read_wallet_bench_pair)
+                account_points messages_leave read_wallet_bench read_wallet_bench_pair)
   end
 
   test "a page names the tools its address offers, and no others", %{conn: conn} do

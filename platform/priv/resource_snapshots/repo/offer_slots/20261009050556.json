@@ -137,6 +137,7 @@
       "up": "ALTER TABLE offer_slots\n  ADD CONSTRAINT offer_slots_next_bid_same_slot\n  FOREIGN KEY (next_bid_id, id)\n  REFERENCES offer_bids (id, slot_id)\n  ON DELETE RESTRICT\n"
     }
   ],
+  "drop_table_opted_out": true,
   "has_create_action": true,
   "hash": "84E9BCF6A8FC301FD06E0CEC50190A86E7B7B9FE497E9CE8AD1730E4CFBE497E",
   "identities": [

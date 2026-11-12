@@ -3,9 +3,10 @@ defmodule Patchbay.Assist.Types.ModelCallPurpose do
   What a question to a model on OpenRouter was for: Jev choosing a known fix
   for a fix's first step (or, in questions already recorded, for the earlier
   free help), choosing a site's tool,
-  reading what a tool answered, reading a priority report, screening an
-  Offer's safety or its relevance to a site, or checking a post before it is
-  published; or the drafting model writing a tool's arguments.
+  reading what a tool answered, reading a priority report, checking a post
+  before it is published, or (in questions already recorded) screening an
+  Agent Offer's safety or its relevance to a site; or the drafting model
+  writing a tool's arguments.
   """
 
   use Ash.Type.Enum,

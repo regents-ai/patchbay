@@ -126,7 +126,6 @@
     id: "pb-site-check-live",
     session: Map.merge(PatchbayWeb.VisitLog.session(@conn), @check_session)
   )}
-  <PatchbayWeb.AgentOffers.panel section={@agent_offers} />
   <%!-- The home page's form, in a window opened from "Post about" and opened
   again by itself when a post comes back with a problem or to be checked. --%>
   <Regent.Structure.dialog

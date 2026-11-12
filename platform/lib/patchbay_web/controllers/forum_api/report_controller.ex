@@ -30,8 +30,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias Patchbay.Forum.OtherSiteReport
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostingCheck
-  alias Patchbay.Offers.Disclosure
-  alias Patchbay.Offers.Serving
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.Readiness
@@ -49,23 +47,19 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   @doc """
   Files `actor`'s report about a tool, under `session_id` (its pairing), as
-  `POST /forum/reports` and the `report_tool_on_another_site` tool do: `{:posted, body, post}` for a new
+  `POST /forum/reports` and the `report_tool_on_another_site` tool do: `{:posted, body}` for a new
   report, `{:repeated, body}` for one this request key already filed, or
   `{:refused, failure}`, which `refusal/1` words.
   """
   @spec file_report(String.t(), Patchbay.Agents.Actor.t(), map()) ::
-          {:posted, map(), map()} | {:repeated, map()} | {:refused, term()}
+          {:posted, map()} | {:repeated, map()} | {:refused, term()}
   def file_report(session_id, actor, params) do
     case filed_report(session_id, actor, params) do
       {:error, failure} ->
         {:refused, failure}
 
       {outcome, report} ->
-        written(
-          outcome,
-          %{report_id: report.id, url: PostAddress.path(report)},
-          %{operation: :report, site_id: report.site_id, report_id: report.id, reply_id: nil}
-        )
+        written(outcome, %{report_id: report.id, url: PostAddress.path(report)})
     end
   end
 
@@ -79,12 +73,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         send_failure(conn, failure)
 
       {outcome, thread} ->
-        posted(conn, outcome, thread_posted(thread), %{
-          operation: :thread,
-          site_id: thread.site_id,
-          report_id: thread.id,
-          reply_id: nil
-        })
+        posted(conn, outcome, thread_posted(thread))
     end
   end
 
@@ -105,32 +94,14 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         send_failure(conn, failure)
 
       {outcome, {thread, reply}} ->
-        posted(conn, outcome, reply_posted(thread, reply), %{
-          operation: :reply,
-          site_id: thread.site_id,
-          report_id: thread.id,
-          reply_id: reply.id
-        })
+        posted(conn, outcome, reply_posted(thread, reply))
     end
   end
 
-  # A write that just landed is 201, followed at patchbay.help by any Agent
-  # Offers chosen for it; the same write sent again under its request key is
-  # 200 with the original answer and `repeated`, and never carries Offers.
-  defp posted(%{assigns: %{site_edition: :open}} = conn, :ok, body, _post),
-    do: conn |> put_status(:created) |> json(body)
-
-  defp posted(conn, :ok, body, post) do
-    offers =
-      post
-      |> Map.put(:surface, :http_api)
-      |> Serving.after_post()
-      |> Disclosure.section()
-
-    conn |> put_status(:created) |> json(Disclosure.append(body, offers))
-  end
-
-  defp posted(conn, :repeated, body, _post), do: json(conn, Map.put(body, :repeated, true))
+  # A write that just landed is 201; the same write sent again under its
+  # request key is 200 with the original answer and `repeated`.
+  defp posted(conn, :ok, body), do: conn |> put_status(:created) |> json(body)
+  defp posted(conn, :repeated, body), do: json(conn, Map.put(body, :repeated, true))
 
   defp reply_posted(thread, reply) do
     %{
@@ -173,25 +144,25 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   answered as `file_report/3` is.
   """
   @spec reply_to_report(String.t(), Patchbay.Agents.Actor.t(), String.t(), map()) ::
-          {:posted, map(), map()} | {:repeated, map()} | {:refused, term()}
+          {:posted, map()} | {:repeated, map()} | {:refused, term()}
   def reply_to_report(session_id, actor, id, params) do
     case file_reply(session_id, actor, id, params) do
       {:error, failure} ->
         {:refused, failure}
 
       {outcome, {report, reply}} ->
-        written(
-          outcome,
-          %{reply_id: reply.id, report_id: report.id, url: PostAddress.path(report)},
-          %{operation: :reply, site_id: report.site_id, report_id: report.id, reply_id: reply.id}
-        )
+        written(outcome, %{
+          reply_id: reply.id,
+          report_id: report.id,
+          url: PostAddress.path(report)
+        })
     end
   end
 
-  defp written(:ok, body, post), do: {:posted, body, post}
-  defp written(:repeated, body, _post), do: {:repeated, Map.put(body, :repeated, true)}
+  defp written(:ok, body), do: {:posted, body}
+  defp written(:repeated, body), do: {:repeated, Map.put(body, :repeated, true)}
 
-  defp posted(conn, {:posted, body, post}), do: posted(conn, :ok, body, post)
+  defp posted(conn, {:posted, body}), do: posted(conn, :ok, body)
   defp posted(conn, {:repeated, body}), do: json(conn, body)
   defp posted(conn, {:refused, failure}), do: send_failure(conn, failure)
 
@@ -257,18 +228,6 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         conn
         |> put_status(:created)
         |> json(%{recorded: true, use_id: use.id, outcome: to_string(use.outcome)})
-
-      {:error, failure} ->
-        send_failure(conn, failure)
-    end
-  end
-
-  def report_offer(conn, params) do
-    case Participation.report_offer(current_profile(conn), :http_api, params) do
-      {:ok, report} ->
-        conn
-        |> put_status(:created)
-        |> json(Participation.offer_report_answer(report))
 
       {:error, failure} ->
         send_failure(conn, failure)

@@ -57,9 +57,6 @@ defmodule PatchbayWeb.PublicDocuments do
     "/start" =>
       {"Agent setup",
        "Connect Patchbay to your agent, ask a question, and check back for answers. Add a wallet only when you want paid priority."},
-    "/credits-help" =>
-      {"Credits help",
-       "Ask the Regents team about your Regent Credits: a refund, a purchase that has not shown up, or an agent spending them when it should not."},
     "/moderation" =>
       {"Moderation", "Posts held for review, and the latest moderation decisions."},
     "/account" => {"Account", "Your Patchbay account and profile."},
@@ -71,19 +68,6 @@ defmodule PatchbayWeb.PublicDocuments do
        "Pair your agent with your account, and send it to the page you came from."},
     "/points" => {"Points", "Your Patchbay points and what earned them."},
     "/animations" => {"Motion lab", "Every motion Patchbay uses, side by side."},
-    "/offers" =>
-      {"Agent Offers",
-       "Bid for a slot to show agents a short message beside the answers they read on Patchbay."},
-    "/offers/how-it-works" =>
-      {"Offers guide",
-       "Show your Offer to agents posting on Patchbay: writing one, how it is screened, and how slots are bid for."},
-    "/offers/bid" => {"Bid", "Bid for a slot that shows your Offer to agents beside answers."},
-    "/offers/active" =>
-      {"Active Offers", "Your Offers that are running or waiting, with their bids."},
-    "/offers/history" =>
-      {"Offer history", "Your Offers that ended, and the bids that came back."},
-    "/offers/create" => {"Your Offers", "Write an Offer and follow its screening."},
-    "/admin/offers" => {"Offers admin", "Reports and screenings for Agent Offers."},
     "/admin/people" => {"People", "Everyone with a profile, newest first."},
     "/admin/people/:public_id" => {"Person admin", "A person's status and its history."},
     "/admin/messages" => {"Messages", "Messages people and their agents left for the team."},

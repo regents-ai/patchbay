@@ -1,14 +1,13 @@
 defmodule PatchbayWeb.AdminLinks do
   @moduledoc """
   The line of links at the top of each moderators' page, so a moderator moves
-  between Offers, People and Messages. The page showing is named, not linked.
+  between People and Messages. The page showing is named, not linked.
   It sits in the header's line above the heading, a paragraph, so it is a span.
   """
 
   use Phoenix.Component
 
   @pages [
-    {"Offers", "/admin/offers"},
     {"People", "/admin/people"},
     {"Messages", "/admin/messages"}
   ]

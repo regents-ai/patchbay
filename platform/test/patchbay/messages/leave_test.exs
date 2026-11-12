@@ -18,7 +18,7 @@ defmodule Patchbay.Messages.LeaveTest do
   use Patchbay.DataCase, async: false
 
   import Patchbay.AssistFixtures, only: [paired_agent: 0]
-  import Patchbay.OffersFixtures, only: [moderator: 0]
+  import Patchbay.ModeratorFixtures, only: [moderator: 0]
 
   alias Patchbay.Identity
   alias Patchbay.Limits.Spent

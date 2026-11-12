@@ -20,7 +20,7 @@ defmodule PatchbayWeb.RefusalHintsTest do
 
   # A method and a path, an address under the API's own prefixes, or a
   # capitalised placeholder after a slash or an equals sign in an address.
-  # The website's pages (/webmcp, /offers/active) are places a person or agent
+  # The website's pages (/webmcp, /account/agents) are places a person or agent
   # opens, not calls, and may be named.
   @route ~r"\b(GET|POST|PUT|PATCH|DELETE) /|/(forum|api|known-fixes)\b|(/|=)[A-Z][A-Z_]{2,}\b(?!\.)"
 

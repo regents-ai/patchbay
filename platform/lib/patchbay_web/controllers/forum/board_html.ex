@@ -422,11 +422,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Questions</a>
     <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
-    <a
-      :if={@conn.assigns.site_edition == :main}
-      href={~p"/offers"}
-      aria-current={nav_current(@conn, "/offers")}
-    >Offers</a>
     """
   end
 
@@ -435,8 +430,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp home?(_conn), do: false
 
   defp nav_current(%Plug.Conn{request_path: "/"}, "/"), do: "page"
-
-  defp nav_current(%Plug.Conn{request_path: "/offers" <> _}, "/offers"), do: "page"
 
   # A site's page is its domain, the only first part of an address with a dot.
   defp nav_current(%Plug.Conn{request_path: path}, "/sites") when is_binary(path) do

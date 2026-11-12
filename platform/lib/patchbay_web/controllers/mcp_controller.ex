@@ -6,7 +6,6 @@ defmodule PatchbayWeb.MCPController do
   (`PatchbayWeb.SiteEdition`), for the ChatGPT plugin alone. The route names the
   address (`mcp_surface`), never the caller, and a session works only at the
   address it was issued at. The ChatGPT plugin offers free reads and consented identity setup and posting.
-  It never carries Agent Offers; they follow a new post at `/mcp`.
 
   It opens no stream. Every request is one JSON-RPC message answered with one
   JSON body, which the protocol allows and which is all these tools need.
@@ -29,7 +28,6 @@ defmodule PatchbayWeb.MCPController do
   require Logger
 
   alias Patchbay.DatabaseBusy
-  alias Patchbay.Offers.Disclosure
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.ErrorJSON
   alias PatchbayWeb.MCP.Admission
@@ -450,23 +448,6 @@ defmodule PatchbayWeb.MCPController do
   # client that wants the fields. A refusal is text alone
   # (`PatchbayWeb.MCP.Refusal.tool_result/1`).
   defp tool_result(refusal, true), do: Refusal.tool_result(refusal)
-
-  # Agent Offers after a new post travel once as their own text block, under
-  # the disclosure. The structured answer carries, after the forum result,
-  # only what reporting one needs, so no advertiser's words are sent twice;
-  # they never appear inside the result's own text.
-  defp tool_result(%{agent_offers: offers} = answer, false) do
-    result = Map.delete(answer, :agent_offers)
-
-    %{
-      "content" => [
-        %{"type" => "text", "text" => Jason.encode!(result)},
-        %{"type" => "text", "text" => Disclosure.text(offers)}
-      ],
-      "structuredContent" => Disclosure.append(result, Disclosure.references(offers)),
-      "isError" => false
-    }
-  end
 
   defp tool_result(answer, false) do
     %{

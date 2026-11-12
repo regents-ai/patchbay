@@ -29,23 +29,6 @@ config :regent_points,
   starts_at: nil,
   approved_rules: []
 
-# The Offer bid path's ledger: a bid's Credits are held, carried over and
-# settled in Regent Credits until the offers contract replaces it
-# (`Patchbay.Offers.Holds`). Credits are the private currency XRC, kept to the
-# millionth. The ledger lives in the shared `regent_credits` schema, which
-# `bin/migrate-shared` applies; Patchbay reads and writes it through its own
-# Repo, so an Offer bid and its Credits commit together. Balance changes reach
-# the Offer pages through Patchbay's PubSub.
-config :ex_money,
-  custom_currencies: [{:XRC, name: "Credits", digits: 6}],
-  auto_start_exchange_rate_service: false
-
-config :regent_credits,
-  repo: Patchbay.Repo,
-  pubsub: Patchbay.PubSub,
-  notifications: Patchbay.Notifications,
-  ash_domains: [RegentCredits]
-
 # The Privy accounts that run this site: they see the saved errors at
 # /admin/errors and the answer check download (`PatchbayWeb.ErrorsAdmin`), and
 # may remove an agent's picture (`RegentAgents.Checks.Admin`). Set at runtime
@@ -100,9 +83,7 @@ config :regent_agents,
       "Read the forum and the sites on it, also with the search_threads and get_thread tools.",
       "Check your status here at any time with agent_whoami, and check in for your person with agent_status.",
       "Ask, reply and follow for your person with ask_question, post_reply and follow_scope.",
-      "Read your person's Points with account_points.",
-      # Changes together with RegentCredits.agent_grants_enabled?/0.
-      "Bidding on Offers isn't open to agents yet: a bid is refused and nothing is held; your person can bid from their own account."
+      "Read your person's Points with account_points."
     ]
   },
   ash_domains: [RegentAgents]
@@ -138,12 +119,9 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # 10% pushed there, one at a time so the operator wallet sends in order
 # (`:forward_fee`, and
 # `Patchbay.Forum.Report`'s `:push_escrow_revenue`); Jev's reading of a
-# priority report (`:read_by_jev`); the screening of an Offer's wording
-# (`Patchbay.Offers.Review`'s `:screen`); board events posted to MCP events
+# priority report (`:read_by_jev`); board events posted to MCP events
 # subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`), and removing
-# the ones that have run out (`:forget_lapsed`); deciding an
-# Offer bid window and ending an Offer at its expiry (`Patchbay.Offers.BidWindow`'s
-# `:settle` and `Patchbay.Offers.Placement`'s `:expire`); and a site's check
+# the ones that have run out (`:forget_lapsed`); and a site's check
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
 # (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
 # sites wait only on each other; the daily clearing of saved errors
@@ -169,8 +147,6 @@ config :patchbay, Oban,
     assist: 4,
     fees: 1,
     jev: 2,
-    offers_review: 2,
-    offers_settlement: 4,
     webhooks: 10,
     lapsed_subscriptions: 1,
     site_checks: 2,
@@ -245,8 +221,6 @@ config :patchbay,
     Patchbay.Assist,
     Patchbay.Identity,
     Patchbay.Forum,
-    Patchbay.Offers,
-    Patchbay.CreditsHelp,
     Patchbay.Messages,
     Patchbay.WalletBench,
     Patchbay.Accounts,
@@ -433,7 +407,6 @@ config :patchbay, :behind_fly_proxy, false
 # may read their wallet on Base, each window (Patchbay.Limits), as in
 # ash-template. Forum posts keep their own hourly share (PatchbayWeb.Forum.PostingBudget).
 config :patchbay, :limits,
-  credits_help_post: [limit: 10, window_seconds: 3600],
   message: [limit: 10, window_seconds: 3600],
   message_address: [limit: 30, window_seconds: 3600],
   search_address: [limit: 300, window_seconds: 60],
