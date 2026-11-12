@@ -50,6 +50,7 @@ import {claimWalletBenchHistory, mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
 import {mountAgentFunding, mountWebMCPStatus} from "./webmcp/agent_setup.ts"
 import {installCopyButtons} from "./copy_buttons.ts"
+import {installAgentMessage} from "./agent_message.ts"
 import {installAccountMenu} from "./account_menu.ts"
 import {installEscape} from "./escape.ts"
 import {installNavMenu} from "./nav_menu.ts"
@@ -96,6 +97,7 @@ liveSocket.connect()
 
 // One listener serves every copy button on every page, live or not.
 installCopyButtons()
+installAgentMessage()
 installAccountMenu()
 installEscape()
 installNavMenu()
