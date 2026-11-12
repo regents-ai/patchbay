@@ -98,18 +98,19 @@ test.describe("signed in", () => {
   })
 })
 
-// Signed out there is no account menu, so the switch sits in the header: of a page
-// no live view draws, and of a live page. Each press turns it once.
+// Signed out there is no account menu, so on a desktop the switch sits in the
+// header: of a page no live view draws, and of a live page. Each press turns it
+// once. It stays off phones signed out (Sean, 16 Oct).
 test.describe("signed out", () => {
   for (const path of ["/sites", "/offers"]) {
-    test(`the header's theme switch on ${path} turns the theme once a press, and the choice holds`, async ({page, hasTouch}) => {
+    test(`the header's theme switch on ${path} turns the theme once a press, and the choice holds`, async ({page, isMobile}) => {
+      test.skip(isMobile, "signed out, a phone has no theme switch")
       const problems = watch(page)
       await page.goto(path)
       await expect(page.locator("[data-phx-session].phx-connected").first()).toBeAttached()
       const toggle = page.getByRole("switch", {name: "Light theme"})
       await expect(toggle).toHaveCount(1)
       await expect(page.locator("header.pb-masthead").getByRole("switch")).toBeVisible()
-      if (hasTouch) expect((await toggle.boundingBox())!.height).toBeGreaterThanOrEqual(44)
 
       const first = await showing(page)
       const other = first === "light" ? "dark" : "light"

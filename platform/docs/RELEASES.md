@@ -10,7 +10,7 @@ and agents. This file is not served.
 - `make check` at 1755192d (partition `_rel_b`) exit 0 on the third run: ExUnit 1078 passed, 2 excluded; walk 384 passed; contracts 15; cli, SIWA-latest, required fixes ok. The first run stopped at Sobelow (two accepted raw-text findings had moved lines; `.sobelow-skips` names them at their lines). The second failed one walk test, saving an Offer at phone width (the typed wording was never counted, so Save stayed disabled); it passed alone four times and in the third full run, and is not explained.
 - Live read, headless Chromium, 10:25Z: both addresses name 1755192; pages answer 200 at 390 and 1280 with no console errors and no sideways scroll. The theme switch pressed signed out on both addresses, `/sites` and `/about`, at 390 and 1280, from a light-set and a dark-set device: one switch, a press turns it once, the choice holds over a reload, Space turns it back.
 - Not proven live: the account menu's switch, the confirm window and the pairing window (each needs a signed-in person). WebKit not run.
-- Chief's call Sean may reverse: the signed-out switch shows on phones (it was left off phones on 16 Oct); one rule in `platform/assets/css/app.css` hides it again.
+- Fault in this release, put right in the next: the signed-out switch showed on phones, against Sean's 16 Oct call to leave it off phones.
 
 ## v364, 12 Nov 2026
 

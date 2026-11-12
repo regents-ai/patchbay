@@ -182,14 +182,3 @@
   --theme-switch-travel: var(--space-4);
   --theme-switch-press: var(--space-6);
 }
-
-/* On a phone the header's switch is its smallest, so the header keeps one row. */
-@container pb-page (max-width: 599px) {
-  .pb-header-theme {
-    --theme-switch-lens: var(--space-3);
-    --theme-switch-track: var(--space-2);
-    --theme-switch-travel: var(--space-2);
-    /* 44px across with the knob's travel, as every press in the phone header. */
-    --theme-switch-gutter: 2px;
-  }
-}

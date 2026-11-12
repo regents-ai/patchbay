@@ -6,14 +6,15 @@ import {expect, test, watch} from "./support/test"
 // places to go and Ask in a Menu that keeps the page behind it out of reach until
 // it closes. Found on 29 Oct (the UI audit): the header's side padding was 12px,
 // 8px at 320, and the wordmark link was 23px wide. Signed out, the theme switch
-// is in the header at every width (theme_switch.spec.ts walks its presses).
+// stays off phones (Sean, 16 Oct) and is in the header on a desktop
+// (theme_switch.spec.ts walks its presses).
 
 const theme = (page: Page) =>
   page.evaluate(() =>
     document.documentElement.dataset.theme ??
     (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"))
 
-test("on a phone the header is 56px tall and every control 44px each way, the theme switch included", async ({page, isMobile}) => {
+test("on a phone the header is 56px tall and every control 44px each way, and no theme switch", async ({page, isMobile}) => {
   test.skip(!isMobile, "the phone header")
   const problems = watch(page)
   await page.goto("/sites")
@@ -29,7 +30,8 @@ test("on a phone the header is 56px tall and every control 44px each way, the th
     expect(size.x + size.width).toBeLessThanOrEqual(box.x + box.width)
   }
 
-  await expect(header.getByRole("switch", {name: "Light theme"})).toBeVisible()
+  // Signed out on a phone there is no theme switch to press.
+  await expect(page.getByRole("switch", {name: "Light theme"})).toHaveCount(0)
   await problems.expect()
 })
 

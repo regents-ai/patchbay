@@ -4,7 +4,7 @@
 
 - The light and dark switch is new: a real switch named "Light theme", on for light, with a knob that slides from a moon to a sun, each drawn in tiny square blocks. A press, Space or Enter turns it, and the knob can be dragged.
 - Signed in, it is a row of the account menu, on a phone too. Opening the menu moves nothing on the page, and turning the switch never changes the menu's size.
-- Signed out, it sits in the header beside Sign in, where the old theme button was. It is now there on a phone as well, at its smallest, where the old button was left off.
+- Signed out, it sits in the header beside Sign in, where the old theme button was. As before, a phone has no switch signed out and follows the device.
 - The choice is kept as before, so a theme already chosen still shows. Until someone chooses, the page follows the device.
 - Where the browser can draw it, the knob is glass with a cobalt beam. With less motion asked for, or where it cannot be drawn, a flat square switch shows instead and works the same.
 - The old theme button is gone from the site.
