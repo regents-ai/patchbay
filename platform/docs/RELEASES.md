@@ -4,6 +4,12 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v361, 12 Nov 2026
+
+- Commit: fdbf6683 (image `fdbf668`), live 05:17Z, released by the Patchbay chief (Sean 114 a): the Terms of Use no longer say Patchbay includes a demonstration repair room. The text is the regents repository's `platform/priv/legal/terms.md` at 0c4c2369, copied. Rollback: v360, image `692e41e`. No schema change.
+- `make check` at fdbf6683 (partition `_rel_a`) exit 0: ExUnit 1047 passed; walk 351 passed; contracts 15; cli, SIWA-latest, required fixes ok.
+- Live read, headless Chromium, 05:19Z: both addresses name fdbf668; `/terms` on both no longer says "repair room"; `/`, `/sites`, `/about`, `/terms` answer 200 at 390 and 1280 with no console errors.
+
 ## v360, 12 Nov 2026
 
 - Commit: 692e41eb (image `692e41e`), live 04:57Z, released by the Patchbay chief (Sean 111 a): account suspension (PB-80). A person can be suspended and reinstated from the console; a suspended person's sessions end and their agents stop, with the pages that still answer named. One machine in iad (857741da41d948), check passing. Rollback: v359, image `4fef004`.
