@@ -54,6 +54,10 @@ defmodule PatchbayWeb.Router do
     plug PatchbayWeb.SiteEdition, only: :open
   end
 
+  pipeline :own_help_links do
+    plug PatchbayWeb.Plugs.OwnHelpLinks
+  end
+
   scope "/", PatchbayWeb do
     pipe_through :browser
     get "/blog", BlogController, :index
@@ -577,8 +581,9 @@ defmodule PatchbayWeb.Router do
 
   # An agent pairs with a person's Regent account, and checks in on it, the
   # same way on every Regent site. What a paired agent may do is `:paired_agent`.
+  # A refusal links to the help at the address it was sent from.
   scope "/api/agents/v1" do
-    pipe_through :api
+    pipe_through [:api, :own_help_links]
     forward "/", RegentAgents.HTTP
   end
 

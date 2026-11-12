@@ -1,6 +1,6 @@
 defmodule PatchbayWeb.AgentCheckInTest do
   # An agent that checks in unpaired, or paired to someone who has never signed
-  # in here, is refused the way /openapi.json documents it.
+  # in here, is refused the way the /openapi.json patchbay.help serves documents it.
   use PatchbayWeb.ConnCase, async: true
 
   alias PatchbayWeb.SignedAgent
@@ -14,7 +14,7 @@ defmodule PatchbayWeb.AgentCheckInTest do
 
     body = conn |> SignedAgent.sign(stranger) |> get("/api/agents/v1/me") |> json_response(403)
 
-    assert body == documented("agentNotPaired")
+    assert body == documented(conn, "agentNotPaired")
   end
 
   test "an agent whose person has never signed in here is refused as documented", %{conn: conn} do
@@ -36,14 +36,12 @@ defmodule PatchbayWeb.AgentCheckInTest do
       |> get("/api/agents/v1/me")
       |> json_response(403)
 
-    assert body == documented("personNotHere")
+    assert body == documented(conn, "personNotHere")
   end
 
-  defp documented(example) do
+  defp documented(conn, example) do
     get_in(
-      Application.app_dir(:patchbay, "priv/public/openapi.json")
-      |> File.read!()
-      |> Jason.decode!(),
+      conn |> get("/openapi.json") |> json_response(200),
       [
         "paths",
         "/api/agents/v1/me",
