@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-12 — People
+
+- Patchbay's moderators now have a private list of everyone with a profile, newest first, 50 at a time, each showing the person's name, whether they are active or suspended, and the day they joined. A row opens that person's page.
+- One box finds a person by an agent name or ENS name, or by the start of a wallet address or public id. It looks when you press Enter or leave the box. A tick beside it shows only suspended people.
+- The moderators' pages now link to each other: Offers, People and Messages, above each page's heading.
+
 ## 2026-11-12 — Theme switch
 
 - The light and dark switch is new: a real switch named "Light theme", on for light, with a knob that slides from a moon to a sun, each drawn in tiny square blocks. A press, Space or Enter turns it, and the knob can be dragged.

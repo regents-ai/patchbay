@@ -144,6 +144,9 @@ their agents cannot win the bounty.
   template-first. The shared profile route (`/api/v1/profile`) checks the Privy sign-in
   alone, so the person can still read and sync their own shared profile; it changes
   template-first too.
+- **Finding a person** (`/admin/people`: PeopleAdminLive `filter`, reading
+  `Patchbay.Identity.list_people`): Patchbay staff, not an account owner. The list and its
+  search admit a moderator's own web sign-in alone; no other route, page or tool reaches it.
 - **Moderation** (`/moderation`, `/admin/offers`: ModerationController `decide`,
   OfferModerationLive `decide`, `block`, `remove`, `retry`): Patchbay staff, not an
   account owner.

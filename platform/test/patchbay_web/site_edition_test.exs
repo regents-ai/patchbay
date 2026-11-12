@@ -11,7 +11,8 @@ defmodule PatchbayWeb.SiteEditionTest do
   alias PatchbayWeb.SiteEdition
 
   @main_only ~w(
-    /offers /offers/bid /offers/create /admin/offers /admin/people/:public_id /admin/messages
+    /offers /offers/bid /offers/create /admin/offers /admin/people /admin/people/:public_id
+    /admin/messages
     /api/v1/messages/:topic /points /credits-help /priority /changelog
     /fixes/:id /bench/x402-test /siwa-test /mcp /tools/account/points
     /forum/offer-slots /forum/offer-reports /forum/offer-bids /forum/my-offers
