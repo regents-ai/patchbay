@@ -4,6 +4,42 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v360, 12 Nov 2026
+
+- Commit: 692e41eb (image `692e41e`), live 04:57Z, released by the Patchbay chief (Sean 111 a): account suspension (PB-80). A person can be suspended and reinstated from the console; a suspended person's sessions end and their agents stop, with the pages that still answer named. One machine in iad (857741da41d948), check passing. Rollback: v359, image `4fef004`.
+- Commits: baca82f3, 796680b2, d02b9460, 78fe524c, 692e41eb.
+- Schema: `20261109185601_profile_suspension` adds the empty table `agent_profile_status_changes`, the empty column `agent_profiles.sessions_valid_after` and a check that `agent_profiles.status` is `active` or `suspended`. No existing row changed.
+- Setting removed with this deploy: `ASSIST_WALLET_ADDRESS` (Sean 103 a), staged after v359 and gone from the app's list after v360. Nothing reads it since v359.
+- `make check` at 692e41eb (partition `_rel_c`) exit 0: ExUnit 1047 passed, 2 excluded; walk 351 passed; contracts 15; cli, SIWA-latest, required fixes ok.
+- Live read, headless Chromium, 04:59Z: both addresses name 692e41e; `/`, `/sites`, `/about`, `/terms` (and `/changelog` on patchbay.help) answer 200 at 390 and 1280 with no console errors and no sideways scroll. Logs show only the usual start-up lines.
+- Not proven: no person was suspended on the live site; WebKit is not run on the Mac.
+
+## v359, 12 Nov 2026
+
+- Commit: 4fef0048 (image `4fef004`), live 04:47Z, released by the Patchbay chief (Sean 102 a, 112 a): paid assists removed (PB-82), free fixes stay and say when the next one comes back, old paid runs keep their records; an assist run is closed once and its lost work is Oban's (PB-76). `/openapi.json` 17.0.0. Rollback: v358, image `99328f9`.
+- Commits: f9de91b2, f36285f2, 38592b47, 4fef0048.
+- Schema: `20261109153904_assist_run_defaults` drops the column defaults on `assist_runs.grant` and `assist_runs.deposit_status`. No row changed. Going back to v358 keeps working without them; putting the defaults back would be its own step on the production database.
+- `make check` at 4fef0048 (partition `_rel_b`) exit 0: ExUnit 1030 passed; walk 351 passed; contracts 15; cli, SIWA-latest, required fixes ok.
+- Live read, headless Chromium, 04:49Z: both addresses name 4fef004; the same pages as v360 answer 200 at 390 and 1280 with no console errors.
+- The regents-cli chief was told that `regents patchbay assist request` has nothing to call (control `coordination/regents-cli.md`).
+- Not proven: no free fix was requested on the live site.
+
+## v358, 12 Nov 2026
+
+- Commit: 99328f91 (image `99328f9`), live 04:38Z, released by the Patchbay chief: the Sites list shows whole categories and whole site names (PB-71), the home page's side column stays together beside the open ask form (PB-72), and site checks, subscriptions, names and tool lists keep their state (PB-78, PB-79; Sean lifted the hold on 12 Nov). `/openapi.json` 16.0.0. Rollback: v357, image `2054bad`.
+- Commits: 040526a5, ac328bfd, 99328f91.
+- Schema: `20261109150823_fan_out_gave_up` adds the empty column `forum_events.fan_out_gave_up_at`. No row changed.
+- `make check` at 99328f91 (partition `_rel_a`): the first run failed one walk test out of 351 (`pairing.spec.ts:140`, the Hermes choice not found while three checks ran at once); the walk and every later part passed on the second run, and ExUnit passed on the first.
+- Live read, headless Chromium, 04:41Z: both addresses name 99328f9; `/`, `/sites`, `/about`, `/terms` (and `/changelog` on patchbay.help) answer 200 at 390 and 1280 with no console errors and no sideways scroll.
+
+## v357, 12 Nov 2026
+
+- Commit: 2054bad8 (image `2054bad`), live 04:31Z, released by the Patchbay chief (Sean 115 a): the shared sign-in library moves to elixir-utils a12f71b6, the version the template runs. Each connected app has its own identity, so an app connected before this release pairs once more; nobody is signed out and paired agents keep working. Signed requests older than five minutes are refused. The app's tokens are kept through Patchbay's own database connection, two fewer connections per machine. Rollback: v356, image `915fe39`. No schema change.
+- Commits: fb514c40, 2054bad8.
+- `make check` at 2054bad8 (partition `_pin1112`) exit 0: ExUnit 1012 passed; walk 347 passed; contracts 15; cli, SIWA-latest, required fixes ok. This is the first release through the parallel `scripts/deploy.sh`.
+- Live read, headless Chromium, 04:34Z: both addresses name 2054bad; `/`, `/about`, `/terms` (and `/changelog` on patchbay.help) answer 200 at 390 and 1280 with no console errors.
+- Not proven: no app was paired again on the live site.
+
 ## v356, 11 Nov 2026
 
 - Commit: 915fe39831185fe802199b29f6ba86b75edbbac4 (image `915fe39`), live 09:01Z, released by the Patchbay lane lead's release worker. One file on top of v355: `platform/priv/videos/patchbay-chatgpt-review.mp4`, the ChatGPT plugin's review video (102 s, 1920x1080, 2,573,322 bytes; the 08:49Z render compressed with x264 CRF 24 to fit the 25 MB limit). One machine in iad (811d197c640568), check passing. Rollback: v355, image `775f3d0`. No schema change.
