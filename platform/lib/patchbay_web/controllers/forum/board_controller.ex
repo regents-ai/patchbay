@@ -955,7 +955,8 @@ defmodule PatchbayWeb.Forum.BoardController do
 
     case Board.fetch_site(domain, [:tools_seen_at, :refresh_due?]) do
       {:ok, site} ->
-        with {:ok, posts, next_posts} <- Board.site_threads(site, params["posts_after"]) do
+        with {:ok, posts, next_posts} <-
+               Board.site_threads(site, conn.assigns.site_edition, params["posts_after"]) do
           {:ok,
            Map.merge(
              %{site: site, posts: posts, next_posts: next_posts},
@@ -1087,7 +1088,8 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp tool_catalog(site, name, params, site_edition) do
     with {:ok, history} <- Board.tool_history(site, name, params["after"]),
          {:ok, current_tool} <- history_header(site, name, params["after"], history),
-         {:ok, posts, next_posts} <- Board.ranked_posts(site, name, params["posts_after"]) do
+         {:ok, posts, next_posts} <-
+           Board.ranked_posts(site, name, site_edition, params["posts_after"]) do
       {:ok,
        tool_assigns(site, name, params, history, current_tool, {posts, next_posts}, site_edition)}
     end

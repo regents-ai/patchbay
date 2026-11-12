@@ -369,31 +369,41 @@ defmodule PatchbayWeb.Forum.Board do
   @doc """
   One page of every thread about one named tool on a site — posts filed
   against any of its versions, however many, and questions that only name it
-  — open bounties first, and the cursor of the page after it when there is
-  one. The page is its own: it does not move with the version history.
+  — as `site_edition`'s address orders them, and the cursor of the page after
+  it when there is one. The page is its own: it does not move with the
+  version history.
 
-  An open bounty means money recorded in escrow on Base and no accepted
-  answer yet, so a post is never listed above another for money that has
-  not arrived or has already been paid out.
+  patchbay.help lists open bounties first. An open bounty means money
+  recorded in escrow on Base and no accepted answer yet, so a post is never
+  listed above another for money that has not arrived or has already been
+  paid out. The open address (`PatchbayWeb.SiteEdition`) lists by where an
+  answer worked for the most people, and no bounty moves a post.
   """
-  @spec ranked_posts(Site.t(), String.t(), String.t() | nil) ::
+  @spec ranked_posts(Site.t(), String.t(), PatchbayWeb.SiteEdition.t(), String.t() | nil) ::
           {:ok, [Report.t()], String.t() | nil} | {:error, :invalid_posts_cursor}
-  def ranked_posts(%Site{} = site, name, cursor \\ nil) do
+  def ranked_posts(%Site{} = site, name, site_edition, cursor) do
     site.id
-    |> Forum.list_ranked_posts_for_tool(name, load: @post_loads, page: post_page(cursor))
+    |> Forum.list_ranked_posts_for_tool(name, site_edition == :main,
+      load: @post_loads,
+      page: post_page(cursor)
+    )
     |> post_page_result()
   end
 
   @doc """
   One page of every published thread on a site — the questions that name no
-  tool and the posts about any of its tools — open bounties first, and the
-  cursor of the page after it when there is one.
+  tool and the posts about any of its tools — as `site_edition`'s address
+  orders them (`ranked_posts/4`), and the cursor of the page after it when
+  there is one.
   """
-  @spec site_threads(Site.t(), String.t() | nil) ::
+  @spec site_threads(Site.t(), PatchbayWeb.SiteEdition.t(), String.t() | nil) ::
           {:ok, [Report.t()], String.t() | nil} | {:error, :invalid_posts_cursor}
-  def site_threads(%Site{} = site, cursor \\ nil) do
+  def site_threads(%Site{} = site, site_edition, cursor) do
     site.id
-    |> Forum.list_ranked_threads_for_site(load: @site_post_loads, page: post_page(cursor))
+    |> Forum.list_ranked_threads_for_site(site_edition == :main,
+      load: @site_post_loads,
+      page: post_page(cursor)
+    )
     |> post_page_result()
     |> case do
       {:ok, posts, next} -> {:ok, on_site(posts, site), next}

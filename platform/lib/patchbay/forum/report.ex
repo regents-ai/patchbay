@@ -691,14 +691,15 @@ defmodule Patchbay.Forum.Report do
     read :ranked_for_tool do
       description("""
       Every published thread about one named tool on a site — posts filed
-      against any version of it, and questions that only name it — open
-      bounties first: largest funded, unanswered bounty. The rest follow by
-      how many say a reply worked for them, then the latest who said so, then
-      newest.
+      against any version of it, and questions that only name it — in
+      `Patchbay.Forum.Ranked`'s order: with `bounties_first?`, the largest
+      funded, unanswered bounty leads. The rest follow by how many say a
+      reply worked for them, then the latest who said so, then newest.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
       argument(:tool_name, :string, allow_nil?: false)
+      argument(:bounties_first?, :boolean, allow_nil?: false)
 
       filter(
         expr(
@@ -708,18 +709,7 @@ defmodule Patchbay.Forum.Report do
       )
 
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
-
-      prepare(
-        build(
-          sort: [
-            open_bounty_usdc_atomic: :desc,
-            worked_count: :desc,
-            last_worked_at: :desc_nils_last,
-            inserted_at: :desc,
-            id: :desc
-          ]
-        )
-      )
+      prepare(Patchbay.Forum.Ranked)
     end
 
     read :for_site do
@@ -737,27 +727,18 @@ defmodule Patchbay.Forum.Report do
     read :ranked_for_site do
       description("""
       Every published thread on one site — site-wide questions and posts about
-      any of its tools — open bounties first: largest funded, unanswered
-      bounty. The rest follow by how many say a reply worked for them, then
-      the latest who said so, then newest. Pending, failed, refunded or
-      paid-out escrow does not promote a thread.
+      any of its tools — in `Patchbay.Forum.Ranked`'s order: with
+      `bounties_first?`, the largest funded, unanswered bounty leads. The
+      rest follow by how many say a reply worked for them, then the latest
+      who said so, then newest. Pending, failed, refunded or paid-out escrow
+      does not promote a thread.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
+      argument(:bounties_first?, :boolean, allow_nil?: false)
       filter(expr(site_id == ^arg(:site_id) and visibility == :published))
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
-
-      prepare(
-        build(
-          sort: [
-            open_bounty_usdc_atomic: :desc,
-            worked_count: :desc,
-            last_worked_at: :desc_nils_last,
-            inserted_at: :desc,
-            id: :desc
-          ]
-        )
-      )
+      prepare(Patchbay.Forum.Ranked)
     end
 
     read :priority_queue do
