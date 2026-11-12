@@ -247,6 +247,7 @@ config :patchbay,
     Patchbay.Forum,
     Patchbay.Offers,
     Patchbay.CreditsHelp,
+    Patchbay.Messages,
     Patchbay.WalletBench,
     Patchbay.Accounts,
     Patchbay.AnswerWatch
@@ -419,12 +420,15 @@ config :patchbay, :shots_url, "http://patchbay-shots.flycast"
 # Rate limits key on the direct peer. Production turns on Fly's client header.
 config :patchbay, :behind_fly_proxy, false
 
-# How often one person may save each kind of writing others read, how often one
+# How often one person may save each kind of writing others read (a message for
+# the team also counts against the address it came from), how often one
 # client address may search from a page, and how often one person's Points page
 # may read their wallet on Base, each window (Patchbay.Limits), as in
 # ash-template. Forum posts keep their own hourly share (PatchbayWeb.Forum.PostingBudget).
 config :patchbay, :limits,
   credits_help_post: [limit: 10, window_seconds: 3600],
+  message: [limit: 10, window_seconds: 3600],
+  message_address: [limit: 30, window_seconds: 3600],
   search_address: [limit: 300, window_seconds: 60],
   wallet_read: [limit: 30, window_seconds: 60]
 
