@@ -11,7 +11,6 @@ defmodule PatchbayWeb.BlogHTML do
       <Regent.Blog.gallery
         :if={@view == :index}
         posts={@posts}
-        site="Patchbay"
         name="Blog"
         path="/blog"
       />
