@@ -13,7 +13,9 @@ defmodule PatchbayWeb.OfferModerationLive do
   text.
 
   Only a signed-in profile whose verified wallet is on the moderator list
-  reaches the page; anyone else is answered as though it does not exist.
+  reaches the page; anyone else is answered as though it does not exist
+  (`PatchbayWeb.Moderators`). Each owner's name opens that person's admin
+  page (`PatchbayWeb.PersonAdminLive`).
   """
 
   use PatchbayWeb, :live_view
@@ -35,7 +37,6 @@ defmodule PatchbayWeb.OfferModerationLive do
   alias Patchbay.Offers.Review
   alias Patchbay.Offers.Terms
   alias Patchbay.Offers.TurnDown
-  alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Read
 
   @limit 50
@@ -44,9 +45,6 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    if !Patchbay.Checks.Moderator.moderator?(socket.assigns.current_profile),
-      do: raise(NotFoundError)
-
     if connected?(socket) do
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, OfferReport.topic())
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, Review.topic())
@@ -58,32 +56,10 @@ defmodule PatchbayWeb.OfferModerationLive do
 
     {:ok,
      socket
-     |> hold_authority()
      |> assign(PatchbayWeb.PublicDocuments.page("/admin/offers"))
      |> assign(problem: nil)
      |> assign(board: %Read{})
      |> reread()}
-  end
-
-  # CurrentProfile refreshes the profile first. A changed verified wallet or
-  # moderator list must also end the private reads an already-open page holds.
-  defp hold_authority(socket) do
-    socket
-    |> attach_hook(:moderator_authority, :handle_params, fn _params, _uri, socket ->
-      check_authority(socket)
-    end)
-    |> attach_hook(:moderator_authority, :handle_event, fn _event, _params, socket ->
-      check_authority(socket)
-    end)
-    |> attach_hook(:moderator_authority, :handle_info, fn _message, socket ->
-      check_authority(socket)
-    end)
-  end
-
-  defp check_authority(socket) do
-    if Patchbay.Checks.Moderator.moderator?(socket.assigns.current_profile),
-      do: {:cont, socket},
-      else: {:halt, redirect(socket, to: "/")}
   end
 
   @impl true
@@ -172,7 +148,8 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   # The page is the admin's own door: it reads every Offer, bid, report and
   # turn-down whoever owns them, so these reads skip policy deliberately after
-  # the admin check at mount and before every page callback. Every change goes
+  # the admin check at mount and before every page callback
+  # (`PatchbayWeb.Moderators`). Every change goes
   # through its action's admin policy.
   defp fetch(resource, id) do
     case Ash.get(resource, id, authorize?: false) do

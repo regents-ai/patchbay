@@ -1,0 +1,119 @@
+<main class="patchbay-shell patchbay-board pb-offmod" id="pb-person-admin">
+  <.board_header>
+    <:back><a href="/admin/offers">Offers admin</a></:back>
+    <:title>Person</:title>
+    <:meta>
+      <span class="patchbay-generation">Private</span>
+    </:meta>
+  </.board_header>
+
+  <p
+    :if={@problem}
+    id="pb-person-problem"
+    class="pb-offmod-problem"
+    role="alert"
+    phx-hook="MotionRefusal"
+    data-refused
+  >
+    {@problem}
+  </p>
+
+  <p :if={@person.state in [:stale, :error]} class="pb-offmod-problem" role="status">
+    {if @person.state == :stale,
+      do: "This may be out of date: the page could not be read again.",
+      else: "This person could not be loaded just now."}
+    <button type="button" phx-click="retry">Try again</button>
+  </p>
+
+  <%= if person = @person.value do %>
+    <section class="pb-sheet-section" aria-labelledby="pb-person-status-title">
+      <h2 id="pb-person-status-title">Status</h2>
+
+      <div class="pb-offmod-item pb-person-summary">
+        <header class="pb-offmod-head">
+          <strong>
+            <a href={AgentProfile.profile_url(person.profile)}>{name(person.profile)}</a>
+          </strong>
+          <span>{kind_label(person.profile)} · {person.profile.agent_name}</span>
+          <span
+            id="pb-person-status"
+            class={["patchbay-pill", status_tone(person.profile.status)]}
+            data-status={person.profile.status}
+          >
+            {status_label(person.profile.status)}
+          </span>
+        </header>
+
+        <p :if={person.profile.id == @current_profile.id} class="patchbay-muted">
+          This is your own account. Another admin changes its status.
+        </p>
+
+        <form
+          :if={person.profile.id != @current_profile.id and person.profile.status == :active}
+          id="pb-person-suspend"
+          phx-submit="suspend"
+          class="pb-offmod-actions"
+        >
+          <p class="patchbay-muted">
+            Suspending signs this person out everywhere, refuses their agents and
+            disconnects their apps.
+          </p>
+          <Regent.Primitives.field id="pb-person-suspend-why" label="Reason">
+            <input id="pb-person-suspend-why" type="text" name="reason" required maxlength="500" />
+          </Regent.Primitives.field>
+          <Regent.Primitives.button
+            variant="secondary"
+            type="submit"
+            data-confirm={"Suspend #{name(person.profile)}? They are signed out everywhere at once."}
+          >
+            Suspend
+          </Regent.Primitives.button>
+        </form>
+
+        <form
+          :if={person.profile.id != @current_profile.id and person.profile.status == :suspended}
+          id="pb-person-reinstate"
+          phx-submit="reinstate"
+          class="pb-offmod-actions"
+        >
+          <p class="patchbay-muted">
+            Reinstating lets this person sign in again. Their old sign-ins and
+            disconnected apps stay ended.
+          </p>
+          <Regent.Primitives.field id="pb-person-reinstate-why" label="Reason">
+            <input
+              id="pb-person-reinstate-why"
+              type="text"
+              name="reason"
+              required
+              maxlength="500"
+            />
+          </Regent.Primitives.field>
+          <Regent.Primitives.button type="submit" class="patchbay-button">
+            Reinstate
+          </Regent.Primitives.button>
+        </form>
+      </div>
+    </section>
+
+    <section class="pb-sheet-section" aria-labelledby="pb-person-history-title">
+      <h2 id="pb-person-history-title">History</h2>
+
+      <ol id="pb-person-history" class="pb-offmod-list">
+        <li
+          :for={change <- person.changes}
+          id={"pb-person-change-#{change.id}"}
+          class="pb-offmod-item"
+        >
+          <header class="pb-offmod-head">
+            <strong>{change_label(change.action)}</strong>
+            <span>{moment(change.inserted_at)}</span>
+          </header>
+          <p class="pb-offmod-reason">{change.reason}</p>
+        </li>
+      </ol>
+
+      <p :if={person.changes == []} class="patchbay-muted">Never suspended.</p>
+    </section>
+  <% end %>
+</main>
