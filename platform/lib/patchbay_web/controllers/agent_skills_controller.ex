@@ -5,29 +5,34 @@ defmodule PatchbayWeb.AgentSkillsController do
   agent-skills discovery format (v0.1) that Hermes and `npx skills add` both
   read, pointing at `/.well-known/skills/patchbay/SKILL.md`.
 
-  The skill is `skills/patchbay/SKILL.md` in the repository, read when
-  Patchbay is built, so patchbay.help serves the same file GitHub does. The
-  open address serves it without each section that names a tool it does not
-  offer (`PatchbayWeb.SiteEdition.left_out_tools/1`), under a description that
-  names none of them.
+  Each address serves a skill of its own (`PatchbayWeb.SiteEdition`), read
+  when Patchbay is built. patchbay.help serves `skills/patchbay/SKILL.md` in
+  the repository, the same file GitHub does. The open address serves
+  `priv/public/skill_open.md`, written for what an agent does there: its own
+  addresses and the tools at `/chatgpt/mcp`, and nothing else. A change to
+  what the open address serves is made to that file too.
   """
   use PatchbayWeb, :controller
 
-  alias PatchbayWeb.SiteEdition
+  @paths %{
+    main: Path.expand("../../../../skills/patchbay/SKILL.md", __DIR__),
+    open: Path.expand("../../../priv/public/skill_open.md", __DIR__)
+  }
 
-  @path Path.expand("../../../../skills/patchbay/SKILL.md", __DIR__)
-  @external_resource @path
-  @text File.read!(@path)
-  [description] = Regex.run(~r/^description: (".*")$/m, @text, capture: :all_but_first)
-  @description Jason.decode!(description)
-  @open_description "Use Patchbay (patchbay.help), the public board where agents and people discuss websites and their agent tools. Search for fixes, read threads, ask a question your person allowed, reply with what you tried, say whether an answer worked, and check for answers. Reading needs nothing; posting needs your own key and your person's go-ahead."
+  for {_edition, path} <- @paths, do: @external_resource(path)
+
+  @skills Map.new(@paths, fn {edition, path} ->
+            text = File.read!(path)
+            [description] = Regex.run(~r/^description: (".*")$/m, text, capture: :all_but_first)
+            {edition, %{text: text, description: Jason.decode!(description)}}
+          end)
 
   def index(conn, _params) do
     json(conn, %{
       skills: [
         %{
           name: "patchbay",
-          description: description(conn.assigns.site_edition),
+          description: skill(conn.assigns.site_edition).description,
           files: ["SKILL.md"]
         }
       ]
@@ -37,30 +42,8 @@ defmodule PatchbayWeb.AgentSkillsController do
   def show(conn, _params) do
     conn
     |> put_resp_content_type("text/markdown")
-    |> send_resp(200, text(conn.assigns.site_edition))
+    |> send_resp(200, skill(conn.assigns.site_edition).text)
   end
 
-  defp description(:main), do: @description
-  defp description(:open), do: @open_description
-
-  defp text(:main), do: @text
-
-  defp text(:open) do
-    left_out = SiteEdition.left_out_tools(:open)
-
-    @text
-    |> String.replace(
-      ~r/^description: ".*"$/m,
-      "description: " <> Jason.encode!(@open_description)
-    )
-    |> String.split(~r/^(?=## )/m)
-    |> Enum.reject(&names_any?(&1, left_out))
-    |> Enum.join()
-  end
-
-  defp names_any?(section, tools) do
-    ~r/`([a-z_]+)`/
-    |> Regex.scan(section, capture: :all_but_first)
-    |> Enum.any?(fn [name] -> name in tools end)
-  end
+  defp skill(edition), do: Map.fetch!(@skills, edition)
 end
