@@ -23,13 +23,17 @@ test("a moderator suspends a person after confirming, then reinstates them", asy
 
   // Declining the question changes nothing.
   await page.getByLabel("Reason").fill("Spam")
-  page.once("dialog", dialog => dialog.dismiss())
-  await page.getByRole("button", {name: "Suspend"}).click()
+  const suspend = page.locator("#pb-person-suspend").getByRole("button", {name: "Suspend"})
+  const asking = page.locator("#rg-confirm")
+  await suspend.click()
+  await asking.getByRole("button", {name: "Cancel"}).click()
+  await expect(asking).toBeHidden()
+  await expect(suspend).toBeFocused()
   await expect(status).toHaveText("Active")
   const before = await history.count()
 
-  page.once("dialog", dialog => dialog.accept())
-  await page.getByRole("button", {name: "Suspend"}).click()
+  await suspend.click()
+  await asking.getByRole("button", {name: "Suspend"}).click()
   await expect(status).toHaveText("Suspended")
   await expect(history).toHaveCount(before + 1)
   await expect(history.first()).toContainText("Spam")

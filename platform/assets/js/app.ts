@@ -1,6 +1,7 @@
 import "../css/app.css"
 import "./theme.ts"
 import "../vendor/regent_ui/blog.mjs"
+import "../vendor/regent_ui/confirm.mjs"
 import "../vendor/regent_ui/discussion.mjs"
 import "../vendor/regent_ui/pill_select.mjs"
 import "../vendor/regent_ui/tip.mjs"
@@ -23,8 +24,6 @@ import "../vendor/regent_ui/tip.mjs"
 // If you have dependencies that try to import CSS, esbuild will generate a separate `app.css` file.
 // To load it, simply add a second `<link>` to your `root.html.heex` file.
 
-// Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
-import "phoenix_html"
 // Establish Phoenix Socket and LiveView configuration.
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"

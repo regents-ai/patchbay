@@ -2,8 +2,6 @@ declare module "phoenix" {
   export const Socket: unknown
 }
 
-declare module "phoenix_html"
-
 declare module "phoenix-colocated/patchbay" {
   export const hooks: Record<string, object>
 }
