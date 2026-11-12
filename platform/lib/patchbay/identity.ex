@@ -42,7 +42,6 @@ defmodule Patchbay.Identity do
     end
 
     resource Patchbay.Identity.StatusChange do
-      define(:record_status_change, action: :record)
       define(:status_changes, action: :for_profile, args: [:profile_id])
     end
   end
