@@ -1,10 +1,10 @@
 {
   "cli": {
     "package": "regents-cli",
-    "release": "1.10.24",
+    "release": "1.10.25",
     "namespace": "patchbay",
-    "source": "fd325437e29fc6b239955e6ce946168bea2fb4ef",
-    "wheel_sha256": "6310687234c5b0b5b9304973232e6ef3b0d08853f84ec9e4c82304fef979dc01"
+    "source": "8b3240b6402551aa29ef960418fd1d2ea4bf41c7",
+    "wheel_sha256": "082329e29532ecc23fc474d6f8e2d32cf0dd900c3b3b72d6d1325dba505b312e"
   },
   "authorities": [
     {
@@ -690,7 +690,7 @@
       "conditions": [],
       "person_page": "/agents",
       "switch": null,
-      "cli_pending": true
+      "cli_release": "1.10.25"
     },
     {
       "operation": "askCreditsHelp",
