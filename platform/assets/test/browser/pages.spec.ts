@@ -25,6 +25,8 @@ const PAGES: [string, string, number][] = [
   ["The Linux incident's page", "/incidents/linux-cve-2026-98432", 200],
   // Signed out, the moderation page is the not-found page.
   ["Offer moderation, signed out,", "/admin/offers", 404],
+  // So is a person's admin page, whoever it names.
+  ["A person's admin page, signed out,", "/admin/people/agt_nobody", 404],
 ]
 
 for (const [name, path, status] of PAGES) {

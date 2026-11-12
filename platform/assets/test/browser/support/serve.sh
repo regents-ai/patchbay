@@ -20,6 +20,8 @@ unset BASE_RPC_URL ETHEREUM_READ_RPC_URL PATCHBAY_SIWA_URL \
 # The run's own Privy signing key, in its own folder of saved sign-ins (dropped
 # with them), so sign_in.spec.ts can sign a stand-in's tokens as Privy would.
 export PATCHBAY_WALK=true POOL_SIZE=3 PRIVY_APP_ID=browser-walk-app
+# The walk's moderator (sign_in.exs), who opens the admin pages.
+export PATCHBAY_MODERATOR_WALLETS=0x9999999999999999999999999999999999999999
 walk_auth="assets/test/browser/.auth/${PATCHBAY_DEV_PARTITION}"
 mkdir -p "$walk_auth"
 openssl ecparam -name prime256v1 -genkey -noout -out "$walk_auth/privy-key.pem" 2>/dev/null
