@@ -144,6 +144,39 @@ defmodule Patchbay.Forum.SiteCheckTest do
     assert Enum.all?(Map.values(given_up.findings["directory"]), & &1["failed"])
   end
 
+  # A site whose every answer ends the reading task: `:raise` with an error,
+  # `:exit` with an exit.
+  defp serve_broken(kind) do
+    PageSite.serve(%{})
+    target = Application.get_env(:patchbay, :assist_target)
+
+    Application.put_env(
+      :patchbay,
+      :assist_target,
+      Keyword.put(target, :req_options,
+        plug: fn _conn ->
+          case kind do
+            :raise -> raise "the site broke the reader"
+            :exit -> exit(:the_site_broke_the_reader)
+          end
+        end
+      )
+    )
+  end
+
+  for kind <- [:raise, :exit] do
+    test "a check whose reading ends with #{kind} is tried three times, then recorded as failed" do
+      serve_broken(unquote(kind))
+      Forum.request_site_check!("example.com")
+
+      Oban.drain_queue(queue: :site_checks, with_scheduled: true, with_recursion: true)
+
+      {:ok, check} = Forum.get_site_check("example.com")
+      refute SiteCheck.pending?(check)
+      assert check.findings["failed"] == true
+    end
+  end
+
   test "a site without tools gets its picture too" do
     PageSite.serve(%{"/" => PageSite.without_tools()})
     site = Forum.register_site!("plain.example.com")

@@ -73,6 +73,10 @@ defmodule Patchbay.Forum.SiteScan do
 
   @type findings :: %{String.t() => term()}
 
+  @doc "The supervisor a check's reads run under, started with the application."
+  @spec tasks() :: module()
+  def tasks, do: __MODULE__.Tasks
+
   @doc """
   What `domain`, a registrable domain, offers agents. `opts` are
   `Patchbay.Assist.Target.connect/2`'s, for the site's own addresses.
@@ -91,12 +95,7 @@ defmodule Patchbay.Forum.SiteScan do
         github: fn -> github(label, domain) end,
         npm: fn -> npm(label, domain) end
       ]
-      |> Task.async_stream(fn {part, read} -> {part, read.()} end,
-        timeout: @all_timeout_ms,
-        on_timeout: :kill_task,
-        max_concurrency: 6,
-        ordered: true
-      )
+      |> each(fn {part, read} -> {part, read.()} end, max_concurrency: 6)
       |> Enum.zip([:page, :cards, :files, :registry, :github, :npm])
       |> Map.new(fn
         {{:ok, {part, answer}}, part} -> {part, answer}
@@ -127,7 +126,7 @@ defmodule Patchbay.Forum.SiteScan do
 
     domain
     |> SiteDirectory.pages()
-    |> Task.async_stream(
+    |> each(
       fn url ->
         snapshot =
           with {:ok, %{url: page_url} = page} <- PageTools.page(url, opts),
@@ -145,17 +144,36 @@ defmodule Patchbay.Forum.SiteScan do
 
         {url, snapshot}
       end,
-      max_concurrency: 3,
-      timeout: @all_timeout_ms,
-      on_timeout: :kill_task
+      max_concurrency: 3
     )
     |> Enum.zip(SiteDirectory.pages(domain))
     |> Map.new(fn
       {{:ok, {url, snapshot}}, _requested} ->
         {url, snapshot}
 
-      {{:exit, _timeout}, url} ->
+      {{:exit, :timeout}, url} ->
         {url, Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})}
+    end)
+  end
+
+  # Several reads at once, each given `@all_timeout_ms`: `{:ok, answer}` in
+  # the order asked, or `{:exit, :timeout}` for one that ran out of time. The
+  # reads run unlinked under `tasks/0`, so one that ends any other way, with an
+  # error or an exit, is raised here, in the check's own job, which tries the
+  # check again and then records it as one that could not be done.
+  defp each(asked, read, opts \\ []) do
+    tasks()
+    |> Task.Supervisor.async_stream_nolink(
+      asked,
+      read,
+      [timeout: @all_timeout_ms, on_timeout: :kill_task, ordered: true] ++ opts
+    )
+    |> Enum.map(fn
+      {:exit, reason} when reason != :timeout ->
+        raise "a site read ended early: " <> Exception.format_exit(reason)
+
+      answer ->
+        answer
     end)
   end
 
@@ -270,14 +288,10 @@ defmodule Patchbay.Forum.SiteScan do
     (cards ++ [%{"url" => site <> "/mcp", "guessed" => true}] ++ listed)
     |> Enum.uniq_by(& &1["url"])
     |> Enum.take(@most_servers)
-    |> Task.async_stream(&server(&1, opts),
-      timeout: @all_timeout_ms,
-      on_timeout: :kill_task,
-      ordered: true
-    )
+    |> each(&server(&1, opts))
     |> Enum.flat_map(fn
-      {:ok, [_server] = found} -> found
-      _not_a_server -> []
+      {:ok, found} -> found
+      {:exit, :timeout} -> []
     end)
   end
 
@@ -317,14 +331,10 @@ defmodule Patchbay.Forum.SiteScan do
 
   defp files(site, opts) do
     @files
-    |> Task.async_stream(fn {kind, path, form} -> agent_file(kind, site <> path, form, opts) end,
-      timeout: @all_timeout_ms,
-      on_timeout: :kill_task,
-      ordered: true
-    )
+    |> each(fn {kind, path, form} -> agent_file(kind, site <> path, form, opts) end)
     |> Enum.flat_map(fn
-      {:ok, [_file] = found} -> found
-      _unread -> []
+      {:ok, found} -> found
+      {:exit, :timeout} -> []
     end)
   end
 
