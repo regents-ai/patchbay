@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-12 — Forms and windows
+
+- Unpair on the Agents page asks in Patchbay's own window, with a button that says Unpair, where the browser's plain box used to appear. Cancel or Escape changes nothing.
+- In the Pair New Agent window, the list of agents drops in and leaves with a short move. A press during the move always counts, and with reduced motion the list opens and closes at once.
+- Writing an Offer: the character count and the preview still follow your typing, and a problem with the wording now shows under the field once you leave it or a save is turned down, never while you type. It says what to do, such as "Keep it on one line.", and goes away as soon as the wording is right.
+- On a phone, the tables on the Developers and Agent payments pages show each row as a card, each value beside its column's name, so nothing is squeezed or scrolls sideways.
+
 ## 2026-11-12 — Tool pages
 
 - A tool's page read as Markdown at patchbay.help no longer fails when the tool has a paid priority report. It lists the report under "Paid priority" with its reply count, as the web page does.

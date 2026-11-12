@@ -246,6 +246,28 @@ test.describe("signed in", () => {
     await problems.expect()
   })
 
+  // Unpair asks in the site's own window, worded with what it does. Cancel changes
+  // nothing and hands the keyboard back to the button.
+  test("Unpair asks first, and Cancel keeps the agent", async ({page}) => {
+    const problems = watch(page)
+    await page.goto("/account/agents")
+    await ready(page)
+    const unpair = page.locator("#account-agents").getByRole("button", {name: /^Unpair /}).first()
+    const name = (await unpair.getAttribute("aria-label"))!.replace(/^Unpair /, "")
+    const paired = await page.locator("#account-agents").getByRole("button", {name: /^Unpair /}).count()
+
+    await unpair.click()
+    const asking = page.locator("#rg-confirm")
+    await expect(asking).toBeVisible()
+    await expect(asking).toContainText(`Unpair ${name}?`)
+    await expect(asking.getByRole("button", {name: "Unpair", exact: true})).toBeVisible()
+    await asking.getByRole("button", {name: "Cancel"}).click()
+    await expect(asking).toBeHidden()
+    await expect(unpair).toBeFocused()
+    await expect(page.locator("#account-agents").getByRole("button", {name: /^Unpair /})).toHaveCount(paired)
+    await problems.expect()
+  })
+
   // Choosing never changes the window's height (founder, 2026-10-07).
   test("the window keeps one height whatever is chosen", async ({page}) => {
     const problems = watch(page)

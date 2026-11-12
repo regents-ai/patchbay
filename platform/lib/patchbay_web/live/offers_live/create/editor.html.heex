@@ -62,6 +62,7 @@
         </Regent.Primitives.field>
 
         <Regent.Primitives.field
+          :let={field}
           id="pb-offers-text"
           label="Offer text"
           errors={if @text_left?, do: List.wrap(@new_check.problem), else: []}
@@ -73,6 +74,8 @@
             required
             phx-debounce="150"
             phx-blur="leave_text"
+            aria-describedby={field.described_by}
+            aria-invalid={field.aria_invalid}
           >{@new_offer[:text].value}</textarea>
           <:hint>
             {@new_check.code_points}/{max_code_points()} characters · {@new_check.bytes}/{max_bytes()} bytes
@@ -151,6 +154,7 @@
               <input type="hidden" name="reword[creative_id]" value={creative.id} />
               <input type="hidden" name="reword[request_key]" value={@rewording.request_key} />
               <Regent.Primitives.field
+                :let={field}
                 id={"pb-offers-reword-text-#{creative.id}"}
                 label="New wording"
                 errors={if @rewording.left?, do: List.wrap(check.problem), else: []}
@@ -162,6 +166,8 @@
                   required
                   phx-debounce="150"
                   phx-blur="leave_reword"
+                  aria-describedby={field.described_by}
+                  aria-invalid={field.aria_invalid}
                 >{@rewording.text}</textarea>
                 <:hint>
                   {check.code_points} of {max_code_points()} characters · {check.bytes} of {max_bytes()} bytes
