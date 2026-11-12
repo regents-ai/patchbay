@@ -22,7 +22,7 @@ export function mountForumTools(win: EventTarget, options: ForumToolOptions = {}
       .then(async registered => {
         if (!registered) return false;
         const names = new Set((await modelContext.getTools!()).map(tool => tool.name));
-        return offeredToolNames(options.leftOut).every(name => names.has(name));
+        return offeredToolNames(options.offered).every(name => names.has(name));
       })
       .then(
         held => { if (scope === current) status(held ? "connected" : "error"); },

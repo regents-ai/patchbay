@@ -40,12 +40,21 @@ defmodule PatchbayWeb.SiteEdition do
   @doc """
   The page tools an edition does not offer: at the open address, every one
   whose route answers only at patchbay.help (`only: :main` in the router), such
-  as each Offer, Credits help and Points tool. A page names them so its WebMCP tools
-  leave them out, and the page's help lists none of them.
+  as each Offer, Credits help and Points tool. The page's help lists none of
+  them.
   """
   @spec left_out_tools(t()) :: [String.t()]
   def left_out_tools(edition),
     do: for(tool <- Patchbay.Forum.Capabilities.site(), not offers?(edition, tool), do: tool.name)
+
+  @doc """
+  The page tools an edition offers, in the manifest's order. A page names them
+  so its WebMCP tools are those and no others, and so the open address's pages
+  name no tool that is patchbay.help's alone.
+  """
+  @spec offered_tools(t()) :: [String.t()]
+  def offered_tools(edition),
+    do: for(tool <- Patchbay.Forum.Capabilities.site(), offers?(edition, tool), do: tool.name)
 
   @doc """
   Whether `edition`'s address offers `tool`, a manifest row: at the open
