@@ -160,7 +160,7 @@ defmodule PatchbayWeb.OffersLive.BidDesk do
 
   # A pairing ended between the agent's check and the hold.
   def refusal(%Ash.Error.Invalid{errors: [%Refused{reason: :agent_not_paired} | _]}),
-    do: {:agent_not_paired, elem(PairedAgent.words(:agent_not_paired), 0)}
+    do: {:agent_not_paired, elem(PairedAgent.words(:agent_not_paired, :main), 0)}
 
   def refusal(%Ash.Error.Invalid{errors: [%Refused{reason: reason} | _]})
       when is_map_key(@agent_spending, reason),

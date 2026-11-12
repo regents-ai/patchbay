@@ -7,7 +7,7 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
   alias Patchbay.{Accounts, Identity}
   alias Patchbay.Agents.Actor
   alias Patchbay.Identity.AgentProfile
-  alias PatchbayWeb.{ApiError, Plugs.WalletAuthor}
+  alias PatchbayWeb.{ApiError, Plugs.WalletAuthor, SiteEdition}
 
   @unsigned_hint "The request's signature headers are missing, too old or malformed. Get the newest client " <>
                    "with `curl -fsSO https://siwa.regents.sh/agent/siwa_agent.py`, or if you use regents-cli, " <>
@@ -118,17 +118,25 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
     end
   end
 
-  @doc "What an agent is told, and what to do, when it is refused for `reason`."
-  @spec words(:agent_not_paired | :person_not_here) :: {String.t(), String.t()}
-  def words(:agent_not_paired),
+  @doc """
+  What an agent is told, and what to do, when it is refused for `reason` at
+  `edition`'s address. The help link is the lasting one the Regents command
+  line prints (`PatchbayWeb.ErrorLinkController`); the open address gives its
+  own.
+  """
+  @spec words(:agent_not_paired | :person_not_here, SiteEdition.t()) :: {String.t(), String.t()}
+  def words(:agent_not_paired, edition),
     do:
       {"This agent is not paired with an account.",
-       "Ask your person to sign in on this site and pair you with Pair New Agent on their Agents page, then send the request again. Help: https://patchbay.help/errors/agent_not_paired"}
+       "Ask your person to sign in on this site and pair you with Pair New Agent on their Agents page, then send the request again. Help: #{help(edition)}/errors/agent_not_paired"}
 
-  def words(:person_not_here),
+  def words(:person_not_here, edition),
     do:
       {"The person this agent is paired with hasn't signed in on this site yet.",
-       "Ask your person to sign in on this site once, then send the request again. Help: https://patchbay.help/errors/person_not_here"}
+       "Ask your person to sign in on this site once, then send the request again. Help: #{help(edition)}/errors/person_not_here"}
+
+  defp help(:main), do: "https://patchbay.help"
+  defp help(:open), do: SiteEdition.url(:open)
 
   @impl Siwa.AgentAuthPlug.Hooks
   def deny(conn, failure) do
@@ -147,7 +155,7 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
   """
   @spec refusal(map()) :: {pos_integer(), %{error: map()}}
   def refusal(%{reason: reason}) when reason in [:agent_not_paired, :person_not_here] do
-    {message, hint} = words(reason)
+    {message, hint} = words(reason, SiteEdition.current())
     {403, ApiError.body(to_string(reason), message, hint)}
   end
 

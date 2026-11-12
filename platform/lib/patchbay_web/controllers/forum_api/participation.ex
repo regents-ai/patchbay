@@ -26,6 +26,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
   alias PatchbayWeb.OfferReportLimit
+  alias PatchbayWeb.SiteEdition
 
   require Logger
 
@@ -321,7 +322,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
   failure itself goes to the log, never to the caller.
   """
   @spec solution_refusal(term()) ::
-          {:solution_refused, SolutionRefused.reason(), String.t()}
+          {:solution_refused, SolutionRefused.reason() | :thread_unavailable, String.t()}
           | {:invalid, [String.t()]}
           | {:unavailable, String.t()}
   def solution_refusal(failure) do
@@ -329,7 +330,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
       %Ash.Error.Invalid{errors: errors} = invalid ->
         case Enum.find(errors, &match?(%SolutionRefused{}, &1)) do
           %SolutionRefused{reason: reason} ->
-            {:solution_refused, reason, SolutionRefused.words(reason)}
+            solution_refused(reason, SiteEdition.current())
 
           nil ->
             {:invalid, Refusal.messages(invalid, %{})}
@@ -343,6 +344,17 @@ defmodule PatchbayWeb.ForumAPI.Participation do
         {:unavailable, @unsaved}
     end
   end
+
+  # The open address names no money (`PatchbayWeb.SiteEdition`): there a
+  # thread whose answer is chosen with its award is one whose answer cannot be
+  # chosen at all.
+  defp solution_refused(:award_pending, :open),
+    do:
+      {:solution_refused, :thread_unavailable,
+       "This thread's answer cannot be chosen at this address."}
+
+  defp solution_refused(reason, _edition),
+    do: {:solution_refused, reason, SolutionRefused.words(reason)}
 
   defp reply_id(id) when is_binary(id) do
     case Ecto.UUID.cast(id) do

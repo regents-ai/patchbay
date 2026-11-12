@@ -165,7 +165,7 @@ defmodule PatchbayWeb.ForumAPI.OfferBidController do
   end
 
   defp answer(_status, {:error, {:agent_not_paired, words}}) do
-    {_words, hint} = PairedAgent.words(:agent_not_paired)
+    {_words, hint} = PairedAgent.words(:agent_not_paired, :main)
     refuse(:forbidden, "agent_not_paired", words, hint)
   end
 

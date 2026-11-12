@@ -42,6 +42,13 @@ defmodule PatchbayWeb.OpenEditionTest do
   # A wallet address, whole or short.
   @address ~r/\b0x[0-9a-fA-F]{4,}/
 
+  # What the open address's documents for agents never name, in a description,
+  # a field or an example: money in any of patchbay.help's words for it, and
+  # patchbay.help itself. "Free" is a whole word here: two identifiers the
+  # contract shares with patchbay.help keep it inside them
+  # (`postFreeChatgptAgentMessage`, the `FreeAuthor` schema).
+  @agent_money ~r/usdc|paid|payment|\btip|award|wallet|escrow|bount|credit|offer|price|\bfree\b|(?<!open\.)patchbay\.help/i
+
   # A person's own post about a payment: what people write stays on the open
   # address as they wrote it.
   @own_words "My USDC never reached the wallet."
@@ -232,9 +239,8 @@ defmodule PatchbayWeb.OpenEditionTest do
              Enum.flat_map(open["operations"], & &1["conditions"]) ==
              []
 
-    # The greeting an agent signs with its own key keeps the API's name for it.
-    assert words_for_money([Jason.encode!(Map.delete(open, "cli"))]) -- ["siwa", "SIWA", "wallet"] ==
-             []
+    assert words_for_money([Jason.encode!(Map.delete(open, "cli"))]) -- ["siwa", "SIWA"] == []
+    assert Regex.scan(@agent_money, Jason.encode!(open)) == []
 
     # patchbay.help keeps every operation, the paid ones among them.
     assert length(main["operations"]) == length(Patchbay.Forum.Capabilities.operations())
@@ -298,6 +304,51 @@ defmodule PatchbayWeb.OpenEditionTest do
            ]) == []
 
     assert described =~ "listSolvedFixes"
+    refute Jason.encode!(api) =~ "x-open"
+  end
+
+  test "the open address's API description names no money and no other address", %{conn: conn} do
+    api = conn |> on_open() |> get("/openapi.json") |> json_response(200)
+
+    # Pairing and check-in are the shared Regent library's, with its own
+    # fields (`wallet`, `wallet_address`) and its own help links, and a signed
+    # request names the signing key's address in `x-agent-wallet-address`.
+    shared = ~w(/api/agents/v1/pair /api/agents/v1/me /api/agents/v1/whoami)
+
+    {signing, ours} =
+      api
+      |> Map.update!("paths", &Map.drop(&1, shared))
+      |> pop_in(["components", "schemas", "SharedAgent"])
+      |> elem(1)
+      |> pop_in(["components", "securitySchemes", "siwaProof", "description"])
+
+    assert signing =~ "x-agent-wallet-address"
+    assert Regex.scan(@agent_money, Jason.encode!(ours)) == []
+  end
+
+  test "the open address's API description says what its answers carry", %{
+    conn: conn,
+    report: report,
+    asker: asker
+  } do
+    conn = on_open(conn)
+    schemas = conn |> get("/openapi.json") |> json_response(200) |> get_in(~w(components schemas))
+
+    thread = conn |> json_get("/forum/threads/#{report.id}") |> Jason.decode!()
+    profile = conn |> json_get("/api/agents/#{asker.public_id}") |> Jason.decode!()
+    readiness = conn |> json_get("/forum/readiness") |> Jason.decode!()
+
+    for {schema, answer} <- [
+          {"ReportEntry", thread["report"]},
+          {"ReplyEntry", hd(thread["replies"])},
+          {"Author", thread["report"]["author"]},
+          {"Profile", profile},
+          {"Readiness", readiness}
+        ] do
+      described = Map.keys(schemas[schema]["properties"])
+      assert Map.keys(answer) -- described == [], schema
+      assert schemas[schema]["required"] -- Map.keys(answer) == [], schema
+    end
   end
 
   test "the open address's skill leaves out the tools only patchbay.help offers", %{conn: conn} do
@@ -321,7 +372,12 @@ defmodule PatchbayWeb.OpenEditionTest do
   test "patchbay.help serves the API description and the skill as the repository has them", %{
     conn: conn
   } do
-    assert conn |> get("/openapi.json") |> response(200) == File.read!("priv/public/openapi.json")
+    # The API description is the file without its `x-open` markers.
+    file = "priv/public/openapi.json" |> File.read!() |> Jason.decode!(objects: :ordered_objects)
+    assert Jason.encode!(file) =~ ~s("x-open")
+
+    assert conn |> get("/openapi.json") |> response(200) ==
+             Jason.encode!(without_markers(file), pretty: true) <> "\n"
 
     assert build_conn() |> get("/skill.md") |> response(200) ==
              File.read!(Path.expand("../../../skills/patchbay/SKILL.md", __DIR__))
@@ -675,6 +731,43 @@ defmodule PatchbayWeb.OpenEditionTest do
       assert {money_keys(open), money_words(open)} == {[], []}
     end
 
+    test "choosing a paid thread's answer is refused without naming money at the open address",
+         %{conn: conn, report: report, asker: asker} do
+      SignedAgent.stub_siwa()
+      agent = SignedAgent.pair!(asker)
+      [reply] = Ash.load!(report, :replies, authorize?: false).replies
+
+      choose = fn conn ->
+        conn
+        |> SignedAgent.sign(agent)
+        |> post("/forum/threads/#{report.id}/solution", Jason.encode!(%{"reply_id" => reply.id}))
+        |> json_response(409)
+        |> Map.fetch!("error")
+      end
+
+      assert %{"code" => "award_pending"} = choose.(conn)
+
+      open = conn |> on_open() |> choose.()
+      assert open["code"] == "thread_unavailable"
+      assert Regex.scan(@agent_money, Jason.encode!(open)) == []
+      assert is_nil(Ash.reload!(report, authorize?: false).solution_reply_id)
+    end
+
+    test "an agent that is not paired is sent to the help at the address it asked", %{
+      conn: conn,
+      site: site
+    } do
+      SignedAgent.stub_siwa()
+      stranger = %{wallet: "0x" <> String.duplicate("9", 40)}
+      hint = fn conn -> json_response(ask(conn, stranger, site.origin), 403)["error"]["hint"] end
+
+      assert hint.(conn) =~ "https://patchbay.help/errors/agent_not_paired"
+
+      open = conn |> on_open() |> hint.()
+      assert open =~ SiteEdition.url(:open) <> "/errors/agent_not_paired"
+      assert Regex.scan(@agent_money, open) == []
+    end
+
     test "a new post is followed by Offers only at patchbay.help", %{conn: conn, site: site} do
       SignedAgent.stub_siwa()
       agent = SignedAgent.pair!()
@@ -706,6 +799,15 @@ defmodule PatchbayWeb.OpenEditionTest do
     |> Enum.filter(&(&1 in paths))
     |> Enum.uniq()
   end
+
+  defp without_markers(%Jason.OrderedObject{values: values} = object),
+    do: %{
+      object
+      | values: for({key, value} <- values, key != "x-open", do: {key, without_markers(value)})
+    }
+
+  defp without_markers(list) when is_list(list), do: Enum.map(list, &without_markers/1)
+  defp without_markers(value), do: value
 
   defp json_get(conn, path),
     do: conn |> put_req_header("accept", "application/json") |> get(path) |> response(200)
