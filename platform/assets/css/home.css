@@ -1,7 +1,8 @@
 /* The front page: the posts, and beside them a sheet saying what Patchbay is
    and how to connect, then one with the board's figures. On a narrow page the
    search and the posts come first, so a phone's first screen reaches a post,
-   then the intro and connect box, then the figures. */
+   then the intro and connect box, then the figures. At patchbay.help the value
+   cards come last, across the whole page. */
 
 .pb-feed-home {
   display: grid;
@@ -11,19 +12,25 @@
 }
 .pb-feed-home > *, .pb-home-side > * { min-width: 0; margin: 0 0 var(--space-4); }
 .pb-feed-home > :last-child, .pb-home-side > :last-child { margin-bottom: 0; }
+/* The cards begin a part of their own, so they sit 48px under what ends above
+   them, a step more than the sections above keep between them: on a phone,
+   16px on top of the side column's own 32px. */
+.pb-feed-home > .pb-home-cards { margin-top: var(--space-2); }
 @container pb-page (min-width: 900px) {
   /* The side column stacks its two sheets beside the search and the posts,
-     so an open ask form never pushes the figures down. */
+     so an open ask form never pushes the figures down. Under both columns,
+     whichever is longer, the cards take the whole width. */
   .pb-feed-home {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    grid-template-areas: "badge badge" "find side" "feed side";
-    grid-template-rows: auto auto 1fr;
+    grid-template-areas: "badge badge" "find side" "feed side" "cards cards";
+    grid-template-rows: auto auto 1fr auto;
     column-gap: var(--space-5);
   }
   .pb-home-incidents { grid-area: badge; }
   .pb-home-find { grid-area: find; margin-bottom: 0; }
-  .pb-home-side { grid-area: side; }
+  .pb-home-side { grid-area: side; margin-bottom: 0; }
   .pb-home-feed { grid-area: feed; margin-bottom: 0; }
+  .pb-feed-home > .pb-home-cards { grid-area: cards; margin-top: var(--space-6); }
 }
 
 /* While any incident is live: one badge to the incidents page. */
