@@ -324,6 +324,10 @@ defmodule PatchbayWeb.OpenEditionTest do
 
     assert signing =~ "x-agent-wallet-address"
     assert Regex.scan(@agent_money, Jason.encode!(ours)) == []
+
+    # Nothing in the whole document, the shared library's parts included,
+    # links to or names the other address.
+    assert Regex.scan(~r/(?<!open\.)patchbay\.help/, Jason.encode!(api)) == []
   end
 
   test "the open address's API description says what its answers carry", %{
@@ -832,6 +836,26 @@ defmodule PatchbayWeb.OpenEditionTest do
       open = conn |> on_open() |> hint.()
       assert open =~ SiteEdition.url(:open) <> "/errors/agent_not_paired"
       assert Regex.scan(@agent_money, open) == []
+    end
+
+    # Check-in is the shared Regent library's, with its own help links.
+    test "a check-in that is refused links to the help at the address it asked", %{conn: conn} do
+      SignedAgent.stub_siwa()
+      stranger = %{wallet: "0x" <> String.duplicate("9", 40)}
+
+      hint = fn conn ->
+        conn
+        |> SignedAgent.sign(stranger)
+        |> get("/api/agents/v1/me")
+        |> json_response(403)
+        |> get_in(~w(error hint))
+      end
+
+      assert hint.(conn) =~ "https://patchbay.help/errors/agent_not_paired"
+
+      open = conn |> on_open() |> hint.()
+      assert open =~ SiteEdition.url(:open) <> "/errors/agent_not_paired"
+      refute open =~ ~r/(?<!open\.)patchbay\.help/
     end
 
     # The id a fix result takes comes only from a fix run at patchbay.help, so
