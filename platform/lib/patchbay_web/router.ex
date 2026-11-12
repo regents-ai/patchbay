@@ -345,9 +345,10 @@ defmodule PatchbayWeb.Router do
   end
 
   # Agent Offers moderation is live, so a report shows the moment it is
-  # filed, a person's admin page suspends or reinstates them, and the team's
-  # inbox lists the messages left for it. All three answer as though they do
-  # not exist to anyone but a moderator (PatchbayWeb.Moderators).
+  # filed, the people list finds a person, a person's admin page suspends or
+  # reinstates them, and the team's inbox lists the messages left for it. All
+  # four answer as though they do not exist to anyone but a moderator
+  # (PatchbayWeb.Moderators).
   scope "/admin", PatchbayWeb do
     pipe_through [:main_only, :browser, :html_only]
 
@@ -359,6 +360,7 @@ defmodule PatchbayWeb.Router do
       ],
       session: {PatchbayWeb.VisitLog, :session, []} do
       live "/offers", OfferModerationLive, :index
+      live "/people", PeopleAdminLive, :index
       live "/people/:public_id", PersonAdminLive, :show
       live "/messages", AdminMessagesLive, :index
     end

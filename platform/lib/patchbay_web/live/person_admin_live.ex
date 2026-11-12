@@ -17,6 +17,7 @@ defmodule PatchbayWeb.PersonAdminLive do
 
   use PatchbayWeb, :live_view
 
+  import PatchbayWeb.AdminLinks, only: [admin_links: 1]
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
 
   alias Patchbay.Identity
@@ -28,7 +29,7 @@ defmodule PatchbayWeb.PersonAdminLive do
   def mount(%{"public_id" => public_id}, _session, socket) do
     {:ok,
      socket
-     |> assign(PatchbayWeb.PublicDocuments.page("/admin/people"))
+     |> assign(PatchbayWeb.PublicDocuments.page("/admin/people/:public_id"))
      |> assign(public_id: public_id, problem: nil, person: %Read{})
      |> reread()}
   end

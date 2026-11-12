@@ -1,6 +1,7 @@
 defmodule PatchbayWeb.Moderators do
   @moduledoc """
-  The door to the live admin pages (`/admin/offers`, `/admin/people/:public_id`).
+  The door to the live admin pages (`/admin/offers`, `/admin/people`, `/admin/people/:public_id`,
+  `/admin/messages`).
 
   Only a signed-in profile whose verified wallet is on the moderator list
   (`Patchbay.Checks.Moderator`) reaches them; anyone else is answered as

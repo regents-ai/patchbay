@@ -20,6 +20,8 @@ defmodule PatchbayWeb.OfferModerationLive do
 
   use PatchbayWeb, :live_view
 
+  import PatchbayWeb.AdminLinks, only: [admin_links: 1]
+
   import PatchbayWeb.Forum.BoardHTML,
     only: [board_header: 1, count_label: 3, moment: 1, site_name: 1]
 

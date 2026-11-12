@@ -1,0 +1,78 @@
+<main class="patchbay-shell patchbay-board pb-offmod" id="pb-people-admin">
+  <.board_header>
+    <:back><.admin_links current="/admin/people" /></:back>
+    <:title>People</:title>
+    <:meta>
+      <span class="patchbay-generation">Private</span>
+    </:meta>
+  </.board_header>
+
+  <form id="pb-people-filter" class="pb-offmod-actions" phx-change="filter" phx-submit="filter">
+    <Regent.Primitives.field id="pb-people-search" label="Find">
+      <input
+        id="pb-people-search"
+        type="search"
+        name="q"
+        value={@filters.search}
+        placeholder="Name, wallet or id"
+        maxlength="100"
+        autocomplete="off"
+        spellcheck="false"
+        phx-debounce="blur"
+      />
+    </Regent.Primitives.field>
+    <label class="pb-offmod-confirm pb-people-only">
+      <input
+        id="pb-people-suspended"
+        type="checkbox"
+        name="suspended"
+        value="true"
+        checked={@filters.suspended}
+      /> Suspended
+    </label>
+  </form>
+
+  <p :if={@people.state in [:stale, :error]} class="pb-offmod-problem" role="status">
+    The list could not be read just now. Refresh the page to try again.
+  </p>
+
+  <%= if page = @people.state == :ready && @people.value do %>
+    <Regent.Primitives.empty_state :if={page.results == []} title="No people">
+      Nobody matches. Try fewer letters, or clear the search.
+    </Regent.Primitives.empty_state>
+
+    <ol :if={page.results != []} id="pb-people" class="pb-offmod-list">
+      <li
+        :for={person <- page.results}
+        id={"pb-person-#{person.public_id}"}
+        class="pb-offmod-item"
+      >
+        <header class="pb-offmod-head">
+          <strong>
+            <.link navigate={"/admin/people/#{person.public_id}"}>
+              <bdi>{name(person)}</bdi>
+            </.link>
+          </strong>
+          <span class={["patchbay-pill", status_tone(person.status)]} data-status={person.status}>
+            {status_label(person.status)}
+          </span>
+          <span class="pb-offmod-status">
+            Joined
+            <time datetime={DateTime.to_iso8601(person.inserted_at)}>
+              {moment(person.inserted_at)}
+            </time>
+          </span>
+        </header>
+      </li>
+    </ol>
+
+    <.link
+      :if={page.more?}
+      id="pb-people-older"
+      patch={people_path(@filters, List.last(page.results).__metadata__.keyset)}
+      class="rg-button rg-button--secondary"
+    >
+      Older
+    </.link>
+  <% end %>
+</main>

@@ -1400,6 +1400,18 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offmod-actions > p { flex-basis: 100%; margin: 0; }
 .pb-offmod-confirm { display: flex; align-items: center; gap: var(--space-1); font-size: .875rem; }
 .pb-offmod-actions .rg-field { flex: 1 1 16rem; min-width: 0; }
+/* The moderators' pages name each other in one line above the heading. */
+.pb-admin-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0 var(--space-2); }
+.pb-admin-links [aria-current] { color: var(--pb-text); }
+/* The people list's one tick sits level with the search box's input. */
+.pb-people-only { align-self: center; min-height: 2.75rem; }
+/* On a phone a row is two lines: the name and status, then the day they joined. */
+@media (max-width: 30rem) {
+  #pb-people .pb-offmod-status { flex-basis: 100%; margin-left: 0; }
+}
+@media (pointer: coarse), (hover: none) {
+  #pb-people a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+}
 /* A person's admin page: each section's own rule closes it, so its last row draws none. */
 #pb-person-admin .pb-offmod-item:last-child { padding-bottom: 0; border-bottom: 0; }
 /* The admin behind a change: a long name breaks rather than widening the row. */
