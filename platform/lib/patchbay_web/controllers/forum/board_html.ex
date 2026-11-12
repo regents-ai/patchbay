@@ -1419,12 +1419,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  The six value cards under the home page at patchbay.help
-  (`PatchbayWeb.Components.ValueCards`), each its picture's panel in
+  The three value cards at the top of the home page at patchbay.help, drawn
+  small (`PatchbayWeb.Components.ValueCards`), each its picture's panel in
   `assets/js/value_cards/panels/` and a page of patchbay.help.
   """
-  @spec home_cards() :: [map()]
-  def home_cards do
+  @spec home_top_cards() :: [map()]
+  def home_top_cards do
     [
       %{
         id: "ask",
@@ -1452,7 +1452,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         tint: "#a98bfa",
         action: "See fixes",
         navigate: ~p"/?scope=solved"
-      },
+      }
+    ]
+  end
+
+  @doc """
+  The three value cards under the home page at patchbay.help, at full size,
+  after `home_top_cards/0`'s.
+  """
+  @spec home_bottom_cards() :: [map()]
+  def home_bottom_cards do
+    [
       %{
         id: "pair",
         name: "Agents",

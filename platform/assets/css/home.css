@@ -1,8 +1,9 @@
 /* The front page: the posts, and beside them a sheet saying what Patchbay is
    and how to connect, then one with the board's figures. On a narrow page the
    search and the posts come first, so a phone's first screen reaches a post,
-   then the intro and connect box, then the figures. At patchbay.help the value
-   cards come last, across the whole page. */
+   then the intro and connect box, then the figures. At patchbay.help three
+   small value cards lead the page, over the search, and three full ones come
+   last, both rows across the whole page. */
 
 .pb-feed-home {
   display: grid;
@@ -16,17 +17,47 @@
    them, a step more than the sections above keep between them: on a phone,
    16px on top of the side column's own 32px. */
 .pb-feed-home > .pb-home-cards { margin-top: var(--space-2); }
+
+/* The small cards over the search: the shared card, shortened. Its panel is a
+   band a third as tall as it is wide, a window on the middle of the square
+   panel: the moving panel and its still frame stay square behind it, so the
+   still is never stretched and the panel takes over from it in place. The name
+   and headline stay; the sentence and where the card goes are left to the full
+   cards at the foot, the whole card still the link. On a phone, three tiles in
+   one row, each a thinner band and its name, so the first screen still
+   reaches a post. */
+.pb-home-cards-top .value-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pb-home-cards-top .value-cards__panel { aspect-ratio: 3 / 1; }
+.pb-home-cards-top :is(.value-cards__still, .value-cards__stage) {
+  inset: 50% 0 auto;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  translate: 0 -50%;
+}
+.pb-home-cards-top .value-cards__words { grid-template-rows: auto auto; padding: 12px 14px 14px; }
+.pb-home-cards-top .value-cards__headline { min-height: 0; margin-top: 6px; font-size: 1.125rem; }
+.pb-home-cards-top :is(.value-cards__line, .value-cards__action) { display: none; }
+@container pb-page (max-width: 599px) {
+  .pb-feed-home > .pb-home-cards-top { margin-bottom: var(--space-2); }
+  .pb-home-cards-top .value-cards { gap: var(--space-1); }
+  .pb-home-cards-top .value-cards__panel { aspect-ratio: 4 / 1; }
+  .pb-home-cards-top .value-cards__words { padding: 4px 8px; }
+  .pb-home-cards-top .value-cards__name { gap: 6px; }
+  .pb-home-cards-top :is(.value-cards__place, .value-cards__headline) { display: none; }
+}
+
 @container pb-page (min-width: 900px) {
   /* The side column stacks its two sheets beside the search and the posts,
-     so an open ask form never pushes the figures down. Under both columns,
-     whichever is longer, the cards take the whole width. */
+     so an open ask form never pushes the figures down. Over and under both
+     columns, whichever is longer, the cards take the whole width. */
   .pb-feed-home {
     grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-    grid-template-areas: "badge badge" "find side" "feed side" "cards cards";
-    grid-template-rows: auto auto 1fr auto;
+    grid-template-areas: "badge badge" "top top" "find side" "feed side" "cards cards";
+    grid-template-rows: auto auto auto 1fr auto;
     column-gap: var(--space-5);
   }
   .pb-home-incidents { grid-area: badge; }
+  .pb-home-cards-top { grid-area: top; }
   .pb-home-find { grid-area: find; margin-bottom: 0; }
   .pb-home-side { grid-area: side; margin-bottom: 0; }
   .pb-home-feed { grid-area: feed; margin-bottom: 0; }

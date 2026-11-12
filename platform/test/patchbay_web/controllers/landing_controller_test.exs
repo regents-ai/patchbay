@@ -44,24 +44,38 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert doc |> LazyHTML.query("h1") |> LazyHTML.text() == "Patchbay"
 
-    # The title and search lead, then the posts, so a phone's first screen
-    # reaches a post; the intro and connect box follow the posts.
-    [title_at, search_at, tabs_at, list_at, intro_at, connect_at, activity_at] =
+    # Three small cards, then the title and search, then the posts, so a
+    # phone's first screen reaches a post; the intro and connect box follow the
+    # posts, and the other three cards end the page.
+    [
+      top_cards_at,
+      title_at,
+      search_at,
+      tabs_at,
+      list_at,
+      intro_at,
+      connect_at,
+      activity_at,
+      cards_at
+    ] =
       for marker <- [
+            ~s(id="cards-top"),
             ~s(id="pb-home-title"),
             ~s(id="pb-home-search"),
             ~s(aria-label="Question lists"),
             ~s(id="pb-discussions"),
             ~s(aria-label="About Patchbay"),
             ~s(id="pb-connect-title"),
-            ~s(id="pb-activity-title")
+            ~s(id="pb-activity-title"),
+            ~s(id="cards-row")
           ] do
         {at, _length} = :binary.match(html, marker)
         at
       end
 
-    assert title_at < search_at and search_at < tabs_at and tabs_at < list_at and
-             list_at < intro_at and intro_at < connect_at and connect_at < activity_at
+    assert top_cards_at < title_at and title_at < search_at and search_at < tabs_at and
+             tabs_at < list_at and list_at < intro_at and intro_at < connect_at and
+             connect_at < activity_at and activity_at < cards_at
 
     assert doc |> LazyHTML.query("#pb-feed-title") |> LazyHTML.text() |> String.split() ==
              ["All", "posts", "(2)"]
