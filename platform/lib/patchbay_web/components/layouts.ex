@@ -12,8 +12,8 @@ defmodule PatchbayWeb.Layouts do
   The footer of every page, the same on every Regent site: the social links,
   Buy $REGENT and the developer docs (at patchbay.help only), the site's documents and its two plain-text guides for agents, which
   open in the browser's popover from "Agent guide". It sits at the foot of the
-  screen however short the page is. The theme switch is in the header, and left
-  off phones.
+  screen however short the page is. The theme switch is in the account menu, or
+  in the header when nobody is signed in.
   """
   attr(:site_edition, :atom,
     required: true,

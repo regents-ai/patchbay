@@ -20,10 +20,10 @@ import {CLIPPED_WORD, byPointer, lastInputByPointer, still, watchInput} from "./
 import {backdrop, drawer, menu, sheet} from "./hooks/motion/slides.ts"
 
 // A menu's summary is its button; other summaries open disclosures in the
-// page's own flow and stay still. The theme switch turns its own cube, and the
+// page's own flow and stay still. A switch moves its own knob, and the
 // lab's presses, named with `data-press`, answer for themselves.
 const PRESSABLE =
-  ":is(button, .rg-button, [role='button'], summary:has(~ [data-panel='menu'])):not(.rg-theme-toggle, [data-press])"
+  ":is(button, .rg-button, [role='button'], summary:has(~ [data-panel='menu'])):not([role='switch'], [data-press])"
 
 const live = (el: Element) => el.closest("[data-phx-session]") !== null
 
@@ -77,7 +77,7 @@ export function press(event: MouseEvent) {
   }
 
   // Shared CTAs already answered on pointer-down, with a stationary hit area.
-  if (!control.matches(".rg-button:not(.rg-button--quiet):not(.rg-copy):not(.rg-theme-toggle):not([role='tab'])"))
+  if (!control.matches(".rg-button:not(.rg-button--quiet):not(.rg-copy):not([role='tab'])"))
     squish(control.querySelector("[data-press-label]") ?? control)
 
   if (control.getAttribute("aria-expanded") !== "true") return

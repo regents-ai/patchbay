@@ -372,6 +372,13 @@ config :esbuild,
       ~w(js/privy_bridge.tsx --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
+  ],
+  # The theme switch's glass picture, fetched by address like the Privy bridge.
+  patchbay_theme_switch: [
+    args:
+      ~w(js/theme_switch_island.ts --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
+    cd: Path.expand("../assets", __DIR__),
+    env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ]
 
 # Configure Elixir's Logger

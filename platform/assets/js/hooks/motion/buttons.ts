@@ -3,7 +3,7 @@ import {createScope, type Scope} from "animejs"
 import {play, still} from "./shared.ts"
 
 const active = new Map<Element, Scope>()
-const CTA = ".rg-button:not(.rg-button--quiet):not(.rg-copy):not(.rg-theme-toggle):not([role='tab'])"
+const CTA = ".rg-button:not(.rg-button--quiet):not(.rg-copy):not([role='tab'])"
 
 function stop(el: Element) {
   active.get(el)?.revert()

@@ -1,5 +1,4 @@
 import "../css/app.css"
-import "./theme.ts"
 import "../vendor/regent_ui/blog.mjs"
 import "../vendor/regent_ui/discussion.mjs"
 import "../vendor/regent_ui/pill_select.mjs"
@@ -38,6 +37,7 @@ import {OfferSlots} from "./hooks/offer_slots.ts"
 import {SearchDialog} from "./hooks/search_dialog.ts"
 import {MenuAgents} from "./hooks/menu_agents.ts"
 import {PublicName} from "./hooks/public_name.ts"
+import {ThemeSwitch} from "./hooks/theme_switch.ts"
 import {mountMotion} from "./motion.ts"
 import {hooks as labHooks} from "./motion_lab.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
@@ -53,6 +53,7 @@ import {installCopyButtons} from "./copy_buttons.ts"
 import {installAccountMenu} from "./account_menu.ts"
 import {installEscape} from "./escape.ts"
 import {installNavMenu} from "./nav_menu.ts"
+import {syncTheme} from "./theme.ts"
 import topbar from "../vendor/topbar.js"
 
 // First, so an error anywhere below is reported too.
@@ -75,6 +76,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     SearchDialog,
     MenuAgents,
     PublicName,
+    ThemeSwitch,
     // The motion lab's own presses and moments, used only on /animations.
     ...labHooks,
   },
@@ -86,6 +88,12 @@ const accent = getComputedStyle(document.documentElement).getPropertyValue("--pb
 topbar.config({barColors: {0: accent}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
 window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+
+// Live navigation keeps the document, so each page restates its theme
+// (theme.ts); every theme switch follows what it shows.
+window.addEventListener("phx:page-loading-stop", syncTheme)
+window.addEventListener("popstate", syncTheme)
+window.addEventListener("pageshow", syncTheme)
 
 // The Wallet Bench dialog's Back and Forward steps are not page visits, so
 // its listener goes in before LiveView's.

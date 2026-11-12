@@ -113,10 +113,12 @@
               @site_edition == :main && @current_profile && @current_profile.wallet_address
             }
           >
-            <Regent.ThemeToggle.button
-              id="pb-theme-toggle"
-              class="pb-theme-toggle"
-              data-pb-theme-toggle
+            <%!-- With no account menu on the page, the theme switch sits here;
+            signed in it is a row of that menu. --%>
+            <PatchbayWeb.ThemeSwitch.theme_toggle
+              :if={!(@current_profile && @current_profile.authentication_origin == :privy)}
+              id="pb-header-theme"
+              class="pb-header-theme"
             />
             {if @current_profile && @current_profile.authentication_origin == :privy,
               do:

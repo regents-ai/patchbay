@@ -4,7 +4,7 @@ defmodule PatchbayWeb.HeaderAccountLive do
   template: the account menu (`Regent.Account.menu`) their picture and name at
   the top right open. The menu shows their picture, name and wallet, their
   three most recently active agents (`PatchbayWeb.MenuAgents`), Pair New Agent,
-  Manage Account and Sign out. Pair New Agent opens the pairing window
+  the theme switch (`PatchbayWeb.ThemeSwitch`), Manage Account and Sign out. Pair New Agent opens the pairing window
   (`#pb-pairing`, with `PatchbayWeb.PairingBox`) over the page; the agents are
   on the Agents page, and everything else about the account on the Account page
   (`PatchbayWeb.AccountLive`).
@@ -14,7 +14,8 @@ defmodule PatchbayWeb.HeaderAccountLive do
   on.
 
   The open address (`PatchbayWeb.SiteEdition`) shows no wallet: the menu keeps
-  the name, the agents, Pair New Agent, Manage Account and Sign out.
+  the name, the agents, Pair New Agent, the theme switch, Manage Account and
+  Sign out.
   """
 
   use PatchbayWeb, :live_view
@@ -98,6 +99,10 @@ defmodule PatchbayWeb.HeaderAccountLive do
             profile={@current_profile}
           />
         </:agents>
+        <:theme>
+          <span aria-hidden="true">Light theme</span>
+          <PatchbayWeb.ThemeSwitch.theme_toggle id="account-menu-theme" />
+        </:theme>
       </Regent.Account.menu>
     </div>
     """

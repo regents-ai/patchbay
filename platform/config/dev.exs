@@ -63,6 +63,8 @@ config :patchbay, PatchbayWeb.Endpoint,
           {Esbuild, :install_and_run, [:patchbay_crown, ~w(--sourcemap=inline --watch)]},
         privy_bridge:
           {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
+        theme_switch_island:
+          {Esbuild, :install_and_run, [:patchbay_theme_switch, ~w(--sourcemap=inline --watch)]},
         payments_lab:
           {Esbuild, :install_and_run, [:patchbay_payments_lab, ~w(--sourcemap=inline --watch)]}
       ]
