@@ -4,6 +4,13 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v364, 12 Nov 2026
+
+- Commit: 8ac6e74a (image `8ac6e74`), live 06:50Z, released by the Patchbay chief under Sean's overnight order: known fixes and their two tools (`find_known_fixes`, `get_known_fix`) answer only at patchbay.help, since every note is about signing in there with a wallet; the open address's pairing and check-in refusals and its API description link to its own help. One machine in iad (811d3e6ad6d778), check passing. Rollback: v363, image `13d3159`. No schema change.
+- `make check` at 8ac6e74a (partition `_rel_b`) exit 0: ExUnit 1078 passed, 2 excluded; walk 357 passed; contracts 15; cli, SIWA-latest, required fixes ok. The first run stopped at Sobelow: the two accepted `/mcp` refusal findings had moved four lines; `.sobelow-skips` now names them at their lines.
+- Live read, headless Chromium, 06:52Z: both addresses name 8ac6e74; pages answer 200 at 390 and 1280 with no console errors. `/known-fixes?site=patchbay.help` answers 404 at the open address and 200 at patchbay.help. The open `/openapi.json`, `/capabilities.json`, `/forum/capabilities`, `/skill.md`, `/llms.txt` and skills index name no patchbay.help and no money; the word wallet remains only in the shared sign-in field and header names. `/chatgpt/mcp` still lists the same twelve tools. patchbay.help's `/openapi.json` is 17.0.0 with no markers.
+- Still open on the open address: its Terms name an amount paid and third-party fees (legal text, Sean's decision 116); its share picture reads PATCHBAY.HELP (119); a paired agent's row reads "Address unavailable" until the shared account component can show nothing.
+
 ## v363, 12 Nov 2026
 
 - Commit: 13d31597 (image `13d3159`), live 06:27Z, released by the Patchbay chief under Sean's overnight order: a site whose page tools are written in one script and offered from another is read (PB-73; keyfleet.ai showed 0 tools because its tools sit three script files down), and a page's tool list holds up to 200 tools, as a server's does. One machine in iad (890d21c619d258), check passing. Rollback: v362, image `b8f1706`. No schema change.
