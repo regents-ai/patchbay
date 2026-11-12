@@ -50,7 +50,7 @@
           name={@new_offer[:request_key].name}
           value={@new_offer[:request_key].value}
         />
-        <Regent.Primitives.field id="pb-offers-label" label="Private name">
+        <Regent.Primitives.field id="pb-offers-label" label="Private name" errors={@name_problems}>
           <input
             id="pb-offers-label"
             type="text"
@@ -64,7 +64,7 @@
         <Regent.Primitives.field
           id="pb-offers-text"
           label="Offer text"
-          errors={List.wrap(@new_check.problem)}
+          errors={if @text_left?, do: List.wrap(@new_check.problem), else: []}
         >
           <textarea
             id="pb-offers-text"
@@ -72,6 +72,7 @@
             rows="3"
             required
             phx-debounce="150"
+            phx-blur="leave_text"
           >{@new_offer[:text].value}</textarea>
           <:hint>
             {@new_check.code_points}/{max_code_points()} characters · {@new_check.bytes}/{max_bytes()} bytes
@@ -152,7 +153,7 @@
               <Regent.Primitives.field
                 id={"pb-offers-reword-text-#{creative.id}"}
                 label="New wording"
-                errors={List.wrap(check.problem)}
+                errors={if @rewording.left?, do: List.wrap(check.problem), else: []}
               >
                 <textarea
                   id={"pb-offers-reword-text-#{creative.id}"}
@@ -160,6 +161,7 @@
                   rows="3"
                   required
                   phx-debounce="150"
+                  phx-blur="leave_reword"
                 >{@rewording.text}</textarea>
                 <:hint>
                   {check.code_points} of {max_code_points()} characters · {check.bytes} of {max_bytes()} bytes

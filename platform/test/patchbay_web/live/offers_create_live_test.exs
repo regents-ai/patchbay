@@ -39,11 +39,33 @@ defmodule PatchbayWeb.OffersLive.CreateTest do
     assert checked =~ "Site · Slot 1 (until "
     assert checked =~ "&quot;Try https://a.dev or b.dev&quot;"
 
+    # A wording that is too long is counted as it is typed, and its problem is
+    # said under the field only once the field is left; putting it right while
+    # typing takes the line away, and a refused save puts it back.
     too_long = String.duplicate("é", 161)
 
-    assert view
-           |> form("#pb-offers-new-form", offer: %{label: "Long", text: too_long})
-           |> render_submit() =~ "The wording is longer than 160 characters."
+    typed = fn text ->
+      view |> form("#pb-offers-new-form", offer: %{label: "Long", text: text}) |> render_change()
+    end
+
+    assert typed.(too_long) =~ "161/160 characters"
+    refute has_element?(view, "#pb-offers-text-errors p")
+
+    view |> element("#pb-offers-text") |> render_blur()
+    assert has_element?(view, "#pb-offers-text-errors p")
+
+    typed.("Short enough")
+    refute has_element?(view, "#pb-offers-text-errors p")
+    typed.(too_long)
+    refute has_element?(view, "#pb-offers-text-errors p")
+
+    view
+    |> form("#pb-offers-new-form", offer: %{label: "Long", text: too_long})
+    |> render_submit()
+
+    assert has_element?(view, "#pb-offers-text-errors p")
+    refute has_element?(view, "#pb-offers-create-problem")
+    assert Offers.my_creatives!(actor: owner) == []
 
     saved =
       view
