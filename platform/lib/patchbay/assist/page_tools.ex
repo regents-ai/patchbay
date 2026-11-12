@@ -28,7 +28,7 @@ defmodule Patchbay.Assist.PageTools do
   @max_script_bytes 2 * 1024 * 1024
   @max_scripts 40
   @max_redirects 3
-  @max_tools 100
+  @max_tools 200
   @max_description_chars 1_000
   @concurrency 6
   @fetch_timeout_ms 12_000
