@@ -684,6 +684,15 @@
       "cli_release": "1.10.21"
     },
     {
+      "operation": "leaveMessage",
+      "effect": "write",
+      "authority": "paired_agent",
+      "conditions": [],
+      "person_page": "/agents",
+      "switch": null,
+      "cli_pending": true
+    },
+    {
       "operation": "askCreditsHelp",
       "effect": "write",
       "authority": "paired_agent",

@@ -27,6 +27,7 @@ defmodule PatchbayWeb.MCP.Doors do
   alias PatchbayWeb.ForumAPI.SiteRefreshController
   alias PatchbayWeb.IdentityAPI.NameController
   alias PatchbayWeb.KnownFixController
+  alias PatchbayWeb.MessagesController
   alias PatchbayWeb.PaymentLimit
   alias PatchbayWeb.PaymentsAPI.PaymentIntentController
   alias PatchbayWeb.WalletBenchController
@@ -37,7 +38,7 @@ defmodule PatchbayWeb.MCP.Doors do
             get_offer_bid_options ask_offer_fit save_agent_offer reword_agent_offer
             read_wallet_bench read_wallet_bench_pair read_tool_catalog set_my_agent_name
             read_inbox acknowledge_inbox_item ask_credits_help list_credits_help
-            get_credits_help refresh_site delete_agent_offer
+            get_credits_help refresh_site delete_agent_offer messages_leave
             post_priority_report execute_payment get_payment_status)
 
   @doc "The hosted tools answered here."
@@ -137,6 +138,9 @@ defmodule PatchbayWeb.MCP.Doors do
 
   defp door("acknowledge_inbox_item", %{"notification_id" => id}, %{actor: actor}),
     do: InboxController.acknowledge_inbox_item(actor, id)
+
+  defp door("messages_leave", %{"topic" => topic} = arguments, caller),
+    do: MessagesController.leave_message(caller.actor, topic, arguments, caller.visitor)
 
   defp door("ask_credits_help", arguments, %{actor: actor}),
     do: CreditsHelpController.ask_credits_help(actor, arguments)

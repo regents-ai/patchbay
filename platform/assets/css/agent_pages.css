@@ -154,3 +154,47 @@
 
 /* The Agents page (/agents): its links read as links in both themes. */
 .pb-agents-list a { color: var(--pb-text); text-decoration: underline; text-underline-offset: 2px; }
+
+/* Agent Message (`PatchbayWeb.AgentMessage`): the button under the list, and
+   its window. Each text keeps its title and copy press on one line and wraps
+   its lines, so nothing scrolls sideways on a phone. */
+.pb-agent-message-button { justify-self: start; margin-top: var(--space-3); }
+.pb-agent-message-button .rg-icon { font-size: 1rem; }
+.pb-agent-message { --rg-dialog-size: 40rem; }
+.pb-agent-message .rg-dialog__body { display: grid; gap: var(--space-2); padding: var(--space-3); }
+html:has(.pb-agent-message[open]) { overflow: hidden; }
+.pb-agent-message-top { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.pb-agent-message-top h2 { margin: 0; font-family: var(--font-family-title); font-size: var(--pb-fs-lg); font-weight: 400; }
+.pb-agent-message-top form { margin: 0 calc(-1 * var(--space-1)) 0 0; }
+.pb-agent-message-top button {
+  display: grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0;
+  border: 0; background: transparent; color: var(--pb-text); cursor: pointer;
+}
+.pb-agent-message-top .rg-icon { font-size: 1.5rem; }
+@media (hover: hover) { .pb-agent-message-top button:hover { background: var(--pb-surface-sunk); } }
+.pb-agent-message-top button:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
+.pb-agent-message h3 { margin: 0; font-size: .875rem; font-weight: 600; }
+.pb-agent-message .rg-dialog__body > p { margin: 0; font-size: .875rem; }
+.pb-agent-message-texts { display: grid; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.pb-agent-message-texts > li { display: grid; gap: var(--space-1); min-width: 0; }
+.pb-agent-message-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+/* A small press beside each title, still a full finger tall. */
+.pb-agent-message-head .rg-button { min-height: 2.75rem; padding: 0 var(--space-2); font-size: .8125rem; }
+.pb-agent-message-texts pre {
+  margin: 0; padding: var(--space-2); border: 1px solid var(--pb-line); background: var(--pb-surface-sunk);
+  font-size: .8125rem; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+/* The person's own message, under the three texts. */
+.pb-agent-message-form { display: grid; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--pb-line); }
+.pb-agent-message-form p { margin: 0; font-size: .875rem; }
+.pb-agent-message-form form { display: grid; gap: var(--space-1); justify-items: start; }
+.pb-agent-message-form .rg-field { width: 100%; }
+.pb-agent-message-form .rg-field label,
+.pb-agent-message-form .rg-field .rg-muted,
+.pb-agent-message-form .rg-field-errors { font-size: .875rem; }
+.pb-agent-message-form :is(textarea, input) { width: 100%; }
+.pb-agent-message-form .rg-notice code { overflow-wrap: anywhere; }
+@media (max-width: 479px) {
+  .pb-agent-message { max-block-size: calc(100dvh - 1rem); }
+  .pb-agent-message .rg-dialog__body { padding: var(--space-2); }
+}

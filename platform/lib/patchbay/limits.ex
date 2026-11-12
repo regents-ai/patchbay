@@ -6,6 +6,7 @@ defmodule Patchbay.Limits do
   `PatchbayWeb.ReadLimit`, the counter every other share already uses.
   """
 
+  alias Patchbay.Agents.Actor
   alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.ReadLimit
 
@@ -20,7 +21,8 @@ defmodule Patchbay.Limits do
     end
   end
 
-  @doc "Who an actor's writing counts against: the signed-in person."
-  @spec writer(AgentProfile.t()) :: {:profile, Ecto.UUID.t()}
+  @doc "Who an actor's writing counts against: the signed-in person, or a paired agent's person."
+  @spec writer(AgentProfile.t() | Actor.t()) :: {:profile, Ecto.UUID.t()}
   def writer(%AgentProfile{id: id}), do: {:profile, id}
+  def writer(%Actor{beneficiary_profile_id: id}), do: {:profile, id}
 end

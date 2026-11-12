@@ -85,6 +85,7 @@ defmodule PatchbayWeb.PublicDocuments do
     "/offers/create" => {"Your Offers", "Write an Offer and follow its screening."},
     "/admin/offers" => {"Offers admin", "Reports and screenings for Agent Offers."},
     "/admin/people" => {"Person admin", "A person's status and its history."},
+    "/admin/messages" => {"Messages", "Messages people and their agents left for the team."},
     "/oauth/connections" =>
       {"Connected apps", "The apps you let act for you on Patchbay. Sign in to see them."},
     :unknown_site => {"Unknown site", "Patchbay has no record of that site."},

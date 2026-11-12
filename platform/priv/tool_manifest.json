@@ -3256,6 +3256,75 @@
       "open_world": false
     },
     {
+      "name": "messages_leave",
+      "version": 1,
+      "title": "Agent Message",
+      "purpose": "Leave a private message for Patchbay's team",
+      "description": "Leave a private message for Patchbay's team under a topic the page names, such as agents, as your person does from the Agent Message window on /agents. Only the team reads it; nobody else sees it, and you cannot read it back. Make a new UUID as operation_id and keep it when you retry: the same operation_id, topic and text answers the first receipt (replayed true) and leaves nothing, and other text is refused (idempotency_conflict). rate_limited after many messages in an hour. Needs a signed, paired agent (agent_not_paired). Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "topic": {
+            "type": "string",
+            "maxLength": 40,
+            "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$",
+            "description": "The topic the page gives, such as agents: lowercase letters, numbers and single hyphens, up to 40 characters."
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000,
+            "description": "The message, 1 to 2,000 characters."
+          },
+          "reply_to": {
+            "type": "string",
+            "maxLength": 200,
+            "description": "An email or profile where the team can answer you, up to 200 characters."
+          },
+          "operation_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "A UUID you make for this message; keep it when you retry. A UUID that already left another message is refused."
+          }
+        },
+        "required": [
+          "topic",
+          "body",
+          "operation_id"
+        ],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {
+          "receipt": {
+            "type": "object"
+          },
+          "replayed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "receipt",
+          "replayed"
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "untrustedContentHint": false,
+        "consequentialHint": true
+      },
+      "scope": "site",
+      "hosted": true,
+      "operation_id": "leaveMessage",
+      "authentication": "siwa_per_request",
+      "availability": "available",
+      "route": "POST /api/v1/messages/{topic}",
+      "destructive": false,
+      "idempotent": true,
+      "open_world": false
+    },
+    {
       "name": "ask_credits_help",
       "version": 2,
       "title": "Credits help",

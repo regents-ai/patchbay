@@ -11,7 +11,8 @@ defmodule PatchbayWeb.SiteEditionTest do
   alias PatchbayWeb.SiteEdition
 
   @main_only ~w(
-    /offers /offers/bid /offers/create /admin/offers /admin/people/:public_id /points /credits-help /priority /changelog
+    /offers /offers/bid /offers/create /admin/offers /admin/people/:public_id /admin/messages
+    /api/v1/messages/:topic /points /credits-help /priority /changelog
     /fixes/:id /bench/x402-test /siwa-test /mcp /tools/account/points
     /forum/offer-slots /forum/offer-reports /forum/offer-bids /forum/my-offers
     /forum/my-offers/:creative_id /forum/credits-help /forum/credits-help/:id
@@ -69,7 +70,7 @@ defmodule PatchbayWeb.SiteEditionTest do
                 bid_on_offer_slot ask_offer_fit save_agent_offer reword_agent_offer delete_agent_offer
                 list_my_active_offers list_my_offer_history post_priority_report
                 execute_payment complete_payment get_payment_status request_free_fix get_assist
-                account_points ask_credits_help list_credits_help get_credits_help
+                account_points messages_leave ask_credits_help list_credits_help get_credits_help
                 read_wallet_bench read_wallet_bench_pair)
   end
 

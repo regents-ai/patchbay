@@ -231,6 +231,8 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       {"acknowledge_inbox_item", %{"notification_id" => missing},
        {:http, :refusal, :post, "/forum/inbox/#{missing}/acknowledge", %{}}},
       {"ask_credits_help", credits_help(), :ok},
+      {"messages_leave",
+       %{"topic" => "agents", "body" => "A note", "operation_id" => Ecto.UUID.generate()}, :ok},
       {"list_credits_help", %{}, {:http, :answer, :post, "/forum/credits-help/list", %{}}},
       {"get_credits_help", %{"post_id" => missing},
        {:http, :refusal, :get, "/forum/credits-help/#{missing}"}},

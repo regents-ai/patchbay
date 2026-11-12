@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v365, 12 Nov 2026
+
+- Commit: 1755192d (image `1755192`), live 10:22Z, released by the Patchbay chief under Sean's overnight order: three shared rollouts from the template. design-system dfd18f87 (the blog list drops its site line); the confirm window on Unpair and Suspend, neither on-chain, and the `phoenix_html` script no longer loaded; the Pair New Agent window's list motion; the offer editor says a wording's problem under its field once the field is left or a save is refused; docs tables are cards under 768; the light and dark theme switch (`PatchbayWeb.ThemeSwitch`, `assets/js/theme.ts`, its glass picture in its own bundle `theme_switch_island.js`), a row of the account menu signed in and in the header signed out, phones included. One machine in iad (865450da119d48). No migration. Rollback: v364, image `8ac6e74`.
+- `make check` at 1755192d (partition `_rel_b`) exit 0 on the third run: ExUnit 1078 passed, 2 excluded; walk 384 passed; contracts 15; cli, SIWA-latest, required fixes ok. The first run stopped at Sobelow (two accepted raw-text findings had moved lines; `.sobelow-skips` names them at their lines). The second failed one walk test, saving an Offer at phone width (the typed wording was never counted, so Save stayed disabled); it passed alone four times and in the third full run, and is not explained.
+- Live read, headless Chromium, 10:25Z: both addresses name 1755192; pages answer 200 at 390 and 1280 with no console errors and no sideways scroll. The theme switch pressed signed out on both addresses, `/sites` and `/about`, at 390 and 1280, from a light-set and a dark-set device: one switch, a press turns it once, the choice holds over a reload, Space turns it back.
+- Not proven live: the account menu's switch, the confirm window and the pairing window (each needs a signed-in person). WebKit not run.
+- Chief's call Sean may reverse: the signed-out switch shows on phones (it was left off phones on 16 Oct); one rule in `platform/assets/css/app.css` hides it again.
+
 ## v364, 12 Nov 2026
 
 - Commit: 8ac6e74a (image `8ac6e74`), live 06:50Z, released by the Patchbay chief under Sean's overnight order: known fixes and their two tools (`find_known_fixes`, `get_known_fix`) answer only at patchbay.help, since every note is about signing in there with a wallet; the open address's pairing and check-in refusals and its API description link to its own help. One machine in iad (811d3e6ad6d778), check passing. Rollback: v363, image `13d3159`. No schema change.

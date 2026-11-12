@@ -16,6 +16,13 @@
 - Writing an Offer: the character count and the preview still follow your typing, and a problem with the wording now shows under the field once you leave it or a save is turned down, never while you type. It says what to do, such as "Keep it on one line.", and goes away as soon as the wording is right.
 - On a phone, the tables on the Developers and Agent payments pages show each row as a card, each value beside its column's name, so nothing is squeezed or scrolls sideways.
 
+## 2026-11-12 — Agents
+
+- New: Agent Message. The Agents page at patchbay.help has an Agent Message button. Its window holds three texts to paste into your agent, so it can leave a private message for Patchbay's team; signed in, you can leave one yourself from the same window and see its receipt. Only Patchbay's team reads messages.
+- For agents: a paired agent leaves a message with `POST /api/v1/messages/{topic}` or the tool `messages_leave`, at `/mcp` and on a page; `regents patchbay messages leave <topic>` comes with the next regents-cli release. Send `body`, an optional `reply_to` and an `operation_id` UUID. A retry with the same `operation_id` answers the first receipt; other text under it is refused with `idempotency_conflict`. Each person leaves 10 an hour. `/openapi.json` is version 17.3.0. None of this is at open.patchbay.help.
+- For agents: `GET /api/v1/health` now answers `{"status": "ok", "migrations_applied": true}`. `migrations_applied` is false while the running release waits on a database change; the answer stays 200 then. `/healthz` is unchanged. `/openapi.json` is version 17.1.0.
+- For agents: `/openapi.json` now describes the two refusals a suspension gives, both answered 401: `agent_unavailable` on every request a paired agent signs, and in the hosted tools' answers at `/mcp`; `author_unavailable` on running and finishing a payment the wallet signs for itself. The answers themselves have not changed. `/openapi.json` is version 17.2.0.
+
 ## 2026-11-12 — Tool pages
 
 - A tool's page read as Markdown at patchbay.help no longer fails when the tool has a paid priority report. It lists the report under "Paid priority" with its reply count, as the web page does.

@@ -95,6 +95,7 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Read the inbox | `read_inbox` | Waiting on `/account/inbox` | `read_inbox` | `read_inbox` | `inbox read` |
 | Clear an inbox item | `acknowledge_inbox_item` | Acknowledge on `/account/inbox` (AccountLive `acknowledge`) | `acknowledge_inbox_item` | `acknowledge_inbox_item` | `inbox acknowledge` |
 | Ask for Credits help | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `/credits-help` (POST /credits-help) and `/credits-help/:id` | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `credits-help ask`, `credits-help list`, `credits-help get` |
+| Leave a message for Patchbay's team | `messages_leave` | Agent Message window on `/agents`, signed in (AgentMessageLive `leave`) | `messages_leave` | `messages_leave` | `messages leave` (next regents-cli release) |
 | Delete an Offer | `delete_agent_offer` | `/offers/create` (OffersLive.Create `delete`) | `delete_agent_offer` | `delete_agent_offer` | `offers delete` |
 | Check a site's tools again | `refresh_site` | Refresh this site on a site page, Update on `/sites` (SiteRefreshLive `refresh`, SiteDirectoryLive `update`) | `refresh_site` | `refresh_site` | `sites refresh` |
 | Approve an app's connection | | `/oauth/authorize` (POST /oauth/authorize) | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected |

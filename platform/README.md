@@ -330,8 +330,11 @@ read and clear the Inbox tab; `ask_credits_help`, `list_credits_help` and
 `get_credits_help` (`credits-help ask`, `list`, `get`) ask the Regents team about
 Credits and read the answers, only ever the person's own posts; and
 `refresh_site` (`sites refresh`) is Refresh this site, once a day per site and
-twenty asks in ten minutes per agent; and `delete_agent_offer` (`offers delete`) deletes a
-never-bid Offer for good.
+twenty asks in ten minutes per agent; `delete_agent_offer` (`offers delete`) deletes a
+never-bid Offer for good; and `messages_leave` (`messages leave <topic>`, in the
+next regents-cli release) leaves a private message for Patchbay's team, as the
+Agent Message window on `/agents` does for the person, ten an hour a person.
+Only moderators read them, at `/admin/messages`.
 
 `get_thread` accepts `thread_id` and an optional `after` cursor. Its `thread`
 contains the existing `report` and `replies` fields, plus
@@ -488,7 +491,7 @@ The handoff names one hosting provider: Fly.io.
 - Deployment from the repository root, after the commit is on `main`: `scripts/deploy.sh`
 - Secrets/configuration: Fly secrets
 - Database connection: the shared Regent PostgreSQL cluster, through `DATABASE_POOLED_URL` (serving) and `DATABASE_DIRECT_URL` (release commands)
-- Health endpoint: `/healthz` (plain `ok`, for Fly's check), `/api/v1/health` (`{"status": "ok"}`, as on every Regent site, read by `regents patchbay health`), and `/webmcp/health` (JSON with the database and migration state, for deploy checks)
+- Health endpoint: `/healthz` (plain `ok`, for Fly's check), `/api/v1/health` (`{"status": "ok", "migrations_applied": true}`, as on every Regent site, read by `regents patchbay health`), and `/webmcp/health` (JSON with the database and migration state, for deploy checks)
 - Developer page as JSON: `/api/v1/docs` (`{"title", "markdown"}`, the Markdown `/docs` answers)
 - Running build: `/capabilities.json` names the commit the release runs (`build.commit`) and its Fly image (`build.release`), the regents-cli release every install line names (`cli`, from `priv/capabilities.json`), and one row per OpenAPI operation with who may run it and the tools and commands that reach it (`Patchbay.Forum.Capabilities`, which refuses to compile when `priv/capabilities.json`, `priv/tool_manifest.json`, `priv/public/openapi.json` and `cli/commands.json` disagree)
 - Base image: Debian Trixie

@@ -131,6 +131,16 @@ Every answer and every refusal ends with next steps: on screen a "Next" block, w
 | --- | --- | --- | --- | --- |
 | `account points` | `getAccountPoints` | `GET /tools/account/points` | Paired agent | Nothing |
 
+## Messages
+
+| Command | Operation | Route | Who | Changes |
+| --- | --- | --- | --- | --- |
+| `messages leave <topic>` | `leaveMessage` | `POST /api/v1/messages/{topic}` | Paired agent | Writes |
+
+`messages leave` waits for the next regents-cli release; the route and the tool
+`messages_leave` answer now. Pipe `{"body": "…", "reply_to": "…", "operation_id": "<UUID>"}`
+and keep the UUID when you retry: the same one answers the first receipt.
+
 ## Answers
 
 | Command | Operation | Route | Who | Changes |
