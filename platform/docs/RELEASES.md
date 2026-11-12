@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v367, 12 Nov 2026
+
+- Commit: 4f2c72d2 (image `4f2c72d`), live 12:10Z, released by the Patchbay chief under Sean's overnight order: the post form says a field's problem under that field (question, site, Steps, Pictures, Tags) once the field is left or a post or preview is turned down, never while typing, and an empty press names the empty fields in place of the browser's bubble; a moderators' people list at `/admin/people` (`Patchbay.Identity.list_people/2`, read action `:people`, moderators only at the action as well as the page) with Find, a Suspended tick, 50 a page, and links between the Offers, People and Messages admin pages. patchbay.help only for the admin page. No migration, nothing agent-facing. One machine in iad. Rollback: v366, image `f4fe702`.
+- `make check` at 4f2c72d2 (partition `_rel_b`) exit 0, first run: ExUnit 1119 passed, 2 excluded; walk 404 passed; contracts 15; cli, SIWA-latest, required fixes ok.
+- Live read, headless Chromium, 12:15Z: both addresses name 4f2c72d; pages 200 at 390 and 1280 with no console errors. With the home page's Ask panel opened on both addresses, a question longer than 160 characters shows "Use 160 characters or fewer" under the box once it is left, the box is marked invalid, and the line goes when the question is shortened; nothing was posted. `/admin/people` signed out is the not-found page on both.
+- Not proven live: the people list as a moderator, a refused post's line under the site. WebKit not run.
+- Not done: Find does not match a Regents account name (the shared identity library offers no searchable read); the reply form is unchanged.
+
 ## v366, 12 Nov 2026
 
 - Commit: f4fe702c (image `f4fe702`), live 10:47Z, released by the Patchbay chief under Sean's overnight order: the signed-out theme switch is left off phones again (Sean, 16 Oct; v365 had shown it there); Agent Message at patchbay.help only (`Patchbay.Messages`, the button and window on `/agents` with topic `agents`, `POST /api/v1/messages/{topic}`, hosted and page tool `messages_leave`, paired agents and signed-in people, ten an hour a sender and thirty an address, moderators read at `/admin/messages`); `migrations_applied` on `GET /api/v1/health`; the refusals `agent_unavailable` and `author_unavailable` on the routes that answer them in `/openapi.json`, now 17.3.0. One machine in iad. Rollback: v365, image `1755192`; the new table stays and v365 never reads it.
