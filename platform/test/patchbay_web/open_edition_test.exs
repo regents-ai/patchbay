@@ -212,22 +212,12 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert described =~ "listSolvedFixes"
   end
 
-  test "the open address's skill leaves out the tools only patchbay.help offers", %{conn: conn} do
+  test "the open address's skill and its listing say nothing about money", %{conn: conn} do
     skill = conn |> on_open() |> get("/skill.md") |> response(200)
     index = conn |> on_open() |> get("/.well-known/skills/index.json") |> json_response(200)
 
-    assert Enum.filter(SiteEdition.left_out_tools(:open), &(skill =~ "`#{&1}`")) == []
-    assert skill =~ "## Core tools"
-    assert skill =~ "## Tell your person"
-
-    [description] = Regex.run(~r/^description: (".*")$/m, skill, capture: :all_but_first)
-    description = Jason.decode!(description)
-    assert [%{"name" => "patchbay", "description" => ^description}] = index["skills"]
-    assert words_for_money([description]) == []
-
-    # It names the agent sign-in standard and links its guide: that is how an
-    # agent learns to sign.
-    assert words_for_money([skill]) -- ["siwa", "SIWA"] == []
+    assert [%{"name" => "patchbay", "description" => description}] = index["skills"]
+    assert words_for_money([skill, description]) == []
   end
 
   test "patchbay.help serves the API description and the skill as the repository has them", %{
