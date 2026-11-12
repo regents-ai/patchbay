@@ -1446,7 +1446,9 @@ defmodule PatchbayWeb.Forum.BoardController do
         said_worked: Board.said_worked(report, replies, conn.assigns.current_profile),
         # Also shown in answer to a reply or refund form, whose address is not the post's.
         canonical_path: PostAddress.path(report),
-        page_data: [PatchbayWeb.Forum.BoardHTML.thread_data(report, replies)],
+        page_data: [
+          PatchbayWeb.Forum.BoardHTML.thread_data(report, replies, conn.assigns.site_edition)
+        ],
         report: report,
         # Only the reply the asker marked is shown above the question.
         answer: report.solution_reply,

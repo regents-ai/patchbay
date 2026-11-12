@@ -496,8 +496,9 @@ defmodule PatchbayWeb.OpenEditionTest do
            end) == %{}
   end
 
-  # A page's own markup counts too: what it tells the page script, and the
-  # caption of the picture it is shared with.
+  # A page's own markup counts too: what it tells the page script, the
+  # caption of the picture it is shared with, and every address in its head
+  # and its structured data. patchbay.help's own pages keep its address.
   test "the open address's pages name no tool and no address that is patchbay.help's", %{
     conn: conn,
     site: site,
@@ -506,13 +507,97 @@ defmodule PatchbayWeb.OpenEditionTest do
     left_out = SiteEdition.left_out_tools(:open)
     assert "execute_payment" in left_out
 
-    for path <- ["/", PostAddress.path(report), "/#{site.origin}/tools/checkout", "/help"] do
+    for path <- [
+          "/",
+          PostAddress.path(report),
+          "/#{site.origin}",
+          "/#{site.origin}/tools/checkout",
+          "/sites",
+          "/help",
+          "/blog"
+        ] do
       open = conn |> on_open() |> get(path) |> html_response(200)
       assert Enum.filter(left_out, &(open =~ &1)) == [], path
-      assert Regex.scan(~r/(?<!open\.)patchbay\.help/, open) == [], path
+      assert main_addresses(open) == [], path
+      assert canonical(open) == SiteEdition.url(:open) <> path
 
       main = conn |> get(path) |> html_response(200)
       assert main =~ "patchbay.help: agents post to get unstuck fast."
+      assert canonical(main) == SiteEdition.url(:main) <> path
+    end
+  end
+
+  # What the open address serves besides its pages: the directory as JSON,
+  # the sitemap, the feeds of solved fixes and a post as Markdown.
+  test "the open address's sitemap, feeds and post Markdown link only to itself", %{
+    conn: conn,
+    report: report,
+    asker: asker,
+    answerer: answerer,
+    own_post: own_post
+  } do
+    reply =
+      Forum.add_reply!(
+        %{
+          report_id: own_post.id,
+          browser_session_id: Ash.UUID.generate(),
+          verdict: :verified_success,
+          note: "Signing in again showed it."
+        },
+        actor: asker
+      )
+
+    {:ok, _solved} = Forum.mark_solution(own_post, reply.id, nil, answerer)
+    # patchbay.help's sitemap waits for the Wallet Bench's first reading.
+    SharedBench.share!()
+
+    # Each read, and a link it holds, at the address it was read at.
+    reads = [
+      {"/sites", "application/json", "/sites?"},
+      {"/sitemap.xml", "*/*", PostAddress.path(report)},
+      {"/solved.rss", "*/*", PostAddress.path(own_post)},
+      {"/solved.json", "*/*", PostAddress.path(own_post)},
+      {PostAddress.path(report), "text/markdown", PostAddress.path(report)}
+    ]
+
+    for {path, accept, link} <- reads do
+      read = fn conn -> conn |> put_req_header("accept", accept) |> get(path) |> response(200) end
+
+      open = conn |> on_open() |> read.()
+      assert main_addresses(open) == [], path
+      assert open =~ SiteEdition.url(:open) <> link, path
+
+      assert read.(conn) =~ SiteEdition.url(:main) <> link, path
+    end
+  end
+
+  test "an agent's like and an empty search link to the address it asked", %{
+    conn: conn,
+    asker: asker,
+    own_post: own_post
+  } do
+    SignedAgent.stub_siwa()
+    agent = SignedAgent.pair!(asker)
+
+    like = fn conn ->
+      conn
+      |> SignedAgent.sign(agent)
+      |> post("/forum/threads/#{own_post.id}/likes", "{}")
+      |> json_response(200)
+      |> Map.fetch!("url")
+    end
+
+    search = fn conn ->
+      json_get(conn, "/forum/search?q=nothing-like-this&origin=example.net")
+      |> Jason.decode!()
+      |> Map.fetch!("next_step")
+    end
+
+    for {edition, request} <- [main: conn, open: on_open(conn)] do
+      assert like.(request) ==
+               SiteEdition.url(edition) <> PostAddress.path(own_post) <> "#pb-post"
+
+      assert search.(request) =~ SiteEdition.url(edition) <> "/example.net "
     end
   end
 
@@ -976,6 +1061,21 @@ defmodule PatchbayWeb.OpenEditionTest do
 
   defp json_get(conn, path),
     do: conn |> put_req_header("accept", "application/json") |> get(path) |> response(200)
+
+  # Every mention of patchbay.help: by its name, or by the address this app
+  # answers at there, which a test serves at a host of its own.
+  defp main_addresses(text) do
+    ~r/(?<!open\.)patchbay\.help|#{Regex.escape(SiteEdition.url(:main))}/
+    |> Regex.scan(text)
+    |> List.flatten()
+  end
+
+  defp canonical(html) do
+    [address] =
+      Regex.run(~r/<link rel="canonical" href="([^"]+)">/, html, capture: :all_but_first)
+
+    address
+  end
 
   defp ask(conn, agent, origin) do
     conn

@@ -149,19 +149,23 @@ defmodule PatchbayWeb.PublicDocuments do
 
   @doc """
   The head the root layout builds from the page's request, title and
-  description. The canonical address is the page's own, unless the page names
+  description. `origin` is the address the page was asked at
+  (`PatchbayWeb.SiteEdition.url/1`), which every absolute address in the head
+  starts with. The canonical address is the page's own, unless the page names
   another with a `canonical_path` assign: a post shown in answer to its reply
   form names the post's own address, so search engines count one page.
   """
   def metadata(conn, title, description) do
     suffix = if conn.request_path == "/", do: "", else: " · #{@site_name}"
     path = Map.get(conn.assigns, :canonical_path, conn.request_path)
+    origin = PatchbayWeb.SiteEdition.url(conn.assigns.site_edition)
 
     %{
       title: title <> suffix,
       suffix: suffix,
       description: description,
-      canonical: Phoenix.VerifiedRoutes.unverified_url(conn, path)
+      origin: origin,
+      canonical: origin <> path
     }
   end
 end

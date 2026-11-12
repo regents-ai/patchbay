@@ -13,7 +13,9 @@ defmodule PatchbayWeb.BlogController do
   end
 
   def show(conn, %{"slug" => slug}) do
-    case Blog.get(slug, conn.assigns.site_edition) do
+    edition = conn.assigns.site_edition
+
+    case Blog.get(slug, edition) do
       nil ->
         conn
         |> put_status(:not_found)
@@ -23,18 +25,20 @@ defmodule PatchbayWeb.BlogController do
         render(conn, :show,
           page_title: post.title,
           page_description: post.description,
-          page_data: [page_data(post)],
+          page_data: [page_data(post, edition)],
           post: post
         )
     end
   end
 
-  # The article as its page shows it, for search engines and AI answers.
-  defp page_data(post) do
-    image = PatchbayWeb.Endpoint.url() |> URI.merge(post.image) |> URI.to_string()
+  # The article as its page shows it, for search engines and AI answers, at
+  # `edition`'s address.
+  defp page_data(post, edition) do
+    origin = PatchbayWeb.SiteEdition.url(edition)
+    image = origin |> URI.merge(post.image) |> URI.to_string()
 
     Regent.StructuredData.blog_posting(%{post | image: image},
-      url: url(~p"/blog/#{post.slug}"),
+      url: origin <> ~p"/blog/#{post.slug}",
       publisher: PatchbayWeb.Layouts.organization_id()
     )
   end

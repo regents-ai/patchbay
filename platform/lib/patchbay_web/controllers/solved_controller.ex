@@ -3,7 +3,8 @@ defmodule PatchbayWeb.SolvedController do
   The public feed of solved fixes, as a JSON Feed 1.1 and as RSS 2.0: the
   newest threads whose asker picked an answer, each with the answer's fix in
   a few words. Anyone can read it without signing in, and both are cached for
-  five minutes.
+  five minutes. Every link in it is at the address it was read at
+  (`PatchbayWeb.SiteEdition`).
   """
 
   use PatchbayWeb, :controller
@@ -13,6 +14,7 @@ defmodule PatchbayWeb.SolvedController do
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.BoardHTML
   alias PatchbayWeb.ForumAPI.Reads
+  alias PatchbayWeb.SiteEdition
 
   @items 50
   # An item's words are shortened the way a thread's answer shortens a long
@@ -22,7 +24,7 @@ defmodule PatchbayWeb.SolvedController do
   @description "The newest questions with an answer the asker picked, and the fix it gives."
 
   def feed(conn, _params) do
-    base = PatchbayWeb.Endpoint.url()
+    base = SiteEdition.url(conn.assigns.site_edition)
 
     document = %{
       version: "https://jsonfeed.org/version/1.1",
@@ -30,7 +32,7 @@ defmodule PatchbayWeb.SolvedController do
       description: @description,
       home_page_url: base <> "/",
       feed_url: base <> "/solved.json",
-      items: Enum.map(solved!(), &item/1)
+      items: Enum.map(solved!(), &item(&1, base))
     }
 
     conn
@@ -45,7 +47,7 @@ defmodule PatchbayWeb.SolvedController do
     conn
     |> cached()
     |> put_resp_content_type("application/rss+xml")
-    |> send_resp(200, document(solved!()))
+    |> send_resp(200, document(solved!(), SiteEdition.url(conn.assigns.site_edition)))
   end
 
   defp cached(conn), do: put_resp_header(conn, "cache-control", "public, max-age=300")
@@ -57,34 +59,32 @@ defmodule PatchbayWeb.SolvedController do
     end
   end
 
-  defp item(thread) do
+  defp item(thread, base) do
     %{
       id: thread.id,
-      url: thread_url(thread),
+      url: base <> PostAddress.path(thread),
       title: PostSummary.post_title(thread),
       content_text: summary(thread.solution_reply),
       date_published: thread.last_activity_at
     }
   end
 
-  defp thread_url(thread), do: PostAddress.url(thread)
-
-  defp document(threads) do
-    base = PatchbayWeb.Endpoint.url()
-
+  defp document(threads, base) do
     ~s(<?xml version="1.0" encoding="UTF-8"?>\n) <>
       ~s(<rss version="2.0">\n<channel>\n) <>
       "<title>#{@title}</title>\n" <>
       "<link>#{escape(base)}/</link>\n" <>
       "<description>#{@description}</description>\n" <>
-      Enum.map_join(threads, "\n", &rss_item/1) <>
+      Enum.map_join(threads, "\n", &rss_item(&1, base)) <>
       "\n</channel>\n</rss>\n"
   end
 
-  defp rss_item(thread) do
+  defp rss_item(thread, base) do
+    url = base <> PostAddress.path(thread)
+
     "<item><title>#{escape(PostSummary.post_title(thread))}</title>" <>
-      "<link>#{escape(thread_url(thread))}</link>" <>
-      ~s(<guid isPermaLink="true">#{escape(thread_url(thread))}</guid>) <>
+      "<link>#{escape(url)}</link>" <>
+      ~s(<guid isPermaLink="true">#{escape(url)}</guid>) <>
       "<pubDate>#{Calendar.strftime(thread.last_activity_at, "%a, %d %b %Y %H:%M:%S GMT")}</pubDate>" <>
       "<description>#{escape(summary(thread.solution_reply))}</description></item>"
   end

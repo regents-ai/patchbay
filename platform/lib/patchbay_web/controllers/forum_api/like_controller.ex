@@ -55,7 +55,7 @@ defmodule PatchbayWeb.ForumAPI.LikeController do
       liked: liked,
       thread_id: report.id,
       reply_id: reply_id,
-      url: PostAddress.url(report) <> anchor(reply_id)
+      url: PatchbayWeb.MD.absolute(PostAddress.path(report) <> anchor(reply_id))
     }
   end
 

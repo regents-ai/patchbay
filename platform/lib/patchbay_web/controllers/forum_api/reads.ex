@@ -663,7 +663,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp site_page(origin) do
     case origin && Origin.normalize(origin) do
       {:ok, host} ->
-        "Read #{PatchbayWeb.Endpoint.url()}/#{host} for the tool names Patchbay knows there. "
+        "Read #{MD.absolute("/" <> host)} for the tool names Patchbay knows there. "
 
       _none ->
         ""

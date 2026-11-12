@@ -10,6 +10,7 @@ defmodule PatchbayWeb.AgentReadinessTest do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
+  alias PatchbayWeb.SiteEdition
 
   @contract String.duplicate("a", 64)
 
@@ -611,35 +612,49 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert thread =~ ~s(<link rel="canonical" href="#{PostAddress.url(report)}">)
     end
 
-    test "carries a canonical address and structured data", %{conn: conn} do
-      url = PatchbayWeb.Endpoint.url()
-      html = conn |> get("/sites") |> html_response(200)
+    # Each address names itself, never the other: patchbay.help as before, and
+    # the open address (`PatchbayWeb.SiteEdition`) at its own host.
+    test "carries a canonical address and structured data at the address asked", %{conn: conn} do
+      for {request, url} <- [
+            {conn, SiteEdition.url(:main)},
+            {on_open(conn), SiteEdition.url(:open)}
+          ] do
+        html = request |> get("/sites") |> html_response(200)
 
-      assert html =~ ~s(<link rel="canonical" href="#{url}/sites">)
-      assert html =~ ~s(<meta property="og:url" content="#{url}/sites">)
-      assert html =~ ~s(<meta property="og:title" content="Sites · Patchbay">)
+        assert html =~ ~s(<link rel="canonical" href="#{url}/sites">)
+        assert html =~ ~s(<meta property="og:url" content="#{url}/sites">)
+        assert html =~ ~s(<meta property="og:title" content="Sites · Patchbay">)
 
-      [website, application, organization] = structured_data(html)
+        assert html =~
+                 ~s(<link rel="alternate" type="text/plain" title="Agent guide" href="#{url}/llms.txt">)
 
-      assert website["@type"] == "WebSite"
-      assert website["publisher"] == %{"@id" => organization["@id"]}
+        assert html =~ ~s(<link rel="sitemap" type="application/xml" href="#{url}/sitemap.xml">)
+        assert html =~ ~s(href="#{url}/openapi.json">)
 
-      assert application["@type"] == "SoftwareApplication"
-      assert application["name"] == "Patchbay"
-      assert organization["@type"] == "Organization"
-      assert organization["contactPoint"]["email"] == "build@regents.sh"
-      refute Map.has_key?(organization, "address")
+        [website, application, organization] = structured_data(html)
+
+        assert website["@type"] == "WebSite"
+        assert {website["@id"], website["url"]} == {url <> "/#website", url}
+        assert website["publisher"] == %{"@id" => organization["@id"]}
+
+        assert application["@type"] == "SoftwareApplication"
+        assert application["name"] == "Patchbay"
+        assert {application["@id"], application["url"]} == {url <> "/#application", url}
+        assert organization["@type"] == "Organization"
+        assert organization["contactPoint"]["email"] == "build@regents.sh"
+        assert organization["contactPoint"]["url"] == url <> "/about"
+        refute Map.has_key?(organization, "address")
+      end
     end
 
     # The open address's picture names no other address, so each address
-    # shares its own, in its share tags and as the organization's logo.
+    # shares its own, at its own address, in its share tags and as the
+    # organization's logo.
     test "each address shares its own picture, 1200 by 630", %{conn: conn} do
-      url = PatchbayWeb.Endpoint.url()
-
       pictures =
-        for {request, path} <- [
-              {conn, "/images/og-image.png"},
-              {on_open(conn), "/images/og-image-open.png"}
+        for {request, url, path} <- [
+              {conn, SiteEdition.url(:main), "/images/og-image.png"},
+              {on_open(conn), SiteEdition.url(:open), "/images/og-image-open.png"}
             ] do
           html = request |> get("/sites") |> html_response(200)
 
@@ -666,17 +681,23 @@ defmodule PatchbayWeb.AgentReadinessTest do
       conn: conn
     } do
       report = "shop.example" |> site!() |> tool!() |> report!()
-      html = conn |> get(PostAddress.path(report)) |> html_response(200)
 
-      # Search engines read a question page only once it has an answer.
-      [_website, _application, _organization, page] = structured_data(html)
+      for {request, url} <- [
+            {conn, SiteEdition.url(:main)},
+            {on_open(conn), SiteEdition.url(:open)}
+          ] do
+        html = request |> get(PostAddress.path(report)) |> html_response(200)
 
-      assert page["@type"] == "DiscussionForumPosting"
-      assert page["url"] == PostAddress.url(report)
-      assert page["headline"] == Patchbay.Forum.PostSummary.post_title(report)
-      assert page["text"] =~ "once the cart had an item"
-      assert page["datePublished"] == DateTime.to_iso8601(report.inserted_at)
-      assert page["commentCount"] == 0
+        # Search engines read a question page only once it has an answer.
+        [_website, _application, _organization, page] = structured_data(html)
+
+        assert page["@type"] == "DiscussionForumPosting"
+        assert page["url"] == url <> PostAddress.path(report)
+        assert page["headline"] == Patchbay.Forum.PostSummary.post_title(report)
+        assert page["text"] =~ "once the cart had an item"
+        assert page["datePublished"] == DateTime.to_iso8601(report.inserted_at)
+        assert page["commentCount"] == 0
+      end
     end
 
     test "an article names its headline, date, cover and publisher", %{conn: conn} do

@@ -44,7 +44,9 @@
       canonical={metadata.canonical}
       site_name="Patchbay"
       site_type="app"
-      image={static_url(@conn, PatchbayWeb.SiteEdition.share_picture(@site_edition))}
+      image={
+        metadata.origin <> static_path(@conn, PatchbayWeb.SiteEdition.share_picture(@site_edition))
+      }
       image_width={1200}
       image_height={630}
       image_alt={
@@ -52,9 +54,9 @@
           do: "patchbay.help: agents post to get unstuck fast.",
           else: "Patchbay: agents post to get unstuck fast."
       }
-      agent_guide={url(~p"/llms.txt")}
-      sitemap={url(~p"/sitemap.xml")}
-      service_description={url(~p"/openapi.json")}
+      agent_guide={metadata.origin <> ~p"/llms.txt"}
+      sitemap={metadata.origin <> ~p"/sitemap.xml"}
+      service_description={metadata.origin <> ~p"/openapi.json"}
       structured_data={
         PatchbayWeb.Layouts.structured_data(@site_edition, Map.get(assigns, :page_data, []))
       }
