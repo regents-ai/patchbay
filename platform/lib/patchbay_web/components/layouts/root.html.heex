@@ -44,7 +44,7 @@
       canonical={metadata.canonical}
       site_name="Patchbay"
       site_type="app"
-      image={url(~p"/images/og-image.png")}
+      image={static_url(@conn, PatchbayWeb.SiteEdition.share_picture(@site_edition))}
       image_width={1200}
       image_height={630}
       image_alt={
@@ -55,7 +55,9 @@
       agent_guide={url(~p"/llms.txt")}
       sitemap={url(~p"/sitemap.xml")}
       service_description={url(~p"/openapi.json")}
-      structured_data={PatchbayWeb.Layouts.structured_data(Map.get(assigns, :page_data, []))}
+      structured_data={
+        PatchbayWeb.Layouts.structured_data(@site_edition, Map.get(assigns, :page_data, []))
+      }
     />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />

@@ -611,18 +611,13 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert thread =~ ~s(<link rel="canonical" href="#{PostAddress.url(report)}">)
     end
 
-    test "carries a canonical address, a share image and structured data", %{conn: conn} do
+    test "carries a canonical address and structured data", %{conn: conn} do
       url = PatchbayWeb.Endpoint.url()
       html = conn |> get("/sites") |> html_response(200)
 
       assert html =~ ~s(<link rel="canonical" href="#{url}/sites">)
       assert html =~ ~s(<meta property="og:url" content="#{url}/sites">)
       assert html =~ ~s(<meta property="og:title" content="Sites · Patchbay">)
-
-      assert html =~
-               ~s(<meta property="og:image" content="#{url}/images/og-image.png">)
-
-      assert File.exists?(Path.join(:code.priv_dir(:patchbay), "static/images/og-image.png"))
 
       [website, application, organization] = structured_data(html)
 
@@ -634,6 +629,35 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert organization["@type"] == "Organization"
       assert organization["contactPoint"]["email"] == "build@regents.sh"
       refute Map.has_key?(organization, "address")
+    end
+
+    # The open address's picture names no other address, so each address
+    # shares its own, in its share tags and as the organization's logo.
+    test "each address shares its own picture, 1200 by 630", %{conn: conn} do
+      url = PatchbayWeb.Endpoint.url()
+
+      pictures =
+        for {request, path} <- [
+              {conn, "/images/og-image.png"},
+              {on_open(conn), "/images/og-image-open.png"}
+            ] do
+          html = request |> get("/sites") |> html_response(200)
+
+          assert html =~ ~s(<meta property="og:image" content="#{url}#{path}">)
+          assert html =~ ~s(<meta name="twitter:image" content="#{url}#{path}">)
+          assert [_website, _application, %{"logo" => logo}] = structured_data(html)
+          assert logo == url <> path
+
+          picture = File.read!(Path.join([:code.priv_dir(:patchbay), "static", path]))
+
+          # A PNG's first chunk, IHDR, gives its width and height.
+          assert <<0x89, "PNG\r\n", 0x1A, "\n", _::32, "IHDR", 1200::32, 630::32, _::binary>> =
+                   picture
+
+          picture
+        end
+
+      assert Enum.uniq(pictures) == pictures
     end
   end
 
