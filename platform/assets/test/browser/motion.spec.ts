@@ -71,10 +71,12 @@ test.describe("the home page's preview", () => {
 
   test("a refused preview shakes its reason, then rests", async ({page, isMobile}) => {
     await press(await askForPreview(page, `Book a table for two on Friday ${"and again ".repeat(15)}`), isMobile)
-    const reason = page.getByRole("alert").filter({hasText: "A forum post's title is what you are trying to do"})
-    await expect(reason).toBeVisible()
+    // The reason is about the title, so it is said under the title, where it
+    // has stood since the title was left; the refusal is what shakes it.
+    const reason = page.locator("#pb-fix-goal-errors")
+    await expect(reason.locator("p")).toBeVisible()
+    await expect.poll(async () => shakes(await movesOf(reason))).toBe(true)
     await toRest(reason)
-    expect(shakes(await movesOf(reason))).toBe(true)
     await expect(previewOf(page)).toHaveCount(0)
   })
 

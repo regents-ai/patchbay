@@ -36,6 +36,9 @@ type HeroFormOptions = {
 // A chosen picture, as far as the page can check it before sending.
 type Picture = {size: number; type: string}
 
+// A field with a line under it for what is wrong with it.
+type Field = HTMLInputElement | HTMLTextAreaElement
+
 /**
  * The form at the top of the home page. What the person is trying to do,
  * the site and the tools they pick become a forum post. It shows every field
@@ -47,6 +50,10 @@ type Picture = {size: number; type: string}
  * pictures chosen stay chosen, and its Publish button sends the form, or
  * opens sign-in first. Signed out, the form says so before anything is
  * written; the page's own Sign in keeps the draft too.
+ *
+ * What is wrong with a field is said under that field: once the field is
+ * left, when pictures are chosen, and when a post is turned down, never while
+ * it is typed. Typing only takes the line away, once the field is right.
  */
 export function mountHeroForm(options: HeroFormOptions = {}) {
   const doc = options.document ?? globalThis.document
@@ -98,6 +105,7 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   }
   form.addEventListener("input", changed)
   form.addEventListener("change", changed)
+  mountFieldLines(form)
 
   // Signing in partway through keeps what is written. The page's Sign in is
   // the header's, or the post window's own while the window covers the header;
@@ -110,7 +118,11 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
 
   form.addEventListener("submit", event => {
     const submitter = event.submitter
-    if (submitter?.hasAttribute("data-pb-preview")) {
+    if (!sendable(form)) {
+      event.preventDefault()
+      say(form, "")
+      if (submitter) deny(submitter)
+    } else if (submitter?.hasAttribute("data-pb-preview")) {
       event.preventDefault()
       void preview(form, submitter, options)
     } else if (submitter?.hasAttribute("data-pb-post") && form.dataset.pbSignedIn !== "true") {
@@ -137,12 +149,9 @@ async function preview(form: PageForm, button: HTMLElement, options: HeroFormOpt
   // preview loads does not make a keyboard request move.
   const byPointer = lastInputByPointer()
   const slot = form.querySelector<HTMLElement>("#pb-hero-preview")
-  if (!slot || !form.reportValidity()) return
+  if (!slot) return
 
   const pictures = picturesOf(form)
-  const problem = picturesProblem(pictures)
-  if (problem) return refuse(form, button, problem)
-
   const body = new FormData(form)
   body.delete(PICTURES)
   try {
@@ -160,6 +169,7 @@ async function preview(form: PageForm, button: HTMLElement, options: HeroFormOpt
     return refuse(form, button, WORDS.unpreviewed)
   }
   say(form, "")
+  if (placeRefusal(form, slot)) return
   showPictures(slot, pictures)
   arrive(slot, byPointer)
   slot.querySelector("#pb-hero-post, [role=alert]")?.scrollIntoView({block: "nearest"})
@@ -167,11 +177,129 @@ async function preview(form: PageForm, button: HTMLElement, options: HeroFormOpt
 
 // The preview settles in under the form when it was asked for by hand, its
 // "Check before posting" box with it. A refusal of the preview never fades in:
-// it is there at once and shakes, however it was asked for, unless less motion is on.
+// it is there at once and shakes, however it was asked for, unless less motion
+// is on. One about a single field does the same under that field (placeRefusal).
 function arrive(slot: HTMLElement, byPointer: boolean) {
   const refusal = slot.querySelector<HTMLElement>(":scope > [role=alert]")
   if (refusal) deny(refusal)
   else if (byPointer && !still(slot)) GRIDS.cascade([...slot.children])
+}
+
+// A preview turned down over one field: its words move from the preview's
+// place to the line under that field, which takes the focus. The line shakes
+// as the reason always has (see arrive).
+function placeRefusal(form: PageForm, slot: HTMLElement) {
+  const refusal = slot.querySelector<HTMLElement>(":scope > [role=alert][data-pb-field]")
+  const field = refusal && form.querySelector<Field>(`#${refusal.dataset.pbField}`)
+  if (!refusal || !field) return false
+  refusal.remove()
+  showProblem(form, field, refusal.textContent!.trim())
+  reach(form, field)
+  deny(lineOf(form, field)!)
+  return true
+}
+
+// The fields that have a line under them, in the order they stand.
+function fieldsOf(form: PageForm) {
+  return Array.from(form.elements as unknown as Iterable<Field>).filter(field => field.id !== "" && lineOf(form, field) !== null)
+}
+
+function lineOf(form: PageForm, field: Field) {
+  return form.querySelector<HTMLElement>(`#${field.id}-errors`)
+}
+
+function showProblem(form: PageForm, field: Field, words: string) {
+  const line = lineOf(form, field)!
+  const said = form.ownerDocument.createElement("p")
+  said.textContent = words
+  line.replaceChildren(said)
+  field.setAttribute("aria-invalid", "true")
+  describe(field, line.id, true)
+}
+
+function clearProblem(form: PageForm, field: Field) {
+  const line = lineOf(form, field)!
+  line.replaceChildren()
+  field.setAttribute("aria-invalid", "false")
+  describe(field, line.id, false)
+}
+
+// The line is one of the things that describe its field only while it says something.
+function describe(field: Field, id: string, described: boolean) {
+  const ids = (field.getAttribute("aria-describedby") ?? "").split(" ").filter(other => other !== "" && other !== id)
+  if (described) ids.push(id)
+  if (ids.length > 0) field.setAttribute("aria-describedby", ids.join(" "))
+  else field.removeAttribute("aria-describedby")
+}
+
+// What stops the form being sent, by the browser's own rules for the field
+// and the limits on pictures: the same things that stopped it before.
+function unmet(form: PageForm, field: Field): string | null {
+  if (field.name === PICTURES) return picturesProblem(picturesOf(form))
+  if (field.validity.valid) return null
+  return (field.validity.valueMissing && field.dataset.pbEmpty) || field.validationMessage
+}
+
+// A field holding more than Patchbay takes, counted as Patchbay counts it.
+// The page only says so; Patchbay decides when the post is sent.
+function overlong(field: Field): string | null {
+  const most = Number(field.dataset.pbMost)
+  if (!most || !field.dataset.pbLong) return null
+  const characters = [...new Intl.Segmenter().segment(field.value.trim())].length
+  return characters > most ? field.dataset.pbLong : null
+}
+
+// The field to fix under the cursor, its section opened first, with the line
+// that says what to fix in view.
+function reach(form: PageForm, field: Field) {
+  const section = field.closest("details")
+  if (section) section.open = true
+  field.focus()
+  lineOf(form, field)!.scrollIntoView({block: "nearest"})
+}
+
+// Whether the form can go as it stands. What stops it is said under each
+// field, and the first of them takes the focus.
+function sendable(form: PageForm) {
+  const stopped = fieldsOf(form).filter(field => {
+    const words = unmet(form, field)
+    if (words) showProblem(form, field, words)
+    return words !== null
+  })
+  if (stopped.length > 0) reach(form, stopped[0])
+  return stopped.length === 0
+}
+
+function mountFieldLines(form: PageForm) {
+  // The browser's own bubble gives way to the line under the field.
+  form.noValidate = true
+  const fieldAt = (event: Event) => fieldsOf(form).find(field => field === event.target)
+
+  // Leaving a field says what is wrong with what it holds.
+  form.addEventListener("focusout", event => {
+    const field = fieldAt(event)
+    const words = field && overlong(field)
+    if (field && words) showProblem(form, field, words)
+  })
+
+  // Typing never brings a line up. It takes one away once the field is right;
+  // a line Patchbay gave for what was sent goes with the first change.
+  form.addEventListener("input", event => {
+    const field = fieldAt(event)
+    if (!field || field.name === PICTURES || lineOf(form, field)!.childElementCount === 0) return
+    if (!(unmet(form, field) ?? overlong(field))) clearProblem(form, field)
+  })
+
+  // Pictures are chosen, not typed: the line follows each choice.
+  form.addEventListener("change", event => {
+    const field = fieldAt(event)
+    if (field?.name !== PICTURES) return
+    const words = picturesProblem(picturesOf(form))
+    if (words) {
+      showProblem(form, field, words)
+      lineOf(form, field)!.scrollIntoView({block: "nearest"})
+    } else clearProblem(form, field)
+  })
 }
 
 function showPictures(slot: HTMLElement, pictures: File[]) {

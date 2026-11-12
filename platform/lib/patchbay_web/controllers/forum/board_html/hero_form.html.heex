@@ -19,11 +19,22 @@
       Sign in
     </Regent.Primitives.button>
   </p>
-  <p :if={@hero.problem && !@hero.preview} class="pb-reply-form-problem" role="alert">
+  <p
+    :if={hero_unplaced(@hero.problem) && !@hero.preview}
+    class="pb-reply-form-problem"
+    role="alert"
+  >
     {@hero.problem.said}
   </p>
-  <div class="pb-fix-ask">
-    <label class="visually-hidden" for="pb-fix-goal">Issue</label>
+  <%!-- Each field carries the words for leaving it empty and for running too
+  long, which the page says under it (hero_form.ts). --%>
+  <Regent.Primitives.field
+    :let={field}
+    id="pb-fix-goal"
+    label="Issue"
+    class="pb-fix-ask"
+    errors={hero_errors(@hero.problem, :goal)}
+  >
     <input
       id="pb-fix-goal"
       name="ask[goal]"
@@ -33,10 +44,20 @@
       value={@hero.draft["goal"]}
       placeholder="Describe your WebMCP issue"
       autocomplete="off"
+      aria-invalid={field.aria_invalid}
+      aria-describedby={field.described_by}
+      data-pb-empty="Describe the issue."
+      data-pb-most={PatchbayWeb.Forum.Hero.max_title()}
+      data-pb-long={PatchbayWeb.Forum.Hero.title_fix()}
     />
-  </div>
+  </Regent.Primitives.field>
   <div class="pb-fix-more">
-    <Regent.Primitives.field id="pb-fix-site" label="The site">
+    <Regent.Primitives.field
+      :let={field}
+      id="pb-fix-site"
+      label="The site"
+      errors={hero_errors(@hero.problem, :site)}
+    >
       <input
         id="pb-fix-site"
         name="ask[site_url]"
@@ -49,7 +70,9 @@
         maxlength="2048"
         value={@hero.draft["site_url"]}
         placeholder="example.com/app"
-        aria-describedby="pb-fix-site-check"
+        aria-invalid={field.aria_invalid}
+        aria-describedby={String.trim("pb-fix-site-check #{field.described_by}")}
+        data-pb-empty="Name the site."
       />
       <p
         id="pb-fix-site-check"
@@ -81,26 +104,35 @@
     <details
       id="pb-hero-details"
       class="pb-ask-more pb-hero-details"
-      open={PatchbayWeb.Forum.Hero.details?(@hero.draft)}
+      open={PatchbayWeb.Forum.Hero.details?(@hero.draft, @hero.problem)}
     >
       <summary>
         <span>More</span>
         <Regent.Icons.icon name="chevron-down" class="pb-ask-more-chevron" />
       </summary>
       <div class="pb-ask-more-fields">
-        <Regent.Primitives.field id="pb-hero-body" label="Steps">
+        <Regent.Primitives.field
+          :let={field}
+          id="pb-hero-body"
+          label="Steps"
+          errors={hero_errors(@hero.problem, :details)}
+        >
           <textarea
             id="pb-hero-body"
             name="ask[details]"
             rows="5"
             maxlength="16384"
+            aria-invalid={field.aria_invalid}
+            aria-describedby={field.described_by}
             placeholder="The steps you took, the result you expected, and the result you saw."
           >{@hero.draft["details"]}</textarea>
         </Regent.Primitives.field>
         <Regent.Primitives.field
+          :let={field}
           :if={@profile}
           id="pb-hero-pictures"
           label="Pictures"
+          errors={hero_errors(@hero.problem, :pictures)}
         >
           <input
             id="pb-hero-pictures"
@@ -108,6 +140,8 @@
             type="file"
             multiple
             accept="image/png,image/jpeg,image/webp"
+            aria-invalid={field.aria_invalid}
+            aria-describedby={field.described_by}
           />
         </Regent.Primitives.field>
         <p :if={!@profile} class="pb-hero-pictures-note">
@@ -127,12 +161,19 @@
             <span>{label}</span>
           </label>
         </fieldset>
-        <Regent.Primitives.field :let={field} id="pb-hero-tags" label="Tags">
+        <Regent.Primitives.field
+          :let={field}
+          id="pb-hero-tags"
+          label="Tags"
+          errors={hero_errors(@hero.problem, :tags)}
+        >
           <input
             id={field.id}
             name="ask[topic_tags]"
             type="text"
             maxlength="200"
+            aria-invalid={field.aria_invalid}
+            aria-describedby={field.described_by}
             value={@hero.draft["topic_tags"]}
             placeholder="booking, refunds"
           />
@@ -156,7 +197,7 @@
     <.hero_preview
       :if={@hero.preview}
       preview={@hero.preview}
-      problem={@hero.problem}
+      problem={hero_unplaced(@hero.problem)}
     />
   </div>
 </form>
