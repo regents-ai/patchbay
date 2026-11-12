@@ -4,6 +4,11 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v371, 12 Nov 2026
+
+- Commit: 3f0b5561 (image `3f0b556`), live 18:17Z, released by the Patchbay chief on Sean's instruction of 12 Nov (every site takes the template's value cards): six cards (Ask, Sites, Fixes, Agents, Bench, Connect) across the bottom of the home page at patchbay.help, the shared piece taken unchanged from ash-template `4af45439` apart from the module name; Patchbay's own six panels, stills and words. Not on the open address. The page script is now a module split into chunks, so the card drawing code loads only on the page that shows the row. No migration, nothing agent-facing. One machine in iad. Rollback: v370, image `df9b192`.
+- Live read, headless Chromium, signed out, 18:19Z: both addresses name 3f0b556; at 1280, 390 and 320 in light and dark the home page shows six cards, six stills loaded, six drawn panels, no sideways scroll, no page error and no failed request; the six links answer 200; the open home page has no card row. Not run: WebKit, Safari, a real phone.
+
 ## v370, 12 Nov 2026
 
 - Commit: df9b1925 (image `df9b192`), live 17:13Z, released by the Patchbay chief on Sean's instruction of 12 Nov ("Credits need to be removed from their headers and account pages, and the shared DB needs to drop it asap"): Credits are gone from Patchbay, and with them the Offers market, which was priced, held and settled in Credits (the chief's call), and Credits help. Removed: the Offers header item, `/offers/*`, `/admin/offers`, `/credits-help/*`, 13 agent addresses, 13 tools (tool list 59 to 46), 13 CLI commands, `agent_offers` in answers; the `regent_credits` dependency, its migrator in the release step, its listener and its config. OpenAPI 18.0.0. No migration. Seventeen Patchbay tables stay in place without code, rows untouched: the fifteen `offer_*` tables, `credits_help_posts` and `credits_help_answers`. Points and the USDC Balance unchanged; `/chatgpt/mcp` keeps its twelve tools. One machine in iad. Rollback: v369, image `849fb46`, possible only while the `regent_credits` tables exist; v369's release step would re-apply the Credits migrations.
