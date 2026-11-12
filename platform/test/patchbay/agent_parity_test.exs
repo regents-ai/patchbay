@@ -34,7 +34,7 @@ defmodule Patchbay.AgentParityTest do
           do: {String.replace(command, ~r/\s*<[^>]+>/, ""), entry["webmcp"]}
 
     page =
-      for tool <- Capabilities.manifest()["tools"],
+      for tool <- Capabilities.manifest(:main)["tools"],
           tool["scope"] == "site",
           do: tool["name"]
 

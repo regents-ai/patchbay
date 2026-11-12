@@ -221,6 +221,23 @@ test("a page offers every tool but those its address leaves out", () => {
   assert.deepEqual([...toolsByName({}).keys()], FORUM_TOOL_NAMES);
 });
 
+test("a page at the open address describes each tool by what that address has", () => {
+  const open = toolsByName({edition: "open"});
+  const main = toolsByName({});
+
+  // Which tools the open address offers is the server's to say; each one it
+  // words anew is registered under those words.
+  const reworded = manifest.tools.flatMap(tool => (tool.open_description ? [{name: tool.name, words: tool.open_description}] : []));
+  assert.ok(reworded.length > 0);
+  for (const {name, words} of reworded) {
+    assert.equal(open.get(name)!.description, words);
+    assert.doesNotMatch(words, /\/mcp|money|request_free_fix/, name);
+  }
+  assert.match(main.get("ask_question")!.description, /at \/mcp or over HTTP/);
+  assert.match(main.get("get_known_fix")!.description, /Next: request_free_fix/);
+  assert.equal(open.get("search_threads")!.description, main.get("search_threads")!.description);
+});
+
 test("registering is a no-op in a browser without WebMCP", () => {
   assert.doesNotThrow(() => registerForumTools(undefined, {})());
   assert.doesNotThrow(() => registerForumTools({}, {})());

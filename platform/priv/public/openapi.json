@@ -11166,15 +11166,24 @@
           },
           "output_schema": {
             "type": "object",
-            "description": "A hosted tool's answer, as a JSON Schema; /mcp sends it as outputSchema. Only on hosted tools."
+            "description": "A hosted tool's answer, as a JSON Schema; /mcp sends it as outputSchema. Only on hosted tools.",
+            "x-open": {
+              "description": "A hosted tool's answer, as a JSON Schema; /chatgpt/mcp sends it as outputSchema. Only on hosted tools."
+            }
           },
           "scope": {
             "type": "string",
-            "description": "The tool's place: site on every Patchbay page, hosted at /mcp only, owner for the person's own actions on the website."
+            "description": "The tool's place: site on every Patchbay page, hosted at /mcp only, owner for the person's own actions on the website.",
+            "x-open": {
+              "description": "The tool's place: site on every Patchbay page, hosted at /chatgpt/mcp only."
+            }
           },
           "hosted": {
             "type": "boolean",
-            "description": "Whether /mcp lists the tool too."
+            "description": "Whether /mcp lists the tool too.",
+            "x-open": {
+              "description": "Whether /chatgpt/mcp lists the tool too."
+            }
           },
           "operation_id": {
             "type": "string",

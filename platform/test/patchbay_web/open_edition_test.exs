@@ -406,19 +406,55 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert money_on(chatgpt_reads(), &chatgpt(conn, &1)) == %{}
   end
 
-  # A page's tools come from the manifest, less the ones its address leaves out.
+  # A page's tools come from the manifest, less the ones its address leaves
+  # out, each under its description at that address.
   test "the page tools the open address offers say nothing about money" do
     assert for(
              tool <- Patchbay.Forum.Capabilities.site(),
              SiteEdition.offers?(:open, tool),
              words =
                words_for_money([
-                 Jason.encode!(Map.take(tool, [:title, :description, :input_schema]))
+                 Patchbay.Forum.Capabilities.description(tool, :open),
+                 Jason.encode!(Map.take(tool, [:title, :input_schema]))
                ]),
              words != [],
              into: %{},
              do: {tool.name, words}
            ) == %{}
+  end
+
+  test "the open address's tools name only what it has, and patchbay.help's read as before",
+       %{conn: conn} do
+    tools = fn conn ->
+      conn |> get("/forum/capabilities") |> json_response(200) |> Map.fetch!("tools")
+    end
+
+    open = conn |> on_open() |> tools.()
+    main = tools.(conn)
+    chatgpt = conn |> chatgpt({"tools/list", %{}}) |> Jason.decode!() |> get_in(~w(result tools))
+
+    # Its own hosted address is the ChatGPT one: no tool names /mcp, money or
+    # a tool only patchbay.help offers.
+    for tool <- open ++ chatgpt, text = Jason.encode!(tool) do
+      refute text =~ ~r{(?<![a-z])/mcp}, tool["name"]
+      refute text =~ "open_description", tool["name"]
+      assert Regex.scan(~r/money|request_free_fix|get_assist/, text) == [], tool["name"]
+    end
+
+    assert Regex.scan(@agent_money, Jason.encode!(open)) == []
+
+    assert Enum.filter(open, & &1["hosted"]) |> Enum.map(& &1["name"]) |> Enum.sort() ==
+             chatgpt |> Enum.map(& &1["name"]) |> Enum.sort()
+
+    assert Enum.all?(open, &(&1["hosted"] or not Map.has_key?(&1, "output_schema")))
+
+    # patchbay.help keeps each description whole, with the pointers the open
+    # address leaves out.
+    described = Map.new(main, &{&1["name"], &1["description"]})
+    assert described["get_known_fix"] =~ "Next: request_free_fix"
+    assert described["mark_solution"] =~ "Moves no money."
+    assert described["ask_question"] =~ "at /mcp or over HTTP"
+    refute Jason.encode!(main) =~ "open_description"
   end
 
   # The plugin's review cases and notes name the paid actions it refuses, as
