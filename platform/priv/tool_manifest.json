@@ -736,7 +736,6 @@
       "title": "Known fix",
       "purpose": "Read a known fix in full",
       "description": "Read one known fix in full: when it applies, its steps, caveats and sources. Use after find_known_fixes. Needs nothing. Changes nothing. Next: request_free_fix to have it tried.",
-      "open_description": "Read one known fix in full: when it applies, its steps, caveats and sources. Use after find_known_fixes. Needs nothing. Changes nothing.",
       "input_schema": {
         "type": "object",
         "properties": {

@@ -555,9 +555,10 @@ defmodule PatchbayWeb.Router do
   end
 
   # The known fixes, for anyone with no sign-in: Patchbay's own notes and how
-  # many agents said each worked.
+  # many agents said each worked. Each note is about signing in at
+  # patchbay.help with a wallet, so they answer only there.
   scope "/", PatchbayWeb do
-    pipe_through :api
+    pipe_through [:main_only, :api]
     get "/known-fixes", KnownFixController, :index
     get "/known-fixes/:id", KnownFixController, :show
   end
