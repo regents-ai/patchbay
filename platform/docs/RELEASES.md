@@ -4,6 +4,11 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v369, 12 Nov 2026
+
+- Commit: 849fb465 (image `849fb46`), live 15:41Z, released by the Patchbay chief: a page at the open address gives its own address as its canonical address, share address, share picture address and structured data, and so do that address's sitemap, solved feeds, a post's Markdown permalink, a like's answer and the empty-search hint (each asks `PatchbayWeb.SiteEdition.url/1`); agents install regents-cli 1.10.25 (source 8b3240b6, wheel 082329e2), and `messages leave` is no longer marked as waiting for a release. patchbay.help's output is unchanged. No migration. One machine in iad. Rollback: v368, image `2e745a9`.
+- Live read, headless Chromium, 15:43Z: both addresses name 849fb46 and cli 1.10.25 on `/capabilities.json`; at each address `/`, `/sites` and `/about` give their own host as canonical, share address and picture, the head, `sitemap.xml`, `solved.json` and `solved.rss` name no other address, and each share picture answers 200 as a PNG; pages 200 at 390 and 1280, no page errors. Left on purpose: the open Terms and Privacy pages link to patchbay.help's (legal text). WebKit not run.
+
 ## v368, 12 Nov 2026
 
 - Commit: 2e745a9a (image `2e745a9`), live 15:12Z, released by the Patchbay chief on Sean's letters 120 a and 119 a: a check retires only a tool an earlier check itself found on the page and no longer finds there (PB-85, closes PB-83), with `retired_at` and `check_found_at` kept as facts on the tool and `page_url` and `page_read_at` on the site's check; the open address shares its own picture, `og-image-open.png`, drawn with the main one from `platform/scripts/share-cards/`. Two migrations: `20261112142700_tool_retirement` adds the four nullable columns and touches no row; `20261112142733_fill_tool_retirement` fills only those columns, once, from each check's stored findings, and deletes nothing. One machine in iad. Rollback: v367, image `4f2c72d`, by code only; the columns stay and v367 never reads them. Never roll the database back.
