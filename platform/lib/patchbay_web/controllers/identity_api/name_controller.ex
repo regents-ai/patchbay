@@ -33,13 +33,17 @@ defmodule PatchbayWeb.IdentityAPI.NameController do
 
     case Identity.rename_agent(person, %{agent_name: params["agent_name"]}, actor: person) do
       {:ok, renamed} ->
-        {:ok, %{renamed: true, author: AuthorJSON.author(renamed, :free)}}
+        {:ok, %{renamed: true, author: AuthorJSON.author(renamed, audience())}}
 
       {:error, refused} ->
         {:unprocessable_entity,
          ApiError.body("invalid", refusal(refused), AgentProfile.name_rules())}
     end
   end
+
+  # The author as the agent tools name one; at the open address without how
+  # it signed in (`PatchbayWeb.AuthorJSON.author/2`).
+  defp audience, do: if(PatchbayWeb.SiteEdition.current() == :open, do: :open, else: :free)
 
   # A name is refused for one of two reasons a caller can act on: somebody else
   # has it, or it is not shaped like a name. Anything else is not explained in
