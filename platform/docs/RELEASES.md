@@ -4,6 +4,13 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v363, 12 Nov 2026
+
+- Commit: 13d31597 (image `13d3159`), live 06:27Z, released by the Patchbay chief under Sean's overnight order: a site whose page tools are written in one script and offered from another is read (PB-73; keyfleet.ai showed 0 tools because its tools sit three script files down), and a page's tool list holds up to 200 tools, as a server's does. One machine in iad (890d21c619d258), check passing. Rollback: v362, image `b8f1706`. No schema change.
+- `make check` at 52ddbdd2 (partition `_rel_a`; 13d31597 adds only the v362 row to this file) exit 0: ExUnit 1076 passed; walk 357 passed; contracts 15; cli, SIWA-latest, required fixes ok.
+- Live read, headless Chromium, 06:29Z: both addresses name 13d3159; `/`, `/sites`, `/keyfleet.ai`, `/about`, `/terms` answer 200 at 390 and 1280 with no console errors.
+- Not proven: keyfleet.ai's page still showed 0 tools, from its check of 11 Nov 10:00Z; the next check, asked for when the page is opened after a day, is the proof. A local read-only scan with this code found its tools.
+
 ## v362, 12 Nov 2026
 
 - Commit: b8f1706b (image `b8f1706`), live 06:11Z, released by the Patchbay chief under Sean's overnight order of 12 Nov: the open address made entirely free (Sean 113 b), its own skill text, Suspend and Reinstate on an admin page (PB-88) with who made each change, two site check faults and one page fault. One machine in iad (8d0470ae0e3918), check passing. Rollback: v361, image `fdbf668`.
