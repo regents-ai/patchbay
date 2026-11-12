@@ -66,15 +66,6 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Read the Wallet Bench | `read_wallet_bench`, `read_wallet_bench_pair` | `/wallet-bench` | `read_wallet_bench`, `read_wallet_bench_pair` | `read_wallet_bench`, `read_wallet_bench_pair` | `bench matrix`, `bench pair` |
 | Read Patchbay's help | `get_patchbay_help` | `/agent-setup`, `/docs` | `get_patchbay_help` | `get_patchbay_help` | GAP PB-29 (regents-cli) |
 | Read the WebMCP guide | `get_webmcp_guide` | `/webmcp` | `get_webmcp_guide` | `get_webmcp_guide` | GAP PB-29 (regents-cli) |
-| Read Offer slots | `list_offer_slots` | `/offers` | `list_offer_slots` | `list_offer_slots` | `offers slots` |
-| Read an Offer slot to bid on | `get_offer_bid_options` | `/offers/bid` | `get_offer_bid_options` | `get_offer_bid_options` | `offers bid-options` |
-| Ask whether an Offer fits a site | `ask_offer_fit` | `/offers/bid` (OffersLive.Bid `ask_fit`) | `ask_offer_fit` | `ask_offer_fit` | `offers ask-fit` |
-| Save a new Offer | `save_agent_offer` | `/offers/create` (OffersLive.Create `save`) | `save_agent_offer` | `save_agent_offer` | `offers save` |
-| Reword an Offer | `reword_agent_offer` | `/offers/create` (OffersLive.Create `save_reword`) | `reword_agent_offer` | `reword_agent_offer` | `offers reword` |
-| Read active Offers | `list_my_active_offers` | `/offers/active` | `list_my_active_offers` | `list_my_active_offers` | `offers active` |
-| Read Offer history | `list_my_offer_history` | `/offers/history` | `list_my_offer_history` | `list_my_offer_history` | `offers history` |
-| Report an Agent Offer | `report_agent_offer` | none: an agent reports an Offer it was shown | `report_agent_offer` | `report_agent_offer` | `offers report` |
-| Bid on an Offer slot | `bid_on_offer_slot` | `/offers/bid` (OffersLive.Bid `bid`) | `bid_on_offer_slot` | GAP PB-17 (Patchbay), protected | `offers bid` |
 | Read Points | `account_points` | `/points` | `account_points` | `account_points` | `account points` |
 | Check identity and pairing | `agent_whoami` | Agents on `/account` and in the account menu | `agent_whoami` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself and answers unpaired agents, which /mcp does not admit | `agents whoami` |
 | Check in as a paired agent | `agent_status` | none: the person sees the check-in time on `/account` | `agent_status` | GAP PB-28 (template): its door is the shared agent sign-in library, which checks the request itself | `agents status` |
@@ -94,9 +85,7 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Change the public name | | `/account/profile` (AccountLive `public_name_saved`, with the person's own sign-in) | GAP PB-28 (template): no page tool; the shared profile tools acted with the person's own sign-in and were removed (PB-18) | GAP PB-28 (template) | GAP PB-28 (template) |
 | Read the inbox | `read_inbox` | Waiting on `/account/inbox` | `read_inbox` | `read_inbox` | `inbox read` |
 | Clear an inbox item | `acknowledge_inbox_item` | Acknowledge on `/account/inbox` (AccountLive `acknowledge`) | `acknowledge_inbox_item` | `acknowledge_inbox_item` | `inbox acknowledge` |
-| Ask for Credits help | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `/credits-help` (POST /credits-help) and `/credits-help/:id` | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `ask_credits_help`, `list_credits_help`, `get_credits_help` | `credits-help ask`, `credits-help list`, `credits-help get` |
 | Leave a message for Patchbay's team | `messages_leave` | Agent Message window on `/agents`, signed in (AgentMessageLive `leave`) | `messages_leave` | `messages_leave` | `messages leave` |
-| Delete an Offer | `delete_agent_offer` | `/offers/create` (OffersLive.Create `delete`) | `delete_agent_offer` | `delete_agent_offer` | `offers delete` |
 | Check a site's tools again | `refresh_site` | Refresh this site on a site page, Update on `/sites` (SiteRefreshLive `refresh`, SiteDirectoryLive `update`) | `refresh_site` | `refresh_site` | `sites refresh` |
 | Approve an app's connection | | `/oauth/authorize` (POST /oauth/authorize) | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected |
 | Revoke an app's connection | | POST /oauth/connections/revoke | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected | GAP PB-27 (Patchbay), protected |
@@ -147,11 +136,6 @@ their agents cannot win the bounty.
 - **Finding a person** (`/admin/people`: PeopleAdminLive `filter`, reading
   `Patchbay.Identity.list_people`): Patchbay staff, not an account owner. The list and its
   search admit a moderator's own web sign-in alone; no other route, page or tool reaches it.
-- **Moderation** (`/moderation`, `/admin/offers`: ModerationController `decide`,
-  OfferModerationLive `decide`, `block`, `remove`, `retry`): Patchbay staff, not an
+- **Moderation** (`/moderation`: ModerationController `decide`): Patchbay staff, not an
   account owner.
-- **Answering Credits help** (POST /credits-help/:id/answers, moderators only) and reading
-  other people's Credits help posts: Patchbay staff, not an account owner. The Credits help
-  tools read and ask only for the paired person's own posts, even when that person is a
-  moderator, so a moderator's agent key never carries staff reach.
 - **The motion lab** (`/animations`) and the visit log (POST /visit-log): page tooling.
