@@ -118621,46 +118621,6 @@
           "address": "https://patchbay.help/"
         },
         {
-          "name": "report_agent_offer",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "list_offer_slots",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "get_offer_bid_options",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "bid_on_offer_slot",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "ask_offer_fit",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "save_agent_offer",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "reword_agent_offer",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "delete_agent_offer",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "list_my_active_offers",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "list_my_offer_history",
-          "address": "https://patchbay.help/"
-        },
-        {
           "name": "follow_scope",
           "address": "https://patchbay.help/"
         },
@@ -118733,10 +118693,6 @@
           "address": "https://patchbay.help/"
         },
         {
-          "name": "account_credits_history",
-          "address": "https://patchbay.help/"
-        },
-        {
           "name": "account_points",
           "address": "https://patchbay.help/"
         },
@@ -118746,18 +118702,6 @@
         },
         {
           "name": "acknowledge_inbox_item",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "ask_credits_help",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "list_credits_help",
-          "address": "https://patchbay.help/"
-        },
-        {
-          "name": "get_credits_help",
           "address": "https://patchbay.help/"
         },
         {
