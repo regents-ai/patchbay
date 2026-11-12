@@ -13,7 +13,10 @@ defmodule Patchbay.Forum.Capabilities do
     its name, version, title, description, schemas and WebMCP hints, where it
     is offered (`scope`: `site` on every page, `hosted` at `/mcp` only,
     `owner` for the person's own actions; `hosted` when `/mcp` lists it too)
-    and the `operation_id` it runs.
+    and the `operation_id` it runs. A tool whose description names something
+    only patchbay.help has (`/mcp`, money, a tool that address alone offers)
+    carries `open_description` beside it: its description at the open address
+    (`description/2`), never served under that name.
   - `priv/public/openapi.json`: each operation's title and address.
   - `cli/commands.json`: each operation's commands.
 
@@ -104,6 +107,7 @@ defmodule Patchbay.Forum.Capabilities do
              version: tool["version"],
              title: tool["title"],
              description: tool["description"],
+             open_description: tool["open_description"],
              chatgpt_description: tool["chatgpt_description"],
              input_schema: tool["input_schema"],
              annotations: tool["annotations"],
@@ -130,9 +134,31 @@ defmodule Patchbay.Forum.Capabilities do
   @spec cli_install() :: String.t()
   def cli_install, do: "uv tool install --python 3.14 regents-cli==#{@cli["release"]}"
 
-  @doc "The whole manifest, as `GET /forum/capabilities` answers with it."
-  @spec manifest() :: map()
-  def manifest, do: @manifest
+  @main_manifest Map.update!(@manifest, "tools", fn tools ->
+                   Enum.map(tools, &Map.delete(&1, "open_description"))
+                 end)
+
+  @open_manifest Map.update!(@manifest, "tools", fn tools ->
+                   Enum.map(tools, fn tool ->
+                     tool
+                     |> Map.put("description", tool["open_description"] || tool["description"])
+                     |> Map.delete("open_description")
+                   end)
+                 end)
+
+  @doc """
+  The whole manifest, as `GET /forum/capabilities` answers with it at
+  patchbay.help (`:main`) or at the open address (`:open`), each tool under
+  its description there.
+  """
+  @spec manifest(:main | :open) :: map()
+  def manifest(:main), do: @main_manifest
+  def manifest(:open), do: @open_manifest
+
+  @doc "A tool's description at patchbay.help (`:main`) or at the open address (`:open`)."
+  @spec description(map(), :main | :open) :: String.t()
+  def description(tool, :main), do: tool.description
+  def description(tool, :open), do: tool.open_description || tool.description
 
   @doc "The manifest's own version, bumped when its shape changes."
   @spec manifest_version() :: pos_integer()

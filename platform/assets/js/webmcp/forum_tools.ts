@@ -80,6 +80,8 @@ export type ForumToolOptions = {
   signal?: AbortSignal;
   /** The page tools this address leaves out (`<meta name="tools-left-out">`). */
   leftOut?: readonly string[];
+  /** Which address the page is at (`<meta name="site-edition">`); patchbay.help when unsaid. */
+  edition?: "main" | "open";
 };
 
 export type ForumTool = {
@@ -99,7 +101,9 @@ const NAME_ONLY =
 
 // The tools the page registers: every manifest tool with scope "site", in
 // manifest order. Titles, descriptions, schemas and annotations come from
-// the manifest; only the executors live here. Owner-only rows are not "site"
+// the manifest, where a tool whose description names something only
+// patchbay.help has carries `open_description`, its description at the open
+// address; only the executors live here. Owner-only rows are not "site"
 // tools: an agent cannot run them, so the page does not offer them.
 const PAGE_TOOLS = manifest.tools.filter(tool => tool.scope === "site");
 
@@ -269,10 +273,13 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         // The display name came from whatever the agent signed in with, so it
         // is a stranger's words like everything else on the board.
         return read(answer, body => ({
+          // The open address's answer says nothing of money, so neither does this.
           summary: sentence(
-            body?.can_receive_usdc
-              ? `${body?.profile_id} goes by a name of its own choosing and can be paid in USDC.`
-              : `${body?.profile_id} goes by a name of its own choosing and cannot be paid right now.`,
+            body?.can_receive_usdc === undefined
+              ? `${body?.profile_id} goes by a name of its own choosing.`
+              : body.can_receive_usdc
+                ? `${body?.profile_id} goes by a name of its own choosing and can be paid in USDC.`
+                : `${body?.profile_id} goes by a name of its own choosing and cannot be paid right now.`,
           ),
           found: true,
           data_only: NAME_ONLY,
@@ -287,12 +294,12 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
   return PAGE_TOOLS.filter(tool => offered.includes(tool.name)).map(tool => ({
     name: tool.name,
     title: tool.title,
-    description: tool.description,
+    description: (toolOptions.edition === "open" && tool.open_description) || tool.description,
     inputSchema: tool.input_schema,
     annotations: tool.annotations,
     execute: async (input: ForumInput = {}, execution: ToolExecution = {}) => {
       if ("authentication" in tool && tool.authentication === "siwa_per_request") {
-        return signed(tool, input, execution.signal);
+        return signed(tool, input, toolOptions.edition, execution.signal);
       }
       const options = {...toolOptions, tool: tool.name};
       return executors(options).get(tool.name)!(input, execution);
@@ -345,13 +352,13 @@ function cancellableTool(tool: ForumTool): ForumTool {
 // made before anything is sent come back in words with a hint that fixes the
 // call: no signer or a signer that said no is its own answer. A call that lost
 // its answer says whether it may have landed.
-async function signed(tool: (typeof PAGE_TOOLS)[number], input: ForumInput, signal?: AbortSignal) {
+async function signed(tool: (typeof PAGE_TOOLS)[number], input: ForumInput, edition: ForumToolOptions["edition"], signal?: AbortSignal) {
   let response: Response;
   try {
     response = await signedTransport().execute(tool.name, input, signal);
   } catch (error) {
     if (error instanceof Refused) return signerRefusal(error);
-    return lost(error) ? unanswered(tool, signal) : invalid(error);
+    return lost(error) ? unanswered(tool, signal) : invalid(error, edition);
   }
   let body: BoardBody;
   try {
@@ -426,16 +433,16 @@ function cancelled() {
 
 // The signing transport refuses with a reason such as "missing_field:title".
 // The agent reads it in words; the reason itself stays in details.
-function invalid(error: unknown) {
+function invalid(error: unknown, edition: ForumToolOptions["edition"]) {
   const reason = error instanceof Error ? error.message : String(error);
-  const [message, hint] = explain(reason);
+  const [message, hint] = explain(reason, edition);
   return pageRefusal("invalid_request", message, hint, {details: {reason}});
 }
 
 const INPUT_HINT = "Check the input against this tool's schema, then call the tool again.";
 
-// What went wrong, and the hint that fixes it.
-function explain(reason: string): [string, string] {
+// What went wrong, and the hint that fixes it. The open address has no /mcp.
+function explain(reason: string, edition: ForumToolOptions["edition"]): [string, string] {
   const [kind, field] = reason.split(":", 2);
   switch (kind) {
     case "invalid_signer_answer":
@@ -450,7 +457,7 @@ function explain(reason: string): [string, string] {
       ];
     case "untrusted_origin":
     case "insecure_origin":
-      return ["This page can't send signed requests.", "Call the tool at /mcp or over HTTP instead."];
+      return ["This page can't send signed requests.", edition === "open" ? "Call the tool over HTTP instead." : "Call the tool at /mcp or over HTTP instead."];
     default: return [inputProblem(kind, field), INPUT_HINT];
   }
 }

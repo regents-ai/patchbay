@@ -190,7 +190,7 @@ defmodule Patchbay.Forum.CapabilitiesTest do
   # A signed tool's last sentence says how to sign it on each surface that
   # offers it, so it names /mcp exactly when the hosted server runs the tool.
   test "every signed tool ends with how to sign it where it is offered" do
-    for tool <- Capabilities.manifest()["tools"],
+    for tool <- Capabilities.manifest(:main)["tools"],
         tool["authentication"] == "siwa_per_request",
         tool["scope"] == "site" do
       surfaces = if tool["hosted"], do: "at /mcp or over HTTP", else: "over HTTP"

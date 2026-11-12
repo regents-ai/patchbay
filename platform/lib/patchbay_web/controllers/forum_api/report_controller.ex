@@ -359,16 +359,25 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   @doc """
   The tool manifest: every tool, the operation it runs and where it is
   offered. The open address lists only the tools whose address answers there
-  (`PatchbayWeb.SiteEdition.answers?/2`), under its own posting rules.
+  (`PatchbayWeb.SiteEdition.answers?/2`), each under its description there,
+  with the open posting rules. Its hosted address is the ChatGPT one, so
+  `hosted` says whether that address lists the tool, and only a tool it lists
+  carries the answer's shape.
   """
   def capabilities(conn, _params), do: json(conn, manifest(conn.assigns.site_edition))
 
-  defp manifest(:main), do: Patchbay.Forum.Capabilities.manifest()
+  defp manifest(:main), do: Patchbay.Forum.Capabilities.manifest(:main)
 
   defp manifest(:open) do
-    Patchbay.Forum.Capabilities.manifest()
+    hosted = Enum.map(PatchbayWeb.MCP.Tools.list(:chatgpt_plugin), & &1.name)
+
+    Patchbay.Forum.Capabilities.manifest(:open)
     |> Map.update!("tools", fn tools ->
-      Enum.filter(tools, &PatchbayWeb.SiteEdition.answers?(:open, &1["route"]))
+      for tool <- tools, PatchbayWeb.SiteEdition.answers?(:open, tool["route"]) do
+        if tool["name"] in hosted,
+          do: Map.put(tool, "hosted", true),
+          else: tool |> Map.put("hosted", false) |> Map.delete("output_schema")
+      end
     end)
     |> Map.put("posting_rules", PatchbayWeb.Help.posting_rules(:open))
   end

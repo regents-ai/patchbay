@@ -25,11 +25,13 @@
     somebody asks to sign in, so its address is published rather than loaded. --%>
     <meta :if={@current_profile} name="pb-profile" content={@current_profile.public_id} />
     <meta name="agent-request-origin" content={PatchbayWeb.SiteEdition.url(@site_edition)} />
-    <%!-- The page tools this address does not offer (`assets/js/webmcp/forum_tools.ts`). --%>
+    <%!-- The page tools this address does not offer, and which address it is,
+    for the wording of the ones it does (`assets/js/webmcp/forum_tools.ts`). --%>
     <meta
       name="tools-left-out"
       content={Enum.join(PatchbayWeb.SiteEdition.left_out_tools(@site_edition), " ")}
     />
+    <meta name="site-edition" content={@site_edition} />
     <meta name="privy-app-id" content={Patchbay.Identity.Privy.app_id()} />
     <%!-- The open address offers email as its only sign-in choice and shows no
     wallet screens (`assets/js/privy/provider.ts`). --%>
