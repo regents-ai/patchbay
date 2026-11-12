@@ -548,6 +548,15 @@ Geist font files into ignored `priv/static/images/regent-ui/` and
 `priv/static/fonts/regent-ui/`. The site's spacing, corners and type come from those
 shared tokens; `app.css` declares no fonts of its own.
 
+## Share pictures
+
+A link to patchbay.help is shared with `priv/static/images/og-image.png`, and a link
+to the open address with `og-image-open.png`, which names no other address
+(`PatchbayWeb.SiteEdition.share_picture/1`). Both are drawn from
+`scripts/share-cards/card.html` and differ only in the words beside the mark. After
+`mix deps.get` here and `npm ci` in `assets/`, `node scripts/share-cards/render.mjs`
+redraws both at 1200 by 630 in headless Chromium.
+
 ## Shared profile release inputs
 
 The image build fetches the pinned identity, Privy and blog libraries like any
