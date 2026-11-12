@@ -5,8 +5,9 @@ defmodule PatchbayWeb.DiscoveryController do
   catalog and `/capabilities.json`, which names the build this release runs
   the regents-cli release its guides install and, for every operation, who
   may run it and how an agent reaches it (`Patchbay.Forum.Capabilities`, in
-  ash-template's shape). The open address's API description leaves out the
-  operations only patchbay.help answers.
+  ash-template's shape). The open address's API description and its
+  `/capabilities.json` leave out the operations only patchbay.help answers,
+  and each address's files link to that address.
   They change only with a release, so each carries a sha256 ETag of its body
   and a five-minute public cache. No sign-in, no database.
   """
@@ -123,18 +124,49 @@ defmodule PatchbayWeb.DiscoveryController do
   end
 
   def capabilities(conn, _params) do
+    edition = conn.assigns.site_edition
+
     body =
       %{
         site: "patchbay",
-        base_url: PatchbayWeb.Endpoint.url(),
+        base_url: SiteEdition.url(edition),
         build: Application.fetch_env!(:patchbay, :build),
-        cli: Capabilities.cli(),
-        operations: Capabilities.operations()
+        cli: Capabilities.cli()
       }
-      |> Map.merge(Capabilities.authorities_and_conditions())
+      |> Map.merge(capability_rows(edition))
       |> Jason.encode!()
 
     conn |> cache(body) |> put_resp_content_type("application/json") |> send_resp(200, body)
+  end
+
+  defp capability_rows(:main),
+    do: Map.put(Capabilities.authorities_and_conditions(), :operations, Capabilities.operations())
+
+  # The open address lists only the operations it answers
+  # (`SiteEdition.answers?/2`), each with the hosted tools the ChatGPT address
+  # lists, and only the authorities and conditions those operations name.
+  defp capability_rows(:open) do
+    plugin = Enum.map(PatchbayWeb.MCP.Tools.list(:chatgpt_plugin), & &1.name)
+
+    operations =
+      for row <- Capabilities.operations(), SiteEdition.answers?(:open, row.interfaces.http) do
+        update_in(row.interfaces.hosted_tools, &Enum.filter(&1, fn name -> name in plugin end))
+      end
+
+    %{authorities: authorities, conditions: conditions} =
+      Capabilities.authorities_and_conditions()
+
+    %{
+      operations: operations,
+      authorities:
+        Enum.filter(authorities, fn %{name: name} ->
+          Enum.any?(operations, &(&1.authority == name))
+        end),
+      conditions:
+        Enum.filter(conditions, fn %{name: name} ->
+          Enum.any?(operations, &(name in &1.conditions))
+        end)
+    }
   end
 
   # The guides' tool tables and install lines, from the manifest and the
@@ -156,18 +188,27 @@ defmodule PatchbayWeb.DiscoveryController do
   end
 
   def robots(conn, _params) do
-    body = @sources["robots.txt"]
+    body = robots_body(conn.assigns.site_edition)
+
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)
   end
 
+  defp robots_body(:main), do: @sources["robots.txt"]
+
+  # The open address names its own sitemap.
+  defp robots_body(:open),
+    do: String.replace(@sources["robots.txt"], "https://patchbay.help", SiteEdition.url(:open))
+
   @doc "The RFC 9116 security contact; it expires a year after the release."
   def security(conn, _params) do
+    origin = SiteEdition.url(conn.assigns.site_edition)
+
     body = """
     Contact: mailto:build@regents.sh
     Expires: #{@released_at |> DateTime.shift(year: 1) |> DateTime.to_iso8601()}
     Preferred-Languages: en
-    Canonical: #{url(~p"/.well-known/security.txt")}
-    Policy: #{url(~p"/about")}
+    Canonical: #{origin <> ~p"/.well-known/security.txt"}
+    Policy: #{origin <> ~p"/about"}
     """
 
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)
@@ -195,18 +236,27 @@ defmodule PatchbayWeb.DiscoveryController do
     end
   end
 
-  @doc "The RFC 9727 API catalog: the API, its description and its documentation."
+  @doc """
+  The RFC 9727 API catalog: the API, its description and its documentation,
+  each at the address being served. The open address has no `/docs`, so its
+  documentation is its agent guide.
+  """
   # The body is JSON built from this site's own addresses, sent as a linkset with
   # the RFC 9727 profile, which Sobelow does not read as a safe content type.
   # sobelow_skip ["XSS.SendResp"]
   def api_catalog(conn, _params) do
+    edition = conn.assigns.site_edition
+    origin = SiteEdition.url(edition)
+
     body =
       Jason.encode!(%{
         "linkset" => [
           %{
-            "anchor" => url(~p"/"),
-            "service-desc" => [%{"href" => url(~p"/openapi.json"), "type" => "application/json"}],
-            "service-doc" => [%{"href" => url(~p"/docs"), "type" => "text/html"}]
+            "anchor" => origin <> ~p"/",
+            "service-desc" => [
+              %{"href" => origin <> ~p"/openapi.json", "type" => "application/json"}
+            ],
+            "service-doc" => [service_doc(edition, origin)]
           }
         ]
       })
@@ -219,6 +269,11 @@ defmodule PatchbayWeb.DiscoveryController do
     )
     |> send_resp(200, body)
   end
+
+  defp service_doc(:main, origin), do: %{"href" => origin <> ~p"/docs", "type" => "text/html"}
+
+  defp service_doc(:open, origin),
+    do: %{"href" => origin <> ~p"/llms.txt", "type" => "text/plain"}
 
   defp cache(conn, body) do
     conn

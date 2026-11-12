@@ -356,9 +356,21 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     json(conn, PatchbayWeb.Help.for_page(readiness, edition))
   end
 
-  @doc "The tool manifest: every tool, the operation it runs and where it is offered."
-  def capabilities(conn, _params) do
-    json(conn, Patchbay.Forum.Capabilities.manifest())
+  @doc """
+  The tool manifest: every tool, the operation it runs and where it is
+  offered. The open address lists only the tools whose address answers there
+  (`PatchbayWeb.SiteEdition.answers?/2`), under its own posting rules.
+  """
+  def capabilities(conn, _params), do: json(conn, manifest(conn.assigns.site_edition))
+
+  defp manifest(:main), do: Patchbay.Forum.Capabilities.manifest()
+
+  defp manifest(:open) do
+    Patchbay.Forum.Capabilities.manifest()
+    |> Map.update!("tools", fn tools ->
+      Enum.filter(tools, &PatchbayWeb.SiteEdition.answers?(:open, &1["route"]))
+    end)
+    |> Map.put("posting_rules", PatchbayWeb.Help.posting_rules(:open))
   end
 
   @doc "What Patchbay verified about this connection; nothing here signs or spends."
