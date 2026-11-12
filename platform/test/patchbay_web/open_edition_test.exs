@@ -758,6 +758,37 @@ defmodule PatchbayWeb.OpenEditionTest do
       assert Regex.scan(@agent_money, open) == []
     end
 
+    # The id a fix result takes comes only from a fix run at patchbay.help, so
+    # the open address has no use for the call and does not offer it.
+    test "a fix result is taken only at patchbay.help", %{conn: conn} do
+      SignedAgent.stub_siwa()
+      agent = SignedAgent.pair!()
+
+      report = fn conn ->
+        conn
+        |> SignedAgent.sign(agent)
+        |> post("/known-fixes/#{Ecto.UUID.generate()}", Jason.encode!(%{"result" => "worked"}))
+      end
+
+      assert %{"error" => %{"code" => "not_found"}} = conn |> report.() |> json_response(404)
+      assert_error_sent 404, fn -> conn |> on_open() |> report.() end
+
+      tools = fn conn ->
+        conn |> get("/forum/capabilities") |> json_response(200) |> Map.fetch!("tools")
+      end
+
+      assert "report_known_fix" in Enum.map(tools.(conn), & &1["name"])
+      open = conn |> on_open() |> tools.()
+      assert "get_known_fix" in Enum.map(open, & &1["name"])
+      refute Jason.encode!(open) =~ ~r/report_known_fix|get_assist/
+
+      for path <- ~w(/openapi.json /capabilities.json /llms.txt /forum/help) do
+        refute conn |> on_open() |> get(path) |> response(200) =~
+                 ~r/report_known_fix|reportKnownFix|get_assist/,
+               path
+      end
+    end
+
     test "a new post is followed by Offers only at patchbay.help", %{conn: conn, site: site} do
       SignedAgent.stub_siwa()
       agent = SignedAgent.pair!()
