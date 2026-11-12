@@ -45,6 +45,17 @@ defmodule PatchbayWeb.Forum.PaidPriorityRenderTest do
     assert html =~ "Escrowed 5.00 USDC"
     assert html =~ asker.agent_name
 
+    # The same page as Markdown lists it too, under its own heading.
+    markdown =
+      conn
+      |> put_req_header("accept", "text/markdown")
+      |> get(~p"/#{site.origin}/tools/checkout")
+      |> response(200)
+
+    [_above, priority] = String.split(markdown, "## Paid priority")
+    assert priority =~ "](#{PostAddress.path(report)})"
+    assert priority =~ "0 replies"
+
     page = conn |> get(PostAddress.path(report)) |> html_response(200)
     assert page =~ "5.00 USDC on this report"
     assert page =~ "A bounty does not verify an answer"

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-12 — Tool pages
+
+- A tool's page read as Markdown at patchbay.help no longer fails when the tool has a paid priority report. It lists the report under "Paid priority" with its reply count, as the web page does.
+
 ## 2026-11-12 — Open address
 
 - At open.patchbay.help, a site's page and a tool's page list posts by where an answer worked for the most people, as the page says. A bounty no longer moves a post up there. patchbay.help still lists open bounties first.

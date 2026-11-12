@@ -606,8 +606,8 @@ defmodule PatchbayWeb.Forum.Board do
   @doc """
   The paid priority reports about any version of one tool, newest first: the
   ones an asker has put money behind, listed on their own so a reader can see
-  what is worth answering. The open address lists none
-  (`PatchbayWeb.SiteEdition`).
+  what is worth answering, each loaded as every other listed post is. The
+  open address lists none (`PatchbayWeb.SiteEdition`).
   """
   @spec priority_reports([Tool.t()], PatchbayWeb.SiteEdition.t()) :: [Report.t()]
   def priority_reports(_versions, :open), do: []
@@ -616,7 +616,7 @@ defmodule PatchbayWeb.Forum.Board do
     versions
     |> Enum.map(& &1.id)
     |> Forum.list_priority_reports_for_tools!(
-      load: [:author, :person, tool: [:site]],
+      load: @post_loads,
       page: [limit: @priority_reports]
     )
     |> Map.fetch!(:results)
