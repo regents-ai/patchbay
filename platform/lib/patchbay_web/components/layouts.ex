@@ -73,16 +73,17 @@ defmodule PatchbayWeb.Layouts do
 
   @doc """
   Who Patchbay is, for a reader that speaks schema.org (the website, the
-  application and the organization behind both; no postal address, by
-  decision), then the nodes the page holds: a page's `page_data` assign, built
-  with `Regent.StructuredData`.
+  application and the organization behind both, its logo the edition's share
+  picture; no postal address, by decision), then the nodes the page holds: a
+  page's `page_data` assign, built with `Regent.StructuredData`.
   """
-  def structured_data(page_nodes), do: Regent.StructuredData.graph(site_graph(), page_nodes)
+  def structured_data(edition, page_nodes),
+    do: Regent.StructuredData.graph(site_graph(edition), page_nodes)
 
   @doc "The `@id` of the organization behind Patchbay, a blog post's publisher."
   def organization_id, do: "https://regents.sh/#organization"
 
-  defp site_graph do
+  defp site_graph(edition) do
     url = PatchbayWeb.Endpoint.url()
 
     %{
@@ -112,7 +113,7 @@ defmodule PatchbayWeb.Layouts do
           "@id" => organization_id(),
           "name" => "Regents Labs",
           "url" => "https://regents.sh",
-          "logo" => url <> "/images/og-image.png",
+          "logo" => url <> PatchbayWeb.SiteEdition.share_picture(edition),
           "sameAs" => ["https://github.com/regents-ai"],
           "contactPoint" => %{
             "@type" => "ContactPoint",

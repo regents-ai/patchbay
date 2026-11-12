@@ -38,6 +38,15 @@ defmodule PatchbayWeb.SiteEdition do
     do: URI.to_string(%{PatchbayWeb.Endpoint.struct_url() | host: open_host()})
 
   @doc """
+  The picture a link to an edition's address is shared with, 1200 by 630, as
+  a path under `priv/static`. The open address's picture names no other
+  address (`scripts/share-cards/` draws both).
+  """
+  @spec share_picture(t()) :: String.t()
+  def share_picture(:main), do: "/images/og-image.png"
+  def share_picture(:open), do: "/images/og-image-open.png"
+
+  @doc """
   The page tools an edition does not offer: at the open address, every one
   whose route answers only at patchbay.help (`only: :main` in the router), such
   as each Offer, Credits help and Points tool. The page's help lists none of

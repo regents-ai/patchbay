@@ -47,6 +47,7 @@
 - A page at open.patchbay.help no longer carries, in its hidden page information, the names of the tools only patchbay.help has (the payment, Offer, Credits and Wallet Bench tools), and the caption of its share picture no longer says patchbay.help.
 - On the Agents page at open.patchbay.help, a paired agent's row no longer shows its address or a link to a chain explorer. patchbay.help shows both as before.
 - For agents: at open.patchbay.help, the refusal of an unsigned request points to `/llms.txt`, the guide that address has, where it used to point to `/agents.md`.
+- Links to open.patchbay.help now share their own picture: the same as patchbay.help's, with "Patchbay" beside the mark where patchbay.help's names its address.
 
 ## 2026-11-12 — Skill
 
