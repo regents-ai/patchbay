@@ -16,13 +16,18 @@ defmodule Patchbay.Forum.RunSiteCheck do
     check = changeset.data
     opts = Application.get_env(:patchbay, :assist_target, [])
 
+    {page_url, whole?, found} = SiteScan.findings(check.domain, opts)
+
     findings =
-      check.domain
-      |> SiteScan.findings(opts)
-      |> Map.put("directory", SiteScan.directory_findings(check.domain, check.findings, opts))
+      Map.put(found, "directory", SiteScan.directory_findings(check.domain, check.findings, opts))
 
     # Patchbay's own job: it answers to nobody's request.
-    with {:ok, check} <- Forum.record_site_check(check, %{findings: findings}, authorize?: false) do
+    with {:ok, check} <-
+           Forum.record_site_check(
+             check,
+             %{findings: findings, page_url: page_url, page_whole?: whole?},
+             authorize?: false
+           ) do
       case Forum.get_site_by_origin(check.domain, authorize?: false) do
         {:ok, site} -> SiteCheck.record_tools(site, check)
         {:error, _no_board} -> :ok

@@ -1,12 +1,12 @@
 defmodule Patchbay.Forum.ToolCurrentTest do
   @moduledoc """
   A tool stays on a site's list while the site still offers it. On a site
-  with a published list, that list decides. On a site without one, a tool
-  last seen on the page Patchbay's check read, and missing from what the
-  check found there, is retired until an agent sees it again, but only when
-  the check read the whole page, every script on the site's own domain
-  included, and found at least one tool on it. A tool seen on another page
-  stays, and so does everything after a failed or partial read, or one that
+  with a published list, that list decides. On a site without one, a check
+  retires a tool an earlier check found on the page it reads and this one
+  did not, but only when it read the whole page, every script on the site's
+  own domain included, and found at least one tool on it. A tool known only
+  from what agents saw is never retired, a retired tool seen again is offered
+  again, and nothing is retired after a failed or partial read, or one that
   found no tools. A site in the researched directory keeps its own list.
   """
 
@@ -14,6 +14,8 @@ defmodule Patchbay.Forum.ToolCurrentTest do
 
   alias Patchbay.Forum
   alias Patchbay.PageSite
+  alias Patchbay.Patchbay.CanonicalJSON
+  alias Patchbay.Patchbay.Digest
 
   @page "https://example.com/"
 
@@ -21,37 +23,72 @@ defmodule Patchbay.Forum.ToolCurrentTest do
     %{site: Forum.register_site!("example.com")}
   end
 
-  test "a tool missing from the page the check read is retired until it is seen again", %{
-    site: site
-  } do
-    seen!(site, "book", @page)
-    seen!(site, "track", "https://example.com/orders")
+  test "a tool a check found and no longer finds is retired, with its time, until it is seen again",
+       %{site: site} do
+    real_check!(%{"/" => PageSite.with_tool("book") <> PageSite.with_tool("search_docs")})
+    assert current(site) == ["book", "search_docs"]
+    assert %{retired_at: nil, check_found_at: %DateTime{}} = tool(site, "book")
 
-    checked!(%{"page_url" => @page, "page_complete" => true, "webmcp" => [%{"name" => "search"}]})
-
-    assert current(site) == ["track"]
-    assert tool_count(site) == 1
-
-    seen!(site, "book", @page)
-    assert current(site) == ["book", "track"]
-    assert tool_count(site) == 2
-  end
-
-  test "a real check keeps what it found on the page and retires the rest", %{site: site} do
-    seen!(site, "book", @page)
-    seen!(site, "search_docs", @page)
+    before = DateTime.utc_now()
     real_check!(%{"/" => PageSite.with_tool("search_docs")})
 
     assert current(site) == ["search_docs"]
+    assert tool_count(site) == 1
+    assert %{retired_at: %DateTime{} = retired_at} = tool(site, "book")
+    assert DateTime.compare(retired_at, before) != :lt
+    assert %{retired_at: nil} = tool(site, "search_docs")
+
+    # A later check does not move the time it was retired.
+    real_check!(%{"/" => PageSite.with_tool("search_docs")})
+    assert tool(site, "book").retired_at == retired_at
+
+    seen!(site, "book", @page)
+    assert current(site) == ["book", "search_docs"]
+    assert tool_count(site) == 2
+    assert %{retired_at: nil} = tool(site, "book")
   end
 
-  test "a real check that could not read one of the page's scripts retires nothing", %{
+  test "a tool known only from what agents saw survives a whole read that does not find it", %{
     site: site
   } do
     seen!(site, "book", @page)
+    real_check!(%{"/" => PageSite.with_tool("search_docs")})
+
+    assert current(site) == ["book", "search_docs"]
+    assert %{retired_at: nil, check_found_at: nil} = tool(site, "book")
+  end
+
+  test "a tool a check found, since seen on another page, stays", %{site: site} do
+    real_check!(%{"/" => PageSite.with_tool("book") <> PageSite.with_tool("search_docs")})
+    seen!(site, "book", "https://example.com/orders", description: "The book tool.")
+
+    real_check!(%{"/" => PageSite.with_tool("search_docs")})
+    assert current(site) == ["book", "search_docs"]
+  end
+
+  test "the check keeps the page it read and when it read it whole", %{site: site} do
+    real_check!(%{"/" => PageSite.with_tool("search_docs")})
+    {:ok, check} = Forum.get_site_check("example.com")
+
+    assert check.page_url == @page
+    assert check.page_read_at == check.checked_at
+    refute Map.has_key?(check.findings, "page_url")
+
+    # A script that does not answer: the page is read, but not whole.
+    app = ~s(<script src="/app.js"></script>)
+    real_check!(%{"/" => PageSite.with_tool("search_docs") <> app, "/app.js" => {503, [], ""}})
+    {:ok, check} = Forum.get_site_check("example.com")
+
+    assert check.page_url == @page
+    assert is_nil(check.page_read_at)
+    assert current(site) == ["search_docs"]
+  end
+
+  test "a check that could not read one of the page's scripts retires nothing", %{site: site} do
+    real_check!(%{"/" => PageSite.with_tool("book")})
     app = ~s(<script src="/app.js"></script>)
 
-    # The gate's case: the only script answers 503 and the page shows no tools.
+    # The only script answers 503 and the page shows no tools.
     real_check!(%{"/" => PageSite.without_tools() <> app, "/app.js" => {503, [], "away"}})
     assert current(site) == ["book"]
     assert tool_count(site) == 1
@@ -106,26 +143,21 @@ defmodule Patchbay.Forum.ToolCurrentTest do
   end
 
   test "a whole read that found no tools retires nothing", %{site: site} do
-    seen!(site, "book", @page)
+    real_check!(%{"/" => PageSite.with_tool("book")})
 
     real_check!(%{"/" => PageSite.without_tools()})
     assert current(site) == ["book"]
   end
 
-  test "a failed or partial read, one that read no page, or one recorded before reads were marked whole retires nothing",
-       %{site: site} do
-    seen!(site, "book", @page)
-    found = [%{"name" => "search"}]
+  test "a check that could not be done retires nothing and reads no page whole", %{site: site} do
+    real_check!(%{"/" => PageSite.with_tool("book") <> PageSite.with_tool("search_docs")})
 
-    for findings <- [
-          %{"page_url" => @page, "page_complete" => true, "webmcp" => found, "failed" => true},
-          %{"page_url" => @page, "page_complete" => false, "webmcp" => found},
-          %{"page_url" => @page, "webmcp" => found},
-          %{"page_url" => nil, "page_complete" => false, "webmcp" => []}
-        ] do
-      checked!(findings)
-      assert current(site) == ["book"]
-    end
+    {:ok, check} = Forum.get_site_check("example.com")
+    Ash.update!(check, %{}, action: :give_up, authorize?: false)
+
+    {:ok, check} = Forum.get_site_check("example.com")
+    assert is_nil(check.page_read_at)
+    assert current(site) == ["book", "search_docs"]
   end
 
   test "a site with a published list keeps to that list", %{site: site} do
@@ -141,21 +173,32 @@ defmodule Patchbay.Forum.ToolCurrentTest do
       last_seen_at: DateTime.utc_now()
     })
 
-    # The page check found "book" there, yet the published list is newer.
-    checked!(%{"page_url" => @page, "page_complete" => true, "webmcp" => [%{"name" => "book"}]})
     assert current(site) == ["search"]
 
     seen!(site, "book", @page)
     assert current(site) == ["book", "search"]
   end
 
-  defp seen!(site, name, address) do
+  # An agent's sighting of a tool. With a description, it is the very
+  # contract a check records for a page's tool of that name and description.
+  defp seen!(site, name, address, opts \\ []) do
+    description = opts[:description]
+    contract = %{"name" => name, "title" => nil, "description" => description}
+
     Forum.observe_tool!(%{
       site_id: site.id,
       address: address,
       name: name,
-      contract_sha256: String.duplicate("a", 64)
+      description: description,
+      contract_sha256: contract |> CanonicalJSON.encode() |> Digest.sha256()
     })
+  end
+
+  defp tool(site, name) do
+    site.id
+    |> Forum.tool_history!(name, page: [limit: 1])
+    |> Map.fetch!(:results)
+    |> hd()
   end
 
   # A check through its own job, of a site answering from `pages`.
@@ -169,12 +212,6 @@ defmodule Patchbay.Forum.ToolCurrentTest do
   defp registers(name) do
     ~s|navigator.modelContext.registerTool({name: "#{name}", description: "The #{name} tool.", | <>
       ~s|inputSchema: {type: "object"}, execute: async () => ({})});|
-  end
-
-  defp checked!(findings) do
-    # What the check's own job writes: only Patchbay records a check.
-    check = Forum.request_site_check!("example.com")
-    Forum.record_site_check!(check, %{findings: findings}, authorize?: false)
   end
 
   defp current(site) do

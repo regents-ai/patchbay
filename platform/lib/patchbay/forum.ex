@@ -48,6 +48,7 @@ defmodule Patchbay.Forum do
 
     resource Patchbay.Forum.Tool do
       define(:observe_tool, action: :observe_tool)
+      define(:find_tool_on_page, action: :find_on_page)
       define(:publish_catalog_tool, action: :publish_catalog_tool)
       define(:get_tool, action: :read, get_by: [:id])
       define(:tool_history, action: :history, args: [:site_id, :name])

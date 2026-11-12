@@ -33,6 +33,7 @@ defmodule Patchbay.Forum.SiteCheck do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.Tool
   alias Patchbay.Patchbay.CanonicalJSON
   alias Patchbay.Patchbay.Digest
 
@@ -89,35 +90,22 @@ defmodule Patchbay.Forum.SiteCheck do
     attribute(:requested_at, :utc_datetime_usec, allow_nil?: false, public?: true)
     attribute(:checked_at, :utc_datetime_usec, allow_nil?: true, public?: true)
 
+    # The front page the last finished check read; empty when it read none.
+    attribute :page_url, :string do
+      allow_nil?(true)
+      public?(true)
+      constraints(max_length: Origin.max_address_length())
+    end
+
+    # When the last check read that page whole, every script on the site's
+    # own domain included; empty when it read it in part or not at all, and
+    # after a check that could not be done.
+    attribute(:page_read_at, :utc_datetime_usec, allow_nil?: true, public?: true)
+
     timestamps()
   end
 
   calculations do
-    # The front page the last finished check read, or nil when it read none.
-    calculate(:read_page_url, :string, expr(fragment("(? ->> 'page_url')", findings)))
-
-    # When the last finished check read the whole front page, every script
-    # on the site's own domain included (`"page_complete"`), and found at
-    # least one tool there; nil otherwise, and for checks recorded before the
-    # flag existed. A tool last seen on that page before then is no longer
-    # offered there (`Patchbay.Forum.Tool`'s `current?`). A page whose tools
-    # the reader cannot see, being put together at run time, retires nothing.
-    calculate(
-      :page_read_at,
-      :utc_datetime_usec,
-      expr(
-        if not is_nil(read_page_url) and
-             fragment(
-               "(? -> 'failed') IS DISTINCT FROM 'true'::jsonb AND (? -> 'page_complete') = 'true'::jsonb AND (? -> 'webmcp') @> '[{}]'::jsonb",
-               findings,
-               findings,
-               findings
-             ) do
-          checked_at
-        end
-      )
-    )
-
     # The directory pages the last check read in full, with their tool lists.
     calculate(
       :read_directory_pages,
@@ -214,9 +202,23 @@ defmodule Patchbay.Forum.SiteCheck do
     end
 
     update :record do
-      description("Keeps a finished check's findings.")
-      accept([:findings])
-      change(set_attribute(:checked_at, &DateTime.utc_now/0))
+      description("""
+      Keeps a finished check's findings, the front page it read and, when it
+      read that page whole, when.
+      """)
+
+      accept([:findings, :page_url])
+      argument(:page_whole?, :boolean, allow_nil?: false, default: false)
+      require_atomic?(false)
+
+      change(fn changeset, _context ->
+        now = DateTime.utc_now()
+        whole? = Ash.Changeset.get_argument(changeset, :page_whole?)
+
+        changeset
+        |> Ash.Changeset.force_change_attribute(:checked_at, now)
+        |> Ash.Changeset.force_change_attribute(:page_read_at, if(whole?, do: now))
+      end)
     end
 
     update :give_up do
@@ -240,6 +242,7 @@ defmodule Patchbay.Forum.SiteCheck do
       end)
 
       change(set_attribute(:checked_at, &DateTime.utc_now/0))
+      change(set_attribute(:page_read_at, nil))
     end
   end
 
@@ -281,31 +284,46 @@ defmodule Patchbay.Forum.SiteCheck do
     do: is_nil(check.checked_at) or DateTime.before?(check.checked_at, check.requested_at)
 
   @doc """
-  Records the WebMCP tools a check found on the site's board, the way an
-  agent's sighting of a tool is recorded: keyed by exactly the words the page
-  published it with, seen at the page that was read. A site in the
+  Records the WebMCP tools a check found on the site's board, keyed by
+  exactly the words the page published each with, seen at the page that was
+  read and marked as found by a check. A check that read the whole page and
+  found at least one tool then retires the tools an earlier check found there
+  and this one did not; a tool known only from what agents saw stays, as does
+  everything after a partial read or one that found no tools, since a page
+  may put its tools together where the reader cannot see them. A site in the
   researched directory keeps the directory's list.
   """
   @spec record_tools(Ash.Resource.record(), Ash.Resource.record()) :: :ok
-  def record_tools(%{support_relationship: nil} = site, %{
-        findings: %{"page_url" => page_url, "webmcp" => tools}
-      })
+  def record_tools(%{support_relationship: nil} = site, %{page_url: page_url} = check)
       when is_binary(page_url) do
-    Enum.each(tools, fn %{"name" => name, "description" => description} ->
-      contract = %{"name" => name, "title" => nil, "description" => description}
+    # Patchbay's own background work: there is no actor for policies to check.
+    found =
+      Enum.map(check.findings["webmcp"], fn %{"name" => name, "description" => description} ->
+        contract = %{"name" => name, "title" => nil, "description" => description}
 
-      # Patchbay's own background work: there is no actor for policies to check.
-      Forum.observe_tool!(
-        %{
-          site_id: site.id,
-          name: name,
-          contract_sha256: contract |> CanonicalJSON.encode() |> Digest.sha256(),
-          description: description,
-          address: page_url
-        },
+        Forum.find_tool_on_page!(
+          %{
+            site_id: site.id,
+            name: name,
+            contract_sha256: contract |> CanonicalJSON.encode() |> Digest.sha256(),
+            description: description,
+            address: page_url
+          },
+          authorize?: false
+        )
+      end)
+
+    if found != [] and not is_nil(check.page_read_at) do
+      Tool
+      |> Ash.Query.for_read(
+        :missed_by_check,
+        %{site_id: site.id, page_url: page_url, found_ids: Enum.map(found, & &1.id)},
         authorize?: false
       )
-    end)
+      |> Ash.bulk_update!(:retire, %{}, authorize?: false)
+    end
+
+    :ok
   end
 
   def record_tools(_site, _check), do: :ok

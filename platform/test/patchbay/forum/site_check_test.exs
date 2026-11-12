@@ -96,8 +96,8 @@ defmodule Patchbay.Forum.SiteCheckTest do
     {:ok, check} = Forum.get_site_check("example.com")
     refute SiteCheck.pending?(check)
 
-    assert %{"page_url" => "https://example.com/", "webmcp" => [%{"name" => "search_docs"}]} =
-             check.findings
+    assert check.page_url == "https://example.com/"
+    assert %{"webmcp" => [%{"name" => "search_docs"}]} = check.findings
   end
 
   test "a fresh check that read no directory pages is due, and asking writes; one that did is not" do
@@ -352,10 +352,10 @@ defmodule Patchbay.Forum.SiteCheckTest do
 
     OutsideLists.answer(:npm, 429, %{})
 
-    findings = SiteScan.findings("example.com", Application.get_env(:patchbay, :assist_target))
+    assert {"https://example.com/", true, findings} =
+             SiteScan.findings("example.com", Application.get_env(:patchbay, :assist_target))
 
-    assert %{"page_url" => "https://example.com/", "webmcp" => [%{"name" => "search_docs"}]} =
-             findings
+    assert %{"webmcp" => [%{"name" => "search_docs"}]} = findings
 
     assert [%{"kind" => "llms_txt"}] = findings["files"]
     assert findings["servers"] == []
