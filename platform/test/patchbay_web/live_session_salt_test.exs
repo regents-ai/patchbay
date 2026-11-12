@@ -27,7 +27,7 @@ defmodule PatchbayWeb.LiveSessionSaltTest do
     signed_in =
       conn
       |> Plug.Test.init_test_session(%{})
-      |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id)
+      |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id, System.os_time(:second))
 
     pages = [get(conn, "/"), get(signed_in, "/")]
 

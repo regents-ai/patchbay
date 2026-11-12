@@ -19,7 +19,6 @@ defmodule PatchbayWeb.SuspensionTest do
   use Oban.Testing, repo: Patchbay.Repo
 
   alias Boruta.Ecto.Token
-  alias Ecto.Adapters.SQL.Sandbox
   alias Patchbay.Identity
   alias Patchbay.Identity.DisconnectApps
   alias PatchbayWeb.SignedAgent
@@ -244,16 +243,6 @@ defmodule PatchbayWeb.SuspensionTest do
       Keyword.put(Application.fetch_env!(:patchbay, Patchbay.OAuth), :enabled?, true)
     )
 
-    put_env(
-      :regent_oauth,
-      RegentOAuth.Repo,
-      Keyword.put(Application.fetch_env!(:regent_oauth, RegentOAuth.Repo), :pool, Sandbox)
-    )
-
-    start_supervised!(RegentOAuth.Repo)
-    :ok = Sandbox.checkout(RegentOAuth.Repo)
-    Sandbox.mode(RegentOAuth.Repo, {:shared, self()})
-
     {:ok, client} =
       Boruta.Ecto.Admin.Clients.create_client(%{
         name: "ChatGPT",
@@ -275,7 +264,7 @@ defmodule PatchbayWeb.SuspensionTest do
     bearer = Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
 
     token =
-      RegentOAuth.Repo.insert!(%Token{
+      Patchbay.Repo.insert!(%Token{
         type: "access_token",
         value: RegentOAuth.hash_token(bearer),
         client_id: client.id,
