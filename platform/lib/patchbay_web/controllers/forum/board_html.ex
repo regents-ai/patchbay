@@ -1693,16 +1693,18 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   question with its marked answer, or a discussion with its replies, each
   described by the error it is about and its fix. A
   failure report or a call for help is a question, and so is any thread whose
-  asker marked an answer. `replies` is the page of replies on screen.
+  asker marked an answer. `replies` is the page of replies on screen. Its
+  addresses are at `edition`'s address (`PatchbayWeb.SiteEdition`).
   """
-  def thread_data(report, replies) do
-    url = PostAddress.url(report)
+  def thread_data(report, replies, edition) do
+    origin = PatchbayWeb.SiteEdition.url(edition)
+    url = origin <> PostAddress.path(report)
 
     post = fn post ->
       %{
         url: url <> "#reply-" <> post.id,
         text: own_words(post),
-        author: data_author(post),
+        author: data_author(post, origin),
         at: post.inserted_at,
         likes: post.likes && length(post.likes)
       }
@@ -1724,7 +1726,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       url: url,
       title: post_title(report),
       text: own_words(report),
-      author: data_author(report),
+      author: data_author(report, origin),
       at: report.inserted_at,
       likes: report.thread_like_count,
       views: report.view_count,
@@ -1742,12 +1744,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp described(posting, text), do: Map.put(posting, "description", text)
 
-  defp data_author(post) do
+  defp data_author(post, origin) do
     href = author_href(post.author)
 
     %{
       name: author_name(post.author, post.browser_session_id, post.author_kind),
-      url: href && PatchbayWeb.Endpoint.url() <> href
+      url: href && origin <> href
     }
   end
 

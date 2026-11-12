@@ -10,8 +10,8 @@ defmodule PatchbayWeb.SitemapController do
   (`Patchbay.WalletBench.Board`); until the bench has been read once since
   the site started, patchbay.help's sitemap answers 503 and says to try again
   in a minute. At the open address (`PatchbayWeb.SiteEdition`) it lists only
-  the pages that address has: no Wallet Bench, no page that answers only at
-  patchbay.help and no article the open blog leaves out.
+  the pages that address has, at that address: no Wallet Bench, no page that
+  answers only at patchbay.help and no article the open blog leaves out.
   """
 
   use PatchbayWeb, :controller
@@ -34,11 +34,13 @@ defmodule PatchbayWeb.SitemapController do
   # XML locations pass through escape/1; lastmod accepts only a DateTime.
   # sobelow_skip ["XSS.SendResp"]
   def index(conn, _params) do
-    case entries(conn.assigns.site_edition) do
+    edition = conn.assigns.site_edition
+
+    case entries(edition) do
       {:ok, entries} ->
         conn
         |> put_resp_content_type("application/xml")
-        |> send_resp(200, document(entries))
+        |> send_resp(200, document(entries, SiteEdition.url(edition)))
 
       :unread ->
         conn
@@ -134,9 +136,8 @@ defmodule PatchbayWeb.SitemapController do
 
   defp site_path(site), do: PatchbayWeb.Forum.BoardHTML.site_path(site)
 
-  defp document(entries) do
-    base = PatchbayWeb.Endpoint.url()
-
+  # Each location is at the address the sitemap was asked at.
+  defp document(entries, base) do
     locations =
       Enum.map_join(entries, "\n", fn {path, changed} ->
         "  <url><loc>#{escape(base <> path)}</loc>#{lastmod(changed)}</url>"

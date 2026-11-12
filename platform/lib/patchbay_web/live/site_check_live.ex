@@ -130,7 +130,7 @@ defmodule PatchbayWeb.SiteCheckLive do
 
   defp copy_text(assigns) do
     %{domain: domain, check: check, tool_count: count, ask: ask} = assigns
-    base = PatchbayWeb.Endpoint.url()
+    base = PatchbayWeb.SiteEdition.url(assigns.site_edition)
     found = Enum.map(assigns.only_found, &tool_line(&1["name"], &1["description"]))
     listed = Enum.map(assigns.listed, &tool_line(tool_name(&1), &1.description || &1.title))
 
