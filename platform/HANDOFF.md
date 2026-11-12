@@ -201,9 +201,14 @@ looked works again once the person is reinstated.
 
 Each suspension and reinstatement writes a row in
 `agent_profile_status_changes` (`Patchbay.Identity.StatusChange`) in the same
-transaction: the profile, which of the two, the reason and the time. Rows are
-never changed or deleted, and only the console and a moderator's admin page
-read them. A row does not name who made the change.
+transaction: the profile, which of the two, the reason, the time and the
+moderator who did it (`moderator_id`, read from the acting sign-in and never
+from what a caller sends; empty for a change made at the console, which the
+admin page shows as "Console", and for rows written before 12 November 2026).
+Only the two actions write a row: the row's own action has no interface and
+refuses a call made on its own, whoever asks. Rows are never changed or
+deleted, a profile a row names cannot be deleted, and only the console and a
+moderator's admin page read them.
 
 Three plugs carry this. `ForumSession` issues and reads the browser session.
 `CurrentProfile` loads the signed-in profile onto the connection. `RequireProfile`

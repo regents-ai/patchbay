@@ -1,7 +1,9 @@
 defmodule PatchbayWeb.PersonAdminLive do
   @moduledoc """
   The private page where an admin reads one profile's status, suspends or
-  reinstates it for a reason, and reads the record of both.
+  reinstates it for a reason, and reads the record of both: each change with
+  its time, its reason and the admin who made it, or "Console" for one made
+  with Patchbay's console commands.
 
   The page runs the same two actions Patchbay's console runs
   (`Patchbay.Identity.suspend_profile/3`, `reinstate_profile/3`), as the
@@ -64,7 +66,8 @@ defmodule PatchbayWeb.PersonAdminLive do
 
   defp read_person(public_id, admin) do
     with {:ok, profile} <- Identity.get_profile_by_public_id(public_id),
-         {:ok, changes} <- Identity.status_changes(profile.id, actor: admin) do
+         {:ok, changes} <-
+           Identity.status_changes(profile.id, actor: admin, load: [:moderator]) do
       {:ok, %{profile: profile, changes: Enum.reverse(changes)}}
     end
   end

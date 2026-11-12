@@ -2,7 +2,9 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
   @moduledoc """
   A person's admin page (PB-88): a moderator suspends and reinstates from the
   web through the same two actions Patchbay's console runs, and reads the
-  record of both. Anyone else is answered as though the page does not exist,
+  record of both, each with the moderator who made it, or "Console". The
+  record names the acting moderator and nobody a caller chooses, and is written
+  only by the two actions. Anyone else is answered as though the page does not exist,
   and the actions refuse them whatever page they came from. A moderator never
   changes their own status, so a suspended one cannot reinstate themself.
 
@@ -16,7 +18,9 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Identity
+  alias Patchbay.Identity.AgentProfile
   alias Patchbay.Identity.DisconnectApps
+  alias Patchbay.Identity.StatusChange
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @console %{role: :system}
@@ -45,9 +49,10 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
       assert theirs |> get("/account") |> html_response(200) =~ "pb-account"
       {:ok, their_page, _html} = live(theirs, "/account")
       refute has_element?(their_page, "#account-signed-out")
+      moderator = moderator()
 
       {:ok, view, _html} =
-        conn |> signed_in(moderator()) |> live("/admin/people/#{person.public_id}")
+        conn |> signed_in(moderator) |> live("/admin/people/#{person.public_id}")
 
       assert has_element?(view, "#pb-person-status[data-status=active]")
       refute has_element?(view, "#pb-person-history li")
@@ -56,6 +61,7 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
 
       assert has_element?(view, "#pb-person-status[data-status=suspended]")
       assert has_element?(view, "#pb-person-history li", "Spam")
+      assert has_element?(view, "#pb-person-history li", AgentProfile.own_name(moderator))
       refute has_element?(view, "#pb-person-suspend")
 
       # What PB-80 defines: the profile is suspended, its apps job is queued,
@@ -76,8 +82,41 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
       assert Identity.get_profile!(person.id).status == :active
       assert CurrentProfile.signed_in_profile(get_session(theirs)) == nil
 
-      assert [%{action: :suspend, reason: "Spam"}, %{action: :reinstate, reason: "Appeal upheld"}] =
+      moderator_id = moderator.id
+
+      assert [
+               %{action: :suspend, reason: "Spam", moderator_id: ^moderator_id},
+               %{action: :reinstate, reason: "Appeal upheld", moderator_id: ^moderator_id}
+             ] = Identity.status_changes!(person.id, actor: @console)
+    end
+
+    test "says Console for a change made at the console, beside a moderator's own",
+         %{conn: conn} do
+      moderator = moderator()
+      person = person!()
+      Identity.suspend_profile!(person, "Spam", actor: @console)
+
+      {:ok, view, _html} =
+        conn |> signed_in(moderator) |> live("/admin/people/#{person.public_id}")
+
+      assert [%{id: by_console, moderator_id: nil}] =
                Identity.status_changes!(person.id, actor: @console)
+
+      assert has_element?(view, "#pb-person-change-#{by_console}", "Console")
+
+      view |> form("#pb-person-reinstate", %{"reason" => "Appeal upheld"}) |> render_submit()
+
+      assert [_console, %{id: by_moderator, moderator_id: moderator_id}] =
+               Identity.status_changes!(person.id, actor: @console)
+
+      assert moderator_id == moderator.id
+      assert has_element?(view, "#pb-person-change-#{by_console}", "Console")
+      refute has_element?(view, "#pb-person-change-#{by_moderator}", "Console")
+
+      assert has_element?(
+               view,
+               "#pb-person-change-#{by_moderator} a[href='#{AgentProfile.profile_url(moderator)}']"
+             )
     end
 
     test "changes nothing without a reason", %{conn: conn} do
@@ -161,6 +200,56 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
       end
 
       assert Identity.get_profile!(person.id).status == :suspended
+    end
+
+    test "name the acting moderator, never one the caller sends" do
+      moderator = moderator()
+      other = moderator()
+      person = person!()
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Identity.suspend_profile(person, "Spam", %{moderator_id: other.id},
+                 actor: moderator
+               )
+
+      assert Identity.get_profile!(person.id).status == :active
+      assert Identity.status_changes!(person.id, actor: @console) == []
+
+      suspended = Identity.suspend_profile!(person, "Spam", actor: moderator)
+
+      assert {:error, %Ash.Error.Invalid{}} =
+               Identity.reinstate_profile(suspended, "Appeal upheld", %{moderator_id: other.id},
+                 actor: moderator
+               )
+
+      Identity.reinstate_profile!(suspended, "Appeal upheld", actor: other)
+
+      assert Enum.map(Identity.status_changes!(person.id, actor: @console), & &1.moderator_id) ==
+               [moderator.id, other.id]
+    end
+
+    test "alone write the record: a row asked for on its own is refused, whoever asks" do
+      moderator = moderator()
+      person = person!()
+      row = %{profile_id: person.id, action: :suspend, reason: "Spam"}
+
+      for actor <- [moderator, @console, person, nil] do
+        assert {:error, %Ash.Error.Forbidden{}} =
+                 StatusChange
+                 |> Ash.Changeset.for_create(:record, row, actor: actor)
+                 |> Ash.create()
+      end
+
+      # Nor can a row be asked to name a moderator.
+      assert {:error, %Ash.Error.Invalid{}} =
+               StatusChange
+               |> Ash.Changeset.for_create(:record, Map.put(row, :moderator_id, moderator.id),
+                 actor: moderator
+               )
+               |> Ash.create()
+
+      refute function_exported?(Identity, :record_status_change, 2)
+      assert Identity.status_changes!(person.id, actor: @console) == []
     end
 
     test "refuse a suspended moderator, on themself and on anyone else" do

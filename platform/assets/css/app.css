@@ -1390,6 +1390,8 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offmod-actions .rg-field { flex: 1 1 16rem; min-width: 0; }
 /* A person's admin page: each section's own rule closes it, so its last row draws none. */
 #pb-person-admin .pb-offmod-item:last-child { padding-bottom: 0; border-bottom: 0; }
+/* The admin behind a change: a long name breaks rather than widening the row. */
+#pb-person-history .pb-offmod-status { overflow-wrap: anywhere; }
 
 /* Agent Offers: the market list and the advertiser's own pages */
 #pb-offers-create .pb-offmod-actions { align-items: center; gap: var(--space-2); }
