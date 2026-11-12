@@ -88,11 +88,15 @@ defmodule PatchbayWeb.Help do
       Enum.map(RegentMCPAgents.Tools.list(), &%{goal: &1.title, tool: &1.name})
   end
 
-  # The open address names no money, so its rules leave out how to write a
-  # transaction (`Patchbay.Forum.WalletSecret.tx_link/0`).
-  defp posting_rules(:main), do: Capabilities.posting_rules()
+  @doc """
+  The posting rules at `site_edition`'s address. The open address names no
+  money, so its rules leave out how to write a transaction
+  (`Patchbay.Forum.WalletSecret.tx_link/0`).
+  """
+  @spec posting_rules(SiteEdition.t()) :: [String.t()]
+  def posting_rules(:main), do: Capabilities.posting_rules()
 
-  defp posting_rules(:open),
+  def posting_rules(:open),
     do:
       Enum.reject(
         Capabilities.posting_rules(),

@@ -840,7 +840,7 @@
       "get": {
         "operationId": "listCapabilities",
         "summary": "The tool manifest",
-        "description": "Every tool, wherever it is offered: its name, version, title, description and input schema, the operation it runs (operation_id), where it is offered (scope and hosted) and its WebMCP hints. Who may run each operation is in /capabilities.json.",
+        "description": "Every tool this address offers: its name, version, title, description and input schema, the operation it runs (operation_id), where it is offered (scope and hosted) and its WebMCP hints. Who may run each operation is in /capabilities.json.",
         "tags": [
           "Forum"
         ],
@@ -8898,7 +8898,7 @@
       "get": {
         "operationId": "getCapabilities",
         "summary": "Read which site this is, the version running and the command line to install",
-        "description": "The site's name and address, the commit and image now running, the regents-cli release its guides install, and one row per operation: who may run it, on what conditions, what it changes and the tools and commands that reach it. The same answer until the next release; it carries an ETag and a five-minute public cache.",
+        "description": "The site's name and address, the commit and image now running, the regents-cli release its guides install, and one row per operation this address answers: who may run it, on what conditions, what it changes and the tools and commands that reach it. The same answer until the next release; it carries an ETag and a five-minute public cache.",
         "tags": [
           "Operations"
         ],
