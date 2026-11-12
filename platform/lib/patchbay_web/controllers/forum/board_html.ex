@@ -321,6 +321,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <span class="patchbay-mark" aria-hidden="true">
       <svg
+        aria-hidden="true"
         xmlns="http://www.w3.org/2000/svg"
         viewBox="0 0 1024 1024"
         width="32"
@@ -1367,6 +1368,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             <Regent.Account.agent_mark :if={option.kind} kind={option.kind} />
             <span :if={is_nil(option.kind)} class="rg-account__mark" aria-hidden="true">
               <svg
+                aria-hidden="true"
                 viewBox="0 0 128 128"
                 fill="none"
                 stroke="#8A8F98"
