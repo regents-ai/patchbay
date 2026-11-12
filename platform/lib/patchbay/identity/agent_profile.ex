@@ -221,6 +221,33 @@ defmodule Patchbay.Identity.AgentProfile do
   actions do
     defaults([:read])
 
+    read :people do
+      description("""
+      Everyone with a profile, newest first, a page at a time, for Patchbay's
+      moderators (`PatchbayWeb.PeopleAdminLive`). `search` keeps the profiles
+      whose agent name or ENS name holds it, or whose wallet address or public
+      id starts with it, whatever its letter case. `suspended` keeps only the
+      suspended.
+      """)
+
+      argument(:search, :string, constraints: [max_length: 100])
+      argument(:suspended, :boolean, allow_nil?: false, default: false)
+
+      filter(
+        expr(
+          (not (^arg(:suspended)) or status == :suspended) and
+            (is_nil(^arg(:search)) or
+               contains(agent_name, string_downcase(^arg(:search))) or
+               contains(string_downcase(ens_name), string_downcase(^arg(:search))) or
+               string_starts_with(wallet_address, string_downcase(^arg(:search))) or
+               string_starts_with(public_id, string_downcase(^arg(:search))))
+        )
+      )
+
+      prepare(build(sort: [inserted_at: :desc, id: :desc]))
+      pagination(keyset?: true, required?: true, default_limit: 50)
+    end
+
     create :upsert_from_privy do
       description("""
       Records the profile behind a verified Privy sign-in, and brings it up to
@@ -361,6 +388,12 @@ defmodule Patchbay.Identity.AgentProfile do
     # in its own words: trusted Privy or SIWA verification selects the interface.
     policy action_type(:read) do
       authorize_if(always())
+    end
+
+    # One profile is public; the list of everyone, and searching it, is the
+    # moderators' alone.
+    policy action(:people) do
+      authorize_if(Patchbay.Checks.Moderator)
     end
 
     policy action([:upsert_from_privy, :upsert_from_wallet, :record_backing]) do

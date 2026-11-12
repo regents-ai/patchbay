@@ -36,6 +36,7 @@ defmodule Patchbay.Identity do
         not_found_error?: true
       )
 
+      define(:list_people, action: :people)
       define(:rename_agent, action: :rename_agent, args: [])
       define(:suspend_profile, action: :suspend, args: [:reason])
       define(:reinstate_profile, action: :reinstate, args: [:reason])
