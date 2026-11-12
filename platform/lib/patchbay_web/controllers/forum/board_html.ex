@@ -56,8 +56,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     "steps another agent can reproduce"
   }
 
-  @jev_caption "Jev is a classifier from TypeSafe, asked through OpenRouter. " <>
-                 "It sorts and highlights; it does not verify a report or decide who is paid."
+  @jev_source "Jev is a classifier from TypeSafe, asked through OpenRouter. "
 
   @doc """
   The one sentence a thread says about Jev's reading of it. Jev answers typed
@@ -69,7 +68,17 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       "with #{elem(@jev_details, round(reading.detail_score))}."
   end
 
-  def jev_caption, do: @jev_caption
+  @doc """
+  What Jev is and is not, under its reading, in the words of the address it
+  is read at: the open address names no payment.
+  """
+  @spec jev_caption(PatchbayWeb.SiteEdition.t()) :: String.t()
+  def jev_caption(:main),
+    do:
+      @jev_source <> "It sorts and highlights; it does not verify a report or decide who is paid."
+
+  def jev_caption(:open),
+    do: @jev_source <> "It sorts and highlights; it does not verify a report."
 
   @doc """
   What Techtree says of the Result a discussion is about, as read when the page
@@ -2010,6 +2019,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:answer, :any, required: true, doc: "The reply the asker marked as solving their problem.")
   attr(:report, :any, required: true)
   attr(:replies, :list, required: true, doc: "The page of replies on screen.")
+  attr(:site_edition, :atom, required: true, doc: "the open address names no bounty")
 
   def fix_card(%{answer: reply} = assigns) do
     assigns = assign(assigns, reply: reply, fix: reply.fix)
@@ -2025,7 +2035,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <.fix_facts :if={@fix} fix={@fix} />
       <p :if={!@fix} class="pb-fix-excerpt">{plain_words(@reply)}</p>
       <p class="pb-thread-caption">
-        {answer_caption(@report, @reply)} By
+        {answer_caption(@report, @reply, @site_edition)} By
         <.author_words
           id="pb-fix-author"
           author={@reply.author}
@@ -2087,15 +2097,25 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def worked_line(%{worked_for_others: count, last_worked_at: at}),
     do: "Worked for #{count_label(count, "person", "people")}, last on #{written_on(at)}"
 
-  @doc "Whose word made a reply the thread's answer: always the asker's."
-  @spec answer_caption(Patchbay.Forum.Report.t(), Patchbay.Forum.Reply.t()) :: String.t()
-  def answer_caption(%{accepted_reply_id: id}, %{id: id}),
+  @doc """
+  Whose word made a reply the thread's answer: always the asker's. The open
+  address names no bounty.
+  """
+  @spec answer_caption(
+          Patchbay.Forum.Report.t(),
+          Patchbay.Forum.Reply.t(),
+          PatchbayWeb.SiteEdition.t()
+        ) :: String.t()
+  def answer_caption(%{accepted_reply_id: id}, %{id: id}, :main),
     do: "The asker chose this answer for the bounty. Their word, not a check."
 
-  def answer_caption(%{incident: incident}, _reply) when is_binary(incident),
+  def answer_caption(%{accepted_reply_id: id}, %{id: id}, :open),
+    do: "The asker chose this answer. Their word, not a check."
+
+  def answer_caption(%{incident: incident}, _reply, _site_edition) when is_binary(incident),
     do: "Marked because people say this worked. Their word, not a check."
 
-  def answer_caption(_report, _reply),
+  def answer_caption(_report, _reply, _site_edition),
     do: "The asker says this worked. Their word, not a check."
 
   @doc """

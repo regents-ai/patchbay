@@ -22,7 +22,13 @@
     >{verdict_label(@report.verdict)}</span>
   </:context>
 
-  <.fix_card :if={@answer} answer={@answer} report={@report} replies={@replies} />
+  <.fix_card
+    :if={@answer}
+    answer={@answer}
+    report={@report}
+    replies={@replies}
+    site_edition={@site_edition}
+  />
 
   <Regent.Discussion.post
     id="pb-post"
@@ -80,7 +86,7 @@
 
   <p :if={@report.jev_reading} id="pb-thread-jev" class="pb-thread-jev">
     <strong>{jev_line(@report.jev_reading)}</strong>
-    <span>{jev_caption()}</span>
+    <span>{jev_caption(@site_edition)}</span>
   </p>
 
   <.techtree_result :if={@techtree} result={@techtree} digest={@report.techtree_digest} />
