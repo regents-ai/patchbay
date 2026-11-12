@@ -4,7 +4,7 @@ import {signInFile, watch} from "./support/test"
 
 // A person's admin page (PB-88), as the walk's moderator: it fits the screen,
 // Suspend asks before it happens, and the status and the record change on the
-// page without a reload. Each width has a person of its own, since the widths
+// page without a reload, each new row linking to the moderator who made it. Each width has a person of its own, since the widths
 // run at once.
 test.use({storageState: signInFile("moderator")})
 
@@ -33,11 +33,13 @@ test("a moderator suspends a person after confirming, then reinstates them", asy
   await expect(status).toHaveText("Suspended")
   await expect(history).toHaveCount(before + 1)
   await expect(history.first()).toContainText("Spam")
+  await expect(history.first().getByRole("link")).toHaveAttribute("href", /^\/agents\/agt_/)
   await problems.expect()
 
   await page.getByLabel("Reason").fill("Appeal upheld")
   await page.getByRole("button", {name: "Reinstate"}).click()
   await expect(status).toHaveText("Active")
   await expect(history).toHaveCount(before + 2)
+  await expect(history.first().getByRole("link")).toHaveAttribute("href", /^\/agents\/agt_/)
   await problems.expect()
 })

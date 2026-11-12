@@ -108,6 +108,14 @@
           <header class="pb-offmod-head">
             <strong>{change_label(change.action)}</strong>
             <span>{moment(change.inserted_at)}</span>
+            <a
+              :if={change.moderator}
+              class="pb-offmod-status"
+              href={AgentProfile.profile_url(change.moderator)}
+            >
+              {name(change.moderator)}
+            </a>
+            <span :if={!change.moderator} class="pb-offmod-status">Console</span>
           </header>
           <p class="pb-offmod-reason">{change.reason}</p>
         </li>
