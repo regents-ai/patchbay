@@ -183,7 +183,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
        %{conn: conn} do
     panel = fn ->
       page = conn |> get("/" <> @domain) |> html_response(200) |> LazyHTML.from_document()
-      {texts(page, ".pb-site-agent-count"), texts(page, ".pb-site-check-status")}
+      {texts(page, ".pb-site-agent-count [data-on]"), texts(page, ".pb-site-check-status")}
     end
 
     {count, [status]} = panel.()

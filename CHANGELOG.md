@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-13 — Agent count
+
+- On a site's page, the line under "For agents" now changes in place when a check finishes: "Looking for WebMCP tools…" fades away as the number of tools agents see rises in, and nothing beside or below it moves. With less motion set on your device, the words simply change.
+
 ## 2026-11-13 — Inbox
 
 - In Account, a notice you acknowledge in your inbox now leaves at once: it fades out while the notices under it slide up to close the gap, and you stay where you were on the page. With less motion set on your device, it simply goes.

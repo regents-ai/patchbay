@@ -114,17 +114,26 @@ defmodule PatchbayWeb.SiteCheckLive do
   defp check_findings(%{findings: %{"webmcp" => _tools} = findings}), do: findings
   defp check_findings(_check), do: nil
 
+  @looking "Looking for WebMCP tools…"
+  @not_checked "Not checked yet"
+
   # A check that could not be done says nothing to people: the last finished
   # check's count stands, or none has finished yet.
   defp tools_label(check, count) do
     cond do
-      count == 0 and SiteChecks.state(check) == :checking -> "Looking for WebMCP tools…"
-      count == 0 and is_nil(check_findings(check)) -> "Not checked yet"
-      # The owner's own words for the count.
-      count == 1 -> "Agents see 1 WebMCP Tool"
-      true -> "Agents see #{count} WebMCP Tools"
+      count == 0 and SiteChecks.state(check) == :checking -> @looking
+      count == 0 and is_nil(check_findings(check)) -> @not_checked
+      true -> tools_count(count)
     end
   end
+
+  # Every label the count can change between while the page is open, so a check
+  # that finishes swaps one for another in place.
+  defp tools_words(count), do: [@not_checked, @looking, tools_count(count)]
+
+  # The owner's own words for the count.
+  defp tools_count(1), do: "Agents see 1 WebMCP Tool"
+  defp tools_count(count), do: "Agents see #{count} WebMCP Tools"
 
   # What "Copy for your agent" puts on the clipboard: short, one fact a line.
   defp assign_copy_text(socket), do: assign(socket, copy_text: copy_text(socket.assigns))
@@ -190,9 +199,12 @@ defmodule PatchbayWeb.SiteCheckLive do
         <summary>
           <span class="pb-site-agent-heading">
             <h2 id="pb-site-agents-title" class="pb-site-agent-title">For agents</h2>
-            <span class="pb-site-agent-count" title={tools_label(@check, @tool_count)}>
-              {tools_label(@check, @tool_count)}
-            </span>
+            <Regent.Primitives.status_word
+              class="pb-site-agent-count"
+              words={tools_words(@tool_count)}
+              current={tools_label(@check, @tool_count)}
+              title={tools_label(@check, @tool_count)}
+            />
           </span>
           <span class="pb-site-agent-toggle">
             <span class="pb-site-view-more">View more</span>
