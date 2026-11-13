@@ -4,6 +4,11 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v380, 13 Nov 2026
+
+- Commit: a179853f (image `a179853`), live about 17:10Z, released by the Patchbay chief on Sean's asks of 13 Nov ("put the search bar back in the header", "the corners of the input form need the blue border", "allow multiple file uploads, up to 4. show previews of the images instead of the filenames. put an X to un-upload them"). `pb/home-form-1113`: the header's search shows on home and the body's search box is gone; the question box's focus and error edge follow its cut corners; pictures on a post are added with a button or dropped, up to four, shown small with a Remove on each (`picture_picker.ts`, `PostPicture` limit 4, form uploads up to 14 MB). No migration. Full check exit 0 on the commit on its second run (first run: five small-phone walks timed out waiting for the live connection at load 106; 435 passed on the re-run). Rollback: v379 image `5327c65`.
+- Live read, headless Chromium, signed out, 1280 and 390: patchbay.help names a179853, health ok, migrations applied; home shows the header search and no body search box; the header search opens the search window; the question box in focus shows a blue edge round its cut corners; no sideways scroll, no page error. The picture picker shows only to a signed-in person and was not read live; it is covered by `pictures.spec.ts`.
+
 ## v379, 13 Nov 2026
 
 - Commit: 5327c655 (image `5327c65`), live about 16:40Z, released by the Patchbay chief on Sean's decisions 137b and 140a of 13 Nov. Two changes. (1) Tool errors (`pb/mcp-protocol-errors-1113`): every POST to `/mcp` and `/chatgpt/mcp` that Patchbay cannot serve is answered in JSON-RPC with a next step: the wrong address (404, `wrong_address`), an Accept header without JSON (406, `not_acceptable`), an unreadable body (400, `parse_error`) and a failure on Patchbay's side (500, `-32603`, `internal_error`, still recorded, no exception text). (2) App sign-in (`pb/oauth-address-1113`): patchbay.help's `/oauth/register`, `/oauth/token` and `/oauth/revoke` answer POSTs with an OAuth error naming the open address. openapi 19.1.0. No migration. Full check exit 0 on the commit (1069 tests, walk 427). Rollback: v378 image `5a8223e`.
