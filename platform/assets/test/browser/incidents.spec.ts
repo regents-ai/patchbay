@@ -6,11 +6,14 @@ import {expect, signedIn, test, watch} from "./support/test"
 test("the list leads to a briefing, read signed out", async ({page}) => {
   const problems = watch(page)
   await page.goto("/incidents")
-  await expect(page.locator(".pb-incident-row").first()).toBeVisible()
-  await expect(page.locator(".pb-incident-row").first()).toContainText("Checked")
-  await expect(page.locator(".pb-incident-row").first()).toContainText(/\d+ repl/)
+  // The critical CVEs come first, the briefings under them.
+  await expect(page.locator("#patchbay-incidents > section").first()).toHaveAttribute("id", "patchbay-cves")
+  const briefing = page.locator("#patchbay-briefings .pb-incident-row").first()
+  await expect(briefing).toBeVisible()
+  await expect(briefing).toContainText("Checked")
+  await expect(briefing).toContainText(/\d+ repl/)
 
-  await page.locator(".pb-incident-row-title").first().click()
+  await briefing.locator(".pb-incident-row-title").click()
   await expect(page).toHaveURL(/\/incidents\/[a-z0-9-]+$/)
   await expect(page.locator("#pb-post")).toContainText("Summary")
   await expect(page.locator("#pb-post")).toContainText("Actions")
