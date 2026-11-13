@@ -274,7 +274,9 @@ defmodule PatchbayWeb.IncidentControllerTest do
     assert sections == ["patchbay-cves", "patchbay-briefings"]
 
     incident_links =
-      html |> LazyHTML.query("#patchbay-briefings .pb-incident-list > li > a") |> attributes("href")
+      html
+      |> LazyHTML.query("#patchbay-briefings .pb-incident-list > li > a")
+      |> attributes("href")
 
     assert "/incidents/emudhra" in incident_links
 
