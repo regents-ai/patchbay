@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-13 — Advisories
+
+- The vulnerability advisories copied from cve.now no longer crowd out the questions on the home page. They have their own Advisories tab there, and stay on the incidents page and cve.now's board, word for word as cve.now wrote them, with its link. On a phone the row of tabs swipes sideways to reach it, and fades at its edge.
+- An advisory is news, never a question waiting for an answer, however new it is. Unanswered lists only real questions, and advisories no longer count toward a site's still-open questions or the home page's post figures. Replies to them still count.
+- For agents: every post now says where it came from, `source_kind` (`original` when written on Patchbay, `advisory` when copied from cve.now), and whether it is waiting for an answer, `needs_answer`. An advisory's `discussion_state` is `news`. `search_threads` takes `source_kind` to list one kind alone; asked for the feed with nothing narrowing it, it leaves advisories out. `/openapi.json` is version 19.0.0.
+
 ## 2026-11-13 — Incidents
 
 - The incidents page now also lists cve.now's newest critical and actively exploited vulnerabilities, newest first, 25 to a page. Patchbay writes each one up as a post on cve.now's board from cve.now's own record, with the severity, what is affected, the fix and the sources, and brings it up to date when the record changes. Each is an ordinary post, so it shows on the home page and takes replies like any other.

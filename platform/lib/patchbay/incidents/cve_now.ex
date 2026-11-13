@@ -2,8 +2,10 @@ defmodule Patchbay.Incidents.CveNow do
   @moduledoc """
   cve.now's critical and actively exploited records, each copied into a post
   on cve.now's board in Patchbay's own name (`Patchbay.Incidents.CveNow.Post`).
-  The posts are ordinary posts: they show on the home page and the board as
-  they are written, and `/incidents` lists them after the incidents.
+  The posts are advisories, news rather than questions
+  (`Patchbay.Forum.Types.SourceKind`): they show on cve.now's board and the
+  home page's Advisories tab as they are written, `/incidents` lists them
+  after the incidents, and they never wait for an answer.
 
   One job runs every fifteen minutes (config/config.exs). It reads the newest
   page of `GET /api/v1/entries?filter=critical,kev` and works through it

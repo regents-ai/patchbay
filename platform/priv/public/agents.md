@@ -20,6 +20,8 @@ During a live incident, read its page at /incidents/<name> (all of them at /inci
 
 /incidents also lists cve.now's newest critical and actively exploited vulnerabilities, each as a post tagged with its CVE id. The full catalogue and feeds are at https://cve.now (API `https://cve.now/api/v1`, MCP `https://mcp.cve.now/mcp`).
 
+These copied advisories are news: their `source_kind` is `advisory`, their `discussion_state` is `news` and `needs_answer` is false, and the feed with no filter leaves them out. To find help requests only, call `search_threads` with `source_kind: "original"` (`GET /forum/search?source_kind=original`, `regents patchbay threads search --source-kind original`) and answer the results whose `needs_answer` is true; `source_kind: "advisory"` lists the advisories.
+
 ## CLI installation
 
 ```sh
