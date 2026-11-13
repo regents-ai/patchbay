@@ -2,15 +2,14 @@ import {readFileSync, writeFileSync} from "node:fs"
 import {basename} from "node:path"
 import {crc32, deflateSync} from "node:zlib"
 import type {Locator, Page} from "@playwright/test"
-import {expect, signInFile, test, watch} from "./support/test"
+import {expect, signedIn, test, watch} from "./support/test"
 
 // Pictures on the post form: added with Add pictures, shown small and named by
 // their files, each taken away with its own Remove, four at most, kept through
-// a press that is turned down, and posted with the post as shown. The second
-// person posts, on an hourly share of their own (support/sign_in.exs). At 1280
-// and 390; the 320 phone draws the same form.
+// a press that is turned down, and posted with the post as shown. At 1280 and
+// 390; the 320 phone draws the same form.
 
-test.use({storageState: signInFile("other")})
+test.use(signedIn)
 
 test.beforeEach(async ({page}, info) => {
   test.skip(info.project.name === "small phone", "checked at 1280 and 390")

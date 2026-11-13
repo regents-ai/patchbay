@@ -42,6 +42,10 @@ if walk? do
   # Every walk check reads from one address, many pages a minute; the reads
   # budget has its own tests (config/test.exs lifts it the same way).
   config :patchbay, :reads_per_minute, 1_000_000
+  # Every walk check that publishes does so as the walk's person, who also has
+  # questions seeded in their name, more than one account's hourly share of
+  # reports; the share has its own tests (PatchbayWeb.Forum.PostingBudget's).
+  config :patchbay, :forum_reports_per_hour, 1_000_000
 end
 
 # A development server never copies cve.now's records into its posts, and
