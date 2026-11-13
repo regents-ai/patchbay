@@ -54,6 +54,14 @@ async function holdClock(page: Page) {
   await page.clock.pauseAt(await page.evaluate(() => Date.now() + 1000))
 }
 
+// Opens the list by its summary while the clock is held. The browser says the
+// list opened a moment after the press, and the list starts its move then, so
+// the held clock is run only once the move has begun.
+async function dropIn(page: Page) {
+  await dropdown(page).locator("summary").click()
+  await expect(agents(page)).toHaveAttribute("style", /opacity/)
+}
+
 test.describe("signed in", () => {
   test.use(signedIn)
 
@@ -168,7 +176,7 @@ test.describe("signed in", () => {
 
     // Held 30 ms into the entrance, an agent still on its way in takes the press.
     await holdClock(page)
-    await dropdown(page).locator("summary").click()
+    await dropIn(page)
     await page.clock.runFor(30)
     const hermes = box(page).locator("label", {hasText: "Hermes"})
     await expect(dropdown(page)).not.toHaveAttribute("data-settled")
@@ -192,7 +200,7 @@ test.describe("signed in", () => {
     await page.clock.runFor(170)
     await expect(agents(page)).not.toHaveAttribute("data-leaving")
     await expect(agents(page)).toBeHidden()
-    await dropdown(page).locator("summary").click()
+    await dropIn(page)
     await page.clock.runFor(200)
     await expect(dropdown(page)).toHaveAttribute("data-settled", "")
     await expect(agents(page)).not.toHaveAttribute("style")
