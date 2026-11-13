@@ -151,6 +151,8 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
   defp valid(%{"type" => "integer"} = field),
     do: integer(Map.get(field, "minimum", -5)..Map.get(field, "maximum", 500))
 
+  defp valid(%{"type" => "boolean"}), do: boolean()
+
   # A string item is the same long value half the time, so finding distinct
   # items can take more than StreamData's default ten tries.
   defp valid(%{"type" => "array", "items" => item} = field),
@@ -254,6 +256,8 @@ defmodule PatchbayWeb.MCPArgumentsPropertyTest do
         else: []
       )
   end
+
+  defp outside(%{"type" => "boolean"}), do: [{"maybe", true}]
 
   defp outside(%{"type" => "object"}), do: [{"text", false}]
 
