@@ -14,4 +14,13 @@ defmodule PatchbayWeb.LivePart do
       _other -> nil
     end)
   end
+
+  @doc """
+  The browser that was just sent `page`, as its live parts join: with the
+  session cookie the page left it, which names its forum identity and any
+  sign-in.
+  """
+  @spec browser(Plug.Conn.t()) :: Plug.Conn.t()
+  def browser(%Plug.Conn{} = page),
+    do: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), Plug.Conn.get_session(page))
 end

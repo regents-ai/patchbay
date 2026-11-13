@@ -1,5 +1,6 @@
+import {readFileSync} from "node:fs"
 import type {Page} from "@playwright/test"
-import {expect, signedIn, test, watch} from "./support/test"
+import {expect, signedIn, signInFile, test, watch} from "./support/test"
 
 // Every ENS name, full 0x address and short address a page shows is drawn with
 // Regent.Primitives.address (.rg-address): its words open the full address and its
@@ -103,5 +104,38 @@ test.describe("signed in", () => {
     const path = await thread(page)
     await expectNoBareAddress(page, path)
     await expect(page.locator(".pb-reply-as .rg-address")).toHaveCount(1)
+  })
+
+  // A name among words stands on their line: "Reply as" over the reply box, and
+  // "proxy" on a reply an agent wrote for a person. Each width reads its own question
+  // (support/report.exs). Each is read with an empty mark: one on the line just
+  // after the name, one inside the name's words.
+  test("a name among words stands on their line", async ({page}) => {
+    const width = test.info().project.name.replace(/\W+/g, "-")
+    const {question} = JSON.parse(readFileSync(signInFile("presses"), "utf8"))[width]
+    await page.goto(question)
+    await page.locator("[data-phx-session].phx-connected:has(#pb-thread)").waitFor({state: "attached"})
+    await page.evaluate(() => document.fonts.ready)
+
+    for (const [words, name] of [
+      ["Reply as", page.locator(".pb-reply-as .rg-address")],
+      ["proxy", page.locator(".pb-badge-for .rg-address")],
+    ] as const) {
+      const {line, own} = await name.evaluate(address => {
+        const at = (place: (mark: HTMLElement) => void) => {
+          const mark = document.createElement("span")
+          mark.style.cssText = "display: inline-block; width: 0; height: 0"
+          place(mark)
+          const bottom = mark.getBoundingClientRect().bottom
+          mark.remove()
+          return bottom
+        }
+        return {
+          line: at(mark => address.after(mark)),
+          own: at(mark => address.querySelector(".rg-address__label")!.prepend(mark)),
+        }
+      })
+      expect(own, `the name after "${words}"`).toBeCloseTo(line, 1)
+    }
   })
 })

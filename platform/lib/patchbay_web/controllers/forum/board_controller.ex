@@ -17,7 +17,6 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   use PatchbayWeb, :controller
 
-  require Ash.Query
   require Logger
 
   alias Patchbay.DatabaseBusy
@@ -47,7 +46,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.PostPreview
   alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.Forum.Troubleshooting
-  alias PatchbayWeb.ForumAPI.Participation
 
   @not_posted "That reply could not be posted."
   @thread_not_posted "That post could not be published. Try again in a moment."
@@ -296,201 +294,6 @@ defmodule PatchbayWeb.Forum.BoardController do
       agent: PatchbayWeb.Forum.BoardHTML.start_profile(params["agent"])
     )
   end
-
-  @doc """
-  Follows a site, or stops following it, for whoever is on this page — the
-  signed-in profile when there is one, the page's own session otherwise.
-  The form names the state it wants, so the same press sent twice lands in
-  the same place. Following is what the inbox reads from.
-  """
-  def follow(conn, %{"site_id" => site_id, "follow" => wanted} = params)
-      when wanted in ["true", "false"] do
-    principal =
-      case conn.assigns.current_profile do
-        %{id: id} -> Principal.for_profile(id)
-        _ -> Principal.for_session(conn.assigns.forum_session_id)
-      end
-
-    case set_following(
-           principal,
-           site_id,
-           wanted == "true",
-           conn.assigns.current_profile || %{forum_session_id: conn.assigns.forum_session_id}
-         ) do
-      :ok ->
-        redirect(conn, to: back(params["back"]))
-
-      {:error, failure} ->
-        Logger.warning("Following a site was not saved", error_type: inspect(error_type(failure)))
-
-        conn
-        |> put_flash(:error, "That change to what you follow was not saved. Try again.")
-        |> redirect(to: back(params["back"]))
-    end
-  end
-
-  # Following twice follows once: the subscription is an upsert on its
-  # principal and scope, so a repeated or concurrent press keeps one row.
-  defp set_following(principal, site_id, true, actor) do
-    case Forum.subscribe(%{principal: principal, scope_kind: :site, scope_id: site_id},
-           actor: actor
-         ) do
-      {:ok, _subscription} -> :ok
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  defp set_following(principal, site_id, false, actor) do
-    # The query is bounded to the browser's own server-derived principal.
-    Patchbay.Forum.Subscription
-    |> Ash.Query.filter(principal == ^principal and scope_kind == :site and scope_id == ^site_id)
-    |> Ash.read_one(authorize?: false)
-    |> case do
-      {:ok, nil} -> :ok
-      {:ok, subscription} -> stop_following(principal, subscription, actor)
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  # Already gone, by another press or tab, is the state that was asked for.
-  defp stop_following(principal, subscription, actor) do
-    case Forum.unsubscribe(principal, subscription.id, actor) do
-      :ok -> :ok
-      {:error, :not_found} -> :ok
-      {:error, failure} -> {:error, failure}
-    end
-  end
-
-  # The way back is a path on this site: one leading slash, and no second
-  # slash, backslash, tab, line break or percent-encoded one of them after it,
-  # so nothing in it can lead off the site.
-  defp back("/" <> rest = path) do
-    if String.match?(rest, ~r{\A(?![/\\])[^\\\s]*\z}) and
-         not String.match?(rest, ~r/%(?:2f|5c|09|0a|0d)/i),
-       do: path,
-       else: "/"
-  end
-
-  defp back(_), do: "/"
-
-  defp followed_sites(conn) do
-    principals =
-      Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
-
-    principals
-    |> Forum.list_subscriptions_for_principals!(actor: %{principals: principals})
-    |> Enum.filter(&(&1.scope_kind == :site))
-    |> Enum.map(& &1.scope_id)
-  end
-
-  @doc """
-  The asker names the reply that worked, from the thread page — the same mark
-  the mark_solution tool makes, and just as free of money.
-  """
-  def mark_solution(conn, %{"id" => id, "reply_id" => reply_id}) do
-    report = fetch_report!(id)
-
-    case Forum.mark_solution(
-           report,
-           reply_id,
-           conn.assigns.forum_session_id,
-           conn.assigns.current_profile
-         ) do
-      {:ok, _thread} ->
-        redirect(conn, to: PostAddress.path(report) <> "#reply-#{reply_id}")
-
-      {:error, failure} ->
-        conn
-        |> put_flash(:error, solution_words(Participation.solution_refusal(failure)))
-        |> redirect(to: PostAddress.path(report))
-    end
-  end
-
-  @doc """
-  A signed-in reader says a reply in an incident's discussion worked for them,
-  or takes that back, and comes back to where they pressed. The same word the
-  record_answer_use tool gives, under the reader's own name.
-  """
-  def worked(%{assigns: %{current_profile: nil}} = conn, %{"id" => id} = params) do
-    conn
-    |> put_flash(:error, "Sign in at the top of the page to say a reply worked.")
-    |> redirect(to: liked_path(fetch_report!(id), params))
-  end
-
-  def worked(conn, %{"id" => id, "reply_id" => reply_id, "worked" => wanted} = params)
-      when wanted in ["true", "false"] do
-    report = fetch_report!(id)
-    outcome = if wanted == "true", do: "worked", else: "not_tried"
-
-    case Participation.record_answer_use(conn.assigns.current_profile, reply_id, %{
-           "outcome" => outcome,
-           "task_token" => "page"
-         }) do
-      {:ok, _use} ->
-        redirect(conn, to: liked_path(report, params))
-
-      {:error, _refused} ->
-        conn
-        |> put_flash(:error, "That could not be saved. Reload the page and try again.")
-        |> redirect(to: liked_path(report, params))
-    end
-  end
-
-  @doc """
-  A signed-in reader likes, or takes back their like on, the thread's opening
-  post or one of its replies, and comes back to where they pressed. The form
-  says which it wants, so pressing twice before the page reloads still ends
-  where the reader last pressed.
-  """
-  def like(%{assigns: %{current_profile: nil}} = conn, %{"id" => id} = params) do
-    conn
-    |> put_flash(:error, "Sign in at the top of the page to like posts.")
-    |> redirect(to: liked_path(fetch_report!(id), params))
-  end
-
-  def like(conn, %{"id" => id, "like" => wanted} = params) when wanted in ["true", "false"] do
-    report = fetch_report!(id)
-    profile = conn.assigns.current_profile
-    reply_id = params["reply_id"]
-
-    result =
-      if wanted == "true",
-        do: Forum.like(report.id, reply_id, actor: profile),
-        else: Forum.take_back_like(report.id, reply_id, profile)
-
-    case result do
-      {:error, _refused} ->
-        conn
-        |> put_flash(:error, "That like could not be saved. Reload the page and try again.")
-        |> redirect(to: liked_path(report, params))
-
-      _done ->
-        redirect(conn, to: liked_path(report, params))
-    end
-  end
-
-  # Back to the page of replies the reader was on, at the post they pressed.
-  defp liked_path(report, params) do
-    query =
-      params
-      |> Map.take(["after", "replies"])
-      |> Map.reject(fn {_key, value} -> value in [nil, ""] end)
-
-    # Only a reply's id names a reply; anything else lands on the post.
-    anchor =
-      case Ecto.UUID.cast(params["reply_id"]) do
-        {:ok, reply_id} -> "#reply-#{reply_id}"
-        :error -> "#pb-post"
-      end
-
-    PostAddress.path(report) <> query_part(query) <> anchor
-  end
-
-  defp solution_words({:solution_refused, _reason, words}), do: words
-  defp solution_words({:unavailable, words}), do: words
-
-  defp solution_words({:invalid, _messages}),
-    do: "That answer could not be marked. Reload the page and try again."
 
   @doc """
   A forum post from the form at the top of the home page, posted only after
@@ -1457,7 +1260,7 @@ defmodule PatchbayWeb.Forum.BoardController do
             # The live thread under the post takes the page it was drawn with
             # (`PatchbayWeb.ThreadLive`).
             thread: thread,
-            following: followed_sites(conn),
+            following: Board.followed_sites(profile, conn.assigns.forum_session_id),
             reply_problem: Keyword.get(problems, :reply_problem),
             escrow_problem: Keyword.get(problems, :escrow_problem),
             techtree: techtree_result(report)

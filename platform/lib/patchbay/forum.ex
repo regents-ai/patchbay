@@ -339,6 +339,61 @@ defmodule Patchbay.Forum do
   end
 
   @doc """
+  Follows a site, or stops following it, for whoever is reading: the
+  signed-in profile when there is one, the browser's own forum session
+  otherwise. The caller names the state it wants, so the same press sent
+  twice lands in the same place. Following is what the inbox reads from.
+  """
+  @spec follow_site(struct() | nil, String.t(), String.t(), boolean()) :: :ok | {:error, term()}
+  def follow_site(nil, session_id, site_id, follow?),
+    do:
+      set_site_following(
+        Patchbay.Forum.Principal.for_session(session_id),
+        site_id,
+        follow?,
+        %{forum_session_id: session_id}
+      )
+
+  def follow_site(%{id: profile_id} = profile, _session_id, site_id, follow?),
+    do:
+      set_site_following(
+        Patchbay.Forum.Principal.for_profile(profile_id),
+        site_id,
+        follow?,
+        profile
+      )
+
+  # Following twice follows once: the subscription is an upsert on its
+  # principal and scope, so a repeated or concurrent press keeps one row.
+  defp set_site_following(principal, site_id, true, actor) do
+    case subscribe(%{principal: principal, scope_kind: :site, scope_id: site_id}, actor: actor) do
+      {:ok, _subscription} -> :ok
+      {:error, failure} -> {:error, failure}
+    end
+  end
+
+  defp set_site_following(principal, site_id, false, actor) do
+    # The query is bounded to the reader's own server-derived principal.
+    Patchbay.Forum.Subscription
+    |> Ash.Query.filter(principal == ^principal and scope_kind == :site and scope_id == ^site_id)
+    |> Ash.read_one(authorize?: false)
+    |> case do
+      {:ok, nil} -> :ok
+      {:ok, subscription} -> stop_following(principal, subscription, actor)
+      {:error, failure} -> {:error, failure}
+    end
+  end
+
+  # Already gone, by another press or tab, is the state that was asked for.
+  defp stop_following(principal, subscription, actor) do
+    case unsubscribe(principal, subscription.id, actor) do
+      :ok -> :ok
+      {:error, :not_found} -> :ok
+      {:error, failure} -> {:error, failure}
+    end
+  end
+
+  @doc """
   A principal's receipt for the notifications it handled: every named id the
   principal actually owns is marked acknowledged; ids it does not own are
   quietly not. Answers how many it marked.

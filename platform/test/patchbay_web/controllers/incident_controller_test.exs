@@ -9,12 +9,14 @@ defmodule PatchbayWeb.IncidentControllerTest do
   # The sitemap reads the shared Wallet Bench, one reading for the whole run.
   use PatchbayWeb.ConnCase, async: false
 
-  import Phoenix.LiveViewTest, only: [render_component: 2]
+  import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Incidents
   alias Patchbay.Incidents.Discussion
+  alias PatchbayWeb.LivePart
+  alias PatchbayWeb.ThreadLive
 
   # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
   defp reply!(thread, note) do
@@ -61,10 +63,31 @@ defmodule PatchbayWeb.IncidentControllerTest do
     |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id, System.os_time(:second))
   end
 
-  defp say_worked(conn, thread, reply, person, wanted \\ "true") do
+  # The discussion's live part on `path`, joined as the browser that opened it.
+  defp discussion(conn, path) do
+    page = get(conn, path)
+    session = page |> html_response(200) |> LivePart.session(ThreadLive)
+    {:ok, view, _html} = live_isolated(LivePart.browser(page), ThreadLive, session: session)
+    view
+  end
+
+  # A reader's Worked press, as the page sends it, whether or not it shows the button.
+  defp say_worked(conn, path, reply, person) do
     conn
     |> signed_in(person)
-    |> post(~p"/posts/#{thread.id}/worked", %{"reply_id" => reply.id, "worked" => wanted})
+    |> discussion(path)
+    |> render_click("worked", %{"reply" => reply.id, "worked" => "true"})
+  end
+
+  defp worked_button(view, reply),
+    do: view |> element(~s(#reply-#{reply.id} button[phx-click="worked"]))
+
+  defp pressed?(view, reply) do
+    view
+    |> worked_button(reply)
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.attribute("aria-pressed")
   end
 
   test "an incident's page is one discussion, opening with its briefing", %{conn: conn} do
@@ -143,59 +166,60 @@ defmodule PatchbayWeb.IncidentControllerTest do
     later = reply!(thread, "Update the trust store and restart the service")
     [a, b, c] = Enum.map(~w(a b c), &person!/1)
 
-    say_worked(conn, thread, first, a)
+    say_worked(conn, ~p"/incidents/emudhra", first, a)
     assert {:ok, %{solution_reply_id: nil}} = Forum.get_incident_discussion("emudhra")
 
     # Saying it twice is one person's word.
-    say_worked(conn, thread, first, a)
+    say_worked(conn, ~p"/incidents/emudhra", first, a)
     assert {:ok, %{solution_reply_id: nil}} = Forum.get_incident_discussion("emudhra")
 
-    say_worked(conn, thread, first, b)
+    say_worked(conn, ~p"/incidents/emudhra", first, b)
     assert {:ok, %{solution_reply_id: marked}} = Forum.get_incident_discussion("emudhra")
     assert marked == first.id
 
     assert conn |> get(~p"/incidents/emudhra") |> html_response(200) =~ "id=\"pb-fix\""
 
     # Level does not take over; ahead does.
-    say_worked(conn, thread, later, a)
-    say_worked(conn, thread, later, b)
+    say_worked(conn, ~p"/incidents/emudhra", later, a)
+    say_worked(conn, ~p"/incidents/emudhra", later, b)
     assert {:ok, %{solution_reply_id: ^marked}} = Forum.get_incident_discussion("emudhra")
 
-    say_worked(conn, thread, later, c)
+    say_worked(conn, ~p"/incidents/emudhra", later, c)
     assert {:ok, %{solution_reply_id: now}} = Forum.get_incident_discussion("emudhra")
     assert now == later.id
   end
 
-  test "a reader's press shows on their next read and can be taken back", %{conn: conn} do
+  test "a reader's press shows where they pressed, stays on their next read, and can be taken back",
+       %{conn: conn} do
     {:ok, thread} = Discussion.open(Incidents.get("emudhra"))
     reply = reply!(thread, "Update the trust store")
-    person = person!("a")
+    reader = signed_in(conn, person!("a"))
+    view = discussion(reader, ~p"/incidents/emudhra")
 
-    pressed = fn ->
-      conn
-      |> signed_in(person)
-      |> get(~p"/incidents/emudhra")
-      |> html_response(200)
-      |> LazyHTML.from_document()
-      |> LazyHTML.query(~s(form[action="/posts/#{thread.id}/worked"] button))
-      |> LazyHTML.attribute("aria-pressed")
-    end
+    assert pressed?(view, reply) == ["false"]
+    view |> worked_button(reply) |> render_click()
+    assert pressed?(view, reply) == ["true"]
+    assert view |> element("#reply-#{reply.id}") |> render() =~ "Worked for 1"
 
-    assert pressed.() == ["false"]
-    assert redirected_to(say_worked(conn, thread, reply, person)) =~ "/incidents/emudhra"
-    assert pressed.() == ["true"]
-    assert redirected_to(say_worked(conn, thread, reply, person, "false")) =~ "/incidents/emudhra"
-    assert pressed.() == ["false"]
+    assert reader |> discussion(~p"/incidents/emudhra") |> pressed?(reply) == ["true"]
+
+    view |> worked_button(reply) |> render_click()
+    assert pressed?(view, reply) == ["false"]
+    assert Forum.get_reply!(reply.id, load: [:worked_for_others]).worked_for_others == 0
   end
 
-  test "a reader who is not signed in is told to, and nothing is saved", %{conn: conn} do
+  test "a reader who is not signed in is told to where they pressed, and nothing is saved",
+       %{conn: conn} do
     {:ok, thread} = Discussion.open(Incidents.get("emudhra"))
     reply = reply!(thread, "Update the trust store")
+    view = discussion(conn, ~p"/incidents/emudhra")
 
-    response =
-      post(conn, ~p"/posts/#{thread.id}/worked", %{"reply_id" => reply.id, "worked" => "true"})
+    view |> worked_button(reply) |> render_click()
 
-    assert redirected_to(response) =~ "/incidents/emudhra"
+    assert view |> element("#reply-#{reply.id} [role=alert]") |> render() =~
+             "Sign in at the top of the page to say a reply worked."
+
+    assert pressed?(view, reply) == ["false"]
     assert Forum.get_reply!(reply.id, load: [:worked_for_others]).worked_for_others == 0
   end
 
@@ -218,16 +242,13 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     assert {:error, _} = Forum.refresh_incident_briefing(thread, %{body_markdown: "Other words"})
 
-    html =
-      conn
-      |> signed_in(person!("a"))
-      |> get(Patchbay.Forum.PostAddress.path(thread))
-      |> html_response(200)
+    path = PostAddress.path(thread)
+    view = conn |> signed_in(person!("a")) |> discussion(path)
 
-    refute html =~ "/posts/#{thread.id}/worked"
+    refute has_element?(view, ~s(button[phx-click="worked"]))
 
     for subject <- ~w(a b) do
-      say_worked(conn, thread, reply, person!(subject))
+      say_worked(conn, path, reply, person!(subject))
     end
 
     assert Forum.get_reply!(reply.id, load: [:worked_for_others]).worked_for_others == 2

@@ -685,10 +685,6 @@ defmodule PatchbayWeb.Router do
     post "/threads/:id/replies", BoardController, :reply_thread
     get "/moderation", ModerationController, :index
     post "/moderation", ModerationController, :decide
-    post "/follow", BoardController, :follow
-    post "/posts/:id/solution", BoardController, :mark_solution
-    post "/posts/:id/likes", BoardController, :like
-    post "/posts/:id/worked", BoardController, :worked
     post "/reports/:id/replies", BoardController, :create_reply
     post "/posts/:id/replies", BoardController, :create_reply
     get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false

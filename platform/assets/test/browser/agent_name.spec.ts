@@ -35,10 +35,15 @@ test("a refused agent name explains itself without moving the page", async ({pag
     expect((await alert.boundingBox())!.height).toBe(emptyHeight)
   }
 
-  // A good name saves and opens the page again, with the line empty in its place.
-  await field.fill(`walk-${test.info().project.name.replace(/\W+/g, "-")}`)
+  // A good name saves where it stands: the page does not load again, the new
+  // name stays in the field and the line is empty in its place.
+  const name = `walk-${test.info().project.name.replace(/\W+/g, "-")}`
+  await page.evaluate(() => Object.assign(window, {pbStayed: true}))
+  await field.fill(name)
   await field.press("Enter")
   await expect(alert).toBeEmpty()
+  await expect(field).toHaveValue(name)
+  expect(await page.evaluate(() => (window as unknown as {pbStayed?: boolean}).pbStayed)).toBe(true)
   expect(await place()).toEqual(empty)
   await problems.expect()
 })

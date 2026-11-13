@@ -317,9 +317,9 @@ defmodule PatchbayWeb.Forum.NamesTest do
     # The form renames only the profile that is signed in.
     {:ok, view, _html} = conn |> signed_in(two) |> live(~p"/account/profile")
 
-    assert {:error, {:redirect, %{to: "/account/profile"}}} =
-             render_submit(view, "rename", %{"name" => "kettle"})
+    render_submit(view, "rename", %{"name" => "kettle"})
 
+    assert has_element?(view, ~s(#pb-name-agent[value="kettle"]))
     assert Identity.get_profile!(one.id).agent_name == one.agent_name
     assert Identity.get_profile!(two.id).agent_name == "kettle"
   end
