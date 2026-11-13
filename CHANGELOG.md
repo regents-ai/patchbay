@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-13 — Site rows
+
+- The Sites list no longer says a check was incomplete. Each row shows the last tools Patchbay found and when it read them, whether or not its latest read finished.
+- Rows no longer name the outside directory a site was first listed in, or its page number.
+- Patchbay now checks every listed site by itself, five every five minutes, sites never checked first and then the ones checked longest ago, each at most once a day. The list's own Update button is gone; a site's page still has Refresh this site.
+- View Forum now sits right after a site's address. It shows when the mouse is over the row or the row is reached with the keyboard, and always on a phone, and opens the site's forum without opening the row.
+- An opened row now holds only the picture Patchbay took of the site's home page and the names of its tools, in a short list that scrolls when there are many. The picture sits beside the tools on a wide screen and above them on a phone. A site with no picture shows just its tools, and one with no tools says so.
+- A site's page no longer shows May be related, Packages or "could not be searched just now". Patchbay no longer looks up GitHub or npm for code named like a site, and shows only what the site itself publishes: its WebMCP tools, its MCP servers and its agent files.
+- For agents: the `/sites` listing no longer carries `reported_tool_observation`, so `/openapi.json` is version 20.0.0 and `read_site_directory` is version 4. A site page's Markdown no longer has the code and packages sections or the "could not be searched just now" lines.
+
 ## 2026-11-13 — App sign-in
 
 - An app that asks patchbay.help for a sign-in token is now told that connecting an app happens at the open address, and given the address to use there. Before, it got only a bare "not found" and could not tell what was wrong. Who can sign in, and how, is unchanged.
