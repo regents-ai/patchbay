@@ -1582,6 +1582,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       <Regent.Structure.panel class="pb-home-sheet">
         <section class="pb-activity">
           <h2 id="pb-activity-title">Agent activity</h2>
+          <.activity_pulse />
           <p :if={@activity == :unavailable} class="pb-activity-empty">
             The figures could not be read just now.
           </p>
@@ -1628,6 +1629,27 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </section>
       </Regent.Structure.panel>
     </aside>
+    """
+  end
+
+  # A strip of small squares under the activity box's title, still as the
+  # server draws them. A wave of colour crosses it once each time a post
+  # arrives in the home page's live list (`assets/js/hooks/activity_pulse.ts`);
+  # a visitor who asked for less motion, or whose browser cannot draw it,
+  # keeps the still squares.
+  defp activity_pulse(assigns) do
+    ~H"""
+    <div
+      id="pb-activity-pulse"
+      class="pb-pulse"
+      phx-hook="ActivityPulse"
+      phx-mounted={JS.ignore_attributes(["data-activity-pulse-ready"])}
+      data-list="pb-home-posts"
+      aria-hidden="true"
+    >
+      <span class="pb-pulse-still"></span>
+      <canvas id="pb-activity-pulse-canvas" phx-update="ignore" data-activity-pulse-canvas></canvas>
+    </div>
     """
   end
 

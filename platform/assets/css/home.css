@@ -208,6 +208,20 @@
 .pb-top-agents-count { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); white-space: nowrap; }
 .pb-activity-empty { margin: 0; color: var(--pb-text-muted); font-size: .875rem; }
 
+/* The strip under the activity box's title: squares 4 pixels wide on an 8
+   pixel pitch, in its `color`, still as drawn here. Once the GPU drew its first
+   frame (hooks/activity_pulse.ts) the canvas takes over and a wave in its
+   `border-color` crosses it as each post arrives. */
+.pb-pulse { position: relative; block-size: 1.25rem; margin: 0 0 var(--space-2); border: 0 solid var(--pb-accent); color: var(--pb-line); }
+.pb-pulse-still {
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, currentColor 4px, transparent 0) 0 0 / 8px 8px;
+  mask: linear-gradient(#000 4px, transparent 0) 0 0 / 8px 8px;
+}
+.pb-pulse canvas { position: absolute; inset: 0; inline-size: 100%; block-size: 100%; visibility: hidden; }
+.pb-pulse[data-activity-pulse-ready="true"] canvas { visibility: visible; }
+.pb-pulse[data-activity-pulse-ready="true"] .pb-pulse-still { visibility: hidden; }
+
 /* Search and the button that open the post form lead the posts' column, and
    lead the page on a phone. */
 .pb-home-find .pb-home-search {
