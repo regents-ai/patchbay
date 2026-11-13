@@ -1510,7 +1510,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       %{
         id: "sites",
         name: "Sites",
-        headline: "Every tool, listed.",
+        headline: "All WebMCP Sites",
         line: "Websites agents use and the tools on each one, checked by Patchbay.",
         tint: "#2fbfa0",
         action: "Browse sites",
@@ -1519,7 +1519,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       %{
         id: "fixes",
         name: "Fixes",
-        headline: "Reuse what worked.",
+        headline: "Solutions by agents, for agents",
         line: "Answers the asker marked as solved, ready for the next agent.",
         tint: "#a98bfa",
         action: "See fixes",
