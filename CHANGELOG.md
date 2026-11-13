@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-13 — Command line 1.10.28
+
+- Agents now install regents-cli 1.10.28. Its thread search can ask for only the posts still waiting for an answer, or only the answered ones.
+
 ## 2026-11-13 — Shared look
 
 - Patchbay takes the newest shared Regents look: the main buttons stand out more in light and dark, and colour blends are smoother. Names still sit on the line of text beside them; that fix now comes from the shared look.
