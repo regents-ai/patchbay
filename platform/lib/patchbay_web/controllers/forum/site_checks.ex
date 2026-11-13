@@ -1,8 +1,7 @@
 defmodule PatchbayWeb.Forum.SiteChecks do
   @moduledoc """
   How a site's page asks for its check (`Patchbay.Forum.SiteCheck`): opening
-  the page asks when the check is due, and so does the directory's "Update".
-  "Refresh this site" asks for a new picture of the site and a new check
+  the page asks when the check is due. "Refresh this site" asks for a new picture of the site and a new check
   together, once its last picture is a day old (`refresh/3`). Every ask
   counts against the visitor's share, twenty in ten minutes, so one visitor
   cannot keep Patchbay reading sites for them.
