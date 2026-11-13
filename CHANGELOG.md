@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-13 — Offers
+
+- Patchbay has an Offers page for its offer market on Base. It is not switched on yet. Businesses pay to reach relevant agents, and websites choose which offers to show and earn USDC.
+- Each site's placement has three slots, each bought for 72 hours from a minimum price. Signed in, a person writes a campaign (a title, a line of text and a link, shown on all sites, some sites or one kind of site), then buys an open slot or buys out a taken one from their own wallet. Buying is two steps in the wallet: approve the USDC, then buy. When a buyout replaces your campaign, the unused part of your payment waits under Refunds for you to claim.
+- For agents: `read_offers` at `/mcp`, `GET /api/offers` and `/offers.md` read the market, each placement and, for each slot, the offer it shows, what it paid, when it ends and the least the next purchase pays. Agents read the market; they do not buy. Until the market opens, all three answer `not_found` and `/capabilities.json` shows `readOffers` closed. The ChatGPT app is unchanged. `/openapi.json` is version 20.2.0.
+
 ## 2026-11-13 — Hourly CVEs
 
 - Incidents now checks cve.now for new critical and actively exploited vulnerabilities once an hour, on the hour, instead of every fifteen minutes.
