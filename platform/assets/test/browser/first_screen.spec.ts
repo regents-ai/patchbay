@@ -36,7 +36,8 @@ test.describe("on a phone", () => {
 
   // Links inside running text (a block with three or more words of its own
   // besides its links) keep their line's height; a link in a short line, such
-  // as a page's way back, is checked. The shared address piece's icons are
+  // as a page's way back, is checked, every line of it where it wraps, such as
+  // a long question in a site's status. The shared address piece's icons are
   // design-system's and are sized there.
   const paths = [
     "/",
@@ -72,30 +73,18 @@ test.describe("on a phone", () => {
               if (box.width <= 1 || box.height <= 1 || style.visibility === "hidden") return false
               if (control.closest(".rg-address, .visually-hidden")) return false
               if (style.display === "inline" && inRunningText(control)) return false
-              return box.height < 44 || box.width < 24
+              return [...control.getClientRects()].some(line => line.height < 44) || box.width < 24
             })
             .map(control => {
               const box = control.getBoundingClientRect()
+              const lowest = Math.min(...[...control.getClientRects()].map(line => line.height))
               const name = (control.textContent || control.getAttribute("aria-label") || "").trim().slice(0, 30)
-              return `${control.tagName.toLowerCase()} "${name}" ${Math.round(box.width)}×${Math.round(box.height)}`
+              return `${control.tagName.toLowerCase()} "${name}" ${Math.round(box.width)}×${Math.round(lowest)}`
             })
         })
       expect(small, "controls under 44 px tall or 24 px wide").toEqual([])
     })
   }
-
-  // A site's solved and still-open questions are links on lines of their own:
-  // every part of one a finger lands on is a full finger tall, one line long or
-  // several.
-  test("every question in a site's status is a full finger tall, line by line", async ({page}) => {
-    await page.goto("/keyfleet.ai")
-    const questions = page.locator(".pb-standing li a")
-    await expect(questions).not.toHaveCount(0)
-    const short = await questions.evaluateAll(links =>
-      links.flatMap(link => [...link.getClientRects()].map(box => Math.round(box.height))).filter(height => height < 44),
-    )
-    expect(short, "parts of a question link under 44 px tall").toEqual([])
-  })
 })
 
 test("the Wallet Bench board takes the sheet's width", async ({page, isMobile}) => {

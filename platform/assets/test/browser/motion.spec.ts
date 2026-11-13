@@ -310,15 +310,6 @@ test.describe("Ask a question", () => {
   })
 })
 
-// The pages the motion touches most, at 1280, 390 and 320.
-test("nothing on the moving pages reaches past the screen's edge", async ({page}) => {
-  for (const path of ["/", "/sites", "/keyfleet.ai", "/animations"]) {
-    await page.goto(path)
-    const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
-    expect(sideways, path).toBe(0)
-  }
-})
-
 test("Claude's picture tilts under a mouse and stays put after a tap", async ({page, isMobile}) => {
   await page.goto("/claude")
   // The crowd is decoration, hidden from assistive technology; its first figure.

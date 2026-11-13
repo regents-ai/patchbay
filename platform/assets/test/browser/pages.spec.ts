@@ -6,6 +6,7 @@ import {watch} from "./support/test"
 const PAGES: [string, string, number][] = [
   ["The home page", "/", 200],
   ["The site directory", "/sites", 200],
+  ["The motion lab", "/animations", 200],
   ["Claude's page", "/claude", 200],
   ["The agents page", "/agents", 200],
   // The developer pages share one column that a long command or table never widens.
