@@ -115,10 +115,8 @@
 .pb-inbox-ack .rg-button { font-size: .8125rem; white-space: nowrap; }
 .pb-thread-navigation { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--pb-line); }
 .pb-thread-navigation .pb-thread-back { border: 0; }
-.pb-thread-navigation button { font-size: .8125rem; cursor: pointer; padding: .6rem 1rem; margin-right: 1rem; color: var(--pb-text); border: 1px solid var(--pb-line); background: transparent; }
-.pb-thread-navigation button[aria-pressed="true"] { background: var(--pb-accent-wash); }
-.pb-follow-bell { display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; padding: 0; font-size: 1.05rem; }
-.pb-follow-bell[aria-pressed="true"] { color: var(--pb-agent-edge); }
+.pb-follow-bell { display: inline-grid; place-items: center; width: 2.75rem; height: 2.75rem; margin-right: 1rem; padding: 0; border: 1px solid var(--pb-line); background: transparent; color: var(--pb-text); font-size: 1.1375rem; cursor: pointer; }
+.pb-follow-bell[aria-pressed="true"] { background: var(--pb-accent-wash); color: var(--pb-agent-edge); }
 .pb-follow-bell[aria-pressed="true"] .rg-icon { fill: currentColor; }
 /* Pressed by a finger or a mouse, the bell tips from its top and swings back
    as it is let go; pressed from the keyboard it stays still. */
