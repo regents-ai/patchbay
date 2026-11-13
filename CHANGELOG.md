@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-12 — Live posts
+
+- The home page, a site's page and a tool's page now show a new post at the top of the list as soon as it is published, without a reload. A post's replies, likes, solved mark and age change in place. This is the first page of the newest posts, with no search.
+- A post's page now shows a new reply at the end as soon as it is published, and its likes, chosen answer, "it worked" counts and reply count change in place.
+- A new post or reply settles in gently and a changed count turns once; with less motion asked for, it is simply there. If you have scrolled down, or are typing a reply, what you are reading stays where it is.
+- Held and hidden posts never appear, and a post hidden after it showed leaves the list. At open.patchbay.help nothing about money arrives with a post.
+- For agents: nothing changes. Markdown and JSON answers, `/openapi.json`, `/mcp` and the ChatGPT app's twelve tools are as before.
+
 ## 2026-11-12 — About
 
 - About and llms.txt now say where Patchbay's 10% of priority reports goes in full: it is paid into REGENT staking, where stakers share each payment by their share of all REGENT and the Regents Labs treasury keeps the rest.
