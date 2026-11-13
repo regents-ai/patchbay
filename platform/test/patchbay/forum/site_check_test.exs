@@ -140,7 +140,7 @@ defmodule Patchbay.Forum.SiteCheckTest do
     refute SiteCheck.pending?(given_up)
     assert given_up.findings["failed"] == true
     assert given_up.findings["webmcp"] == earlier.findings["webmcp"]
-    assert Enum.all?(Map.values(given_up.findings["directory"]), & &1["failed"])
+    assert given_up.findings["directory"] == earlier.findings["directory"]
   end
 
   # A site whose every answer ends the reading task: `:raise` with an error,
@@ -164,7 +164,7 @@ defmodule Patchbay.Forum.SiteCheckTest do
   end
 
   for kind <- [:raise, :exit] do
-    test "a check whose reading ends with #{kind} is tried three times, then recorded as failed" do
+    test "a check whose reading ends with #{kind} is tried three times, then recorded as failed until the next day" do
       serve_broken(unquote(kind))
       Forum.request_site_check!("example.com")
 
@@ -173,6 +173,8 @@ defmodule Patchbay.Forum.SiteCheckTest do
       {:ok, check} = Forum.get_site_check("example.com")
       refute SiteCheck.pending?(check)
       assert check.findings["failed"] == true
+      # Its first check, yet not asked for again before a day has passed.
+      refute SiteCheck.due?(check)
     end
   end
 

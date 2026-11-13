@@ -42,8 +42,6 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
          %{
            "checked_at" => @read_at,
            "page_url" => page,
-           "failed" => true,
-           "last_attempt_at" => "2026-11-13T08:00:00Z",
            "tools" => [%{"name" => "search_openai", "address" => page}]
          }}
       end)

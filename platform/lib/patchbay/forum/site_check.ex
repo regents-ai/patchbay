@@ -246,18 +246,15 @@ defmodule Patchbay.Forum.SiteCheck do
       description("The last try at a check failed: the site reads as not checked just now.")
       accept([])
 
+      # The directory's pages keep their last reads; a site none were read for
+      # still comes due a day later (`due?/1`), not at once.
       change(fn changeset, _context ->
         findings = changeset.data.findings || %{}
-
-        directory =
-          Map.new(findings["directory"] || %{}, fn {url, snapshot} ->
-            {url, Map.put(snapshot, "failed", true)}
-          end)
 
         Ash.Changeset.force_change_attribute(
           changeset,
           :findings,
-          findings |> Map.put("failed", true) |> Map.put("directory", directory)
+          findings |> Map.put("failed", true) |> Map.put_new("directory", %{})
         )
       end)
 

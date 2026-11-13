@@ -93,7 +93,11 @@ defmodule Patchbay.Forum.SiteScan do
      })}
   end
 
-  @doc "Read the directory's exact public pages without calling any discovered tool."
+  @doc """
+  Read the directory's exact public pages without calling any discovered
+  tool. A page read whole gives its tools and when; a page that could not be
+  read whole keeps what its last whole read gave, or nothing.
+  """
   def directory_findings(domain, previous, opts) do
     earlier = (previous || %{})["directory"] || %{}
     now = DateTime.utc_now() |> DateTime.to_iso8601()
@@ -108,12 +112,10 @@ defmodule Patchbay.Forum.SiteScan do
             %{
               "checked_at" => now,
               "page_url" => page_url,
-              "failed" => false,
               "tools" => Enum.map(tools, &%{"name" => &1.name, "address" => page_url})
             }
           else
-            _incomplete ->
-              Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})
+            _incomplete -> Map.get(earlier, url, %{})
           end
 
         {url, snapshot}
@@ -126,7 +128,7 @@ defmodule Patchbay.Forum.SiteScan do
         {url, snapshot}
 
       {{:exit, :timeout}, url} ->
-        {url, Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})}
+        {url, Map.get(earlier, url, %{})}
     end)
     |> storable()
   end
