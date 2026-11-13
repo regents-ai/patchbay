@@ -1,0 +1,170 @@
+defmodule Patchbay.Offers.Campaign do
+  @moduledoc """
+  An advertiser's offer: what an agent is shown (a title, a line of text and
+  a link), where it may run, and notes on who it is for.
+
+  A campaign is written once and never changed. Its `campaign_id`, the id a
+  lease names on the chain, is the keccak256 hash of its manifest
+  (`manifest/1`): a JSON document anyone can hash again to check that a
+  lease's offer is the one bought. A changed offer is a new campaign with a
+  new id, so nothing a lease names can change after it was paid for.
+
+  Where it may run (`audience`) is every listed site (`:all`), the sites it
+  names (`:sites`, by address), or every listed site of one kind (`:group`,
+  such as companies or browsers). The campaign belongs to the account that
+  wrote it, and to one of that account's wallets (`advertiser`), the wallet
+  that pays for it and that Patchbay accepts or blocks.
+
+  The account reads its own campaigns. Anyone reads a campaign a lease has
+  shown.
+  """
+
+  use Ash.Resource,
+    otp_app: :patchbay,
+    domain: Patchbay.Offers,
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer]
+
+  alias Patchbay.Forum.Types.EntityType
+
+  @address ~r/\A0x[0-9a-f]{40}\z/
+  @hash ~r/\A0x[0-9a-f]{64}\z/
+  @link ~r/\Ahttps:\/\/[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:\d+)?([\/?#][^\s]*)?\z/i
+
+  postgres do
+    table("agent_offer_campaigns")
+    repo(Patchbay.Repo)
+
+    references do
+      reference(:agent_profile, on_delete: :delete)
+    end
+  end
+
+  attributes do
+    uuid_primary_key(:id)
+
+    attribute(:campaign_id, :string,
+      allow_nil?: false,
+      public?: true,
+      writable?: false,
+      constraints: [match: @hash]
+    )
+
+    attribute(:advertiser, :string,
+      allow_nil?: false,
+      public?: true,
+      constraints: [match: @address]
+    )
+
+    attribute(:title, :string,
+      allow_nil?: false,
+      public?: true,
+      constraints: [min_length: 2, max_length: 60]
+    )
+
+    attribute(:body, :string,
+      allow_nil?: false,
+      public?: true,
+      constraints: [min_length: 2, max_length: 200]
+    )
+
+    attribute(:link, :string,
+      allow_nil?: false,
+      public?: true,
+      constraints: [max_length: 500, match: @link]
+    )
+
+    attribute(:audience, :atom,
+      allow_nil?: false,
+      public?: true,
+      constraints: [one_of: [:all, :sites, :group]]
+    )
+
+    attribute(:sites, {:array, :string}, allow_nil?: false, default: [], public?: true)
+    attribute(:group, EntityType, allow_nil?: true, public?: true)
+
+    attribute(:notes, :string,
+      allow_nil?: false,
+      default: "",
+      public?: true,
+      constraints: [max_length: 500, allow_empty?: true]
+    )
+
+    create_timestamp(:inserted_at)
+  end
+
+  relationships do
+    belongs_to :agent_profile, Patchbay.Identity.AgentProfile do
+      allow_nil?(false)
+      public?(true)
+    end
+
+    has_many :leases, Patchbay.Offers.Lease do
+      no_attributes?(true)
+      validate_destination_attribute?(false)
+      filter(expr(campaign_id == parent(campaign_id)))
+    end
+  end
+
+  identities do
+    identity(:unique_campaign, [:campaign_id])
+  end
+
+  actions do
+    defaults([:read])
+
+    create :write do
+      description("Writes a campaign for one of the signed-in account's own wallets.")
+      accept([:advertiser, :title, :body, :link, :audience, :sites, :group, :notes])
+      change(relate_actor(:agent_profile))
+      change(Patchbay.Offers.Campaign.Seal)
+    end
+
+    read :mine do
+      description("The signed-in account's campaigns, newest first.")
+      filter(expr(agent_profile_id == ^actor(:id)))
+      prepare(build(sort: [inserted_at: :desc]))
+    end
+
+    read :by_campaign_ids do
+      argument(:campaign_ids, {:array, :string}, allow_nil?: false)
+      filter(expr(campaign_id in ^arg(:campaign_ids)))
+    end
+  end
+
+  policies do
+    policy action(:write) do
+      authorize_if(Patchbay.Offers.Campaign.OwnWallet)
+    end
+
+    policy action_type(:read) do
+      authorize_if(expr(agent_profile_id == ^actor(:id)))
+      authorize_if(expr(exists(leases, true)))
+    end
+  end
+
+  @doc "The fields a campaign's manifest holds."
+  @spec manifest_fields() :: [atom()]
+  def manifest_fields, do: [:advertiser, :title, :body, :link, :audience, :sites, :group, :notes]
+
+  @doc """
+  The manifest a campaign's id is the hash of: JSON with its fields in this
+  fixed order, and no spaces.
+  """
+  @spec manifest(map()) :: String.t()
+  def manifest(campaign) do
+    [
+      {"version", 1},
+      {"advertiser", campaign.advertiser},
+      {"title", campaign.title},
+      {"body", campaign.body},
+      {"link", campaign.link},
+      {"audience", to_string(campaign.audience)},
+      {"sites", campaign.sites},
+      {"group", campaign.group && to_string(campaign.group)},
+      {"notes", campaign.notes}
+    ]
+    |> Jason.OrderedObject.new()
+    |> Jason.encode!()
+  end
+end

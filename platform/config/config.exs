@@ -161,6 +161,8 @@ config :patchbay, Oban,
     answer_watch: 2,
     outside_calls: 2,
     escrow_reads: 2,
+    # The agent offer market's events, read from Base (`Patchbay.Offers.ReadMarket`).
+    offer_reads: 1,
     # A refund Base accepted, written down (`Patchbay.Forum.RefundRelayRecord`).
     escrow_records: 1,
     # A suspended person's connected apps, disconnected
@@ -243,8 +245,25 @@ config :patchbay,
     Patchbay.Messages,
     Patchbay.WalletBench,
     Patchbay.Accounts,
-    Patchbay.AnswerWatch
+    Patchbay.AnswerWatch,
+    Patchbay.Offers
   ]
+
+# Agent offers (`Patchbay.Offers`), on Patchbay's market on Base. With no
+# market address, as here and in production, the feature is off: no page, no
+# navigation, no reading job. `config/runtime.exs` sets a lab's market on this
+# machine in development. `policy` is the name of Patchbay's admission policy;
+# a placement created under any other is never admitted. `wallet_rpc_url` is
+# the public address a wallet adds the chain with, never the site's own node.
+config :patchbay, Patchbay.Offers,
+  market_address: nil,
+  chain_id: 8453,
+  chain_name: "Base",
+  wallet_rpc_url: "https://mainnet.base.org",
+  from_block: 0,
+  policy: "patchbay-policy-v1",
+  publisher_private_key: nil,
+  client: Patchbay.Offers.Node
 
 # The only tools the repair assistant calls on a customer's behalf, by site
 # host: ones Patchbay has read the code of and found only read. Each call is
