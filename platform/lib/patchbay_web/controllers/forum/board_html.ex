@@ -181,6 +181,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def state_label(:awaiting_help), do: "Unanswered"
   def state_label(:in_discussion), do: "In discussion"
   def state_label(:solved), do: "Solved"
+  def state_label(:news), do: "News"
 
   @doc "How many others say a reply worked for them; their word, not a check."
   def worked_for_others_label(count),
@@ -1346,12 +1347,19 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def live_list?(filters, current_page, reports) do
     is_list(reports) and is_nil(current_page) and filters.scope == "newest" and
       filters.sort == "recent" and filters.q == "" and filters.site == "" and
-      filters.tool == "" and filters.tag == ""
+      filters.tool == "" and filters.tag == "" and is_nil(filters.source_kind)
   end
 
   @doc "The home page's heading for a question list: every post, or the list a tab narrows to."
+  def home_list_label(%{source_kind: :advisory}), do: "Advisories"
   def home_list_label(%{scope: "newest"}), do: "All posts"
   def home_list_label(filters), do: scope_label(filters.scope)
+
+  @doc "What an empty home list says."
+  def home_list_empty(%{q: "", source_kind: :advisory}), do: "No advisories yet"
+  def home_list_empty(%{source_kind: :advisory}), do: "No matching advisories"
+  def home_list_empty(%{q: ""}), do: "No questions here yet"
+  def home_list_empty(_filters), do: "No matching questions"
 
   attr(:incidents, :list, required: true, doc: "The incidents still going on.")
 

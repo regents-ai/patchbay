@@ -47,3 +47,16 @@ test("the Wallet Bench tabs stay on one line", async ({page}) => {
   await lastTabReachable(row, page)
   await problems.expect()
 })
+
+// 13 Nov: Advisories made the home page's tabs six. The row stays on one line on
+// every screen, and where it runs past the edge it fades there, its last tab
+// within reach.
+test("the home page's tabs stay on one line", async ({page}) => {
+  const problems = watch(page)
+  await page.goto("/")
+  const row = page.getByRole("navigation", {name: "Question lists"})
+  await expect(row.getByRole("link")).toHaveCount(6)
+  await oneLine(row)
+  await lastTabReachable(row, page)
+  await problems.expect()
+})

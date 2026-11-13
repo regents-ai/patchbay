@@ -5,8 +5,8 @@
 PatchbayDev.WalkDatabase.own!(Patchbay.Repo.config())
 
 # One critical CVE copied from cve.now, as Patchbay.Incidents.CveNow writes it, so
-# the incidents list has one to lead to (incidents.spec.ts). It comes first so the
-# report below stays on a phone's first page of home (pages.spec.ts).
+# the incidents list has one to lead to (incidents.spec.ts). It is an advisory, so
+# home lists it under Advisories, never among the questions.
 {:ok, cve} =
   Patchbay.Incidents.CveNow.Post.from_entry(%{
     "id" => "CVE-2026-100001",

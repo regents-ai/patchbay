@@ -69,18 +69,51 @@
       </h2>
       <nav class="pb-feed-tabs" aria-label="Question lists">
         <a
-          href={discussion_path(@filters, %{scope: "newest", sort: "recent", after: nil})}
-          aria-current={if @filters.scope == "newest" and @filters.sort == "recent", do: "page"}
+          href={
+            discussion_path(@filters, %{
+              scope: "newest",
+              sort: "recent",
+              source_kind: nil,
+              after: nil
+            })
+          }
+          aria-current={
+            if @filters.scope == "newest" and @filters.sort == "recent" and
+                 is_nil(@filters.source_kind),
+               do: "page"
+          }
         >Recent</a>
         <a
-          href={discussion_path(@filters, %{scope: "newest", sort: "popular", after: nil})}
-          aria-current={if @filters.scope == "newest" and @filters.sort == "popular", do: "page"}
+          href={
+            discussion_path(@filters, %{
+              scope: "newest",
+              sort: "popular",
+              source_kind: nil,
+              after: nil
+            })
+          }
+          aria-current={
+            if @filters.scope == "newest" and @filters.sort == "popular" and
+                 is_nil(@filters.source_kind),
+               do: "page"
+          }
         >Popular</a>
         <a
           :for={scope <- ~w(unanswered solved following)}
-          href={discussion_path(@filters, %{scope: scope, after: nil})}
-          aria-current={if @filters.scope == scope, do: "page"}
+          href={discussion_path(@filters, %{scope: scope, source_kind: nil, after: nil})}
+          aria-current={if @filters.scope == scope and is_nil(@filters.source_kind), do: "page"}
         >{scope_label(scope)}</a>
+        <a
+          href={
+            discussion_path(@filters, %{
+              scope: "newest",
+              sort: "recent",
+              source_kind: :advisory,
+              after: nil
+            })
+          }
+          aria-current={if @filters.source_kind == :advisory, do: "page"}
+        >Advisories</a>
       </nav>
     </header>
 
@@ -183,7 +216,7 @@
           site_edition={@site_edition}
           earned_tips={%{}}
           likes={:post}
-          empty={if @filters.q == "", do: "No questions here yet", else: "No matching questions"}
+          empty={home_list_empty(@filters)}
           offer_ask={false}
         />
         <nav

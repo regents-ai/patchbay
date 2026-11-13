@@ -123,11 +123,13 @@ defmodule Patchbay.Forum.LivePost do
 
   @doc """
   Whether a new thread belongs on the home page's list of every post: it is
-  published and is neither an incident's nor a Techtree result's discussion
-  (`Patchbay.Forum.Feed`).
+  published, is neither an incident's nor a Techtree result's discussion, and
+  is not an advisory copied from cve.now (`Patchbay.Forum.Feed`).
   """
   def everything_list?(report),
-    do: published?(report) and is_nil(report.incident) and is_nil(report.techtree_digest)
+    do:
+      published?(report) and is_nil(report.incident) and is_nil(report.techtree_digest) and
+        is_nil(report.cve_now_id)
 
   @doc "Whether a thread or reply may be shown at all."
   def published?(record), do: record.visibility == :published
