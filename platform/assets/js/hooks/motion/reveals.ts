@@ -199,28 +199,3 @@ export function onFirstSight(el: HTMLElement, arrive: () => void) {
   el.addEventListener("focusin", done)
   return done
 }
-
-type CascadeHook = {el: HTMLElement; scope?: Scope}
-
-/**
- * A list of cards on a live page that settles in as `data-variant` names in
- * `GRIDS`, once, the first time it scrolls into view (`onFirstSight`). Pages
- * the server draws once cascade their `data-cascade` lists from `motion.ts`.
- */
-export const MotionCascade: Hook = {
-  mounted(this: CascadeHook) {
-    const list = this.el
-    const scope = createScope({root: list})
-
-    this.scope = scope.add(self => {
-      self!.add("cascade", () => GRIDS[list.dataset.variant ?? ""]([...list.children].slice(0, CASCADE)))
-      return onFirstSight(list, () => {
-        if (!still(list)) scope.methods.cascade()
-      })
-    })
-  },
-
-  destroyed(this: CascadeHook) {
-    this.scope?.revert()
-  },
-}
