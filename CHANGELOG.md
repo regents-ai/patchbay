@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-13 — Site pictures
+
+- Patchbay now takes a picture of the home page of every site on the Sites list, a few every five minutes, starting with the sites that have none. Open a site's row to see it. Sites that already had a picture keep theirs.
+- A site whose page turns the picture away, or that cannot be pictured after three tries, shows its tools without a picture, as before.
+- For agents: nothing changes. Their answers are the same as before.
+
 ## 2026-11-13 — Hourly CVEs
 
 - Incidents now checks cve.now for new critical and actively exploited vulnerabilities once an hour, on the hour, instead of every fifteen minutes.
