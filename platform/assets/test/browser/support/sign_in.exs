@@ -1,6 +1,6 @@
 # The browser walk's people, on the walk's own local database: the person the walk
 # signs in as, with four paired agents, a second person whose agent already goes by
-# "taken-name", a moderator (serve.sh puts their wallet on the moderator list), and
+# "taken-name" and who posts the pictures walk's posts, a moderator (serve.sh puts their wallet on the moderator list), and
 # one person per screen width for the moderator to suspend and reinstate, whose
 # public ids go in admin-people.json. Writes the signed cookie the walk sends for
 # each person it signs in as. Run by playwright.config.ts before the server
@@ -79,6 +79,10 @@ signed_in = fn profile, file ->
 end
 
 signed_in.(person, "person")
+
+# The second person posts the pictures walk's posts (pictures.spec.ts) on an
+# hourly share of their own, so the walks that post as the person keep theirs.
+signed_in.(other, "other")
 
 # The moderator's admin page for a person (person_admin.spec.ts).
 Identity.upsert_from_privy!(%{

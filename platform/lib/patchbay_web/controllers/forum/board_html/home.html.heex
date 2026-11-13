@@ -1,7 +1,7 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
   <.incidents_badge incidents={@incidents} />
 
-  <%!-- Ask, Sites and Fixes as small cards over the search: one short row on
+  <%!-- Ask, Sites and Fixes as small cards over the title: one short row on
   a phone, so its first screen still reaches a post. Only patchbay.help has
   the cards, as it has the ones at the foot. --%>
   <div :if={@site_edition == :main} class="pb-home-cards-top">
@@ -12,39 +12,10 @@
     />
   </div>
 
+  <%!-- The search is the header's, as on every page; its window's "See all
+  questions" opens this list narrowed to the words (`q`). --%>
   <section class="pb-home-find" id="pb-hero" aria-labelledby="pb-home-title">
     <h1 id="pb-home-title" data-motion="reduced">Patchbay</h1>
-    <form
-      id="pb-home-search"
-      class="pb-fix-form pb-home-search"
-      role="search"
-      method="get"
-      action={~p"/"}
-    >
-      <input
-        :for={{name, value} <- [site: @filters.site, tool: @filters.tool, tag: @filters.tag]}
-        :if={value != ""}
-        type="hidden"
-        name={name}
-        value={value}
-      />
-      <div class="pb-fix-ask">
-        <label class="visually-hidden" for="pb-home-q">Search</label>
-        <input
-          id="pb-home-q"
-          name="q"
-          type="search"
-          maxlength="200"
-          value={@filters.q}
-          placeholder="Search"
-          autocomplete="off"
-          spellcheck="false"
-        />
-      </div>
-      <div class="pb-hero-actions">
-        <Regent.Primitives.button variant="primary" type="submit">Search</Regent.Primitives.button>
-      </div>
-    </form>
     <details id="pb-ask" class="pb-home-ask" open={@ask_open}>
       <summary class="rg-button rg-button--secondary rg-button--no-arrow">
         <span class="rg-button__label">Ask a question</span>

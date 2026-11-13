@@ -55,6 +55,45 @@ defmodule Patchbay.ForumTest do
     resource |> Ash.Resource.Info.actions() |> Enum.map(&{&1.name, &1.type}) |> Enum.sort()
   end
 
+  # A picture as a post carries it: a PNG's first bytes, then its own words.
+  defp picture(words), do: <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, words::binary>>
+
+  # Asked with no one signed in, past the policies: the picture limit is the
+  # action's own, whoever asks. The tests below read back past them too, to see
+  # what was kept rather than what a visitor is shown.
+  defp ask_with_pictures(pictures) do
+    Forum.ask_question(
+      %{
+        site_id: site!().id,
+        browser_session_id: Ash.UUID.generate(),
+        title: "Where does a declined card go?",
+        thread_kind: :help_needed,
+        pictures: pictures
+      },
+      authorize?: false
+    )
+  end
+
+  describe "ask_question/1 with pictures" do
+    test "keeps up to four, each in the place it was sent" do
+      sent = Enum.map(~w(first second third fourth), &picture/1)
+      assert {:ok, thread} = ask_with_pictures(sent)
+
+      assert thread
+             |> Ash.load!(:pictures, authorize?: false)
+             |> Map.fetch!(:pictures)
+             |> Enum.map(&{&1.position, &1.image}) == Enum.with_index(sent, &{&2, &1})
+    end
+
+    test "refuses a fifth, and keeps no thread" do
+      assert {:error, %Ash.Error.Invalid{errors: errors}} =
+               ask_with_pictures(Enum.map(~w(one two three four five), &picture/1))
+
+      assert Enum.any?(errors, &(&1.field == :pictures))
+      assert Ash.read!(Report, authorize?: false) == []
+    end
+  end
+
   describe "Origin.normalize/1" do
     accepted = [
       {"https://Shopify.com/path", "shopify.com"},

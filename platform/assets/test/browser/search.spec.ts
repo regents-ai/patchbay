@@ -42,3 +42,29 @@ test("search opens in the shared window frame and opens what is chosen", async (
   }
   await problems.expect()
 })
+
+// Home searches from the header as every page does (Sean, 13 Nov), and the
+// window's "See all questions" opens home's list narrowed to the words.
+test("home's header search finds a question and opens home's list for the words", async ({page}) => {
+  const problems = watch(page)
+  await page.goto("/")
+  const search = page.locator("#shell-search")
+  await expect(page.locator("[data-phx-session].phx-connected:has(#shell-search)")).toBeAttached()
+
+  const button = page.locator("header.pb-masthead #shell-search-button")
+  const box = (await button.boundingBox())!
+  expect(box.height).toBeGreaterThanOrEqual(44)
+  expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+
+  await button.click()
+  await expect(search).toBeVisible()
+  await page.locator("#shell-search-input").fill("not_signed_in")
+  await expect(search.locator("#shell-search-results")).toHaveAttribute("data-query", "not_signed_in")
+  await expect(search.getByRole("group", {name: /^Questions/}).getByRole("option").first()).toBeVisible()
+
+  await search.getByRole("link", {name: /See all questions/}).click()
+  await expect(page).toHaveURL(/\/\?q=not_signed_in$/)
+  await expect(page.locator(".pb-search-summary").first()).toContainText("not_signed_in")
+  await expect(page.locator("#pb-results .pb-row").first()).toBeVisible()
+  await problems.expect()
+})

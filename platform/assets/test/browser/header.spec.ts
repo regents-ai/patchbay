@@ -97,7 +97,13 @@ test("Questions in the header and a thread's All questions open the same list", 
   const feed = page.locator(".pb-feed-tabs")
   await expect(feed).toBeVisible()
 
-  // The walk's one report (support/report.exs), opened from that list.
+  // The walk's one report (support/report.exs), opened from its site's list,
+  // which no walk posts to: the home page's first screen of posts fills with
+  // the posts the walks publish. The site's tool check that page asks for is
+  // answered here: it is not what this walk is about.
+  await page.route(/\/fix-check\?/, route =>
+    route.fulfill({contentType: "application/json", body: JSON.stringify({status: "none", said: "", tools: [], directory: false})}))
+  await page.goto("/keyfleet.ai")
   await page.getByRole("link", {name: /not_signed_in/}).first().click()
   await page.getByRole("link", {name: /All questions/}).click()
   await expect(page).toHaveURL(/\/$/)

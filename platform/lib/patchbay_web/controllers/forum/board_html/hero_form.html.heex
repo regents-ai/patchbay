@@ -128,23 +128,57 @@
             placeholder="The steps you took, the result you expected, and the result you saw."
           >{@hero.draft["details"]}</textarea>
         </Regent.Primitives.field>
-        <Regent.Primitives.field
-          :let={field}
+        <%!-- Pictures are added with the button or dropped on it, up to the
+        post's limit, and shown small, each with its Remove. The named field
+        holds the ones shown and goes with the post (picture_picker.ts). --%>
+        <fieldset
           :if={@profile}
-          id="pb-hero-pictures"
-          label="Pictures"
-          errors={hero_errors(@hero.problem, :pictures)}
+          id="pb-hero-pictures-box"
+          class="pb-pictures"
+          data-pb-most={Patchbay.Forum.PostPicture.max_per_post()}
+          data-pb-bytes={Patchbay.Forum.PostPicture.max_bytes()}
         >
+          <legend>
+            Pictures
+            <span class="pb-pictures-count" aria-live="polite" data-pb-pictures-count>
+              0/{Patchbay.Forum.PostPicture.max_per_post()}
+            </span>
+          </legend>
+          <ul class="pb-pictures-list" data-pb-pictures-list></ul>
+          <div class="pb-pictures-drop" data-pb-pictures-drop>
+            <button
+              type="button"
+              class="pb-pictures-add"
+              aria-describedby="pb-hero-pictures-hint pb-hero-pictures-errors"
+              data-pb-pictures-add
+            >
+              <Regent.Icons.icon name="image-plus" />
+              <span>Add pictures</span>
+            </button>
+            <span id="pb-hero-pictures-hint" class="pb-pictures-hint">
+              PNG, JPEG or WebP, up to 3 MB each
+            </span>
+          </div>
           <input
-            id="pb-hero-pictures"
-            name="ask[pictures][]"
             type="file"
             multiple
             accept="image/png,image/jpeg,image/webp"
-            aria-invalid={field.aria_invalid}
-            aria-describedby={field.described_by}
+            hidden
+            data-pb-pictures-chooser
           />
-        </Regent.Primitives.field>
+          <input id="pb-hero-pictures" name="ask[pictures][]" type="file" multiple hidden />
+          <div id="pb-hero-pictures-errors" class="rg-field-errors" aria-live="polite">
+            <p :for={words <- hero_errors(@hero.problem, :pictures)}>{words}</p>
+          </div>
+          <template data-pb-picture>
+            <li class="pb-picture">
+              <img alt="" />
+              <button type="button" class="pb-picture-remove" aria-label="Remove">
+                <Regent.Icons.icon name="x" />
+              </button>
+            </li>
+          </template>
+        </fieldset>
         <p :if={!@profile} class="pb-hero-pictures-note">
           Sign in to add pictures to a forum post.
         </p>
