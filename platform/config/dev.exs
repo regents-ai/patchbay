@@ -31,6 +31,8 @@ if walk? do
   config :patchbay, :chain_nodes, %{8453 => closed}
   config :req, default_options: [adapter: PatchbayDev.WalkOffline]
   config :patchbay, :assist_target, resolve: &PatchbayDev.WalkOffline.resolve/1
+  # Jev reads each post a walk publishes on this machine (PatchbayDev.WalkJev).
+  config :patchbay, :jev_req_options, plug: PatchbayDev.WalkJev
 
   outside = "../tmp/walk-outside#{System.get_env("PATCHBAY_DEV_PARTITION")}.txt"
   config :patchbay, :walk_outside_file, Path.expand(outside, __DIR__)

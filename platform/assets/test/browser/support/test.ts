@@ -1,4 +1,4 @@
-import {test as base, expect, type Page} from "@playwright/test"
+import {test as base, expect, type BrowserContext, type Page} from "@playwright/test"
 
 // The walk never leaves this machine. The page's sign-in bridge, the only part
 // that talks to Privy, is answered by a stand-in that holds no Privy sign-in;
@@ -17,20 +17,28 @@ export async function activeAddress() { return null }
 export async function addFundsByCard() { return ${JSON.stringify(signedOut)} }
 `
 
+// Keeps a browser's pages on this machine, and lists what they reached for
+// outside it. Every check's own browser has it; a check that opens a second
+// one gives it the same.
+export async function keepOnThisMachine(context: BrowserContext, baseURL: string) {
+  const site = new URL(baseURL).host
+  const outside: string[] = []
+  await context.route(() => true, route => {
+    const url = new URL(route.request().url())
+    if (url.host !== site) {
+      outside.push(`${route.request().method()} ${url.origin}${url.pathname}`)
+      return route.abort("blockedbyclient")
+    }
+    if (bridge.test(url.pathname))
+      return route.fulfill({contentType: "text/javascript", body: standIn})
+    return route.continue()
+  })
+  return outside
+}
+
 export const test = base.extend<{onThisMachine: void}>({
   onThisMachine: [async ({context, baseURL}, use) => {
-    const site = new URL(baseURL!).host
-    const outside: string[] = []
-    await context.route(() => true, route => {
-      const url = new URL(route.request().url())
-      if (url.host !== site) {
-        outside.push(`${route.request().method()} ${url.origin}${url.pathname}`)
-        return route.abort("blockedbyclient")
-      }
-      if (bridge.test(url.pathname))
-        return route.fulfill({contentType: "text/javascript", body: standIn})
-      return route.continue()
-    })
+    const outside = await keepOnThisMachine(context, baseURL!)
     await use()
     expect(outside, "requests that left the machine").toEqual([])
   }, {auto: true}],
