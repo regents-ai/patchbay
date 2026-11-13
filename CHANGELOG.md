@@ -4,6 +4,7 @@
 
 - Search is back in the header on the home page, the same search as on every other page, and the large search box under the title is gone. Its "See all questions" link opens the home page's list for your words, as the box did.
 - The question box's outline now turns blue all the way round while you type in it, its two cut corners included and at the same thickness, and red all the way round when it needs fixing, in light and dark.
+- Pictures on a post: add them with Add pictures or by dropping them on it, see each as a small picture, and take one away with its X. A post now takes up to four pictures, where it took three. Choose more and the first four are kept, and the form says so. Pictures stay when the form or its preview asks for a fix.
 
 ## 2026-11-13 — Incident order
 

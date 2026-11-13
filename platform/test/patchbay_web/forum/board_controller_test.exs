@@ -3,6 +3,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
+  alias Patchbay.Forum.PostPicture
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.Site
   alias PatchbayWeb.SignedAgent
@@ -1306,28 +1307,61 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert Enum.empty?(LazyHTML.query(alone, "#pb-hero-post"))
     end
 
-    test "too many pictures are said under Pictures, with the folded fields opened", %{conn: conn} do
-      conn = signed_in(conn, person!("aaa"))
-      typed = %{"goal" => "Where does a declined card go?", "site_url" => "checkout.example"}
-
+    # The digest of a post previewed as typed, which publishing it sends back.
+    defp previewed(conn, typed) do
       preview =
         conn
         |> post(~p"/threads", %{"ask" => typed, "step" => "preview"})
         |> html_response(200)
 
       [_, digest] = Regex.run(~r/name="previewed" value="([^"]+)"/, preview)
+      digest
+    end
 
-      picture =
-        Path.join(System.tmp_dir!(), "pb-picture-#{System.unique_integer([:positive])}.png")
+    # A picture as the page sends it: a PNG's first bytes, then its own words.
+    defp png_upload(words) do
+      path = Path.join(System.tmp_dir!(), "pb-picture-#{System.unique_integer([:positive])}.png")
+      File.write!(path, <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, words::binary>>)
+      on_exit(fn -> File.rm(path) end)
+      %Plug.Upload{path: path, filename: "#{words}.png", content_type: "image/png"}
+    end
 
-      File.write!(picture, <<0x89, "PNG", 0x0D, 0x0A, 0x1A, 0x0A, "a small picture">>)
-      on_exit(fn -> File.rm(picture) end)
-      upload = %Plug.Upload{path: picture, filename: "cart.png", content_type: "image/png"}
+    test "a post carries the pictures the page sends, four at most, in the order they were sent",
+         %{conn: conn} do
+      conn = signed_in(conn, person!("aaa"))
+      typed = %{"goal" => "Where does a declined card go?", "site_url" => "checkout.example"}
+      digest = previewed(conn, typed)
+
+      # Five were chosen on the page and the second was taken away: the page
+      # sends the four left, and the post keeps them in their places, no gap.
+      sent = Enum.map(~w(first third fourth fifth), &png_upload/1)
+
+      posted =
+        post(conn, ~p"/threads", %{
+          "ask" => Map.put(typed, "pictures", sent),
+          "step" => "post",
+          "previewed" => digest
+        })
+
+      [_, id] = Regex.run(~r{/posts/([^/]+)/}, redirected_to(posted))
+
+      pictures = Ash.load!(Ash.get!(Report, id), :pictures).pictures
+
+      assert Enum.map(pictures, &{&1.position, &1.image}) ==
+               Enum.with_index(sent, fn upload, at -> {at, File.read!(upload.path)} end)
+    end
+
+    test "a fifth picture is refused under Pictures, with the folded fields opened",
+         %{conn: conn} do
+      conn = signed_in(conn, person!("aaa"))
+      typed = %{"goal" => "Where does a declined card go?", "site_url" => "checkout.example"}
+      digest = previewed(conn, typed)
+      sent = Enum.map(1..(PostPicture.max_per_post() + 1), &png_upload("picture #{&1}"))
 
       form =
         conn
         |> post(~p"/threads", %{
-          "ask" => Map.put(typed, "pictures", List.duplicate(upload, 4)),
+          "ask" => Map.put(typed, "pictures", sent),
           "step" => "post",
           "previewed" => digest
         })
@@ -1337,9 +1371,14 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
 
       refute LazyHTML.text(LazyHTML.query(form, "#pb-hero-pictures-errors")) == ""
 
-      assert LazyHTML.attribute(LazyHTML.query(form, "#pb-hero-pictures"), "aria-invalid") ==
-               ["true"]
+      # The line is what Add pictures is described by.
+      assert [described] =
+               LazyHTML.attribute(
+                 LazyHTML.query(form, "[data-pb-pictures-add]"),
+                 "aria-describedby"
+               )
 
+      assert "pb-hero-pictures-errors" in String.split(described)
       assert LazyHTML.attribute(LazyHTML.query(form, "#pb-hero-details"), "open") == [""]
       assert Enum.empty?(LazyHTML.query(form, ".pb-reply-form-problem"))
       assert Forum.list_recent_reports!().results == []

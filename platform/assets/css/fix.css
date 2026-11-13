@@ -49,7 +49,56 @@
 .pb-fix-tools-list input:disabled { cursor: not-allowed; }
 .pb-fix-tools-list label:has(input:disabled) { cursor: not-allowed; }
 .pb-fix-more textarea { min-height: 7rem; resize: vertical; }
-.pb-fix-more input[type=file] { min-height: 0; padding: .4rem .5rem; }
+/* Pictures: small squares, each with its Remove on the top right corner,
+   over a dashed box that adds more with its button or takes them dropped. */
+.pb-pictures { display: grid; gap: .5rem; min-width: 0; margin: 0; padding: 0; border: 0; }
+.pb-pictures legend { display: flex; justify-content: space-between; width: 100%; padding: 0; margin-bottom: .25rem; font-size: .75rem; color: var(--pb-text-muted); }
+.pb-pictures-count { font-variant-numeric: tabular-nums; color: var(--pb-text); }
+.pb-pictures-list { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; list-style: none; }
+.pb-pictures-list:empty { display: none; }
+.pb-picture {
+  position: relative; inline-size: 5rem; block-size: 5rem;
+  transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
+}
+@starting-style { .pb-picture { opacity: 0; transform: scale(.96); } }
+.pb-picture img { display: block; inline-size: 100%; block-size: 100%; object-fit: cover; border: 1px solid var(--pb-line); background: var(--pb-canvas); }
+/* The Remove is a finger's 44 px around the small square it draws, which sits
+   just inside the picture's corner. */
+.pb-picture-remove {
+  position: absolute; inset-block-start: -.375rem; inset-inline-end: -.375rem;
+  display: grid; place-items: center; inline-size: max(2.75rem, 44px); block-size: max(2.75rem, 44px);
+  padding: 0; border: 0; background: none; color: var(--pb-text); cursor: pointer;
+}
+.pb-picture-remove .rg-icon {
+  box-sizing: content-box; inline-size: .875rem; block-size: .875rem; padding: .25rem;
+  border: 1px solid var(--pb-text); background: var(--pb-surface);
+  transition: transform 160ms var(--ease-out);
+}
+.pb-picture-remove:hover .rg-icon { background: var(--pb-accent-wash); }
+.pb-picture-remove:active .rg-icon { transform: scale(.94); }
+.pb-picture-remove:focus-visible { outline: none; }
+.pb-picture-remove:focus-visible .rg-icon { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-pictures-drop {
+  display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem;
+  padding: .5rem; border: 1px dashed var(--pb-text);
+}
+.pb-pictures-drop[data-pb-dragging] { border-style: solid; background: var(--pb-accent-wash); }
+.pb-pictures-add {
+  display: inline-flex; align-items: center; gap: .5rem; min-block-size: max(2.75rem, 44px); padding: 0 .875rem;
+  border: 1px solid var(--pb-text); background: var(--pb-surface); color: var(--pb-text);
+  font: inherit; font-size: .875rem; cursor: pointer;
+  transition: transform 160ms var(--ease-out);
+}
+.pb-pictures-add:hover { background: var(--pb-accent-wash); }
+.pb-pictures-add:active { transform: scale(.97); }
+.pb-pictures-add:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+/* Full: the button stays, to say why when pressed, but reads as spent. */
+.pb-pictures-add[aria-disabled="true"] { border-color: var(--pb-line); background: var(--pb-surface); color: var(--pb-text-muted); cursor: not-allowed; }
+.pb-pictures-add[aria-disabled="true"]:active { transform: none; }
+.pb-pictures-hint { font-size: .75rem; color: var(--pb-text-muted); }
+@media (prefers-reduced-motion: reduce) {
+  .pb-picture, .pb-picture-remove .rg-icon, .pb-pictures-add { transition: none; }
+}
 .pb-hero-pictures-note { margin: 0; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-hero-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
 /* The details open from a full-width button whose arrow turns over; open,

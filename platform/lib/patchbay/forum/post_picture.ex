@@ -1,7 +1,7 @@
 defmodule Patchbay.Forum.PostPicture do
   @moduledoc """
   A picture a person added to their forum post: a PNG, JPEG or WebP of up to
-  3 MB, at most three to a post. Kept apart from the post so the image is
+  3 MB, at most four to a post. Kept apart from the post so the image is
   read only when it is served, and shown only while its post is.
   """
 
@@ -12,7 +12,7 @@ defmodule Patchbay.Forum.PostPicture do
     authorizers: [Ash.Policy.Authorizer]
 
   @max_bytes 3 * 1024 * 1024
-  @max_per_post 3
+  @max_per_post 4
 
   postgres do
     table("forum_post_pictures")
@@ -35,7 +35,7 @@ defmodule Patchbay.Forum.PostPicture do
 
     attribute(:image, :binary, allow_nil?: false, public?: true)
 
-    # Where it sits among its post's pictures: 0, 1 or 2.
+    # Where it sits among its post's pictures: 0 to 3.
     attribute(:position, :integer,
       allow_nil?: false,
       public?: true,

@@ -165,26 +165,4 @@ test.describe("signed in", () => {
     await expectRight(page, "pb-fix-site")
     await problems.expect()
   })
-
-  test("too many pictures are said under Pictures as they are chosen, and stop the press", async ({page}) => {
-    const problems = watch(page)
-    await page.goto("/hermes")
-    await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
-    await page.locator("#pb-fix-site").fill("keyfleet.ai")
-    await page.locator("#pb-hero-details > summary").click()
-    const picture = (name: string) => ({name, mimeType: "image/png", buffer: Buffer.from("a small picture")})
-    const pictures = page.locator("#pb-hero-pictures")
-    await pictures.setInputFiles(["a.png", "b.png", "c.png", "d.png"].map(picture))
-    await expectWrong(page, "pb-hero-pictures")
-
-    // The fields fold away; the press opens them again at the field to fix.
-    await page.locator("#pb-hero-details > summary").click()
-    await page.locator("[data-pb-preview]").click()
-    await expectWrong(page, "pb-hero-pictures")
-    await expect(page.locator("#pb-hero-preview > *")).toHaveCount(0)
-
-    await pictures.setInputFiles([picture("a.png")])
-    await expectRight(page, "pb-hero-pictures")
-    await problems.expect()
-  })
 })

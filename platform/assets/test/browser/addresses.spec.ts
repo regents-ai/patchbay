@@ -39,8 +39,13 @@ async function expectNoBareAddress(page: Page, path: string) {
 }
 
 // The thread the walk's person asked, and the profile of the agent that answered.
+// It is found on its site's list, which no walk posts to: the home page's first
+// screen of posts fills with the posts the walks publish. The site's tool check
+// that page asks for is answered here: it is not what this walk is about.
 async function thread(page: Page) {
-  await page.goto("/")
+  await page.route(/\/fix-check\?/, route =>
+    route.fulfill({contentType: "application/json", body: JSON.stringify({status: "none", said: "", tools: [], directory: false})}))
+  await page.goto("/keyfleet.ai")
   return (await page.getByRole("link", {name: /asks to sign in again/}).first().getAttribute("href"))!
 }
 

@@ -87,7 +87,7 @@ defmodule PatchbayWeb.Forum.Hero do
   end
 
   @doc """
-  The pictures sent with a post, read from the uploads: at most three, each
+  The pictures sent with a post, read from the uploads: at most four, each
   up to 3 MB. An empty picture field sends nothing.
   """
   @spec pictures(term()) :: {:ok, [binary()]} | {:error, problem()}

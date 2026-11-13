@@ -2,6 +2,7 @@ import {requestAccountAction} from "./privy/account.ts"
 import {keepDraft, restoreDraft, sessionStorageOrNull, type PageForm} from "./form_draft.ts"
 import {returnedFromOAuth} from "./privy/sign_in.ts"
 import {mountSiteCheck} from "./site_check.ts"
+import {mountPicturePicker} from "./picture_picker.ts"
 import {mountToolPicker} from "./tool_picker.ts"
 import {deny} from "./hooks/motion/press.ts"
 import {GRIDS} from "./hooks/motion/reveals.ts"
@@ -14,15 +15,9 @@ const FIELD_NAMES = FIELDS.map(name => `ask[${name}]`)
 const DETAILS = ["ask[details]", "ask[thread_kind]", "ask[topic_tags]"]
 const PREVIEW_PATH = "/threads/preview"
 const PICTURES = "ask[pictures][]"
-const MOST_PICTURES = 3
-const PICTURE_BYTES = 3 * 1024 * 1024
-const PICTURE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"])
 
 const WORDS: Record<string, string> = {
   unpreviewed: "Your post could not be shown just now. Try again in a moment.",
-  too_many_pictures: `Add up to ${MOST_PICTURES} pictures.`,
-  picture_too_big: "Each picture can be up to 3 MB.",
-  picture_kind: "Pictures can be PNG, JPEG or WebP.",
 }
 
 type HeroFormOptions = {
@@ -32,9 +27,6 @@ type HeroFormOptions = {
   storage?: Storage | null
   navigate?: (url: string) => void
 }
-
-// A chosen picture, as far as the page can check it before sending.
-type Picture = {size: number; type: string}
 
 // A field with a line under it for what is wrong with it.
 type Field = HTMLInputElement | HTMLTextAreaElement
@@ -52,8 +44,9 @@ type Field = HTMLInputElement | HTMLTextAreaElement
  * written; the page's own Sign in keeps the draft too.
  *
  * What is wrong with a field is said under that field: once the field is
- * left, when pictures are chosen, and when a post is turned down, never while
- * it is typed. Typing only takes the line away, once the field is right.
+ * left, and when a post is turned down, never while it is typed. Typing only
+ * takes the line away, once the field is right. Pictures say their own
+ * (picture_picker.ts).
  */
 export function mountHeroForm(options: HeroFormOptions = {}) {
   const doc = options.document ?? globalThis.document
@@ -75,6 +68,7 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
   restorePicks(form, storage, picksKey)
   openFilledDetails(form)
   const picker = mountToolPicker(form)
+  mountPicturePicker(form)
   mountSiteCheck(form, {...options, onTools: picker?.show})
   mountKindChoice(form)
 
@@ -132,14 +126,6 @@ export function mountHeroForm(options: HeroFormOptions = {}) {
       void requestAccountAction("sign-in", doc, options)
     }
   })
-}
-
-/** Why the chosen pictures cannot go with the post, or nothing when they can. */
-export function picturesProblem(pictures: Picture[]): string | null {
-  if (pictures.length > MOST_PICTURES) return WORDS.too_many_pictures
-  if (pictures.some(picture => !PICTURE_TYPES.has(picture.type))) return WORDS.picture_kind
-  if (pictures.some(picture => picture.size > PICTURE_BYTES)) return WORDS.picture_too_big
-  return null
 }
 
 // The post as it will appear, asked for without sending the pictures, which
@@ -232,10 +218,8 @@ function describe(field: Field, id: string, described: boolean) {
   else field.removeAttribute("aria-describedby")
 }
 
-// What stops the form being sent, by the browser's own rules for the field
-// and the limits on pictures: the same things that stopped it before.
-function unmet(form: PageForm, field: Field): string | null {
-  if (field.name === PICTURES) return picturesProblem(picturesOf(form))
+// What stops the form being sent, by the browser's own rules for the field.
+function unmet(field: Field): string | null {
   if (field.validity.valid) return null
   return (field.validity.valueMissing && field.dataset.pbEmpty) || field.validationMessage
 }
@@ -262,7 +246,7 @@ function reach(form: PageForm, field: Field) {
 // field, and the first of them takes the focus.
 function sendable(form: PageForm) {
   const stopped = fieldsOf(form).filter(field => {
-    const words = unmet(form, field)
+    const words = unmet(field)
     if (words) showProblem(form, field, words)
     return words !== null
   })
@@ -286,19 +270,8 @@ function mountFieldLines(form: PageForm) {
   // a line Patchbay gave for what was sent goes with the first change.
   form.addEventListener("input", event => {
     const field = fieldAt(event)
-    if (!field || field.name === PICTURES || lineOf(form, field)!.childElementCount === 0) return
-    if (!(unmet(form, field) ?? overlong(field))) clearProblem(form, field)
-  })
-
-  // Pictures are chosen, not typed: the line follows each choice.
-  form.addEventListener("change", event => {
-    const field = fieldAt(event)
-    if (field?.name !== PICTURES) return
-    const words = picturesProblem(picturesOf(form))
-    if (words) {
-      showProblem(form, field, words)
-      lineOf(form, field)!.scrollIntoView({block: "nearest"})
-    } else clearProblem(form, field)
+    if (!field || lineOf(form, field)!.childElementCount === 0) return
+    if (!(unmet(field) ?? overlong(field))) clearProblem(form, field)
   })
 }
 
