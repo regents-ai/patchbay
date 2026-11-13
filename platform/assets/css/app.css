@@ -1193,9 +1193,12 @@ body:has(#patchbay-home),
 .pb-site-agent-panel summary:focus-visible { outline: 2px solid var(--pb-text); outline-offset: 3px; }
 .pb-site-agent-heading { display: grid; gap: .125rem; }
 .pb-site-agent-title { margin: 0; font-family: var(--font-family-title); font-size: 1.125rem; font-weight: 400; }
-/* The count is always one line, so its words changing when a check finishes
-   never moves what is below. */
-.pb-site-agent-count { overflow: hidden; color: var(--pb-text-muted); font-size: .75rem; white-space: nowrap; text-overflow: ellipsis; }
+/* The count is always one line, every label it can show stacked in one cell
+   (Regent.Primitives.status_word), so a check that finishes swaps the words in
+   place and never moves what is beside or below. A label too long for a narrow
+   screen ends in an ellipsis. */
+.pb-site-agent-count { grid-template-columns: minmax(0, 1fr); color: var(--pb-text-muted); font-size: .75rem; }
+.pb-site-agent-count > .rg-status-word__word { overflow: hidden; text-overflow: ellipsis; }
 .pb-site-agent-heading { flex: 1 1 0; min-width: 0; }
 .pb-site-agent-toggle { color: var(--pb-text-muted); font-size: .8125rem; text-decoration: underline; text-underline-offset: .2em; }
 .pb-site-view-less,

@@ -29,7 +29,8 @@ defmodule PatchbayWeb.PointsLive do
         board: %Read{},
         bonus: %Read{},
         earning: Rules.active(),
-        person: nil
+        person: nil,
+        rolls?: false
       )
 
     case socket.assigns.current_profile do
@@ -48,11 +49,14 @@ defmodule PatchbayWeb.PointsLive do
   end
 
   # A points award or correction for this account, and the shared board read
-  # again; the page follows both.
+  # again; the page follows both. The total rolls only for an award that lands
+  # after this connection's first render, so a total that changed while the
+  # page was away is simply there when it connects again.
   defp subscribe(%{assigns: %{person: %{human_account_id: id}}} = socket) do
     if connected?(socket) do
       :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, "points:#{id}")
       :ok = SharedReading.subscribe(Board.key())
+      send(self(), :rolls)
     end
 
     socket
@@ -74,6 +78,8 @@ defmodule PatchbayWeb.PointsLive do
 
   def handle_info({:shared_reading, {:points_board, _program}}, socket),
     do: {:noreply, read_board(socket)}
+
+  def handle_info(:rolls, socket), do: {:noreply, assign(socket, rolls?: true)}
 
   @impl true
   def handle_async({Read, _name, _generation} = name, result, socket),
@@ -173,17 +179,28 @@ defmodule PatchbayWeb.PointsLive do
 
       <Regent.Points.layout :if={@current_profile && (@person || @points.state == :error)}>
         <:total>
-          <Regent.Points.total
-            id="points-total"
-            total={@summary && Amount.format(@summary.balance_micro)}
-            today={@summary && Amount.format(@summary.earned_today_micro)}
-            yesterday={@summary && Amount.format(@summary.earned_yesterday_micro)}
-            rank={@places && @places.rank && to_string(@places.rank)}
-            pending={if @summary, do: @summary.pending, else: 0}
-            state={state(@points)}
+          <%!-- The total's figure rolls when an award lands while the page is open.
+            The count is set only once there is a total, so a figure that arrives
+            after "–" is simply there, and only after this connection's first
+            render (`subscribe/1`). --%>
+          <div
+            id="points-total-frame"
+            class="pb-points-total"
+            phx-hook={@rolls? && @summary && "MotionCount"}
+            data-variant={PatchbayWeb.Motion.standard("count")}
           >
-            A record of everything you and your agents do across Regents. One total, on every site.
-          </Regent.Points.total>
+            <Regent.Points.total
+              id="points-total"
+              total={@summary && Amount.format(@summary.balance_micro)}
+              today={@summary && Amount.format(@summary.earned_today_micro)}
+              yesterday={@summary && Amount.format(@summary.earned_yesterday_micro)}
+              rank={@places && @places.rank && to_string(@places.rank)}
+              pending={if @summary, do: @summary.pending, else: 0}
+              state={state(@points)}
+            >
+              A record of everything you and your agents do across Regents. One total, on every site.
+            </Regent.Points.total>
+          </div>
         </:total>
         <:main>
           <Regent.Points.todo :if={@summary} id="points-todo" left={@left} groups={@groups}>
