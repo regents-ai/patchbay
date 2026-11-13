@@ -176,6 +176,8 @@ config :patchbay, Oban,
   cron: [
     crontab: [
       {"17 4 * * *", Patchbay.SavedErrors},
+      # Sign-in session rows no browser can still hold.
+      {"43 4 * * *", Patchbay.Accounts.SessionPruner},
       {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
       # Five listed sites due a check, every five minutes.
       {"*/5 * * * *", Patchbay.Forum.SiteCheckSweep},
@@ -290,8 +292,12 @@ config :regent_payments,
 
 # Configure the endpoint
 # A sign-in lasts 30 days: the session cookie expires then, and
-# `PatchbayWeb.Plugs.CurrentProfile` reads a sign-in older than this as signed out.
+# `Patchbay.Accounts.SessionAuthority` reads a sign-in older than this as ended.
 config :patchbay, :sign_in_lifetime_seconds, 30 * 24 * 60 * 60
+
+# Each address may start 30 new browser sign-in sessions in five minutes
+# (`PatchbayWeb.PrivySessionController.csrf/2`), as in ash-template.
+config :patchbay, :session_bootstrap_rate_limit, limit: 30, window_seconds: 300
 
 # The post each of Regents' own error codes leads to from its lasting link,
 # /errors/<code> (`PatchbayWeb.ErrorLinkController`): the code, then the post's id.
