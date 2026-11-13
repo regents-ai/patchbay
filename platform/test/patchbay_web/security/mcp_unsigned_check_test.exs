@@ -5,34 +5,17 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
   every write, signed or not, draws on the address's share of signed requests
   before any signature is checked.
 
-  The sign-in service is stubbed: it says each time it was asked, and answers
-  as the real one does, so the refusal an unsigned write gets can be compared
-  with the one it got when the service was asked. At `/mcp` every refusal is
-  a JSON-RPC answer to the call (status 200, a tool result with `isError`
-  carrying the refusal). The share is set to the
-  site's own 120 a minute for the whole site while this runs, so the file runs
-  alone (`async: false`).
+  The sign-in service is stubbed: it says each time it was asked, and refuses
+  every signature it is shown. An unsigned write is told how to sign at this
+  address (`agent_auth_required`) without it. At `/mcp` every refusal is a
+  JSON-RPC answer to the call (status 200, a tool result with `isError`
+  carrying the refusal). The share is set to the site's own 120 a minute for
+  the whole site while this runs, so the file runs alone (`async: false`).
   """
 
   use PatchbayWeb.ConnCase, async: false
 
   import Plug.Conn
-
-  # The sign-in service's answer to a request without signed headers.
-  @unsigned_refusal %{
-    "error" => %{
-      "code" => "http_headers_missing",
-      "message" =>
-        "missing required signed agent headers: x-siwa-signature, x-siwa-signature-input, " <>
-          "x-siwa-receipt, x-key-id, x-timestamp, x-agent-wallet-address, x-agent-chain-id",
-      "hint" =>
-        "The request's signature headers are missing, too old or malformed. Get the newest client " <>
-          "with `curl -fsSO https://siwa.regents.sh/agent/siwa_agent.py`, or if you use regents-cli, " <>
-          "run `uv tool upgrade regents-cli`. Then send the request with " <>
-          "`uv run siwa_agent.py request METHOD URL` or your regents command, which signs each " <>
-          "request fresh, just before sending. Each signature works once, for two minutes."
-    }
-  }
 
   setup do
     old = Application.fetch_env!(:patchbay, :signed_per_minute)
@@ -43,30 +26,22 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
 
     Req.Test.stub(RegentAgents.Broker, fn conn ->
       send(test, :sign_in_service_asked)
-      {:ok, body, conn} = read_body(conn)
 
-      case Jason.decode!(body)["headers"] do
-        headers when map_size(headers) == 0 ->
-          conn |> put_status(401) |> Req.Test.json(@unsigned_refusal)
-
-        _signed ->
-          conn
-          |> put_status(401)
-          |> Req.Test.json(%{
-            error: %{code: "signature_invalid", message: "Not signed", hint: "Sign with SIWA"}
-          })
-      end
+      conn
+      |> put_status(401)
+      |> Req.Test.json(%{
+        error: %{code: "signature_invalid", message: "Not signed", hint: "Sign with SIWA"}
+      })
     end)
 
     :ok
   end
 
-  test "an unsigned write is refused as the sign-in service would refuse it, without asking it",
+  test "an unsigned write is told how to sign here, without asking the sign-in service",
        %{conn: conn} do
     refused = write(conn, address(), nil)
 
-    assert refusal(refused) == @unsigned_refusal,
-           "expected the existing refusal, saw #{refused.resp_body}"
+    assert code(refused) == "agent_auth_required", "saw #{refused.resp_body}"
 
     refute_received :sign_in_service_asked,
                     "the sign-in service was asked about a write that carried no signature"
@@ -78,14 +53,14 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
 
     # One signed write and 119 unsigned ones spend the address's 120.
     signed = write(conn, address, "not a signature")
-    assert refusal(signed)["error"]["code"] == "signature_invalid"
+    assert code(signed) == "signature_invalid"
     assert [policy] = get_resp_header(signed, "ratelimit-policy")
     assert policy =~ ~s("signed";q=120;w=60)
     assert_received :sign_in_service_asked
 
     for left <- 118..0//-1 do
       unsigned = write(conn, address, nil)
-      assert refusal(unsigned) == @unsigned_refusal
+      assert code(unsigned) == "agent_auth_required"
       assert [budget] = get_resp_header(unsigned, "ratelimit")
       assert budget =~ ~s("signed";r=#{left};t=)
     end
@@ -114,7 +89,7 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
     refute Enum.any?(get_resp_header(read, "ratelimit-policy"), &(&1 =~ ~s("signed")))
 
     # Another address has a share of its own.
-    assert refusal(write(conn, address(), nil)) == @unsigned_refusal
+    assert code(write(conn, address(), nil)) == "agent_auth_required"
   end
 
   # The refusal a write was answered with, as a tool result for its call.
@@ -124,6 +99,8 @@ defmodule PatchbayWeb.Security.MCPUnsignedCheckTest do
 
     Jason.decode!(text)
   end
+
+  defp code(answer), do: refusal(answer)["error"]["code"]
 
   defp write(conn, address, signature) do
     rpc(conn, address, signature, "ask_question", %{

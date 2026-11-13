@@ -23,7 +23,7 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   alias PatchbayWeb.SignedAgent
 
   # What admission answers a request with no signature headers.
-  @unsigned Siwa.Contract.refusal(:missing_signed_headers) |> elem(1)
+  @unsigned "agent_auth_required"
 
   setup do
     SignedAgent.stub_siwa()
@@ -292,7 +292,12 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
   defp answered(name, result, :answered, _conn, _agent) do
     code = if result["isError"], do: code(result)
 
-    refute code in ["agent_not_paired", "http_headers_missing", "rate_limited"],
+    refute code in [
+             "agent_auth_required",
+             "agent_not_paired",
+             "http_headers_missing",
+             "rate_limited"
+           ],
            "#{name} did not reach its tool: #{code}"
   end
 

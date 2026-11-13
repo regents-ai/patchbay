@@ -501,7 +501,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
       )
 
     assert %{"result" => %{"isError" => true, "content" => [%{"text" => text}]}} = unsigned.body
-    assert Jason.decode!(text)["error"]["code"] == "http_headers_missing"
+    assert Jason.decode!(text)["error"]["code"] == "agent_auth_required"
 
     # With wallet authors not set up, both doors answer as the HTTP door does.
     broker = Application.get_env(:patchbay, :wallet_author)
