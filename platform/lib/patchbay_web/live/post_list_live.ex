@@ -4,8 +4,10 @@ defmodule PatchbayWeb.PostListLive do
   page's Recent list of every post, a site's posts and a tool's posts.
 
   A post that starts published arrives at the top, and the list keeps its
-  page's length, so the last row leaves as it does. A shown post's replies,
-  likes and solved mark change in place, and a post moderation hides leaves.
+  page's length, so the last row leaves as it does. Each arrival is also told
+  to the page as `posts:arrived`, naming the list, which is what pulses the
+  home page's activity strip. A shown post's replies, likes and solved mark
+  change in place, and a post moderation hides leaves.
   Every change comes as a notice that carries the row
   (`Patchbay.Forum.LivePost`), so the list reads nothing when one arrives.
 
@@ -49,7 +51,8 @@ defmodule PatchbayWeb.PostListLive do
       {:noreply,
        socket
        |> assign(ids: kept, empty: false)
-       |> stream_insert(:posts, row, at: 0, limit: list.size)}
+       |> stream_insert(:posts, row, at: 0, limit: list.size)
+       |> push_event("posts:arrived", %{list: list.id})}
     else
       {:noreply, socket}
     end
@@ -76,7 +79,13 @@ defmodule PatchbayWeb.PostListLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <ol id={@list.id <> "-rows"} class="pb-feed-list" phx-update="stream" phx-hook="MotionArrivals">
+    <ol
+      id={@list.id <> "-rows"}
+      class="pb-feed-list"
+      phx-update="stream"
+      phx-hook="MotionArrivals"
+      data-glow
+    >
       <.post_row
         :for={{id, post} <- @streams.posts}
         id={id}

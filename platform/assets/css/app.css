@@ -1163,6 +1163,14 @@ body:has(#patchbay-home),
 .pb-tool-row:focus-visible .pb-tool-row-name { text-decoration: underline; }
 .pb-tool-row-main { display: grid; gap: 2px; min-width: 0; }
 .pb-tool-row-go { color: var(--pb-text-muted); flex: 0 0 auto; }
+/* Under a mouse, a tool row's arrow steps toward the tool and darkens. */
+@media (hover: hover) and (pointer: fine) {
+  .pb-tool-row-go { transition: transform 120ms var(--ease-out), color 120ms ease; }
+  a.pb-tool-row:hover .pb-tool-row-go { color: var(--pb-text); transform: translateX(4px); transition-duration: 180ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  a.pb-tool-row:hover .pb-tool-row-go { transform: none; }
+}
 .pb-tool-row-name { overflow-wrap: anywhere; font-family: var(--font-family-title); font-weight: 400; font-synthesis: none; letter-spacing: -.02em; }
 .pb-tool-row-desc { overflow-wrap: anywhere; color: var(--pb-text-muted); font-size: .8125rem; }
 .pb-tool-row-meta {
@@ -1568,6 +1576,20 @@ h1, h2, h3, h4, h5, h6 {
 @media (hover: hover) and (pointer: fine) {
   .pb-wb-square:hover { background: color-mix(in srgb, var(--pb-accent) 8%, var(--pb-surface)); }
 }
+/* Under a mouse, a square's dots light up in reading order, 20 ms apart, all
+   nine within 300 ms, and settle back together when it leaves. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .pb-wb-square .pb-wb-dot { transition: transform 100ms var(--ease-out); }
+  .pb-wb-square:hover .pb-wb-dot { transform: scale(1.25); transition-duration: 140ms; }
+  .pb-wb-square:hover .pb-wb-dot:nth-child(2) { transition-delay: 20ms; }
+  .pb-wb-square:hover .pb-wb-dot:nth-child(3) { transition-delay: 40ms; }
+  .pb-wb-square:hover .pb-wb-dot:nth-child(4) { transition-delay: 60ms; }
+  .pb-wb-square:hover .pb-wb-dot:nth-child(5) { transition-delay: 80ms; }
+  .pb-wb-square:hover .pb-wb-dot:nth-child(6) { transition-delay: 100ms; }
+  .pb-wb-square:hover .pb-wb-dot:nth-child(7) { transition-delay: 120ms; }
+  .pb-wb-square:hover .pb-wb-dot:nth-child(8) { transition-delay: 140ms; }
+  .pb-wb-square:hover .pb-wb-dot:nth-child(9) { transition-delay: 160ms; }
+}
 .pb-wb-square.has-finding { box-shadow: inset 0 2px var(--pb-wb-warning); }
 .pb-wb-empty { color: var(--pb-text-muted); font: 400 .75rem/1.4 var(--font-family-ui); }
 .pb-wb-dots { display: grid; grid-template-columns: repeat(3, var(--pb-wb-dot)); grid-template-rows: repeat(3, var(--pb-wb-dot)); gap: var(--pb-wb-dot-gap, .3rem); }
@@ -1754,6 +1776,17 @@ html:has(.pb-wb-dialog[open]) { overflow: hidden; }
 .rg-discussion__post:has(> .rg-discussion__avatar :is(.pb-agent-face:hover, .pb-agent-face:focus)) > .rg-discussion__main > .rg-discussion__post-head > .pb-agent-card,
 .rg-discussion__post-head:has(> .rg-discussion__author:is(:hover, :focus-visible)) > .pb-agent-card,
 .pb-badge:has(> .pb-badge-name:is(:hover, :focus-visible)) > .pb-agent-card { opacity: 1; }
+/* Shown by a mouse, the card rises 4px into place as it fades in, and leaves
+   faster than it came; shown by the keyboard it is simply there. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .pb-agent-card { transform: translateY(4px); transition: opacity 100ms var(--ease-out), transform 100ms var(--ease-out); }
+  .rg-discussion__post:has(> .rg-discussion__avatar .pb-agent-face:hover) > .rg-discussion__main > .rg-discussion__post-head > .pb-agent-card,
+  .rg-discussion__post-head:has(> .rg-discussion__author:hover) > .pb-agent-card,
+  .pb-badge:has(> .pb-badge-name:hover) > .pb-agent-card { transform: none; transition-duration: 160ms; }
+  .rg-discussion__post:has(> .rg-discussion__avatar .pb-agent-face:focus) > .rg-discussion__main > .rg-discussion__post-head > .pb-agent-card,
+  .rg-discussion__post-head:has(> .rg-discussion__author:focus-visible) > .pb-agent-card,
+  .pb-badge:has(> .pb-badge-name:focus-visible) > .pb-agent-card { transform: none; transition: none; }
+}
 
 /* The evidence inspector is page composition; shared controls keep their own skins. */
 .pb-wb-dialog-bar { padding-inline: max(var(--space-2), calc((100% - 76rem) / 2)); flex-wrap: wrap; }

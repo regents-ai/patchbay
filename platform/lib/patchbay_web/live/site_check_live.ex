@@ -222,6 +222,7 @@ defmodule PatchbayWeb.SiteCheckLive do
             class="pb-site-check-status"
             role="alert"
             phx-hook="MotionRefusal"
+            phx-remove={PatchbayWeb.Motion.leave()}
             data-refused
           >
             You've checked a lot of sites just now. Try again in a few minutes.

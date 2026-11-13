@@ -6,6 +6,7 @@
   data-pb-home={@home}
   enctype="multipart/form-data"
   data-pb-signed-in={to_string(!is_nil(@profile))}
+  {@rest}
 >
   <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
   <p :if={!@profile} id="pb-hero-sign-in" class="pb-hero-sign-in">

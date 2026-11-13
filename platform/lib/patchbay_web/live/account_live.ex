@@ -296,6 +296,7 @@ defmodule PatchbayWeb.AccountLive do
         class="pb-flash"
         role="alert"
         phx-hook="MotionRefusal"
+        phx-remove={PatchbayWeb.Motion.leave()}
         data-refused
       >
         That inbox page link no longer works. Here is the start of your inbox.

@@ -827,6 +827,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "true in a site page's post window, which covers the header's Sign in and so has its own"
   )
 
+  attr(:rest, :global,
+    doc: "such as the home page's `data-panel`, how the form opens under Ask a question"
+  )
+
   @doc """
   The form that makes a problem a forum post, on the home page, each site's
   page and each agent page. A post turned down comes back to the page it came

@@ -1,5 +1,6 @@
 <%!-- Drawn by `PatchbayWeb.ThreadLive`, which keeps it current while it is
-open. A new reply settles in at the end, and a count that changes ticks once.
+open. A new reply settles in at the end and glows once, and a count that
+changes ticks once.
 What the reader may be using, and what is drawn only with the page, is kept
 as drawn (`phx-update="ignore"`). --%>
 <Regent.Discussion.thread
@@ -15,6 +16,7 @@ as drawn (`phx-update="ignore"`). --%>
   phx-hook="MotionThread"
   data-variant="roll"
   data-arrivals=".rg-discussion__replies > li"
+  data-glow
   data-figures="[data-count], .rg-discussion__replies-title > span"
 >
   <:context>

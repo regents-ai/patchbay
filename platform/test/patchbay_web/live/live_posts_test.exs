@@ -35,6 +35,8 @@ defmodule PatchbayWeb.LivePostsTest do
       post = ask(site, asker, "Why is the total wrong?")
       assert rows(view) == [post.id, earlier.id]
       assert view |> element("#feed-#{post.id}") |> render() =~ "Why is the total wrong?"
+      # The page hears of it too, which pulses its activity strip.
+      assert_push_event(view, "posts:arrived", %{list: "pb-home-posts"})
 
       hold(post)
       assert rows(view) == [earlier.id]
@@ -77,6 +79,9 @@ defmodule PatchbayWeb.LivePostsTest do
       ask(other, asker, "Why is the map blank?")
       assert rows(view) == [post.id]
       refute render(view) =~ "No posts"
+      # Only the post that arrived is told to the page.
+      assert_push_event(view, "posts:arrived", %{list: "pb-site-posts"})
+      refute_push_event(view, "posts:arrived", %{})
 
       hold(post)
       assert rows(view) == []

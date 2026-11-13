@@ -199,6 +199,126 @@ test.describe("the agent name form", () => {
   })
 })
 
+test.describe("the home page's lists", () => {
+  const row = (page: Page) => page.locator("#pb-home-posts-rows > li").first()
+  const tab = (page: Page) => page.locator(".pb-feed-tabs a:not([aria-current])").first()
+  // The row's tint and the tab's underline, as the screen shows them.
+  const looks = async (page: Page) => [
+    await row(page).evaluate(el => getComputedStyle(el, "::before").opacity),
+    await tab(page).evaluate(el => getComputedStyle(el, "::after").transform),
+  ]
+
+  test("a post row and a list tab answer a mouse, and stay as they are under a finger", async ({page, isMobile}) => {
+    await page.goto("/")
+    await page.locator("[data-phx-session].phx-connected:has(#pb-home-posts-rows)").waitFor({state: "attached"})
+    const resting = ["0", "matrix(0, 0, 0, 1, 0, 0)"]
+    expect(await looks(page)).toEqual(resting)
+
+    for (const target of [row(page), tab(page)]) {
+      await target.hover()
+      expect(await target.evaluate(el => el.matches(":hover"))).toBe(true)
+    }
+    // A phone keeps what a finger touched hovered; nothing changes for it.
+    if (isMobile) expect(await looks(page)).toEqual(resting)
+    else {
+      await row(page).hover()
+      await expect.poll(async () => (await looks(page))[0]).toBe("0.5")
+      await tab(page).hover()
+      await expect.poll(async () => (await looks(page))[1]).toBe("none")
+    }
+  })
+})
+
+// A copy button dips as it is pressed, then says it copied, the old words
+// fading as the new ones come in, and rests.
+test("a copy button dips as it is pressed and crosses over to say it copied", async ({page, context, isMobile}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"])
+  await page.goto("/")
+  const copy = page.locator(".pb-connect-say .rg-copy").first()
+  await copy.scrollIntoViewIfNeeded()
+  await press(copy, isMobile)
+  await expect(copy).toHaveAttribute("data-copy-state", "copied")
+  await toRest(copy)
+  expect((await movesOf(copy)).some(move => move.includes("scale"))).toBe(true)
+  expect(await movesWithin(copy)).toContain("transition opacity")
+})
+
+// A post's follow bell tips from its top while a mouse holds it down and swings
+// back as it is let go; held down from the keyboard it stays still.
+test("a post's follow bell tips under a mouse and stays still under the keyboard", async ({page, isMobile}) => {
+  test.skip(isMobile, "pressed with a mouse and with keys, on a desktop")
+  await page.goto("/")
+  await page.goto((await page.locator("a.pb-row-title").first().getAttribute("href"))!)
+  const bell = page.locator(".pb-follow-bell")
+  const tilt = () => bell.locator(".rg-icon").evaluate(el => getComputedStyle(el).transform)
+
+  // Slid off before it is let go, so the press follows nothing.
+  await bell.hover()
+  await page.mouse.down()
+  await expect.poll(tilt).not.toBe("none")
+  await page.mouse.move(0, 0)
+  await page.mouse.up()
+  await expect.poll(tilt).toBe("none")
+
+  const moves = await movesOf(bell.locator(".rg-icon"))
+  await page.keyboard.press("Shift+Tab")
+  await page.keyboard.press("Tab")
+  await expect(bell).toBeFocused()
+  await page.keyboard.down(" ")
+  await page.evaluate(() => new Promise(drawn => requestAnimationFrame(() => requestAnimationFrame(drawn))))
+  expect(await movesOf(bell.locator(".rg-icon"))).toEqual(moves)
+  expect(await tilt()).toBe("none")
+})
+
+test.describe("Ask a question", () => {
+  const form = (page: Page) => page.locator("#pb-hero-form")
+  const summary = (page: Page) => page.locator("#pb-ask > summary")
+
+  // Read once the next frame is drawn, when a fold started with the opening has
+  // written its first step.
+  async function opensStill(form: Locator) {
+    await expect(form).toBeVisible()
+    await form.page().evaluate(() => new Promise(drawn => requestAnimationFrame(() => requestAnimationFrame(drawn))))
+    expect(await movesOf(form)).toEqual([])
+    expect(await inlineStyle(form)).toBe("")
+  }
+
+  test("opened by hand, its form folds open and comes to rest", async ({page, isMobile}) => {
+    await page.goto("/")
+    await press(summary(page), isMobile)
+    await expect(form(page)).toBeVisible()
+    await toRest(form(page))
+    expect((await movesOf(form(page))).some(move => move.includes("translateY"))).toBe(true)
+  })
+
+  test("opened from the keyboard, its form is simply there", async ({page, isMobile}) => {
+    test.skip(isMobile, "a phone has no keyboard to open it with")
+    await page.goto("/")
+    await summary(page).focus()
+    await page.keyboard.press("Enter")
+    await opensStill(form(page))
+  })
+
+  test.describe("with less motion", () => {
+    test.use({contextOptions: {reducedMotion: "reduce"}})
+
+    test("its form is simply there", async ({page, isMobile}) => {
+      await page.goto("/")
+      await press(summary(page), isMobile)
+      await opensStill(form(page))
+    })
+  })
+})
+
+// The pages the motion touches most, at 1280, 390 and 320.
+test("nothing on the moving pages reaches past the screen's edge", async ({page}) => {
+  for (const path of ["/", "/sites", "/keyfleet.ai", "/animations"]) {
+    await page.goto(path)
+    const sideways = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+    expect(sideways, path).toBe(0)
+  }
+})
+
 test("Claude's picture tilts under a mouse and stays put after a tap", async ({page, isMobile}) => {
   await page.goto("/claude")
   // The crowd is decoration, hidden from assistive technology; its first figure.

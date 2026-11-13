@@ -135,6 +135,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         role="alert"
         class="pb-directory-notice"
         phx-hook="MotionRefusal"
+        phx-remove={PatchbayWeb.Motion.leave()}
         data-refused
       >
         {@problem}
@@ -163,6 +164,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           <tbody
             id="directory-rows"
             phx-update="stream"
+            phx-hook="MotionArrivals"
             phx-viewport-bottom={if @page.page < @page.pages, do: "load-more"}
           >
             <tr :for={{dom_id, site} <- @streams.sites} id={dom_id} class="pb-directory-row">

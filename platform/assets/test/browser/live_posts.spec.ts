@@ -129,6 +129,12 @@ test("a post published elsewhere arrives at the top of the home page's list, mov
   await list.locator(":scope > li").first().evaluate(row => Object.assign(row, {pbKept: true}))
   const before = await resting(list)
   const first = before.rows[0]
+  // What the page hears of each arrival, which pulses its activity strip.
+  await page.evaluate(() => {
+    const heard: string[] = []
+    Object.assign(window, {pbArrived: heard})
+    window.addEventListener("phx:posts:arrived", event => heard.push((event as CustomEvent<{list: string}>).detail.list))
+  })
 
   const poster = await openPoster(browser, baseURL!)
   const title = unique("Cart total doubles at checkout")
@@ -136,6 +142,10 @@ test("a post published elsewhere arrives at the top of the home page's list, mov
 
   const row = list.locator(":scope > li", {hasText: title})
   await arrives(row)
+  // It glowed once where it landed, and the page heard which list it reached.
+  expect(await movesOf(row)).toContain("animation pb-arrived")
+  const heard = await page.evaluate(() => (window as Window & {pbArrived?: string[]}).pbArrived ?? [])
+  expect(new Set(heard)).toEqual(new Set(["pb-home-posts"]))
   const after = await resting(list)
   const kept = after.rows.findIndex(row => row.id === first.id)
   const arrived = after.rows.slice(0, kept).map(row => row.id)
@@ -180,7 +190,7 @@ test("a reader scrolled down the home page keeps the post they were reading wher
 test.describe("with reduced motion", () => {
   test.use({contextOptions: {reducedMotion: "reduce"}})
 
-  test("a new post is simply there", async ({page, browser, baseURL}) => {
+  test("a new post is simply there, glowing once without moving", async ({page, browser, baseURL}) => {
     const list = await openHome(page)
     const poster = await openPoster(browser, baseURL!)
     const title = unique("Map stays blank after login")
@@ -188,8 +198,8 @@ test.describe("with reduced motion", () => {
 
     const row = list.locator(":scope > li", {hasText: title})
     await expect(row).toBeVisible()
-    await page.evaluate(() => new Promise(drawn => requestAnimationFrame(() => requestAnimationFrame(drawn))))
-    expect(await movesOf(row)).toEqual([])
+    // The glow is its tint fading; nothing is written on the row itself.
+    await expect.poll(() => movesOf(row)).toEqual(["animation pb-arrived"])
     expect(await inlineStyle(row)).toBe("")
     await poster.close()
   })
@@ -225,6 +235,7 @@ test.describe("a post's page", () => {
 
     const reply = page.locator(".rg-discussion__replies > li", {hasText: words})
     await arrives(reply)
+    expect(await movesOf(reply)).toContain("animation pb-arrived")
     await expect(page.locator(".rg-discussion__replies > li")).toHaveCount(1)
     await expect(count).toHaveText("1")
     await expect.poll(() => rolled(page)).not.toEqual([])

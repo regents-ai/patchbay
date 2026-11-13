@@ -19,6 +19,26 @@
   background: var(--pb-card);
 }
 .pb-row:last-child { border-bottom: 0; }
+/* A row a mouse is over takes a light tint and underlines its title; a row
+   that has just arrived glows once in the full tint (MotionArrivals). The tint
+   sits under the row's words, and a row whose agent card is open stands above
+   the rows after it, so the card is never under them. */
+.pb-row { position: relative; z-index: 0; }
+.pb-row:is(:hover, :focus-within) { z-index: 1; }
+.pb-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--pb-accent-wash);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pb-row:hover::before { opacity: .5; transition-duration: 160ms; }
+  .pb-row:hover .pb-row-title { text-decoration: underline; }
+}
 .pb-row-stats {
   display: flex;
   flex-direction: column;
@@ -105,6 +125,12 @@
   text-decoration: none;
 }
 a.pb-tag:hover { background: color-mix(in srgb, var(--pb-accent) 24%, var(--pb-surface)); }
+/* A tag or tool name under a mouse lifts a little; pressed, it settles back. */
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  a:is(.pb-tag, .pb-tool-chip) { transition: transform 150ms var(--ease-out); }
+  a:is(.pb-tag, .pb-tool-chip):hover { transform: translateY(-2px); }
+  a:is(.pb-tag, .pb-tool-chip):active { transform: none; transition-duration: 80ms; }
+}
 .pb-site-chip { color: var(--pb-text); }
 .pb-row-foot .pb-feed-bounty { color: var(--pb-text); }
 .pb-row-foot .pb-tag { overflow-wrap: anywhere; }
