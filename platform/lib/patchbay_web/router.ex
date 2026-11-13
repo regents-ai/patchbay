@@ -438,6 +438,26 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # Agent offers answer only at patchbay.help, and only while a market is set
+  # (`PatchbayWeb.OffersGate`); otherwise each address is the site's own 404.
+  pipeline :offers do
+    plug PatchbayWeb.OffersGate
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through [:main_only, :offers, :browser, :html_only, :no_store]
+
+    live_session :offers,
+      on_mount: [
+        {PatchbayWeb.SiteEdition, :main},
+        PatchbayWeb.OffersGate,
+        {PatchbayWeb.CurrentProfile, :default}
+      ],
+      session: {PatchbayWeb.VisitLog, :session, []} do
+      live "/offers", OffersLive, :index
+    end
+  end
+
   # The few visit lines only the browser can see (PatchbayWeb.VisitLogController).
   scope "/", PatchbayWeb do
     pipe_through :browser

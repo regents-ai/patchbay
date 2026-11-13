@@ -19,6 +19,7 @@
 @import "./pairing.css";
 @import "./account.css";
 @import "./site_directory.css";
+@import "./offers.css";
 @import "./animations.css";
 
 /* Make LiveView wrapper divs transparent for layout */

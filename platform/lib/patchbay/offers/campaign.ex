@@ -107,7 +107,7 @@ defmodule Patchbay.Offers.Campaign do
   end
 
   identities do
-    identity(:unique_campaign, [:campaign_id])
+    identity(:unique_campaign, [:campaign_id], message: "You saved this campaign already.")
   end
 
   actions do

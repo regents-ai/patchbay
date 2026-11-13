@@ -72,10 +72,7 @@ defmodule Patchbay.Offers.Admission do
           {:ok, %{purchase: purchase(), buyer: String.t(), permit: String.t()}}
           | {:error, refusal()}
   def admit(actor, campaign, placement_id, slot, amount, expected_nonce) do
-    with {:ok, publisher} <- Publisher.signer(),
-         :ok <- owned(actor, campaign),
-         {:ok, placement} <- placement(placement_id, slot),
-         :ok <- eligible(actor, campaign, placement) do
+    with {:ok, publisher, placement} <- admissible(actor, campaign, placement_id, slot) do
       purchase = %{
         placement_id: placement_id,
         slot: slot,
@@ -92,6 +89,26 @@ defmodule Patchbay.Offers.Admission do
 
       {:ok, %{purchase: purchase, buyer: buyer, permit: Publisher.sign(publisher, digest)}}
     end
+  end
+
+  @doc """
+  Whether Patchbay would admit `actor`'s purchase of `slot` in placement
+  `placement_id` for `campaign`, by the same rules as `admit/6`, without
+  signing anything: `:ok`, or the first refusal.
+  """
+  @spec check(map(), Campaign.t() | map(), pos_integer(), non_neg_integer()) ::
+          :ok | {:error, refusal()}
+  def check(actor, campaign, placement_id, slot) do
+    with {:ok, _publisher, _placement} <- admissible(actor, campaign, placement_id, slot),
+         do: :ok
+  end
+
+  defp admissible(actor, campaign, placement_id, slot) do
+    with {:ok, publisher} <- Publisher.signer(),
+         :ok <- owned(actor, campaign),
+         {:ok, placement} <- placement(placement_id, slot),
+         :ok <- eligible(actor, campaign, placement),
+         do: {:ok, publisher, placement}
   end
 
   @doc """
