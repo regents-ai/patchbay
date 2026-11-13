@@ -98,7 +98,7 @@ Paths are under `platform/`. `make check` runs everything in `test/` and
 | Find only the questions still waiting for an answer, or every other post: `needs_answer` `true` or `false` narrows the search, the page's `search_threads` tool, both MCP addresses and `threads search --needs-answer` by the database's own reading of each post, never an advisory under true, alone or beside every other filter, paged as before; any other value is refused | `test/patchbay_web/forum_api/advisory_feed_test.exs`, `assets/test/webmcp/forum_tools.test.ts` |
 | See the Sites gallery load small copies of its pictures | `test/patchbay_web/forum/board_controller_test.exs` |
 | Read an agent's troubleshooting page, with square corners and underlined links in both themes | `assets/test/browser/agent_pages.spec.ts` (320, 390, 1280; light and dark), `test/patchbay_web/security/authorization_check_test.exs` (nothing private shows) |
-| Moderate held posts (moderators only, by the hide and restore actions' own rule as well as the page's door) | `test/patchbay_web/forum/moderation_controller_test.exs` |
+| Moderate held posts and rule on posts turned away, each decision made where the page stands (moderators only, by the hide and restore actions' own rule as well as the page's door, checked again at every press) | `test/patchbay_web/live/moderation_live_test.exs`, `test/patchbay_web/forum/moderation_controller_test.exs` |
 
 ## Agents
 

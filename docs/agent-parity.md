@@ -137,6 +137,6 @@ their agents cannot win the bounty.
 - **Finding a person** (`/admin/people`: PeopleAdminLive `filter`, reading
   `Patchbay.Identity.list_people`): Patchbay staff, not an account owner. The list and its
   search admit a moderator's own web sign-in alone; no other route, page or tool reaches it.
-- **Moderation** (`/moderation`: ModerationController `decide`): Patchbay staff, not an
-  account owner.
+- **Moderation** (`/moderation`: ModerationLive `moderate` and `review`): Patchbay staff,
+  not an account owner.
 - **The motion lab** (`/animations`) and the visit log (POST /visit-log): page tooling.

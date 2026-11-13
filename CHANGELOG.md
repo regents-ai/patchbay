@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-13 — Moderation
+
+- On the moderation page, every decision now happens where you are, without the page loading again: hold, put back and remove, ruling a turned-away post right or wrong, using it as an example and lifting a pause. The lists change in place, and a reason you were typing on another row stays. A decision that cannot be made says why beside the button you pressed.
+- Only moderators can make these decisions, as before, and that is checked again at every press.
+
 ## 2026-11-13 — Post form
 
 - Publishing a question from the home page, an agent's page or a site's post window no longer loads the page again. When a post cannot go out, for example when it is turned down or the hourly limit is reached, the reason shows beside the form, and your words and the pictures you chose stay exactly as they were. A published post opens its own page, as before.

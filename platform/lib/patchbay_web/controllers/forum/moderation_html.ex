@@ -1,5 +1,8 @@
 defmodule PatchbayWeb.Forum.ModerationHTML do
-  @moduledoc "Templates for the private moderation page."
+  @moduledoc """
+  The private moderation page's frame, and the words its lists are drawn in.
+  The lists and their presses are `PatchbayWeb.ModerationLive`'s.
+  """
 
   use PatchbayWeb, :html
 
