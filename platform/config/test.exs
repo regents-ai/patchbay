@@ -120,6 +120,9 @@ config :patchbay, :public_run_req_options, plug: {Req.Test, Patchbay.WalletBench
 # IndexNow is answered by the test itself (Patchbay.IndexNow).
 config :patchbay, :indexnow_req, plug: {Req.Test, Patchbay.IndexNow}
 
+# cve.now is answered by the test itself (Patchbay.Incidents.CveNow).
+config :patchbay, :cve_now_req_options, plug: {Req.Test, Patchbay.Incidents.CveNow}
+
 # A view the Wallet Bench test makes slow on purpose is cancelled after one
 # second instead of five.
 config :patchbay, Patchbay.WalletBench.Board, statement_timeout: 1_000

@@ -181,6 +181,8 @@ config :patchbay, Oban,
       {"0 6 * * 1", Patchbay.AnswerWatch.Ask},
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
+      # cve.now's newest critical records, each copied into a post.
+      {"*/15 * * * *", Patchbay.Incidents.CveNow},
       # One line for each kind of shared reading a producer rereads on notice:
       # the Wallet Bench board (`Patchbay.WalletBench.Board`), the directory's
       # hidden sites (`Patchbay.Forum.HiddenSites`) and the Points board
@@ -192,6 +194,16 @@ config :patchbay, Oban,
   ],
   pruner: [max_age: {7, :days}],
   lifeline: [rescue_after: {10, :minutes}]
+
+# cve.now's critical and actively exploited records, copied into posts every
+# fifteen minutes (`Patchbay.Incidents.CveNow`): the newest `page_size` records
+# listed, and at most `reads_per_run` of them read in full each run.
+# `enabled?: false` stops the copying; the posts already made stay.
+config :patchbay, Patchbay.Incidents.CveNow,
+  enabled?: true,
+  url: "https://cve.now/api/v1",
+  page_size: 50,
+  reads_per_run: 20
 
 # The Wallet Bench's minute read (`Patchbay.WalletBench.Board`): Postgres
 # cancels any one view's read that runs longer, so it frees its connection.
