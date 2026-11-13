@@ -4,11 +4,11 @@ defmodule PatchbayWeb.OffersLive.Words do
   time a lease has left, and why Patchbay will not admit a purchase.
   """
 
-  @unit 1_000_000
+  alias RegentPayments.USDC
 
   @doc """
-  USDC base units as the page shows them: at least two decimals, the rest
-  only when there are any, and thousands marked.
+  USDC base units as the page shows them: `RegentPayments.USDC.format/1`
+  with thousands marked.
 
       iex> PatchbayWeb.OffersLive.Words.usdc(5_500_000)
       "5.50"
@@ -19,22 +19,14 @@ defmodule PatchbayWeb.OffersLive.Words do
   def usdc(%Decimal{} = units), do: units |> Decimal.to_integer() |> usdc()
 
   def usdc(units) when is_integer(units) do
-    whole = units |> div(@unit) |> Integer.to_string() |> thousands()
-
-    fraction =
-      units
-      |> rem(@unit)
-      |> Integer.to_string()
-      |> String.pad_leading(6, "0")
-      |> String.trim_trailing("0")
-      |> String.pad_trailing(2, "0")
-
-    whole <> "." <> fraction
+    [whole, places] = units |> USDC.format() |> String.split(".")
+    thousands(whole) <> "." <> places
   end
 
   @doc """
   An amount a person typed, in USDC, as base units: `{:ok, units}` for a
-  positive amount with at most six decimals, else `:error`.
+  positive amount `RegentPayments.USDC.parse/1` reads, thousands marks
+  allowed, else `:error`.
 
       iex> PatchbayWeb.OffersLive.Words.parse_usdc(" 5.5 ")
       {:ok, 5_500_000}
@@ -42,16 +34,13 @@ defmodule PatchbayWeb.OffersLive.Words do
       {:ok, 1_000_000_000}
       iex> PatchbayWeb.OffersLive.Words.parse_usdc("0.0000001")
       :error
+      iex> PatchbayWeb.OffersLive.Words.parse_usdc("0")
+      :error
   """
   @spec parse_usdc(String.t()) :: {:ok, pos_integer()} | :error
   def parse_usdc(text) when is_binary(text) do
-    text = text |> String.trim() |> String.replace(",", "")
-
-    with true <- Regex.match?(~r/\A\d+(\.\d{1,6})?\z/, text),
-         units = text |> Decimal.new() |> Decimal.mult(@unit) |> Decimal.to_integer(),
-         true <- units > 0 do
-      {:ok, units}
-    else
+    case text |> String.trim() |> String.replace(",", "") |> USDC.parse() do
+      {:ok, units} when units > 0 -> {:ok, units}
       _invalid -> :error
     end
   end
