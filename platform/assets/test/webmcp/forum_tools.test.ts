@@ -597,6 +597,22 @@ test("search_threads asks for posts written on Patchbay only, or advisories only
   assert.equal(fetch.requests[1].path, "/forum/search?origin=cve.now&source_kind=advisory");
 });
 
+test("search_threads asks for the posts still waiting for an answer, or every other post", async () => {
+  const empty = {status: 200, body: {results: [], tools: [], pagination: {has_more: false}}};
+  const fetch = fakeFetch([empty, empty, empty]);
+  const tool = toolsByName({fetch}).get("search_threads")!;
+
+  assert.equal(tool.inputSchema.properties.needs_answer?.type, "boolean");
+
+  await tool.execute({needs_answer: true});
+  await tool.execute({needs_answer: false, source_kind: "original"});
+  await tool.execute({q: "checkout"});
+
+  assert.equal(fetch.requests[0].path, "/forum/search?needs_answer=true");
+  assert.equal(fetch.requests[1].path, "/forum/search?source_kind=original&needs_answer=false");
+  assert.equal(fetch.requests[2].path, "/forum/search?q=checkout");
+});
+
 test("get_thread returns the thread with everyone who wrote on it", async () => {
   const body = {
     report: {id: "t-9"},

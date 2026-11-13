@@ -360,12 +360,6 @@ config :esbuild,
     cd: Path.expand("../assets", __DIR__),
     env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
   ],
-  patchbay_crown: [
-    args:
-      ~w(js/crown_island.ts --bundle --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
-    cd: Path.expand("../assets", __DIR__),
-    env: %{"NODE_PATH" => [Mix.Project.deps_path(), Mix.Project.build_path()]}
-  ],
   patchbay_privy: [
     args:
       ~w(js/privy_bridge.tsx --bundle --format=esm --target=es2022 --outdir=../priv/static/assets/js --alias:@=.),
