@@ -53,6 +53,11 @@ defmodule PatchbayWeb.AccountLive do
 
   @inbox_page 50
 
+  # How long an acknowledged notice takes to leave while the notices under it
+  # close the gap (the list's standard move, `PatchbayWeb.Motion`), before the
+  # inbox is read again without it.
+  @leave_ms 420
+
   @impl true
   def mount(_params, session, socket) do
     socket = assign(socket, forum_session_id: session["forum_session_id"])
@@ -85,7 +90,12 @@ defmodule PatchbayWeb.AccountLive do
 
     socket
     |> assign(PatchbayWeb.PublicDocuments.page("/account/inbox"))
-    |> assign(inbox_cursor: cursor, inbox_expired?: false, unfollow_problem: nil)
+    |> assign(
+      inbox_cursor: cursor,
+      inbox_expired?: false,
+      unfollow_problem: nil,
+      leaving: MapSet.new()
+    )
     |> read_inbox()
   end
 
@@ -143,12 +153,18 @@ defmodule PatchbayWeb.AccountLive do
   defp principals(socket),
     do: Principal.for_request(socket.assigns.current_profile, socket.assigns.forum_session_id)
 
+  # An acknowledged notice leaves at once: it is hidden, so it fades out while
+  # the notices under it close the gap, and the inbox is read again once that
+  # is over. One not acknowledged stays where it is.
   @impl true
   def handle_event("acknowledge", %{"id" => id}, socket) do
     with {:ok, _uuid} <- Ecto.UUID.cast(id),
-         do: Forum.acknowledge_notifications(principals(socket), [id])
-
-    {:noreply, read_inbox(socket)}
+         {:ok, _marked} <- Forum.acknowledge_notifications(principals(socket), [id]) do
+      Process.send_after(self(), {:acknowledged, id}, @leave_ms)
+      {:noreply, update(socket, :leaving, &MapSet.put(&1, id))}
+    else
+      _not_acknowledged -> {:noreply, read_inbox(socket)}
+    end
   end
 
   # The browser saved a new Public Display Name. The profile is read again before
@@ -194,6 +210,9 @@ defmodule PatchbayWeb.AccountLive do
 
     {:noreply, socket}
   end
+
+  def handle_info({:acknowledged, id}, socket),
+    do: {:noreply, socket |> update(:leaving, &MapSet.delete(&1, id)) |> read_inbox()}
 
   @impl true
   def render(assigns) do
@@ -319,8 +338,27 @@ defmodule PatchbayWeb.AccountLive do
 
       <section aria-labelledby="pb-inbox-new" class="pb-inbox-section">
         <h2 id="pb-inbox-new" class="pb-sidebar-label">Waiting</h2>
-        <ol :if={@notifications != []} class="pb-post-list">
-          <li :for={notice <- @notifications} id={"notice-#{notice.id}"} class="pb-post-row">
+        <ol
+          :if={@notifications != []}
+          id="pb-inbox-notices"
+          class="pb-post-list"
+          phx-hook="MotionList"
+          data-layout-id="pb-inbox-notices"
+          data-children="[data-notice]"
+          data-variant={PatchbayWeb.Motion.standard("list")}
+        >
+          <%!-- The move names everything inside a notice with its own layout id;
+            each render from the server keeps those ids, so a notice's words stay
+            on screen while the notices around it move. --%>
+          <li
+            :for={notice <- @notifications}
+            id={"notice-#{notice.id}"}
+            class="pb-post-row"
+            data-notice
+            data-layout-id={"notice-#{notice.id}"}
+            hidden={MapSet.member?(@leaving, notice.id)}
+            phx-mounted={JS.ignore_attributes("data-layout-id", to: {:inner, "*"})}
+          >
             <a class="pb-post-title" href={Patchbay.Forum.PostAddress.path(notice.event.thread)}>
               {inbox_event_label(notice.event)}: {notice_title(notice.event)}
             </a>
