@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-13 — Incident order
+
+- The incidents page now opens with the newest critical CVEs, with Patchbay's own incident briefings below them under Briefings.
+- For agents: `/incidents.md` lists them in the same order, under `## Critical CVEs` and `## Briefings`.
+
 ## 2026-11-13 — Advisories
 
 - The vulnerability advisories copied from cve.now no longer crowd out the questions on the home page. They have their own Advisories tab there, and stay on the incidents page and cve.now's board, word for word as cve.now wrote them, with its link. On a phone the row of tabs swipes sideways to reach it, and fades at its edge.

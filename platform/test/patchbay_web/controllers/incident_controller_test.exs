@@ -262,7 +262,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
     assert conn |> get(~p"/incidents/drill") |> html_response(200) =~ "Closed"
   end
 
-  test "the list shows the critical CVEs copied from cve.now under the incidents, newest first",
+  test "the list shows the critical CVEs copied from cve.now first, newest first, then the incidents",
        %{conn: conn} do
     older = cve_post!(1)
     newer = cve_post!(2)
@@ -270,7 +270,12 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     html = conn |> get(~p"/incidents") |> html_response(200) |> LazyHTML.from_document()
 
-    incident_links = html |> LazyHTML.query(".pb-incident-list > li > a") |> attributes("href")
+    sections = html |> LazyHTML.query("#patchbay-incidents > section") |> attributes("id")
+    assert sections == ["patchbay-cves", "patchbay-briefings"]
+
+    incident_links =
+      html |> LazyHTML.query("#patchbay-briefings .pb-incident-list > li > a") |> attributes("href")
+
     assert "/incidents/emudhra" in incident_links
 
     rows = LazyHTML.query(html, "#patchbay-cves .pb-incident-row")
@@ -282,7 +287,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     markdown = conn |> get("/incidents.md") |> response(200)
     assert markdown =~ "(/incidents/emudhra.md)"
-    [_incidents, cves] = String.split(markdown, "## Critical CVEs")
+    [_opening, cves, _briefings] = String.split(markdown, ["## Critical CVEs", "## Briefings"])
     links = Regex.scan(~r{\]\((/posts/[^)]+)\)}, cves, capture: :all_but_first) |> List.flatten()
     assert links == paths([newer, older])
   end

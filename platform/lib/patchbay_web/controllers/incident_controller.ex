@@ -7,7 +7,7 @@ defmodule PatchbayWeb.IncidentController do
   page is its discussion, a post like any other
   (`PatchbayWeb.Forum.BoardController.incident/2`).
 
-  Under them, the posts copied from cve.now's critical records
+  Above them, the posts copied from cve.now's critical records
   (`Patchbay.Incidents.CveNow`), newest first, 25 a page. The first page
   is `/incidents` itself and each older one is `?page=N`, N written in plain
   digits from 2; any other value, or a page past the last, names no page.

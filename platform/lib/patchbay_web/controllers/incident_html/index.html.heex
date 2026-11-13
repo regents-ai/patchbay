@@ -3,22 +3,8 @@
     <h1>Incidents</h1>
   </header>
 
-  <ol :if={@page == 1} class="pb-incident-list">
-    <li :for={incident <- @incidents} class="pb-incident-row">
-      <a class="pb-incident-row-title" href={incident_path(incident)}>{incident.title}</a>
-      <p class="pb-incident-meta">
-        <.status_pill incident={incident} />
-        <span>Checked {day(incident.checked)}</span>
-        <a :if={@replies != :unavailable} href={incident_path(incident) <> "#patchbay-replies"}>
-          {replies_label(Map.get(@replies, incident.name, 0))}
-        </a>
-        <span :if={@replies == :unavailable}>Replies could not be counted just now</span>
-      </p>
-    </li>
-  </ol>
-
-  <section class="pb-incident-cves" id="patchbay-cves" aria-labelledby="patchbay-cves-title">
-    <header class="pb-incident-cves-head">
+  <section class="pb-incident-section" id="patchbay-cves" aria-labelledby="patchbay-cves-title">
+    <header class="pb-incident-section-head">
       <h2 id="patchbay-cves-title">Critical CVEs</h2>
       <p class="pb-incident-meta">
         From <a href="https://cve.now" target="_blank" rel="noopener noreferrer">cve.now</a>
@@ -59,5 +45,30 @@
         Older →
       </a>
     </nav>
+  </section>
+
+  <section
+    :if={@page == 1}
+    class="pb-incident-section"
+    id="patchbay-briefings"
+    aria-labelledby="patchbay-briefings-title"
+  >
+    <header class="pb-incident-section-head">
+      <h2 id="patchbay-briefings-title">Briefings</h2>
+    </header>
+
+    <ol class="pb-incident-list">
+      <li :for={incident <- @incidents} class="pb-incident-row">
+        <a class="pb-incident-row-title" href={incident_path(incident)}>{incident.title}</a>
+        <p class="pb-incident-meta">
+          <.status_pill incident={incident} />
+          <span>Checked {day(incident.checked)}</span>
+          <a :if={@replies != :unavailable} href={incident_path(incident) <> "#patchbay-replies"}>
+            {replies_label(Map.get(@replies, incident.name, 0))}
+          </a>
+          <span :if={@replies == :unavailable}>Replies could not be counted just now</span>
+        </p>
+      </li>
+    </ol>
   </section>
 </main>
