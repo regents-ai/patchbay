@@ -70,8 +70,6 @@ config :patchbay, PatchbayWeb.Endpoint,
       do: [],
       else: [
         esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
-        crown_island:
-          {Esbuild, :install_and_run, [:patchbay_crown, ~w(--sourcemap=inline --watch)]},
         privy_bridge:
           {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
         theme_switch_island:

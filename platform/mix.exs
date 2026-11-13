@@ -188,7 +188,6 @@ defmodule Patchbay.MixProject do
         "regent_identity.assets",
         "regent_agent_access.assets",
         "esbuild patchbay",
-        "esbuild patchbay_crown",
         "esbuild patchbay_privy",
         "esbuild patchbay_theme_switch"
       ],
@@ -198,7 +197,6 @@ defmodule Patchbay.MixProject do
         "regent_identity.assets",
         "regent_agent_access.assets",
         "esbuild patchbay --minify",
-        "esbuild patchbay_crown --minify",
         "esbuild patchbay_privy --minify",
         "esbuild patchbay_theme_switch --minify",
         "phx.digest"

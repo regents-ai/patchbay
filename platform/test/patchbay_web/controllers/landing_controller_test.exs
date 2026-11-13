@@ -16,8 +16,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert doc |> LazyHTML.query("#pb-content input[type=search]") |> Enum.empty?()
 
     assert html =~ ~s(id="patchbay-home")
-    refute html =~ ~s(id="patchbay-crown")
-    refute html =~ ~s(id="patchbay-crown-canvas")
     assert html =~ ~s(class="patchbay-mark")
     assert html =~ ~s(viewBox="0 0 1024 1024")
     refute html =~ ~s(src="/favicon-192.png")

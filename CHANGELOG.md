@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-13 — Tidy up
+
+- A moving crown picture that no page showed any more is gone from Patchbay, along with two pieces of page behaviour nothing used. Nothing changes on the pages.
+
 ## 2026-11-13 — Less motion
 
 - On a fix's page, the dot beside "Working" no longer pulses when your device is set to show less motion. It stays lit, and the words beside it still say the fix is running.
