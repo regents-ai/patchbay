@@ -4,8 +4,9 @@ defmodule Patchbay.Forum.SiteCheck do
   registrable domain, whether or not the site has a board.
 
   Opening a site's page asks for a check when there is none, the last read
-  no directory pages or the last is a day old, and so does the directory's
-  "Update" (`due?/1`); "Refresh this
+  no directory pages or the last is a day old, and so do the directory's
+  "Update" and Patchbay's own round of the listed sites
+  (`Patchbay.Forum.SiteCheckSweep`), by the same rule (`due?/1`); "Refresh this
   site" asks for one however recent the last is (`:refresh`), at most once a
   day for the site's picture. Asking only marks the row; the check itself
   (`:run`, `Patchbay.Forum.SiteScan`) is a job on its own queue, so a slow
@@ -129,6 +130,25 @@ defmodule Patchbay.Forum.SiteCheck do
     read :asked_domains do
       description("Every domain a check has been asked for, whatever became of it.")
       prepare(build(select: [:domain]))
+    end
+
+    read :due_again do
+      description("""
+      The checks of `domains` that are due again, the longest unchecked first:
+      none on its way, and the last either read no directory pages or is a
+      day old. The same rule as `due?/1` and the `:request` upsert condition.
+      """)
+
+      argument(:domains, {:array, :string}, allow_nil?: false)
+
+      filter(
+        expr(
+          domain in ^arg(:domains) and not is_nil(checked_at) and requested_at <= checked_at and
+            (is_nil(get_path(findings, ["directory"])) or checked_at <= ago(1, :day))
+        )
+      )
+
+      prepare(build(select: [:domain], sort: [checked_at: :asc]))
     end
 
     read :without_directory_tools do
