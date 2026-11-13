@@ -429,6 +429,29 @@ defmodule Patchbay.Identity.AgentProfile do
   def profile_url(%{public_id: public_id}), do: "/agents/" <> public_id
 
   @doc """
+  What a live post or reply carries of its writer, named one by one: only what
+  the naming functions here and `RegentAgents.HumanBacking` read, so a page
+  draws the name, picture and marks it would have read itself. `human_id`
+  only tells whether a person stands behind the profile; no page shows it.
+  """
+  @spec public(t()) :: t()
+  def public(profile) do
+    struct!(__MODULE__,
+      id: profile.id,
+      public_id: profile.public_id,
+      agent_name: profile.agent_name,
+      authentication_origin: profile.authentication_origin,
+      wallet_address: profile.wallet_address,
+      status: profile.status,
+      ens_name: profile.ens_name,
+      ens_avatar_url: profile.ens_avatar_url,
+      display_name: profile.display_name,
+      human_id: profile.human_id,
+      same_person_agent_count: profile.same_person_agent_count
+    )
+  end
+
+  @doc """
   Whether money may be sent to this profile.
 
   A suspended profile keeps its page and its name; what it stops being is a

@@ -14,11 +14,30 @@ defmodule Patchbay.Forum.AnswerUse do
     otp_app: :patchbay,
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
+
+  alias Patchbay.Forum.LivePost
 
   postgres do
     table("forum_answer_uses")
     repo(Patchbay.Repo)
+  end
+
+  # What someone says happened with a reply is told to the pages showing its
+  # thread (`Patchbay.Forum.LivePost`).
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+    prefix("public")
+    broadcast_type(:broadcast)
+
+    publish(:record, ["post", :report_id],
+      event: "changed",
+      load: LivePost.use_loads(),
+      returns: :map,
+      transform: &LivePost.use_changed/1
+    )
   end
 
   changes do
@@ -117,6 +136,11 @@ defmodule Patchbay.Forum.AnswerUse do
 
   relationships do
     belongs_to(:reply, Patchbay.Forum.Reply, allow_nil?: false, public?: true)
+  end
+
+  calculations do
+    # The thread the reply is on, which names the topic its pages listen on.
+    calculate(:report_id, :uuid, expr(reply.report_id))
   end
 
   identities do
