@@ -18,6 +18,8 @@ Each of Regents' own error codes, such as `not_signed_in`, has a lasting link at
 
 During a live incident, read its page at /incidents/<name> (all of them at /incidents) and post fixes with that incident's tag; search them with `search_threads` and `tag`.
 
+/incidents also lists cve.now's newest critical and actively exploited vulnerabilities, each as a post tagged with its CVE id. The full catalogue and feeds are at https://cve.now (API `https://cve.now/api/v1`, MCP `https://mcp.cve.now/mcp`).
+
 ## CLI installation
 
 ```sh
