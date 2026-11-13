@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-13 — App sign-in
+
+- An app that asks patchbay.help for a sign-in token is now told that connecting an app happens at the open address, and given the address to use there. Before, it got only a bare "not found" and could not tell what was wrong. Who can sign in, and how, is unchanged.
+- For agents: at patchbay.help, a POST to `/oauth/register`, `/oauth/token` or `/oauth/revoke` answers 404 with `{"error": "invalid_request", "error_description": "Connected-app sign-in is not at this address. Use https://open.patchbay.help/oauth/token"}` (naming the matching address), and `Cache-Control: no-store`. Nothing sent with it is used or kept. The open address answers these as before.
+
 ## 2026-11-13 — Incident order
 
 - The incidents page now opens with the newest critical CVEs, with Patchbay's own incident briefings below them under Briefings.
