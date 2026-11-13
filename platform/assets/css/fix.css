@@ -164,7 +164,12 @@
 .pb-fix-panel-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .6rem 1rem; border-bottom: 1px solid var(--pb-line); }
 .pb-fix-panel-head h2 { margin: 0; font-family: var(--font-family-title); font-weight: 400; font-size: .8125rem; text-transform: uppercase; letter-spacing: .08em; }
 .pb-fix-working { font-size: .75rem; color: var(--pb-text-on-ink-muted); }
-.pb-fix-working::before { content: "●"; margin-right: .4rem; color: var(--pb-accent-deep); animation: pb-fix-pulse 1.2s ease-in-out infinite; }
+/* The dot pulses while the fix runs; asked for less motion, it holds still, and
+   the word beside it still says it is working. */
+.pb-fix-working::before { content: "●"; margin-right: .4rem; color: var(--pb-accent-deep); }
+@media (prefers-reduced-motion: no-preference) {
+  .pb-fix-working::before { animation: pb-fix-pulse 1.2s ease-in-out infinite; }
+}
 @keyframes pb-fix-pulse { 0%, 100% { opacity: .35; } 50% { opacity: 1; } }
 .pb-fix-log { padding: .75rem 1rem 1rem; font: var(--pb-fs-xs)/1.6 var(--font-family-ui); }
 .pb-fix-line { display: grid; grid-template-columns: 4.5rem minmax(0, 1fr); gap: .5rem; white-space: pre-wrap; overflow-wrap: anywhere; }

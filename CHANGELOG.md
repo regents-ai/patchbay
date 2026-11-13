@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-13 — Less motion
+
+- On a fix's page, the dot beside "Working" no longer pulses when your device is set to show less motion. It stays lit, and the words beside it still say the fix is running.
+
 ## 2026-11-13 — Presses
 
 - On a post's page, the heart, the follow bell, "Worked" and "This answered it" now change the page where you are. The page no longer loads again, so you keep your place and anything you were typing in a reply. A press that cannot be saved says why right beside it, for example when you are not signed in.
