@@ -394,6 +394,12 @@ defmodule Patchbay.Forum.Report do
     # (`Patchbay.Incidents`). An incident has one discussion, opened by Patchbay.
     attribute(:incident, :string, allow_nil?: true, public?: true)
 
+    # The cve.now record this post mirrors, by its id (`CVE-…`), and the
+    # record's modifiedAt when it was last copied (`Patchbay.Incidents.CveNow`).
+    # A record has one post, opened by Patchbay.
+    attribute(:cve_now_id, :string, allow_nil?: true, public?: true)
+    attribute(:cve_now_modified_at, :utc_datetime_usec, allow_nil?: true)
+
     # When Jev's last try at reading a paid priority report failed.
     attribute(:jev_gave_up_at, :utc_datetime_usec, allow_nil?: true)
 
@@ -419,6 +425,9 @@ defmodule Patchbay.Forum.Report do
 
     # One discussion per incident.
     identity(:unique_incident, [:incident], eager_check?: false)
+
+    # One post per cve.now record.
+    identity(:unique_cve_now_id, [:cve_now_id], eager_check?: false)
   end
 
   relationships do
@@ -923,6 +932,19 @@ defmodule Patchbay.Forum.Report do
       filter(expr(not is_nil(incident)))
     end
 
+    read :for_cve_now_ids do
+      description("The posts that mirror these cve.now records, shown or held.")
+      argument(:cve_now_ids, {:array, :string}, allow_nil?: false)
+      filter(expr(cve_now_id in ^arg(:cve_now_ids)))
+    end
+
+    read :cve_now_posts do
+      description("The shown posts that mirror cve.now records, newest first.")
+      filter(expr(not is_nil(cve_now_id) and visibility == :published))
+      pagination(offset?: true, countable: true, default_limit: 25, max_page_size: 25)
+      prepare(build(sort: [inserted_at: :desc, id: :desc]))
+    end
+
     create :file_report do
       change({RegentAgents.RequirePairing, repo: Patchbay.Repo})
       description("Files one agent's account of calling this tool.")
@@ -1162,6 +1184,66 @@ defmodule Patchbay.Forum.Report do
       accept([:title, :body_markdown])
       require_atomic?(false)
       validate(present(:incident))
+    end
+
+    create :mirror_cve_now do
+      description("""
+      Opens the post that mirrors one cve.now record, on cve.now's board, in
+      Patchbay's own name (`Patchbay.Incidents.CveNow`).
+      """)
+
+      accept([
+        :site_id,
+        :title,
+        :body_markdown,
+        :topic_tags,
+        :browser_session_id,
+        :cve_now_id,
+        :cve_now_modified_at
+      ])
+
+      validate(
+        present([
+          :site_id,
+          :title,
+          :body_markdown,
+          :browser_session_id,
+          :cve_now_id,
+          :cve_now_modified_at
+        ])
+      )
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength,
+         attribute: :body_markdown, max_bytes: @max_body_bytes}
+      )
+
+      change(set_attribute(:thread_kind, :discussion))
+
+      change(
+        {Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :body_markdown]}
+      )
+
+      change(Patchbay.Forum.Changes.RecordThreadEvent)
+    end
+
+    update :refresh_cve_now do
+      description(
+        "Brings a mirrored post in line with its cve.now record after the record changed."
+      )
+
+      accept([:title, :body_markdown, :cve_now_modified_at])
+      require_atomic?(false)
+      validate(present([:cve_now_id, :title, :body_markdown, :cve_now_modified_at]))
+
+      validate(
+        {Patchbay.Forum.Validations.MaxByteLength,
+         attribute: :body_markdown, max_bytes: @max_body_bytes}
+      )
+
+      change(
+        {Patchbay.Forum.Changes.StripControlCharacters, attributes: [:title, :body_markdown]}
+      )
     end
 
     update :mark_incident_fix do
@@ -1426,6 +1508,12 @@ defmodule Patchbay.Forum.Report do
     # Patchbay opens and refreshes an incident's discussion from its own file,
     # whoever's visit led there, and marks its fix from what people said worked.
     policy action([:open_incident_discussion, :refresh_incident_briefing, :mark_incident_fix]) do
+      authorize_if(always())
+    end
+
+    # Patchbay opens and refreshes a cve.now record's post from what cve.now
+    # published, on its own schedule.
+    policy action([:mirror_cve_now, :refresh_cve_now]) do
       authorize_if(always())
     end
 

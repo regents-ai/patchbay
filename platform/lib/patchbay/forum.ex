@@ -92,6 +92,11 @@ defmodule Patchbay.Forum do
         not_found_error?: false
       )
 
+      define(:mirror_cve_now, action: :mirror_cve_now)
+      define(:refresh_cve_now, action: :refresh_cve_now)
+      define(:list_cve_now_mirrors, action: :for_cve_now_ids, args: [:cve_now_ids])
+      define(:list_cve_now_posts, action: :cve_now_posts)
+
       define(:lock_report, action: :for_update, get_by: [:id])
 
       define(:reports_posted_by_author,
