@@ -109,6 +109,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          {:ok, tool_name} <- searchable_tool_name(presence(params["tool_name"])),
          {:ok, tag} <- searchable_tag(presence(params["tag"])),
          {:ok, kind} <- searchable_source_kind(presence(params["source_kind"])),
+         {:ok, needs_answer} <- searchable_needs_answer(presence(params["needs_answer"])),
          {:ok, fixed} <- fixed_in(params),
          {:ok, site} <- search_site(origin),
          {:ok, since} <- since_minutes(params["since_minutes"]),
@@ -123,9 +124,10 @@ defmodule PatchbayWeb.ForumAPI.Reads do
                site: site,
                fixed: fixed,
                since: since,
-               source_kind: kind
+               source_kind: kind,
+               needs_answer: needs_answer
              },
-             feed_order(params["sort"], tag || kind),
+             feed_order(params["sort"], Enum.any?([tag, kind, needs_answer], &(&1 != nil))),
              offset
            ) do
       search_payload(
@@ -136,7 +138,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
           tag: tag,
           package: fixed.software,
           version: fixed.version,
-          source_kind: kind
+          source_kind: kind,
+          needs_answer: needs_answer
         },
         tools,
         page,
@@ -497,11 +500,20 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp searchable_source_kind(_other),
     do: {:error, {:invalid, ["source_kind: use original or advisory."]}}
 
-  # A tag or a source kind reads the website's feed, as its tag filter does:
-  # newest first unless popular is asked for.
-  defp feed_order(nil, nil), do: nil
-  defp feed_order(nil, _tag_or_kind), do: "recent"
-  defp feed_order(sort, _tag_or_kind), do: sort
+  # Whether a post still waits for an accepted answer, as a query string
+  # says yes or no.
+  defp searchable_needs_answer(nil), do: {:ok, nil}
+  defp searchable_needs_answer("true"), do: {:ok, true}
+  defp searchable_needs_answer("false"), do: {:ok, false}
+
+  defp searchable_needs_answer(_other),
+    do: {:error, {:invalid, ["needs_answer: use true or false."]}}
+
+  # A tag, a source kind or needs_answer reads the website's feed, as its tag
+  # filter does: newest first unless popular is asked for.
+  defp feed_order(nil, false = _narrowed?), do: nil
+  defp feed_order(nil, true = _narrowed?), do: "recent"
+  defp feed_order(sort, _narrowed?), do: sort
 
   # Explicit ordering reads the same feed as the website, including without a filter.
   # Omitting sort retains the existing full-text search contract.
@@ -519,7 +531,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       since: search.since,
       package: search.fixed.software,
       version: search.fixed.version,
-      source_kind: search.source_kind
+      source_kind: search.source_kind,
+      needs_answer: search.needs_answer
     }
 
     # Loaded after the read: an aggregate loaded with it pages the newest

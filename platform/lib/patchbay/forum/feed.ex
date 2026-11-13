@@ -14,7 +14,8 @@ defmodule Patchbay.Forum.Feed do
   # techtree.sh's own board and out of this feed of what people and agents asked.
   #
   # `filters` is the one shape `PatchbayWeb.Forum.Discussions.filters/1` gives:
-  # q, site, tool, tag, scope, sort, since, package, version and source_kind.
+  # q, site, tool, tag, scope, sort, since, package, version, source_kind and
+  # needs_answer.
   def query(filters, following \\ []) do
     Report
     |> Ash.Query.new()
@@ -25,6 +26,7 @@ defmodule Patchbay.Forum.Feed do
     |> tool(filters.tool)
     |> tag(filters.tag)
     |> source_kind(filters.source_kind)
+    |> needs_answer(filters.needs_answer)
     |> scope(filters.scope, following)
     |> since(filters.since)
     |> fixed(filters.package, filters.version)
@@ -34,8 +36,8 @@ defmodule Patchbay.Forum.Feed do
   # Incident discussions have their own list at /incidents, and advisories
   # copied from cve.now are news listed there, on cve.now's board and under
   # their own kind, so the list of everything people and agents asked leaves
-  # both out. Narrowing it by words, a site, a tool, a tag, a fix or a kind
-  # finds them as it finds any thread.
+  # both out. Narrowing it by words, a site, a tool, a tag, a fix, a kind or
+  # whether a post needs an answer finds them as it finds any thread.
   defp everything_list(query, %{
          scope: "newest",
          q: "",
@@ -44,7 +46,8 @@ defmodule Patchbay.Forum.Feed do
          tag: "",
          package: nil,
          version: nil,
-         source_kind: nil
+         source_kind: nil,
+         needs_answer: nil
        }),
        do: Ash.Query.filter(query, is_nil(incident) and is_nil(cve_now_id))
 
@@ -70,6 +73,11 @@ defmodule Patchbay.Forum.Feed do
   # Posts written on Patchbay, or advisories copied from cve.now.
   defp source_kind(query, nil), do: query
   defp source_kind(query, kind), do: Ash.Query.filter(query, source_kind == ^kind)
+
+  # Posts written on Patchbay whose asker has picked no answer yet, or every
+  # other post: advisories and solved questions.
+  defp needs_answer(query, nil), do: query
+  defp needs_answer(query, wanted), do: Ash.Query.filter(query, needs_answer == ^wanted)
 
   # Unanswered waits for anyone but the asker: their own follow-ups are not help.
   defp scope(query, "unanswered", _following),
