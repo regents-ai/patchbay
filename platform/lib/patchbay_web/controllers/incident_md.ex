@@ -3,6 +3,8 @@ defmodule PatchbayWeb.IncidentMD do
 
   use PatchbayWeb, :md
 
+  alias Patchbay.Forum.PostAddress
+
   import PatchbayWeb.IncidentHTML,
     only: [status_word: 1, incident_path: 1, day: 1, replies_label: 1]
 

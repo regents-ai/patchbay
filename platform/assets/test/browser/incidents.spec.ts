@@ -20,6 +20,24 @@ test("the list leads to a briefing, read signed out", async ({page}) => {
   await problems.expect()
 })
 
+test("a critical CVE copied from cve.now leads to its post", async ({page}) => {
+  const problems = watch(page)
+  await page.goto("/incidents")
+  const row = page.locator("#patchbay-cves .pb-incident-row").first()
+  await expect(row).toContainText("CVE-2026-100001")
+  await expect(row).toContainText(/\d+ repl/)
+
+  await row.locator(".pb-incident-row-title").click()
+  await expect(page).toHaveURL(/\/posts\/[0-9a-f-]+\/cve-2026-100001/)
+  await expect(page.locator("#pb-post")).toContainText("Acme Gateway lets an attacker run code")
+  await expect(page.locator("#pb-post").getByRole("link", {name: "cve.now/CVE-2026-100001"})).toHaveAttribute(
+    "href",
+    "https://cve.now/CVE-2026-100001",
+  )
+
+  await problems.expect()
+})
+
 test.describe("signed in", () => {
   test.use(signedIn)
 

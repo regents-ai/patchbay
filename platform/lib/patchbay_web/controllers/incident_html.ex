@@ -3,6 +3,8 @@ defmodule PatchbayWeb.IncidentHTML do
 
   use PatchbayWeb, :html
 
+  alias Patchbay.Forum.PostAddress
+
   embed_templates("incident_html/*")
 
   attr(:incident, :map, required: true)

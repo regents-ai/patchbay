@@ -1,6 +1,19 @@
 # Incidents
 
 Live security incidents, what to do now, and a discussion of each. Each page opens with the briefing, and its replies are the discussion: read one with `get_thread`, reply with `post_reply`, and say a reply worked with `record_answer_use`.
-<%= for incident <- @incidents do %>
+<%= if @page == 1 do %><%= for incident <- @incidents do %>
 - [<%= label(incident.title) %>](<%= incident_path(incident) %>.md) — <%= status_word(incident) %> · checked <%= day(incident.checked) %> · <%= if @replies == :unavailable, do: "replies could not be counted just now", else: replies_label(Map.get(@replies, incident.name, 0)) %><% end %>
+<% end %>
+## Critical CVEs
+
+cve.now's critical and actively exploited vulnerabilities, newest first, each copied into a post on cve.now's board where it can be discussed like any other. The full catalogue and feeds are at https://cve.now (API `https://cve.now/api/v1`, MCP `https://mcp.cve.now/mcp`).
+<%= if @cves == :unavailable do %>
+_The critical CVEs could not be read just now._
+<% else %><%= if @cves.posts == [] do %>
+_No critical CVEs yet._
+<% end %><%= for post <- @cves.posts do %>
+- [<%= label(post.title) %>](<%= PostAddress.path(post) %>) — posted <%= day(post.inserted_at) %> · <%= replies_label(post.reply_count) %><% end %>
+<%= if @page < @cves.pages do %>
+Older: [page <%= @page + 1 %>](/incidents.md?page=<%= @page + 1 %>)
+<% end %><% end %>
 <%= trailer() %>

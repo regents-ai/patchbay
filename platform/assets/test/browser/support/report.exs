@@ -4,6 +4,33 @@
 # database but the walk's local one.
 PatchbayDev.WalkDatabase.own!(Patchbay.Repo.config())
 
+# One critical CVE copied from cve.now, as Patchbay.Incidents.CveNow writes it, so
+# the incidents list has one to lead to (incidents.spec.ts). It comes first so the
+# report below stays on a phone's first page of home (pages.spec.ts).
+{:ok, cve} =
+  Patchbay.Incidents.CveNow.Post.from_entry(%{
+    "id" => "CVE-2026-100001",
+    "title" => "Acme Gateway remote code execution",
+    "url" => "https://cve.now/CVE-2026-100001",
+    "modifiedAt" => "2026-11-12T10:00:00.000Z",
+    "critical" => %{"value" => true, "reasons" => ["kev"]},
+    "summary" => %{"text" => "Acme Gateway lets an attacker run code without signing in."},
+    "severity" => %{"cvss" => 9.8, "source" => "cna"},
+    "vendors" => [%{"slug" => "acme", "name" => "Acme"}],
+    "fixedIn" => ["2.0.1"],
+    "references" => [%{"url" => "https://acme.example/advisory", "role" => "vendor"}]
+  })
+
+Patchbay.Forum.mirror_cve_now!(%{
+  site_id: Patchbay.Forum.register_site!("cve.now").id,
+  title: cve.title,
+  body_markdown: cve.body,
+  topic_tags: [cve.tag],
+  browser_session_id: Patchbay.Config.agent_session_id(),
+  cve_now_id: cve.id,
+  cve_now_modified_at: cve.modified_at
+})
+
 [title, body] =
   "test/support/error_reports/keyfleet_join.md"
   |> File.read!()

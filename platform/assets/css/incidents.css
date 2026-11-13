@@ -26,6 +26,16 @@
 .pb-incident-row-title { color: var(--pb-text); font-size: 1.0625rem; line-height: 1.4; overflow-wrap: anywhere; text-decoration: none; }
 .pb-incident-row-title:hover { text-decoration: underline; }
 
+/* The critical CVEs copied from cve.now, under the incidents, with newer and
+   older pages under the last row. */
+.pb-incident-cves { display: grid; gap: var(--space-2); margin-top: var(--space-2); }
+.pb-incident-cves-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-2); }
+.pb-incident-cves-head h2 { margin: 0; font-family: var(--font-family-title); font-size: var(--pb-fs-xl); font-weight: 400; letter-spacing: -.02em; }
+.pb-incident-cves-head .pb-incident-meta { margin: 0; }
+.pb-incident-pages { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); color: var(--pb-text-muted); font-size: .875rem; }
+.pb-incident-pages a { display: inline-flex; align-items: center; min-height: 44px; color: var(--pb-text); }
+.pb-incident-pages span { order: -1; flex-basis: 100%; }
+
 @media (max-width: 599px) {
   .pb-incident { padding-top: var(--space-2); }
 }

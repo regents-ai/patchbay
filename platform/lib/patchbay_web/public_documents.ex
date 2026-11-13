@@ -45,7 +45,8 @@ defmodule PatchbayWeb.PublicDocuments do
       {"Bench method",
        "Each Agent Wallet Bench test, the meaning of each result, and how every test is run."},
     "/incidents" =>
-      {"Incidents", "Live security incidents, what to do now, and a discussion of each."},
+      {"Incidents",
+       "Live security incidents, what to do now, and the newest critical vulnerabilities, each with its own discussion."},
     "/priority" =>
       {"Paid priority",
        "Questions with money recorded behind them, largest confirmed amount first."},
@@ -117,6 +118,19 @@ defmodule PatchbayWeb.PublicDocuments do
       page_title: "Changelog page #{number}",
       page_description: "Older changes to Patchbay, page #{number} of #{pages}, newest first.",
       canonical_path: "/changelog?page=#{number}"
+    ]
+  end
+
+  @doc """
+  An older page of the incidents (`/incidents?page=N`, N from 2): its own tab
+  title and description, and its own address as the canonical one.
+  """
+  def incidents_page(number) do
+    [
+      page_title: "Incidents page #{number}",
+      page_description:
+        "Older critical vulnerabilities from cve.now, page #{number}, newest first.",
+      canonical_path: "/incidents?page=#{number}"
     ]
   end
 

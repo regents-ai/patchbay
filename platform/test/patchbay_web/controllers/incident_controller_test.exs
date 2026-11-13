@@ -12,6 +12,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
   alias Patchbay.Forum
+  alias Patchbay.Forum.PostAddress
   alias Patchbay.Incidents
   alias Patchbay.Incidents.Discussion
 
@@ -27,6 +28,25 @@ defmodule PatchbayWeb.IncidentControllerTest do
       authorize?: false
     )
   end
+
+  # A post copied from one cve.now record, as `Patchbay.Incidents.CveNow` writes it.
+  defp cve_post!(n) do
+    site = Forum.register_site!("cve.now")
+
+    Forum.mirror_cve_now!(%{
+      site_id: site.id,
+      title: "CVE-2026-#{100_000 + n}: Example gateway flaw #{n}",
+      body_markdown: "An attacker can run code.",
+      topic_tags: ["cve-2026-#{100_000 + n}"],
+      browser_session_id: Patchbay.Config.agent_session_id(),
+      cve_now_id: "CVE-2026-#{100_000 + n}",
+      cve_now_modified_at: DateTime.utc_now()
+    })
+  end
+
+  defp paths(posts), do: Enum.map(posts, &PostAddress.path/1)
+
+  defp attributes(nodes, name), do: nodes |> Enum.flat_map(&LazyHTML.attribute(&1, name))
 
   defp person!(subject) do
     Patchbay.Identity.upsert_from_privy!(%{
@@ -240,6 +260,62 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     # A closed incident keeps its page.
     assert conn |> get(~p"/incidents/drill") |> html_response(200) =~ "Closed"
+  end
+
+  test "the list shows the critical CVEs copied from cve.now under the incidents, newest first",
+       %{conn: conn} do
+    older = cve_post!(1)
+    newer = cve_post!(2)
+    reply!(older, "Patched")
+
+    html = conn |> get(~p"/incidents") |> html_response(200) |> LazyHTML.from_document()
+
+    incident_links = html |> LazyHTML.query(".pb-incident-list > li > a") |> attributes("href")
+    assert "/incidents/emudhra" in incident_links
+
+    rows = LazyHTML.query(html, "#patchbay-cves .pb-incident-row")
+
+    assert attributes(LazyHTML.query(rows, ".pb-incident-row-title"), "href") ==
+             paths([newer, older])
+
+    assert rows |> Enum.at(1) |> LazyHTML.text() =~ "1 reply"
+
+    markdown = conn |> get("/incidents.md") |> response(200)
+    assert markdown =~ "(/incidents/emudhra.md)"
+    [_incidents, cves] = String.split(markdown, "## Critical CVEs")
+    links = Regex.scan(~r{\]\((/posts/[^)]+)\)}, cves, capture: :all_but_first) |> List.flatten()
+    assert links == paths([newer, older])
+  end
+
+  test "the critical CVEs are paged 25 at a time, with the incidents on the first page only",
+       %{conn: conn} do
+    posts = Enum.map(1..26, &cve_post!/1)
+    [oldest | _rest] = posts
+
+    first = conn |> get(~p"/incidents") |> html_response(200) |> LazyHTML.from_document()
+    assert first |> LazyHTML.query("#patchbay-cves .pb-incident-row") |> Enum.count() == 25
+
+    assert first |> LazyHTML.query(".pb-incident-pages a[rel=next]") |> attributes("href") == [
+             "/incidents?page=2"
+           ]
+
+    second = conn |> get(~p"/incidents?page=2") |> html_response(200) |> LazyHTML.from_document()
+
+    assert second |> LazyHTML.query(".pb-incident-row-title") |> attributes("href") ==
+             paths([oldest])
+
+    assert second |> LazyHTML.query(".pb-incident-pages a[rel=prev]") |> attributes("href") == [
+             "/incidents"
+           ]
+
+    markdown = conn |> get("/incidents.md?page=2") |> response(200)
+    refute markdown =~ "/incidents/emudhra"
+    assert markdown =~ PostAddress.path(oldest)
+    assert conn |> get("/incidents.md") |> response(200) =~ "(/incidents.md?page=2)"
+
+    for page <- ["3", "1", "two", "02"] do
+      assert_error_sent(404, fn -> get(conn, "/incidents?page=#{page}") end)
+    end
   end
 
   test "while an incident is live, the home page has one badge to the incidents page and no lines",
