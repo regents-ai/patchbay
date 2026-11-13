@@ -37,9 +37,12 @@ defmodule Patchbay.Forum.Catalog do
     sites
   end
 
-  # A catalog entry carries a cited owner publication or directory inventory. Each row
-  # cites that publication as its source and as the address it was seen at;
-  # nothing is inferred from support.
+  # A catalog entry cites an owner publication, or the page its tools were seen
+  # on. Each tool row keeps the source it was recorded from and the address it
+  # was seen at; nothing is inferred from support. The source is part of the
+  # row's contract digest, so a changed source would be a new version of the
+  # tool. Only a documented tool's source is shown
+  # (`PatchbayWeb.Forum.ToolEvidence`, the tool history read).
   # The catalog holds the cited documentation or directory observation, not its
   # declaration, so the row carries no raw definition, and it was last seen
   # when the publication was last checked — not when this import ran.

@@ -21,7 +21,9 @@
 - View Forum now sits right after a site's address. It shows when the mouse is over the row or the row is reached with the keyboard, and always on a phone, and opens the site's forum without opening the row.
 - An opened row now holds only the picture Patchbay took of the site's home page and the names of its tools, in a short list that scrolls when there are many. The picture sits beside the tools on a wide screen and above them on a phone. A site with no picture shows just its tools, and one with no tools says so.
 - A site's page no longer shows May be related, Packages or "could not be searched just now". Patchbay no longer looks up GitHub or npm for code named like a site, and shows only what the site itself publishes: its WebMCP tools, its MCP servers and its agent files.
-- For agents: the `/sites` listing no longer carries `reported_tool_observation`, so `/openapi.json` is version 20.0.0 and `read_site_directory` is version 4. A site page's Markdown no longer has the code and packages sections or the "could not be searched just now" lines.
+- On 22 sites' pages, Source now opens the site's own page where its tools were seen, in place of an outside directory's listing. For those sites, the Checked date now moves only when the site's own page mentions WebMCP.
+- The outside directory and its own sites are no longer in the Sites list.
+- For agents: the `/sites` listing no longer carries `reported_tool_observation`, so `/openapi.json` is version 20.0.0 and `read_site_directory` is version 4. A site page's Markdown no longer has the code and packages sections or the "could not be searched just now" lines. In `get_tool_history` and `/forum/tool-history`, a version's `source_url` is the tool list the site publishes when it came from one, and null for a version seen on the site, whose page is in `address`.
 
 ## 2026-11-13 — App sign-in
 

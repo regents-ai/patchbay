@@ -9277,7 +9277,8 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "The tool list the site publishes, for a version taken from it (source_kind official); null for a version seen on the site, whose page is address."
           },
           "first_seen_at": {
             "type": "string",

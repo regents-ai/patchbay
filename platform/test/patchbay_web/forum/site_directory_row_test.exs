@@ -18,7 +18,6 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
   alias Patchbay.Forum.SiteDirectory
   alias PatchbayWeb.{LivePart, SiteDirectoryLive}
 
-  # OpenAI's listing names the outside directory as where its count came from.
   @domain "openai.com"
   @read_at "2026-11-10T09:30:00Z"
   @outside ~r/webmcp\.com|directory page/i

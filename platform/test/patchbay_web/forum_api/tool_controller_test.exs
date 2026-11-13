@@ -86,6 +86,43 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
     assert html =~ ~s(id="tool-schemas")
   end
 
+  # The catalog records a tool seen on a site with where it was listed; only a
+  # tool list the site itself publishes is named as a version's source.
+  test "a version names the tool list it came from only when the site publishes it", %{
+    conn: conn
+  } do
+    site = Forum.register_site!("lists.example")
+    checked = ~U[2026-10-14 00:00:00.000000Z]
+
+    for {name, kind, source} <- [
+          {"search", :official, "https://lists.example/tools.json"},
+          {"checkout", :observed, "https://elsewhere.example/sites/lists.example"}
+        ] do
+      Forum.publish_catalog_tool!(%{
+        site_id: site.id,
+        address: "https://lists.example/shop",
+        name: name,
+        contract_sha256: Base.encode16(:crypto.hash(:sha256, name), case: :lower),
+        source_kind: kind,
+        source_url: source,
+        first_seen_at: checked,
+        last_seen_at: checked
+      })
+    end
+
+    history = fn name ->
+      conn
+      |> get("/forum/tool-history", %{"origin" => site.origin, "tool_name" => name})
+      |> json_response(200)
+      |> Map.fetch!("versions")
+    end
+
+    assert [%{"source_url" => "https://lists.example/tools.json"}] = history.("search")
+
+    assert [%{"source_url" => nil, "address" => "https://lists.example/shop"}] =
+             history.("checkout")
+  end
+
   test "missing tools and invalid options are distinct", %{conn: conn} do
     site = Forum.register_site!("empty-history.example")
     params = %{"origin" => site.origin, "tool_name" => "checkout"}
