@@ -5,10 +5,12 @@
  * hover style that moves it still can. One pressed again mid-move starts over
  * from rest.
  */
-import {play, still} from "./shared.ts"
+import {EASE_OUT, play, still} from "./shared.ts"
 
-export const squish = (el: Element) =>
-  play(el, {scale: [{to: 0.9, duration: 90, ease: "out(3)"}, {to: 1, duration: 360, ease: "outBack(3)"}]})
+// The standard press: a quick dip and straight back, with no overshoot, done
+// in 140 ms, so a button pressed many times a day answers and is still again.
+export const tap = (el: Element) =>
+  play(el, {scale: [{to: 0.96, duration: 60, ease: EASE_OUT}, {to: 1, duration: 80, ease: EASE_OUT}]})
 
 export const nope = (el: Element) =>
   play(el, {x: [0, -7, 6, -4, 2, 0], duration: 380, ease: "inOut(2)"})

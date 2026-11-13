@@ -1,10 +1,11 @@
 /**
  * Panels that open over the page: the phone menu slides out as a drawer, a
- * dialog rises as a sheet, a header menu pops under its button and a list,
- * such as the pairing window's agents, drops under its dropdown. The page
- * opens and closes them itself; this only moves a panel from where it starts
- * to where it rests, then hands it back to its stylesheet. Closing is
- * immediate, except for a list, which leaves the way it came.
+ * window lifts in, a header menu pops under its button, a list, such as the
+ * pairing window's agents, drops under its dropdown, and a disclosure's form
+ * folds open in the page. The page opens and closes them itself; this only
+ * moves a panel from where it starts to where it rests, then hands it back to
+ * its stylesheet. Closing is immediate, except for a list, which leaves the
+ * way it came.
  *
  * Moves in percent name both ends, so they stay a share of the panel's own
  * size instead of being converted to pixels.
@@ -17,8 +18,15 @@ import type {Hook} from "../../hook_composition.ts"
 export const drawer = (el: Element) =>
   play(el, {x: ["-100%", "0%"], ease: spring({bounce: 0.3, duration: 380})})
 
-export const sheet = (el: Element) =>
-  play(el, {y: ["100%", "0%"], ease: spring({bounce: 0.35, duration: 400})})
+// A window in the middle of the screen, such as the pairing window, rises a
+// few pixels out of the page as it fades in, from its centre, in 200 ms.
+export const lift = (el: Element) =>
+  play(el, {opacity: {from: 0}, scale: {from: 0.96}, y: {from: 8}, duration: BASE, ease: EASE_OUT})
+
+// A form a disclosure opens in the page's own flow, such as Ask a question,
+// fades in as it settles a few pixels down into place.
+export const fold = (el: Element) =>
+  play(el, {opacity: {from: 0}, y: {from: -6}, duration: BASE, ease: EASE_OUT})
 
 export const menu = (el: Element) =>
   play(el, {
@@ -61,7 +69,7 @@ export const backdrop = (el: Element) =>
   play(el, {opacity: {from: 0}, duration: BASE, ease: EASE_OUT})
 
 // How each kind of panel, named in `data-panel`, moves when it opens.
-const PANELS: Record<string, (el: Element) => unknown> = {drawer, sheet, menu}
+const PANELS: Record<string, (el: Element) => unknown> = {drawer, sheet: lift, menu}
 
 type PanelsHook = {el: HTMLElement; scope?: ReturnType<typeof createScope>; watch?: MutationObserver}
 

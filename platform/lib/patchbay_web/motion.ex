@@ -7,9 +7,11 @@ defmodule PatchbayWeb.Motion do
   its version from here in `data-variant`.
   """
 
+  alias Phoenix.LiveView.JS
+
   @standard %{
     "drawer" => "spring",
-    "sheet" => "spring",
+    "sheet" => "lift",
     "menu" => "pop",
     "note" => "peel",
     "toast" => "pop",
@@ -26,4 +28,11 @@ defmodule PatchbayWeb.Motion do
 
   @doc "The standard version of one part, such as `\"list\"`."
   def standard(part), do: Map.fetch!(@standard, part)
+
+  @doc """
+  How a note a live page takes away leaves, given as its `phx-remove`: it
+  fades as it drops a few pixels, in 120 ms, before the page drops it
+  (`.pb-leave` in `assets/css/components/motion.css`).
+  """
+  def leave, do: JS.hide(transition: {"pb-leave", "", "pb-leave-to"}, time: 120)
 end

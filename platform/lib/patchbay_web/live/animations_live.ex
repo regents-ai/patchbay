@@ -13,7 +13,7 @@ defmodule PatchbayWeb.AnimationsLive do
   # The versions each section offers.
   @choices %{
     "drawer" => ~w(glide spring lean),
-    "sheet" => ~w(rise spring),
+    "sheet" => ~w(rise spring lift),
     "menu" => ~w(pop drop),
     "note" => ~w(peel toss),
     "toast" => ~w(rise pop side),
@@ -40,11 +40,11 @@ defmodule PatchbayWeb.AnimationsLive do
   # than notes leave cannot grow a connection without end, as in ash-template.
   @held_notes 12
 
-  # The lab's fixed copy: the presses (squish and nope are the standard ones),
+  # The lab's fixed copy: the presses (tap and nope are the standard ones),
   # the sliding panels, the list controls, the figure steps, the tabs and
   # their lines, and the cards.
   @static [
-    presses: ~w(squish jelly sparks ping stitches nope),
+    presses: ~w(tap squish jelly sparks ping stitches nope),
     panels: [{"drawer", "Drawer"}, {"sheet", "Sheet"}, {"menu", "Menu"}, {"note", "Note"}],
     controls: [
       shuffle: "Shuffle",
@@ -217,11 +217,11 @@ defmodule PatchbayWeb.AnimationsLive do
       <.section number="1" id="presses" title="Presses">
         <:lede>
           A mouse or finger press gets a small answer. Pressing Enter or Space works the same,
-          just without the show. Every button squishes, and one that says no shakes its head.
+          just without the show. Every button dips, and one that says no shakes its head.
         </:lede>
         <div id="lab-presses" class="motion-lab__row" phx-hook="LabPress">
           <P.button :for={press <- @presses} variant="secondary" data-press={press}>
-            {String.capitalize(press)}<.standard :if={press in ~w(squish nope)} />
+            {String.capitalize(press)}<.standard :if={press in ~w(tap nope)} />
           </P.button>
         </div>
       </.section>
@@ -235,6 +235,16 @@ defmodule PatchbayWeb.AnimationsLive do
           </div>
         </dl>
         <.slides variants={@variants} />
+        <%!-- A form a disclosure opens in the page, as Ask a question does on
+        the home page; the page's own motion script folds it open. --%>
+        <details id="lab-fold" class="motion-lab__fold" phx-update="ignore">
+          <summary class="rg-button rg-button--secondary rg-button--no-arrow">
+            <span class="rg-button__label">Fold out a form</span>
+          </summary>
+          <div class="motion-lab__fold-body" data-panel="fold">
+            <p>Describe the problem, and the site where it happened.</p>
+          </div>
+        </details>
       </.section>
 
       <.section number="3" id="changes" title="Changes">

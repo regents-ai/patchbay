@@ -1,8 +1,8 @@
 /**
- * The standard motion on every page: a squish when something is pressed, a
- * shake when the answer is no, panels that slide or pop open, and on pages the
- * server draws once, the headline rising in word by word and the cards
- * settling into place the first time they scroll into view. The version of
+ * The standard motion on every page: a tap when something is pressed, a
+ * shake when the answer is no, panels that slide, lift or fold open, and on
+ * pages the server draws once, the headline rising in word by word and the
+ * cards settling into place the first time they scroll into view. The version of
  * each is named in `PatchbayWeb.Motion` and every version that was tried is
  * kept in the template's motion lab at /animations.
  *
@@ -14,10 +14,10 @@
  */
 import {mountButtons} from "./hooks/motion/buttons.ts"
 import {splitText} from "animejs"
-import {deny, nope, squish} from "./hooks/motion/press.ts"
+import {deny, nope, tap} from "./hooks/motion/press.ts"
 import {CASCADE, GRIDS, HEADLINES, onFirstSight} from "./hooks/motion/reveals.ts"
 import {CLIPPED_WORD, byPointer, lastInputByPointer, still, watchInput} from "./hooks/motion/shared.ts"
-import {backdrop, drawer, list, menu, settle, sheet, unlist} from "./hooks/motion/slides.ts"
+import {backdrop, drawer, fold, lift, list, menu, settle, unlist} from "./hooks/motion/slides.ts"
 
 // A menu's summary is its button; other summaries open disclosures in the
 // page's own flow and stay still. A switch moves its own knob, and the
@@ -62,8 +62,8 @@ export function mountMotion(doc: Document) {
 
 // By the time a press reaches the document, the page has already acted on
 // it, so a control that opens a drawer says it is open. A button that says it
-// cannot be used yet shakes its head instead of squishing. A wallet button
-// squishes only its `data-press-label`, so the button itself never shrinks
+// cannot be used yet shakes its head instead of dipping. A wallet button
+// dips only its `data-press-label`, so the button itself never shrinks
 // and a quick second press near its edge still lands on it.
 export function press(event: MouseEvent) {
   if (!(event.target instanceof Element) || !byPointer(event)) return
@@ -78,7 +78,7 @@ export function press(event: MouseEvent) {
 
   // Shared CTAs already answered on pointer-down, with a stationary hit area.
   if (!control.matches(".rg-button:not(.rg-button--quiet):not(.rg-copy):not([role='tab'])"))
-    squish(control.querySelector("[data-press-label]") ?? control)
+    tap(control.querySelector("[data-press-label]") ?? control)
 
   if (control.getAttribute("aria-expanded") !== "true") return
   const panel = event.target.ownerDocument.getElementById(control.getAttribute("aria-controls") ?? "")
@@ -89,12 +89,12 @@ export function press(event: MouseEvent) {
   if (shade) backdrop(shade)
 }
 
-// A dialog rises as a sheet, a header menu pops open and a dropdown's list drops
-// in, and leaves again when it closes. A page that redraws an open one closes
-// and reopens it within one moment, which reports it as having been open all
-// along, so it does not move again. Once it rests where it opens, moved or not,
-// it carries `data-settled`, so whatever measures it, such as the browser walk,
-// knows when.
+// A window lifts in, a header menu pops open, a dropdown's list drops in and
+// leaves again when it closes, and a disclosure's form folds open. A page that
+// redraws an open one closes and reopens it within one moment, which reports
+// it as having been open all along, so it does not move again. Once it rests
+// where it opens, moved or not, it carries `data-settled`, so whatever
+// measures it, such as the browser walk, knows when.
 function toggle(event: Event) {
   if (!(event instanceof ToggleEvent) || !(event.target instanceof HTMLElement)) return
   const {target} = event
@@ -111,11 +111,16 @@ function toggle(event: Event) {
   })
 }
 
+// A window its own stylesheet slides in, as the phone menu's does, is left to
+// it: a move written over that slide would be dragged along by it.
+const slidesItself = (el: HTMLElement) => getComputedStyle(el).transitionProperty.split(/,\s*/).includes("transform")
+
 function open(target: HTMLElement) {
-  if (target instanceof HTMLDialogElement) return sheet(target)
+  if (target instanceof HTMLDialogElement) return slidesItself(target) ? undefined : lift(target)
   const panel = detailsPanel(target)
   if (panel?.dataset.panel === "menu") return menu(panel)
   if (panel?.dataset.panel === "list") return list(panel)
+  if (panel?.dataset.panel === "fold") return fold(panel)
 }
 
 function openStill(target: HTMLElement) {

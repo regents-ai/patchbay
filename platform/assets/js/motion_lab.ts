@@ -19,10 +19,10 @@ import {
 } from "animejs"
 import type {Hook} from "./hook_composition.ts"
 import {LAYOUTS, ROLLS, countHook, listHook} from "./hooks/motion/moments.ts"
-import {nope, squish} from "./hooks/motion/press.ts"
+import {nope, tap} from "./hooks/motion/press.ts"
 import {GRIDS, HEADLINES, TABS, onFirstSight, tabsHook} from "./hooks/motion/reveals.ts"
 import {BASE, CLIPPED_WORD, EASE_IN_OUT, EASE_OUT, FAST, SLOW, byPointer, play, still} from "./hooks/motion/shared.ts"
-import {drawer, menu, sheet} from "./hooks/motion/slides.ts"
+import {drawer, lift, menu} from "./hooks/motion/slides.ts"
 
 // Replay buttons dispatch this, so one press can restart every island.
 const REPLAY = "lab:replay"
@@ -65,12 +65,17 @@ function centre(el: Element) {
 type Island = {el: HTMLElement; scope?: ReturnType<typeof createScope>}
 
 /*
- * Presses, named with `data-press`. Squish and nope are the standard ones;
- * the rest squish too and throw something in the air.
+ * Presses, named with `data-press`. Tap and nope are the standard ones; squish
+ * dips deeper and overshoots on the way back, and the rest squish too and
+ * throw something in the air.
  */
 type Press = (owner: HTMLElement, button: HTMLElement, x: number, y: number) => void
 
+const squish = (el: Element) =>
+  play(el, {scale: [{to: 0.9, duration: 90, ease: "out(3)"}, {to: 1, duration: 360, ease: "outBack(3)"}]})
+
 const PRESSES: Record<string, Press> = {
+  tap: (_owner, button) => tap(button),
   squish: (_owner, button) => squish(button),
   nope: (_owner, button) => nope(button),
 
@@ -180,7 +185,11 @@ const PANELS: Record<string, {shade: boolean; versions: Record<string, Panel>}> 
     shade: true,
     versions: {
       rise: {away: {y: "100%"}, open: el => play(el, {y: ["100%", "0%"], duration: SLOW, ease: EASE_OUT})},
-      spring: {away: {y: "100%"}, open: sheet},
+      spring: {
+        away: {y: "100%"},
+        open: el => play(el, {y: ["100%", "0%"], ease: spring({bounce: 0.35, duration: 400})}),
+      },
+      lift: {away: {y: 8, scale: 0.96, opacity: 0}, open: lift},
     },
   },
   menu: {

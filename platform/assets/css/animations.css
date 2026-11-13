@@ -369,6 +369,22 @@
   font-size: 0.85rem;
 }
 
+/* A form that opens in the page, under its button. */
+.motion-lab__fold {
+  margin-top: var(--space-3);
+}
+
+.motion-lab__fold-body {
+  margin-top: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.motion-lab__fold-body p {
+  margin: 0;
+}
+
 /* Things that change */
 .motion-lab__stage {
   position: relative;

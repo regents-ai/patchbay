@@ -120,15 +120,23 @@ function moved(root: HTMLElement, was: Place) {
   return kept ? top(kept[0]) - kept[1] : root.getBoundingClientRect().bottom - was.end
 }
 
+// Several items that arrive together step in from the top: the first few a
+// little apart, each gap shorter than the last, and the rest with the fifth,
+// so even a long page of them is in place within 300 ms.
+const STEPS = [0, 40, 72, 98, 120]
+const stepIn = (_item: unknown, i = 0) => STEPS[Math.min(i, STEPS.length - 1)]
+
 /**
  * A list that others add to and change while the reader watches, such as new
  * posts or replies. What arrives settles in where it lands, rising a few
  * pixels as it fades in; nothing around it moves, so the page shifts only by
- * its height. A reader scrolled past the list's start, or typing in a field
- * in it, keeps what they were reading where it was on the screen whatever
- * arrives or changes size above it, as a browser that anchors its scrolling
- * does, in every browser. What was there when the list was drawn stays
- * still, and so does an item drawn again.
+ * its height. In a list marked `data-glow`, what arrives also glows once in
+ * the tint its `::before` holds (`[data-arrived]`, in components/motion.css),
+ * with less motion asked for too, as the glow does not move. A reader scrolled
+ * past the list's start, or typing in a field in it, keeps what they were
+ * reading where it was on the screen whatever arrives or changes size above
+ * it, as a browser that anchors its scrolling does, in every browser. What was
+ * there when the list was drawn stays still, and so does an item drawn again.
  */
 export const MotionArrivals: Hook = {
   mounted(this: ArrivalsHook) {
@@ -151,10 +159,25 @@ export const MotionArrivals: Hook = {
     const now = items(this.el)
     const arrived = now.filter(item => !this.seen.has(item.id))
     this.seen = new Set(now.map(item => item.id))
-    if (arrived.length > 0 && !still(this.el)) {
-      play(arrived, {y: {from: 6}, opacity: {from: 0}, duration: BASE, ease: EASE_OUT})
-    }
+    if (arrived.length === 0) return
+    if (this.el.dataset.glow !== undefined) for (const item of arrived) glow(item)
+    if (!still(this.el)) play(arrived, {y: {from: 6}, opacity: {from: 0}, duration: 180, delay: stepIn, ease: EASE_OUT})
   },
+}
+
+// The glow is the stylesheet's own animation on the item's `::before`, started
+// by the mark and taken off when it ends, so the item is left exactly as the
+// server drew it.
+function glow(item: HTMLElement) {
+  const done = (event: AnimationEvent) => {
+    if (event.target !== item || event.pseudoElement !== "::before") return
+    item.removeEventListener("animationend", done)
+    item.removeEventListener("animationcancel", done)
+    delete item.dataset.arrived
+  }
+  item.addEventListener("animationend", done)
+  item.addEventListener("animationcancel", done)
+  item.dataset.arrived = ""
 }
 
 // How the digits that changed arrive. `clip` masks each digit in its own
@@ -252,8 +275,9 @@ type RefusalHook = {el: HTMLElement; scope?: Scope; said?: string}
 /**
  * A message a live page shows when it refuses something. It shakes once when
  * it appears and again whenever it says something new, while `data-refused`
- * is on it. A shake still playing when the message goes stops with it. Pages
- * the server draws once shake their alerts from `motion.ts`.
+ * is on it. A message the page takes away leaves by its `phx-remove`
+ * (`PatchbayWeb.Motion.leave/0`), and a shake still playing then stops with
+ * it. Pages the server draws once shake their alerts from `motion.ts`.
  */
 export const MotionRefusal: Hook = {
   mounted(this: RefusalHook) {

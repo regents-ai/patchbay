@@ -10,6 +10,64 @@
    focus outline in place. Inline text needs a box for its transform. */
 .pb-action-label { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); max-inline-size: 100%; }
 
+/* What just arrived in a live list marked `data-glow` (MotionArrivals) glows once
+   in the tint the list draws on each item's `::before`: it holds the full tint
+   for a moment, so the eye finds it, then fades back. */
+[data-glow] [data-arrived]::before { animation: pb-arrived 900ms ease; }
+@keyframes pb-arrived { from, 20% { opacity: 1; } }
+
+/* A list's tabs and the header's links: under a mouse, one that is not the
+   current page draws a light underline in from its left edge, and takes it
+   back faster than it came. With less motion asked for it simply shows. */
+:is(.pb-feed-tabs, .pb-site-nav) a:not([aria-current="page"]) { position: relative; }
+:is(.pb-feed-tabs, .pb-site-nav) a:not([aria-current="page"])::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -2px;
+  block-size: 2px;
+  background: var(--pb-line-strong);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 120ms var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  :is(.pb-feed-tabs, .pb-site-nav) a:not([aria-current="page"]):hover::after { transform: none; transition-duration: 200ms; }
+}
+@media (prefers-reduced-motion: reduce) {
+  :is(.pb-feed-tabs, .pb-site-nav) a::after { transition: none; }
+}
+
+/* A note a live page takes away (`PatchbayWeb.Motion.leave/0`) fades as it
+   drops a few pixels, quicker than it arrived; with less motion it only fades. */
+.pb-leave { transition: opacity 120ms var(--ease-out), transform 120ms var(--ease-out); }
+.pb-leave-to { opacity: 0; transform: translateY(4px); }
+@media (prefers-reduced-motion: reduce) { .pb-leave-to { transform: none; } }
+
+/* A like's heart dips while pressed by a finger or a mouse and springs back as
+   it is let go; pressed from the keyboard it stays still. */
+@media (prefers-reduced-motion: no-preference) {
+  .rg-discussion__heart .rg-discussion__icon { transition: transform 160ms var(--ease-out); }
+  .rg-discussion__heart:active:not(:focus-visible) .rg-discussion__icon { transform: scale(.8); transition-duration: 90ms; }
+}
+
+/* A copy button's answer: the old icon or word shrinks or drops away as the new
+   one, the tick, grows or rises in, and the same back once the answer has been
+   shown. The shared stylesheet hides the ones not showing; they stay drawn here
+   until they have faded. */
+@media (prefers-reduced-motion: no-preference) {
+  .rg-copy :is(.rg-copy__idle, .rg-copy__copied, .rg-copy__selected, .rg-copy__failed) {
+    transition: opacity 140ms var(--ease-out), transform 160ms var(--ease-out), visibility 140ms;
+  }
+  .rg-copy:not([data-copy-state]) :is(.rg-copy__copied, .rg-copy__selected, .rg-copy__failed),
+  .rg-copy[data-copy-state="copied"] :is(.rg-copy__idle, .rg-copy__selected, .rg-copy__failed),
+  .rg-copy[data-copy-state="selected"] :is(.rg-copy__idle, .rg-copy__copied, .rg-copy__failed),
+  .rg-copy[data-copy-state="failed"] :is(.rg-copy__idle, .rg-copy__copied, .rg-copy__selected) { opacity: 0; transform: translateY(.35em); }
+  .rg-copy--icon:not([data-copy-state]) :is(.rg-copy__copied, .rg-copy__selected, .rg-copy__failed),
+  .rg-copy--icon[data-copy-state="copied"] :is(.rg-copy__idle, .rg-copy__selected, .rg-copy__failed),
+  .rg-copy--icon[data-copy-state="selected"] :is(.rg-copy__idle, .rg-copy__copied, .rg-copy__failed),
+  .rg-copy--icon[data-copy-state="failed"] :is(.rg-copy__idle, .rg-copy__copied, .rg-copy__selected) { transform: scale(.5); }
+}
+
 /* A dropdown's list leaving (`unlist` in the motion kit): its closed <details>
    still draws it until it has faded out, and a press on it lands on what is under
    it. Opened again, it takes presses at once. */
