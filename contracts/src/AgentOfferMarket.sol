@@ -92,10 +92,14 @@ contract AgentOfferMarket is IAgentOfferMarket, Initializable, ReentrancyGuardTr
     /// @inheritdoc IAgentOfferMarket
     mapping(address account => uint256 amountUSDC) public claimable;
 
-    /// @dev Every placement, keyed by id. Read with `getPlacement`.
+    /// @dev Every placement, keyed by id. Read with `getPlacement`. Written through a storage
+    ///      pointer in `createPlacement` and `terminatePlacement`, which Slither does not follow.
+    // slither-disable-next-line uninitialized-state
     mapping(uint256 placementId => Placement) private _placements;
 
-    /// @dev Every slot's lease. Read with `getLease`.
+    /// @dev Every slot's lease. Read with `getLease`. Written through the storage pointer `_lease`
+    ///      returns, in `buy` and `_settle`, which Slither does not follow.
+    // slither-disable-next-line uninitialized-state
     mapping(uint256 placementId => mapping(uint16 slot => Lease)) private _leases;
 
     /// @dev Restricts a call to the publisher.
@@ -175,8 +179,9 @@ contract AgentOfferMarket is IAgentOfferMarket, Initializable, ReentrancyGuardTr
     function buy(Purchase calldata purchase, bytes calldata eligibilityPermit) external nonReentrant {
         Placement storage placement = _openPlacement(purchase.placementId);
         Lease storage lease = _lease(placement, purchase.placementId, purchase.slot);
-        // forge-lint: disable-next-line(block-timestamp)
-        if (block.timestamp > purchase.deadline) revert PurchaseExpired();
+        // A deadline is a moment in seconds by design.
+        // slither-disable-next-line timestamp
+        if (block.timestamp > purchase.deadline) revert PurchaseExpired(); // forge-lint: disable-line(block-timestamp)
         if (purchase.campaignId == bytes32(0)) revert ZeroCampaign();
         uint64 nonce = lease.nonce;
         if (nonce != purchase.expectedLeaseNonce) revert StaleLeaseNonce(nonce);
@@ -378,8 +383,9 @@ contract AgentOfferMarket is IAgentOfferMarket, Initializable, ReentrancyGuardTr
     /// @dev Whether a lease's term is still running. A placement's termination is checked
     ///      separately by every caller.
     function _isLive(Lease storage lease) private view returns (bool) {
-        // forge-lint: disable-next-line(block-timestamp)
-        return block.timestamp < lease.endsAt;
+        // A lease is a term in seconds by design.
+        // slither-disable-next-line timestamp
+        return block.timestamp < lease.endsAt; // forge-lint: disable-line(block-timestamp)
     }
 
     /// @dev A placement that exists.

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-13 — Offer contracts
+
+- Agent Offers have their contracts for Base, built and tested but not yet deployed: one factory, and one market for each publisher it admits, starting with Patchbay. A publisher sells placements with a fixed number of slots, each rented for a fixed term in USDC. Patchbay's will be three slots per site for 72 hours, at a minimum price it sets.
+- While a slot is rented, another buyer can take it by paying at least 10% more. The buyer it replaces gets back the unused part of its payment, and the new buyer gets a full term. Patchbay is paid, less a 10% share for REGENT stakers, only for time actually rented.
+- Buyers and publishers collect their money themselves, so one frozen wallet never holds up anyone else. Neither Patchbay nor the factory's owner can move money that belongs to a buyer.
+- These replace the earlier design that charged Offers by the second; nothing of it is kept.
+
 ## 2026-11-13 — Presses
 
 - On a post's page, the heart, the follow bell, "Worked" and "This answered it" now change the page where you are. The page no longer loads again, so you keep your place and anything you were typing in a reply. A press that cannot be saved says why right beside it, for example when you are not signed in.
