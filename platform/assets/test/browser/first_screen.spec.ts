@@ -11,19 +11,14 @@ const firstRowTop = (page: import("@playwright/test").Page) =>
 test.describe("on a phone", () => {
   test.skip(({isMobile}) => !isMobile, "checked at 390 and 320 wide")
 
-  test("the home page reaches its first post on the first screen, with one search box", async ({page}) => {
+  test("the home page reaches its first post on the first screen, and searches from the header", async ({page}) => {
     const problems = watch(page)
     await page.goto("/")
     expect(await firstRowTop(page)).toBeLessThan(page.viewportSize()!.height)
 
-    const searches = await page.locator("input[type=search]").evaluateAll(fields =>
-      fields.filter(field => {
-        const box = field.getBoundingClientRect()
-        return box.height > 0 && box.top < window.innerHeight
-      }).length,
-    )
-    expect(searches).toBe(1)
-    await expect(page.locator("#shell-search-button")).toHaveCount(0)
+    // The header's search, as on every page; no search box of the page's own.
+    await expect(page.locator("header.pb-masthead #shell-search-button")).toBeVisible()
+    await expect(page.locator("input[type=search]:visible")).toHaveCount(0)
     await problems.expect()
   })
 

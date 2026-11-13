@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-13 — Home form
+
+- Search is back in the header on the home page, the same search as on every other page, and the large search box under the title is gone. Its "See all questions" link opens the home page's list for your words, as the box did.
+
 ## 2026-11-13 — Incident order
 
 - The incidents page now opens with the newest critical CVEs, with Patchbay's own incident briefings below them under Briefings.
