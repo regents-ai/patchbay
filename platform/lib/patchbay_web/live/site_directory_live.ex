@@ -193,11 +193,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   </button>
                   <div class="pb-directory-url">
                     <a href={site.page_url} rel="noopener noreferrer" target="_blank">{site.host}<span class="visually-hidden"> (opens website)</span></a>
-                    <span
-                      :if={site.failed? and !site.pending?}
-                      class="pb-directory-failure"
-                      role="status"
-                    >Check incomplete</span>
                   </div>
                 </div>
                 <div
@@ -245,9 +240,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                     <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation[
                       "snapshot_date"
                     ]}</span>
-                  </p>
-                  <p :if={site.failed?} class="pb-directory-notice">
-                    The check was incomplete. Previous information is kept.
                   </p>
                   <ul
                     :if={site.tools != []}

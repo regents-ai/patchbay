@@ -94,7 +94,6 @@
 .pb-directory-count { display: inline-flex; flex-direction: column; align-items: end; justify-content: center; min-width: 44px; min-height: 34px; padding: 0; }
 .pb-directory-count strong { font-weight: 400; font-size: 1rem; }
 .pb-directory-posts { display: inline-flex; min-width: 44px; min-height: 34px; align-items: center; justify-content: end; }
-.pb-directory-failure { font-size: .65rem; border-left: 2px solid var(--pb-accent); padding-left: .4rem; }
 .pb-directory-detail-inner[hidden] { display: none; }
 .pb-directory-row > td { vertical-align: top; }
 .pb-directory-detail-inner { margin-block: .5rem; padding: 1.1rem 1.25rem 1.25rem; background: var(--pb-surface); }

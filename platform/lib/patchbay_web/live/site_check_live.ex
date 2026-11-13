@@ -114,14 +114,15 @@ defmodule PatchbayWeb.SiteCheckLive do
   defp check_findings(%{findings: %{"code" => _code} = findings}), do: findings
   defp check_findings(_check), do: nil
 
+  # A check that could not be done says nothing to people: the last finished
+  # check's count stands, or none has finished yet.
   defp tools_label(check, count) do
-    case {SiteChecks.state(check), count} do
-      {:none, 0} -> "Not checked yet"
-      {:checking, 0} -> "Looking for WebMCP tools…"
-      {:failed, 0} -> "Couldn't look for WebMCP tools just now"
+    cond do
+      count == 0 and SiteChecks.state(check) == :checking -> "Looking for WebMCP tools…"
+      count == 0 and is_nil(check_findings(check)) -> "Not checked yet"
       # The owner's own words for the count.
-      {_state, 1} -> "Agents see 1 WebMCP Tool"
-      _known -> "Agents see #{count} WebMCP Tools"
+      count == 1 -> "Agents see 1 WebMCP Tool"
+      true -> "Agents see #{count} WebMCP Tools"
     end
   end
 
@@ -203,9 +204,6 @@ defmodule PatchbayWeb.SiteCheckLive do
           <p class="pb-site-check-status" role="status">
             <span :if={SiteChecks.state(@check) == :none}>Not checked yet.</span>
             <span :if={SiteChecks.state(@check) == :checking}>Checking {@domain}…</span>
-            <span :if={SiteChecks.state(@check) == :failed}>
-              {@domain} could not be checked just now.
-            </span>
             <span :if={SiteChecks.state(@check) == :done}>
               Checked
               <time
