@@ -254,6 +254,43 @@ config :patchbay, :escrow,
 # operator wallet for a person to forward.
 config :patchbay, :assist, staking_contract_address: System.get_env("STAKING_CONTRACT_ADDRESS")
 
+# Agent offers, only ever in development, on a lab market on this machine
+# (`scripts/offers-lab.sh`). PATCHBAY_OFFERS_MARKET turns the feature on;
+# PATCHBAY_OFFERS_RPC_URL is the lab chain's node, read by the site and added
+# by the wallet; PATCHBAY_OFFERS_FROM_BLOCK is the block the market was made
+# in; PATCHBAY_OFFERS_PUBLISHER_KEY signs Patchbay's admissions, and buying is
+# closed without it. Production never reads them, so the feature stays off.
+if config_env() == :dev do
+  if market = System.get_env("PATCHBAY_OFFERS_MARKET") do
+    market = String.downcase(String.trim(market))
+
+    Regex.match?(~r/\A0x[0-9a-f]{40}\z/, market) or
+      raise "PATCHBAY_OFFERS_MARKET must be an address"
+
+    node_url = System.fetch_env!("PATCHBAY_OFFERS_RPC_URL")
+
+    case URI.new(node_url) do
+      {:ok, %URI{scheme: "http", host: host}} when host in ["127.0.0.1", "localhost"] -> :ok
+      _other -> raise "PATCHBAY_OFFERS_RPC_URL must be a lab chain on this machine"
+    end
+
+    config :patchbay, Patchbay.Offers,
+      market_address: market,
+      wallet_rpc_url: node_url,
+      from_block: String.to_integer(System.get_env("PATCHBAY_OFFERS_FROM_BLOCK", "0")),
+      publisher_private_key: System.get_env("PATCHBAY_OFFERS_PUBLISHER_KEY")
+
+    config :patchbay,
+           :chain_nodes,
+           Map.put(Application.fetch_env!(:patchbay, :chain_nodes), 8453, node_url)
+
+    oban = Application.fetch_env!(:patchbay, Oban)
+
+    config :patchbay, Oban,
+      cron: [crontab: oban[:cron][:crontab] ++ [{"*/5 * * * *", Patchbay.Offers.Watch}]]
+  end
+end
+
 migrating? = System.get_env("PATCHBAY_RELEASE_COMMAND") == "migrate"
 
 case config_env() do
