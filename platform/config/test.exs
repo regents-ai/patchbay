@@ -89,8 +89,8 @@ config :phoenix_live_view,
 config :phoenix,
   sort_verified_routes_query_params: true
 
-# A site check's outside lists (the MCP Registry, GitHub, npm) answer from
-# the tests, never the internet.
+# The one outside list a site check reads, the MCP Registry, answers from the
+# tests, never the internet.
 config :patchbay, :site_scan_req_options, plug: Patchbay.OutsideLists
 
 # An MCP events callback's challenge is answered by the test itself

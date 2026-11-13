@@ -56,8 +56,6 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
           "webmcp" => [%{"name" => "search_openai", "description" => "Search OpenAI's site."}],
           "servers" => [],
           "files" => [],
-          "code" => [],
-          "unsearched" => [],
           "directory" => directory
         }
       },

@@ -92,7 +92,7 @@ defmodule PatchbayWeb.Forum.SiteChecks do
   @doc "Whether a finished check found nothing an agent can use."
   @spec nothing?(map()) :: boolean()
   def nothing?(findings),
-    do: Enum.all?(~w(webmcp servers files code), &(findings[&1] == []))
+    do: Enum.all?(~w(webmcp servers files), &(findings[&1] == []))
 
   @doc "What an MCP server said when it was asked for its tools."
   @spec server_label(map()) :: String.t()
@@ -110,11 +110,4 @@ defmodule PatchbayWeb.Forum.SiteChecks do
   def file_label("skills"), do: "Agent skills"
   def file_label("skill_md"), do: "skill.md"
   def file_label("agent_card"), do: "Agent card"
-
-  @doc "The name of a place code and packages are listed."
-  @spec source_label(String.t()) :: String.t()
-  def source_label("github"), do: "GitHub"
-  def source_label("npm"), do: "npm"
-  def source_label("pypi"), do: "PyPI"
-  def source_label("registry"), do: "MCP Registry"
 end

@@ -6,8 +6,8 @@ defmodule Patchbay.Forum.SiteCheckTest do
   A picture that fails is tried three times, then again a day later, so an
   outage of the screenshot machine leaves no site without a card for good. A
   page that refuses the picture, or asks us to slow down, is asked once and
-  tried again a day later. A check names only what is real, and says which code and packages
-  come from the site and which only share its name.
+  tried again a day later. A check names only what the site itself
+  publishes, and searches no list of code or packages.
   """
 
   use Patchbay.DataCase, async: false
@@ -19,7 +19,6 @@ defmodule Patchbay.Forum.SiteCheckTest do
   alias Patchbay.Forum.Catalog
   alias Patchbay.Forum.Site
   alias Patchbay.Forum.SiteCheck
-  alias Patchbay.Forum.SiteScan
   alias Patchbay.OutsideLists
   alias Patchbay.PageSite
 
@@ -331,40 +330,40 @@ defmodule Patchbay.Forum.SiteCheckTest do
     assert again.refreshed_at == shopify.refreshed_at
   end
 
-  test "a check names what the site publishes and marks which code comes from it" do
+  test "a check keeps what the site publishes and asks no list but the MCP Registry" do
+    # The front page links to its code and package, and a check keeps neither.
+    front_page =
+      String.replace(
+        PageSite.with_tool("search_docs"),
+        "<body>",
+        ~s(<body><a href="https://github.com/example/sdk">SDK</a>) <>
+          ~s(<a href="https://www.npmjs.com/package/example-sdk">Package</a>)
+      )
+
     PageSite.serve(%{
-      "/" => PageSite.with_tool("search_docs"),
+      "/" => front_page,
       "/llms.txt" => {200, [{"content-type", "text/plain"}], "# Example\n"},
       # A site that answers every address with its app's page has no such file.
       "/skill.md" => {200, [{"content-type", "text/html"}], "<html>app</html>"}
     })
 
-    OutsideLists.answer(:github, 200, %{
-      "items" => [
-        %{
-          "full_name" => "example/sdk",
-          "html_url" => "https://github.com/example/sdk",
-          "homepage" => "https://docs.example.com"
-        },
-        %{"full_name" => "someone/example", "html_url" => "https://github.com/someone/example"}
-      ]
-    })
+    OutsideLists.watch()
+    Forum.request_site_check!("example.com")
+    Oban.drain_queue(queue: :site_checks)
 
-    OutsideLists.answer(:npm, 429, %{})
+    {:ok, check} = Forum.get_site_check("example.com")
 
-    assert {"https://example.com/", true, findings} =
-             SiteScan.findings("example.com", Application.get_env(:patchbay, :assist_target))
+    assert %{
+             "webmcp" => [%{"name" => "search_docs"}],
+             "servers" => [],
+             "files" => [%{"kind" => "llms_txt"}],
+             "directory" => %{}
+           } = check.findings
 
-    assert %{"webmcp" => [%{"name" => "search_docs"}]} = findings
+    assert Enum.sort(Map.keys(check.findings)) == ~w(directory files servers webmcp)
 
-    assert [%{"kind" => "llms_txt"}] = findings["files"]
-    assert findings["servers"] == []
-
-    assert [
-             %{"name" => "example/sdk", "from_site" => true},
-             %{"name" => "someone/example", "from_site" => false}
-           ] = findings["code"]
-
-    assert findings["unsearched"] == ["npm"]
+    # The registry was asked once for the site's servers, and nothing else was.
+    assert_received {:outside_list, "registry.modelcontextprotocol.io"}
+    refute_received {:outside_list, _host}
   end
 end

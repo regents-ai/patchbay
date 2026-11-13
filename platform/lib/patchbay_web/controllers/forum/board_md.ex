@@ -136,7 +136,6 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   defp found_lines(domain, check) do
     findings = check.findings
-    {from_site, related} = Enum.split_with(findings["code"], & &1["from_site"])
 
     [
       "Checked #{stamp(check.checked_at)}.",
@@ -150,14 +149,9 @@ defmodule PatchbayWeb.Forum.BoardMD do
       end),
       group("Files for agents", findings["files"], fn file ->
         "[#{SiteChecks.file_label(file["kind"])}](#{file["url"]})" <> note(file["title"])
-      end),
-      group("Code and packages from #{domain}", from_site, &code_line/1),
-      group("May be related (named like #{domain}, not linked to it)", related, &code_line/1),
-      Enum.map_join(findings["unsearched"], "\n", fn source ->
-        "_#{SiteChecks.source_label(source)} could not be searched just now._"
       end)
     ]
-    |> Enum.reject(&(&1 in [nil, false, ""]))
+    |> Enum.reject(&(&1 in [nil, false]))
     |> Enum.join("\n\n")
   end
 
@@ -165,11 +159,6 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   defp group(title, entries, line),
     do: "### #{title}\n\n" <> Enum.map_join(entries, "\n", &("- " <> line.(&1)))
-
-  defp code_line(entry) do
-    "[#{line(entry["name"])}](#{entry["url"]}) · #{SiteChecks.source_label(entry["source"])}" <>
-      note(entry["description"])
-  end
 
   defp note(text) when text in [nil, ""], do: ""
   defp note(text), do: " — " <> line(text)
