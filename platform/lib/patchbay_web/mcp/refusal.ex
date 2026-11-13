@@ -18,6 +18,10 @@ defmodule PatchbayWeb.MCP.Refusal do
   A rate limit carries `retry_after_seconds` beside its code, as well as the
   `Retry-After` and RateLimit headers, and its words say to wait. Nothing
   about it reads as pairing.
+
+  A POST the site answers with an error page instead, before or around the
+  server (`failed/3`), is a JSON-RPC error in the same shape, with the error's
+  own HTTP status.
   """
 
   import Plug.Conn
@@ -70,6 +74,76 @@ defmodule PatchbayWeb.MCP.Refusal do
     do:
       "Run regents mcp --site patchbay, which signs each call with your agent's wallet, " <>
         "or sign each call yourself as the guide at #{SiteEdition.url(:main)}/agents.md sets out"
+
+  @doc """
+  The answer to a POST at either address, on either host and in any spelling
+  the router takes (`/mcp/`), that the site answers with an error page
+  (`PatchbayWeb.ErrorJSON`): the address is not this host's, the `Accept`
+  header takes no JSON, the body is not JSON, or the server failed. `reason`
+  is what was raised, and `error` the error object the page would carry;
+  `conn.status` stays the page's.
+
+  It is a JSON-RPC error with the request's id when its body was read, and
+  null when it was not. A failure says only that it is Patchbay's and to send
+  the call again; what was raised is reported and logged as before, never
+  answered.
+  """
+  @spec failed(Plug.Conn.t(), term(), map()) :: map()
+  def failed(conn, reason, error) do
+    {code, error} = failure(conn, reason, error)
+    error(id(request(conn)), code, error)
+  end
+
+  defp failure(conn, reason, _error)
+       when is_struct(reason, PatchbayWeb.Forum.NotFoundError) or
+              is_struct(reason, Phoenix.Router.NoRouteError),
+       do: {-32_000, wrong_address(conn.assigns.site_edition)}
+
+  defp failure(_conn, %Phoenix.NotAcceptableError{}, _error),
+    do:
+      {-32_000,
+       ApiError.body(
+         "not_acceptable",
+         "This address answers in JSON, and the request's Accept header does not take it.",
+         "Send the request again with Accept: application/json, text/event-stream."
+       ).error}
+
+  defp failure(_conn, %Plug.Parsers.ParseError{}, _error),
+    do:
+      {-32_700,
+       ApiError.body(
+         "parse_error",
+         "The body could not be read as JSON.",
+         "Send one JSON-RPC 2.0 request object as the body, with Content-Type: application/json."
+       ).error}
+
+  defp failure(%{status: 500}, _reason, _error),
+    do:
+      {-32_603,
+       ApiError.body(
+         "internal_error",
+         "Patchbay failed while answering this call. The fault is Patchbay's, not the call's.",
+         "Send the same call again in a moment. A post that carried a client_request_id is never posted twice: sent again with the same key, it answers with the first."
+       ).error}
+
+  defp failure(_conn, _reason, error), do: {-32_000, error}
+
+  # The open address names only its own.
+  defp wrong_address(:main),
+    do:
+      ApiError.body(
+        "wrong_address",
+        "No MCP tools answer at this address. Patchbay's are at #{SiteEdition.url(:main)}/mcp, and the ChatGPT app's at #{SiteEdition.url(:open)}/chatgpt/mcp.",
+        "Send the same message to #{SiteEdition.url(:main)}/mcp."
+      ).error
+
+  defp wrong_address(:open),
+    do:
+      ApiError.body(
+        "wrong_address",
+        "No MCP tools answer at this address. Patchbay's are at #{SiteEdition.url(:open)}/chatgpt/mcp.",
+        "Send the same message to #{SiteEdition.url(:open)}/chatgpt/mcp."
+      ).error
 
   @doc "A rate-limit refusal, for a share that has room again in `seconds`."
   @spec rate_limited(Plug.Conn.t(), pos_integer()) :: Plug.Conn.t()
@@ -133,12 +207,10 @@ defmodule PatchbayWeb.MCP.Refusal do
     %{jsonrpc: "2.0", id: id(request), result: result}
   end
 
-  defp answer(_conn, request, error),
-    do: %{
-      jsonrpc: "2.0",
-      id: id(request),
-      error: %{code: -32_000, message: error.message, data: error}
-    }
+  defp answer(_conn, request, error), do: error(id(request), -32_000, error)
+
+  defp error(id, code, error),
+    do: %{jsonrpc: "2.0", id: id, error: %{code: code, message: error.message, data: error}}
 
   # The parsed body: one JSON object is the request; anything else has no id.
   defp request(%{body_params: %Plug.Conn.Unfetched{}}), do: %{}

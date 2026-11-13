@@ -9,13 +9,24 @@ defmodule PatchbayWeb.ErrorJSON do
   (`PatchbayWeb.ApiError`), so an agent that has read one Patchbay error has
   read them all: a stable `code`, the words, and a hint that names where the
   map is. Each address's hint names only that address's map and tools.
+
+  A POST to the hosted MCP tools, `/mcp` or `/chatgpt/mcp` at either address
+  and in any spelling the router takes (`/mcp/`), is answered in JSON-RPC
+  instead, as everything else there is (`PatchbayWeb.MCP.Refusal.failed/3`).
   """
 
   alias Patchbay.DatabaseBusy
   alias PatchbayWeb.ApiError
+  alias PatchbayWeb.MCP.Refusal
   alias PatchbayWeb.SiteEdition
 
-  def render("403.json", %{reason: %Plug.CSRFProtection.InvalidCSRFTokenError{}}),
+  def render(template, %{conn: %Plug.Conn{method: "POST", path_info: path} = conn} = assigns)
+      when path in [["mcp"], ["chatgpt", "mcp"]],
+      do: Refusal.failed(conn, assigns[:reason], body(template, assigns).error)
+
+  def render(template, assigns), do: body(template, assigns)
+
+  defp body("403.json", %{reason: %Plug.CSRFProtection.InvalidCSRFTokenError{}}),
     do:
       ApiError.body(
         "no_session",
@@ -23,7 +34,7 @@ defmodule PatchbayWeb.ErrorJSON do
         session_hint(SiteEdition.current())
       )
 
-  def render("503.json", _assigns),
+  defp body("503.json", _assigns),
     do:
       ApiError.body(
         "busy",
@@ -32,7 +43,7 @@ defmodule PatchbayWeb.ErrorJSON do
         %{retry_after_seconds: DatabaseBusy.retry_after_seconds()}
       )
 
-  def render(template, _assigns),
+  defp body(template, _assigns),
     do: ApiError.body(code(template), message(template), hint(SiteEdition.current()))
 
   defp hint(edition) do
