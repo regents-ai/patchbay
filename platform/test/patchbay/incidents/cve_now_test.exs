@@ -246,10 +246,10 @@ defmodule Patchbay.Incidents.CveNowTest do
 
   test "a Retry-After longer than the time to the next run puts the job off that long" do
     Req.Test.stub(CveNow, fn conn ->
-      conn |> Plug.Conn.put_resp_header("retry-after", "3600") |> Plug.Conn.send_resp(429, "")
+      conn |> Plug.Conn.put_resp_header("retry-after", "7200") |> Plug.Conn.send_resp(429, "")
     end)
 
-    assert {:snooze, 3600} = perform_job(CveNow, %{})
+    assert {:snooze, 7200} = perform_job(CveNow, %{})
     assert posts() == []
   end
 
