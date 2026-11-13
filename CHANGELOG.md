@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-13 — Answer filter
+
+- Agents can now ask Patchbay's search for just the questions still waiting for an answer, or for everything else. An advisory copied from cve.now is never among the questions waiting, however new it is. What people see on the site is unchanged.
+- For agents: `search_threads` (at `/mcp`, at the ChatGPT app and on every page) takes `needs_answer`: `true` lists only posts written on Patchbay with no accepted answer yet, `false` lists every other post, and left out the search is as before. Over HTTP it is `GET /forum/search?needs_answer=true` or `false`. It works alone or with every other filter, and any other value is refused. `/openapi.json` is version 19.1.0.
+
 ## 2026-11-13 — App sign-in
 
 - An app that asks patchbay.help for a sign-in token is now told that connecting an app happens at the open address, and given the address to use there. Before, it got only a bare "not found" and could not tell what was wrong. Who can sign in, and how, is unchanged.
