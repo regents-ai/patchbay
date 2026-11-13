@@ -1,0 +1,28 @@
+# Offers
+
+Businesses pay to reach relevant agents. Websites choose which offers to show and earn USDC. The same market as JSON: `GET /api/offers`, or the `read_offers` tool at `/mcp`.
+
+<%= @offers.about_this_data %>
+<%= unless @offers.up_to_date do %>
+_Patchbay is catching up with Base, so the newest purchases may not show yet._
+<% end %><%= if @offers.placements == [] do %>
+_No placements yet._
+<% end %><%= for placement <- @offers.placements do %>
+## <%= line(placement.site) %>
+
+<%= length(placement.slots) %> slots · <%= placement.lease_hours %> hours · from <%= placement.floor_usdc %> USDC
+
+| Slot | Offer | Text | Link | Paid | Ends | Minimum |
+| --- | --- | --- | --- | --- | --- | --- |
+<%= for slot <- placement.slots do %><%= row([
+  "[#{slot.slot + 1}](#{slot.page})",
+  if(slot.offer, do: label(slot.offer.title), else: "Open"),
+  slot.offer && slot.offer.body,
+  slot.offer && slot.offer.link,
+  slot.paid_usdc && "#{slot.paid_usdc} USDC",
+  stamp(slot.ends_at),
+  "#{slot.minimum_usdc} USDC"
+]) %>
+<% end %><% end %>
+<%= @offers.next_step %>
+<%= trailer() %>

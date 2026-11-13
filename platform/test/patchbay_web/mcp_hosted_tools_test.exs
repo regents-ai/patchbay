@@ -217,7 +217,10 @@ defmodule PatchbayWeb.MCPHostedToolsTest do
       {"read_wallet_bench_pair", %{"harness_id" => "H901", "wallet_id" => "W901"},
        {:http, :answer, :get, "/api/wallet-bench/H901/W901"}},
       {"read_wallet_bench_pair", %{"harness_id" => "H999999", "wallet_id" => "W999999"},
-       {:http_error, 404, "/api/wallet-bench/H999999/W999999"}}
+       {:http_error, 404, "/api/wallet-bench/H999999/W999999"}},
+      # No offer market is set in tests, so both doors answer not_found;
+      # `PatchbayWeb.OffersReadTest` reads an open market.
+      {"read_offers", %{}, {:http, :refusal, :get, "/api/offers"}}
     ]
   end
 

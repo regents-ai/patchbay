@@ -34,7 +34,12 @@
       "words": "A pairing code the person made with Pair New Agent on their Agents page."
     }
   ],
-  "switches": [],
+  "switches": [
+    {
+      "name": "offers",
+      "words": "Patchbay has no offer market open yet."
+    }
+  ],
   "operations": [
     {
       "operation": "searchThreads",
@@ -505,6 +510,15 @@
       "person_page": null,
       "switch": null,
       "cli_release": "1.10.20"
+    },
+    {
+      "operation": "readOffers",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": "offers",
+      "cli_release": null
     },
     {
       "operation": "readSiteDirectory",

@@ -6,7 +6,8 @@ defmodule Patchbay.Forum.Capabilities do
   - `priv/capabilities.json`: one row per operation in the OpenAPI document,
     in ash-template's shape: who may run it (`authority`), on what
     `conditions`, what it changes (`effect`), where its person does it
-    (`person_page`) and the earliest regents-cli release with its command
+    (`person_page`), the switch that can close it (`switch`, one of
+    `switches`) and the earliest regents-cli release with its command
     (`cli_release`, or `cli_pending` while the command waits for a release).
     It also names the regents-cli release every install line names.
   - `priv/tool_manifest.json`: every tool a page registers or `/mcp` lists:
@@ -242,18 +243,35 @@ defmodule Patchbay.Forum.Capabilities do
     }
   end
 
-  @doc "Every operation, in the source's order, with what an agent does with it."
+  @doc """
+  Every operation, in the source's order, with its gate as the site's
+  switches stand now and what an agent does with it: a closed operation is
+  `closed`, with its switch's words for the reason.
+  """
   @spec operations() :: [map()]
   def operations do
     Enum.map(@operations, fn row ->
+      gate = gate(row.switch)
+
       row
       |> Map.drop([:switch])
-      |> Map.merge(%{gate: %{state: "open", reason: nil}, agent_use: agent_use(row.authority)})
+      |> Map.merge(%{gate: gate, agent_use: agent_use(gate, row.authority)})
     end)
   end
 
-  defp agent_use(authority) when authority in @to_person, do: "hand_to_person"
-  defp agent_use(_authority), do: "run"
+  defp gate(nil), do: %{state: "open", reason: nil}
+
+  defp gate("offers") do
+    if Patchbay.Offers.enabled?(),
+      do: %{state: "open", reason: nil},
+      else: %{state: "closed", reason: switch_words("offers")}
+  end
+
+  defp switch_words(name), do: Enum.find(@source["switches"], &(&1["name"] == name))["words"]
+
+  defp agent_use(%{state: "closed"}, _authority), do: "closed"
+  defp agent_use(_gate, authority) when authority in @to_person, do: "hand_to_person"
+  defp agent_use(_gate, _authority), do: "run"
 
   @doc """
   Every tool as Markdown tables for the agent guides (`/agents.md`,

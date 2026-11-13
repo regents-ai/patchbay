@@ -105,8 +105,14 @@ defmodule Patchbay.Forum.CapabilitiesTest do
     assert length(operations) == map_size(Contract.operations(files().openapi))
 
     for row <- operations do
-      assert row.agent_use ==
-               if(row.authority in ~w(owner_only wallet), do: "hand_to_person", else: "run")
+      use =
+        cond do
+          row.gate.state == "closed" -> "closed"
+          row.authority in ~w(owner_only wallet) -> "hand_to_person"
+          true -> "run"
+        end
+
+      assert row.agent_use == use, row.operation
     end
 
     search = Enum.find(operations, &(&1.operation == "searchThreads"))

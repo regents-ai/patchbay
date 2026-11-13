@@ -458,6 +458,19 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # The same market for agents (`PatchbayWeb.OffersController`): JSON and
+  # Markdown, which answer nothing while no market is set, as `read_offers`
+  # at /mcp does.
+  scope "/", PatchbayWeb do
+    pipe_through [:main_only, :api]
+    get "/api/offers", OffersController, :index
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through :main_only
+    get "/offers.md", OffersController, :markdown
+  end
+
   # The few visit lines only the browser can see (PatchbayWeb.VisitLogController).
   scope "/", PatchbayWeb do
     pipe_through :browser

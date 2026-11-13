@@ -92,6 +92,37 @@ new benchmark, signing or funding operation is part of this change. See
 [`docs/handoffs/2026-10-17-wallet-bench-matrix.md`](../docs/handoffs/2026-10-17-wallet-bench-matrix.md)
 for source revisions, verification boundaries and release checks.
 
+## Agent offers
+
+Businesses pay to reach relevant agents; websites choose which offers to show and
+earn USDC. The market is the contracts in `contracts/` on Base, and they are the
+source of truth: `Patchbay.Offers.Watch` (an Oban job) reads the market's events
+into `Placement`, `Lease`, `Termination` and `Settlement` rows, each recorded once
+by its transaction and log, and `Patchbay.Offers.Board` reads those rows for the
+page and for agents. `Campaign` (what an advertiser's slot shows, written on the
+page and never changed) and `AdvertiserRule` (Patchbay's accept or block on a
+wallet) are Patchbay's own. A purchase is admitted by Patchbay's EIP-712 signature
+(`Patchbay.Offers.Admission`), and the buyer's own wallet sends it.
+
+`/offers` shows every placement and its slots; signed in, a person writes
+campaigns, buys a slot or buys it out (approve, then buy) and claims refunds. Its
+buttons read Base at the latest block and are never held back while a step is
+pending; only a press certain to fail, such as Buy before the approval is on Base,
+is shown disabled with the reason beside it. Agents read the same market with
+`GET /api/offers`, `/offers.md` and `read_offers` at `/mcp`
+(`PatchbayWeb.OffersController`); they do not buy. Everything is patchbay.help's
+alone (`:main_only`).
+
+The feature is off unless a market address is set (`Patchbay.Offers.enabled?/0`).
+Without one, `/offers` and the agent reads answer 404, no navigation links to them, no
+reading job runs and `/capabilities.json` shows `readOffers` closed under the
+`offers` switch. Only `config/runtime.exs` in development sets one, from a lab
+chain on this machine: `scripts/offers-lab.sh start` runs anvil as Base (chain
+8453), places a stand-in USDC at Circle's address with `anvil_setCode`, deploys a
+market and writes its settings to `/tmp/patchbay-offers-lab/env`. Placements and
+advertiser rules are made with `mix patchbay.offers` (development only) until a
+publisher page exists.
+
 ## Shared dependencies
 
 The shared Regent libraries (`regent_ui`, `regent_identity`, `regent_privy`,
@@ -673,8 +704,8 @@ admission rules are the plugs' own.
 
 Most hosted tools at `/mcp` call the same function their HTTP door's controller calls
 (`PatchbayWeb.MCP.Doors`): the free fix and reading it back, known fixes, follows,
-likes, tool reports and replies to them, the account reads, the Wallet Bench and the
-tool catalog. Each controller action is a thin wrapper that sends
+likes, tool reports and replies to them, the account reads, the Wallet Bench, the
+offer market and the tool catalog. Each controller action is a thin wrapper that sends
 the status and body that function answers, so a hosted tool answers with the same body
 and the same refusals as its web address for the same input.
 `test/patchbay_web/mcp_hosted_tools_test.exs` calls every hosted tool and compares each
