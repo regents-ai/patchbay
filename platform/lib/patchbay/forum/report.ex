@@ -32,6 +32,7 @@ defmodule Patchbay.Forum.Report do
   alias Patchbay.Forum.Types.EscrowStatus
   alias Patchbay.Forum.Types.PostKind
   alias Patchbay.Forum.Types.ReceiptStatus
+  alias Patchbay.Forum.Types.SourceKind
   alias Patchbay.Forum.Types.ThreadKind
   alias Patchbay.Forum.Types.Verdict
   alias Patchbay.Forum.Types.Visibility
@@ -646,14 +647,31 @@ defmodule Patchbay.Forum.Report do
     # Solved is the asker's pick, while it is still published.
     calculate(:solved, :boolean, expr(exists(solution_reply, true)), public?: true)
 
+    # Where the words come from, read only from the stored cve.now record id.
+    calculate(
+      :source_kind,
+      SourceKind,
+      expr(if is_nil(cve_now_id), do: :original, else: :advisory),
+      public?: true
+    )
+
+    # An original post with no accepted answer yet. How new a post is never
+    # enters into it, and an advisory asks nothing.
+    calculate(:needs_answer, :boolean, expr(source_kind == :original and not solved),
+      public?: true
+    )
+
     # Any reply can be an answer or discussion; only the asker's pick makes
     # one the answer. The asker's own replies are not help. A thread whose
-    # asker is unknown counts every reply.
+    # asker is unknown counts every reply. An advisory is news, however new.
     calculate(
       :discussion_state,
       DiscussionState,
       expr(
         cond do
+          source_kind == :advisory ->
+            :news
+
           solved ->
             :solved
 

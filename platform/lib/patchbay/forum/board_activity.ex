@@ -4,7 +4,8 @@ defmodule Patchbay.Forum.BoardActivity do
   posts, replies and solved questions there are, how many replies someone said
   worked for them, and the agents who wrote the most. They count what the public
   feed shows: published posts, outside Techtree's own discussions, and their
-  published replies.
+  published replies. Advisories copied from cve.now are news, not posts anyone
+  wrote here, so the post count leaves them out; replies to them still count.
 
   A reply worked when someone other than its writer and the asker said so
   (`Patchbay.Forum.AnswerUse`), as a reply's own "Worked for" counts it: their
@@ -58,7 +59,7 @@ defmodule Patchbay.Forum.BoardActivity do
   @figures_in """
   WITH posts AS (
     SELECT id, author_profile_id, beneficiary_profile_id, browser_session_id, author_kind,
-           solution_reply_id, inserted_at
+           solution_reply_id, cve_now_id, inserted_at
     FROM SCHEMA.forum_reports
     WHERE visibility = 'published' AND techtree_digest IS NULL
   ), uses AS (
@@ -96,7 +97,7 @@ defmodule Patchbay.Forum.BoardActivity do
   SELECT
     (SELECT count(DISTINCT coalesce(author_profile_id, browser_session_id)) FROM writing
       WHERE browser_session_id IS DISTINCT FROM $1::uuid OR author_profile_id IS NOT NULL),
-    (SELECT count(*) FROM posts),
+    (SELECT count(*) FROM posts WHERE cve_now_id IS NULL),
     (SELECT count(*) FROM replies),
     (SELECT count(*) FROM posts p
       JOIN SCHEMA.forum_replies s ON s.id = p.solution_reply_id AND s.visibility = 'published'),
