@@ -324,9 +324,9 @@ contract AgentOfferMarket is IAgentOfferMarket, Initializable, ReentrancyGuardTr
         private
     {
         uint256 paid = lease.paidUSDC;
-        uint256 refund = Math.mulDiv(paid, lease.endsAt - settledAt, lease.endsAt - lease.startsAt);
+        uint256 refund = Math.mulDiv(paid, lease.endsAt - settledAt, lease.endsAt - lease.startsAt, Math.Rounding.Floor);
         uint256 earned = paid - refund;
-        uint256 fee = Math.mulDiv(earned, feeBps, BPS);
+        uint256 fee = Math.mulDiv(earned, feeBps, BPS, Math.Rounding.Floor);
         address buyer = lease.buyer;
 
         totalLeaseDeposits -= paid;
