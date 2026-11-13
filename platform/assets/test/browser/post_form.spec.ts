@@ -3,7 +3,8 @@ import {expect, signedIn, test, watch} from "./support/test"
 
 // The post form says what is wrong with a field under that field: never while
 // it is typed, once the field is left, and when a post is turned down. Typing
-// takes the line away once the field is right. At 1280, 390 and 320.
+// takes the line away once the field is right. A press is answered where the
+// form stands: the page does not load again. At 1280, 390 and 320.
 
 const LONG = "The booking tool refuses every date I give it ".repeat(4)
 
@@ -26,6 +27,16 @@ async function expectWrong(page: Page, id: string) {
   await expect(said).toBeInViewport()
   await expect(page.locator(`#${id}`)).toHaveAttribute("aria-invalid", "true")
   await expect(page.locator(`#${id}`)).toHaveAttribute("aria-describedby", new RegExp(`(^| )${id}-errors( |$)`))
+}
+
+// Marks the page as it stands, for `expectStayed` to find after a press: a
+// page loaded again has lost the mark.
+async function markPage(page: Page) {
+  await page.evaluate(() => { (window as unknown as {pbStayed: boolean}).pbStayed = true })
+}
+
+async function expectStayed(page: Page) {
+  expect(await page.evaluate(() => (window as unknown as {pbStayed?: boolean}).pbStayed)).toBe(true)
 }
 
 async function expectRight(page: Page, id: string) {
@@ -55,20 +66,17 @@ test("a title too long is said under it once the field is left, and typing it ri
   await problems.expect()
 })
 
-test("a press with fields left empty says so under each, and asks Patchbay for nothing", async ({page}) => {
+test("a press with fields left empty says so under each, where the form stands", async ({page}) => {
   const problems = watch(page)
-  const asked: string[] = []
-  page.on("request", request => {
-    if (request.method() === "POST") asked.push(new URL(request.url()).pathname)
-  })
   await page.goto("/hermes")
+  await markPage(page)
   await page.locator("[data-pb-preview]").click()
   await expectWrong(page, "pb-fix-goal")
   await expect(page.locator("#pb-fix-site-errors > p")).toHaveCount(1)
   await expect(page.locator("#pb-fix-site")).toHaveAttribute("aria-invalid", "true")
   await expect(page.locator("#pb-fix-goal")).toBeFocused()
-  await expect(page.locator("#pb-fix-status")).toBeEmpty()
-  expect(asked.filter(path => path.endsWith("/threads") || path === "/threads/preview")).toEqual([])
+  await expect(page.locator("#pb-hero-refused")).toHaveCount(0)
+  await expectStayed(page)
 
   // Typing the field right takes its line away; the other keeps its own.
   await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
@@ -82,13 +90,10 @@ test("a preview Patchbay turns down over the title is said under the title", asy
   await page.goto("/hermes")
   await page.locator("#pb-fix-goal").fill(LONG)
   await page.locator("#pb-fix-site").fill("keyfleet.ai")
-  const answered = page.waitForResponse(response => new URL(response.url()).pathname === "/threads/preview")
   await page.locator("[data-pb-preview]").click()
-  await answered
   await expectWrong(page, "pb-fix-goal")
   await expect(page.locator("#pb-fix-goal")).toBeFocused()
   await expect(page.locator("#pb-hero-preview > *")).toHaveCount(0)
-  await expect(page.locator("#pb-fix-status")).toBeEmpty()
   await problems.expect()
 })
 
@@ -154,9 +159,11 @@ test.describe("signed in", () => {
     await page.locator("[data-pb-preview]").click()
     const publish = page.locator("[data-pb-post]")
     await expect(publish).toBeVisible()
-    await Promise.all([page.waitForEvent("load"), publish.click()])
+    await markPage(page)
+    await publish.click()
 
     await expectWrong(page, "pb-fix-site")
+    await expectStayed(page)
     await expectRight(page, "pb-fix-goal")
     await expect(page.locator("#pb-hero-form .pb-reply-form-problem")).toHaveCount(0)
     await expect(page.locator("#pb-fix-goal")).toHaveValue("Booking tool refuses my date")

@@ -91,10 +91,17 @@ test.describe("the home page's preview", () => {
     test.skip(isMobile, "a phone has no keyboard to ask with")
     let answered!: () => void
     const held = new Promise<void>(resolve => (answered = resolve))
-    await page.route("**/threads/preview", async route => {
-      const response = await route.fetch()
-      await held
-      await route.fulfill({response})
+    // The page's answers come in order, the preview's held until the mouse has moved.
+    await page.routeWebSocket(/\/live\/websocket/, socket => {
+      const server = socket.connectToServer()
+      socket.onMessage(message => server.send(message))
+      let order = Promise.resolve()
+      server.onMessage(message => {
+        order = order.then(async () => {
+          if (String(message).includes("pb:previewed")) await held
+          socket.send(message)
+        })
+      })
     })
     const ask = await askForPreview(page)
     await ask.focus()
@@ -277,7 +284,8 @@ test("a post's follow bell tips under a mouse and stays still under the keyboard
 })
 
 test.describe("Ask a question", () => {
-  const form = (page: Page) => page.locator("#pb-hero-form")
+  // The form's panel, which folds open with the section.
+  const form = (page: Page) => page.locator("#pb-ask > [data-panel='fold']")
   const summary = (page: Page) => page.locator("#pb-ask > summary")
 
   // Read once the next frame is drawn, when a fold started with the opening has

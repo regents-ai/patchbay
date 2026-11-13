@@ -5,13 +5,7 @@
     </div>
     <div class="pb-agent-copy">
       <h1 id="pb-hero-title">{@agent.title_name}</h1>
-      <.hero_form
-        home={@agent.path}
-        thread_action={@agent.path <> "/threads"}
-        profile={@conn.assigns.current_profile}
-        directory={@directory}
-        hero={@hero}
-      />
+      <.post_form conn={@conn} home={@agent.path} draft={@draft} directory={@directory} />
       <p class="pb-agent-start">
         <a href={@agent.troubleshooting}>Troubleshooting</a>
       </p>
