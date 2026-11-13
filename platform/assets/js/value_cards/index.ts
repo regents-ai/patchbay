@@ -1,7 +1,7 @@
 /**
  * Every value card's panel, by the name its card carries in `data-value-card`.
  * These six are Patchbay's, shown on the home page at patchbay.help
- * (`PatchbayWeb.Forum.BoardHTML.home_cards/0`).
+ * (`PatchbayWeb.Forum.BoardHTML.home_top_cards/0` and `home_bottom_cards/0`).
  */
 import {ask} from "./panels/ask"
 import {bench} from "./panels/bench"

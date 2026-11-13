@@ -160,6 +160,19 @@ defmodule PatchbayWeb.OpenEditionTest do
            |> response(200) =~ @own_words
   end
 
+  test "the home page's value cards are patchbay.help's, three over the search and three at the foot",
+       %{conn: conn} do
+    rows = fn conn ->
+      home = conn |> get("/") |> html_response(200) |> LazyHTML.from_document()
+
+      for row <- ~w(cards-top cards-row),
+          do: home |> LazyHTML.query("##{row} > li") |> LazyHTML.attribute("data-value-card")
+    end
+
+    assert rows.(conn) == [~w(ask sites fixes), ~w(pair bench connect)]
+    assert rows.(on_open(conn)) == [[], []]
+  end
+
   test "the Wallet Bench and the posts about wallets are patchbay.help's", %{conn: conn} do
     SharedBench.share!()
 

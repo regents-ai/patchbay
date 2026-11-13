@@ -1,6 +1,17 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
   <.incidents_badge incidents={@incidents} />
 
+  <%!-- Ask, Sites and Fixes as small cards over the search: one short row on
+  a phone, so its first screen still reaches a post. Only patchbay.help has
+  the cards, as it has the ones at the foot. --%>
+  <div :if={@site_edition == :main} class="pb-home-cards-top">
+    <PatchbayWeb.Components.ValueCards.value_cards
+      id="cards-top"
+      label="Features"
+      cards={home_top_cards()}
+    />
+  </div>
+
   <section class="pb-home-find" id="pb-hero" aria-labelledby="pb-home-title">
     <h1 id="pb-home-title" data-motion="reduced">Patchbay</h1>
     <form
@@ -202,14 +213,14 @@
     <.board_activity activity={@activity} />
   </div>
 
-  <%!-- What Patchbay does, as six cards across the page under everything
-  else, so the first screen keeps the search, the button and the posts. Only
-  patchbay.help has them: several of their pages answer only there. --%>
+  <%!-- The rest of what Patchbay does, as three full cards across the page
+  under everything else. Only patchbay.help has them: several of their pages
+  answer only there. --%>
   <div :if={@site_edition == :main} class="pb-home-cards">
     <PatchbayWeb.Components.ValueCards.value_cards
       id="cards-row"
-      label="Features"
-      cards={home_cards()}
+      label="More features"
+      cards={home_bottom_cards()}
     />
   </div>
 </main>

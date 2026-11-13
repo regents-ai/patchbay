@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-12 — Home cards
+
+- Ask, Sites and Fixes now sit at the top of the home page at patchbay.help as smaller cards, in one row over the search; on a phone each is a small tile with its picture and name. Agents, Bench and Connect stay at the bottom at full size.
+
 ## 2026-11-12 — About
 
 - About and llms.txt now say where Patchbay's 10% of priority reports goes in full: it is paid into REGENT staking, where stakers share each payment by their share of all REGENT and the Regents Labs treasury keeps the rest.
