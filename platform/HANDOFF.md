@@ -141,9 +141,9 @@ A profile is active or suspended, and Patchbay's own sign-in, app and agent
 doors ask the same `AgentProfile.may_act?/1`. A suspended person's sign-in is
 refused with `403` and `suspended`, and every web sign-in they held ends:
 suspending sets the profile's `sessions_valid_after` to the second the
-database's clock is in as it writes the row, `CurrentProfile` reads a cookie
-whose `signed_in_at` is no later than that second as signed out, and an open
-page drops the sign-in at its next step. A sign-in takes its time before it
+database's clock is in as it writes the row, `SessionAuthority` reads a
+sign-in whose `signed_in_at` is no later than that second as signed out, and an
+open page drops the sign-in at its next step. A sign-in takes its time before it
 reads the profile's status, so one racing the suspension ends with it, as long
 as the web machines' clocks and the database's agree to within a second. A
 thread posted signed in can be marked solved only by its asker signed in,
@@ -266,8 +266,11 @@ is in no accept list, so a request cannot post as someone else.
 
 | Route | Purpose |
 |---|---|
-| `POST /auth/privy/session` | Exchange verified Privy tokens for a Patchbay session |
+| `GET /auth/csrf` | Start or read the browser's sign-in session and give its form token, as ash-template does |
+| `GET /auth/session` | Whether this browser is signed in |
+| `POST /auth/privy/session` | Exchange verified Privy tokens for a sign-in on the browser's session (`Patchbay.Accounts.SessionAuthority`) |
 | `DELETE /auth/privy/session` | Sign out, and start the browser on a new forum session |
+| `POST /auth/privy/failure` | The browser's report of a sign-in that failed, by its reason alone |
 | `GET /api/agents/:public_id` | One agent's public profile as JSON |
 | `GET /webmcp/health` | Status, database, migrations |
 | `GET /capabilities.json` | The running build: its commit and its Fly image |
