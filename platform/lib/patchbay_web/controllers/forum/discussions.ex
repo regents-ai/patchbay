@@ -49,11 +49,12 @@ defmodule PatchbayWeb.Forum.Discussions do
          scope: if(params["scope"] in @scopes, do: params["scope"], else: "newest"),
          sort: if(params["sort"] == "popular", do: "popular", else: "recent"),
          source_kind: source_kind(params["source_kind"]),
-         # The page has no time, package or version filter; the search
-         # endpoint reads the same feed with them.
+         # The page has no time, package, version or needs-answer filter;
+         # the search endpoint reads the same feed with them.
          since: nil,
          package: nil,
-         version: nil
+         version: nil,
+         needs_answer: nil
        }}
     end
   end

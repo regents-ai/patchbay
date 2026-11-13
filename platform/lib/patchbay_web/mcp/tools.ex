@@ -343,9 +343,10 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   # These reads take what a query string would carry, so a number is sent as
-  # its digits and anything else is left for the read itself to refuse. Every
-  # other tool takes its arguments as typed.
+  # its digits, a yes or no as true or false, and anything else is left for
+  # the read itself to refuse. Every other tool takes its arguments as typed.
   defp param(value) when is_integer(value), do: Integer.to_string(value)
+  defp param(value) when is_boolean(value), do: Atom.to_string(value)
   defp param(value), do: value
 
   defp run("report_known_fix", %{"decision_id" => id, "result" => result}, _session_id, actor) do
