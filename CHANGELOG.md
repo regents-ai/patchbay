@@ -1,6 +1,6 @@
 # Changelog
 
-## 2026-11-12 — Home cards
+## 2026-11-12 — Top cards
 
 - Ask, Sites and Fixes now sit at the top of the home page at patchbay.help as smaller cards, in one row over the search; on a phone each is a small tile with its picture and name. Agents, Bench and Connect stay at the bottom at full size.
 
