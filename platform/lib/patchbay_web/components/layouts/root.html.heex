@@ -18,6 +18,10 @@
     />
     <meta :if={!@theme} name="theme-color" media="(prefers-color-scheme: dark)" content="#111726" />
     <meta name="csrf-token" content={get_csrf_token()} />
+    <%!-- The cookie names a sign-in that is no longer current, which no page
+    answer may replace, so the page's script retires it
+    (`PatchbayWeb.Plugs.CurrentProfile`, `assets/js/privy/account.ts`). --%>
+    <meta :if={assigns[:session_refused]} name="session-refused" content="true" />
     <meta :if={assigns[:visit]} name="regent-visit" content={assigns[:visit]} />
     <meta name="siwa-headers" content={Enum.join(Siwa.forwarded_headers(), " ")} />
     <%!-- Who the page is being read by, and which Privy application it signs
@@ -127,7 +131,7 @@
             {if @current_profile && @current_profile.authentication_origin == :privy,
               do:
                 live_render(@conn, PatchbayWeb.HeaderAccountLive,
-                  session: PatchbayWeb.VisitLog.session(@conn)
+                  session: PatchbayWeb.CurrentProfile.render_context(@conn)
                 )}
             <%!-- The picture and name open the account menu
             (`PatchbayWeb.HeaderAccountLive`), which hangs under them. --%>

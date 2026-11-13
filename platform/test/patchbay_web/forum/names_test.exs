@@ -12,7 +12,6 @@ defmodule PatchbayWeb.Forum.NamesTest do
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity
   alias Patchbay.Identity.AgentProfile
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
 
   @contract String.duplicate("c", 64)
@@ -77,9 +76,7 @@ defmodule PatchbayWeb.Forum.NamesTest do
   end
 
   defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+    sign_in(conn, profile.id)
   end
 
   test "a person is shown under their Regents account name, else their short wallet" do

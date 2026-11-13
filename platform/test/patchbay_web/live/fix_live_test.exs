@@ -12,7 +12,6 @@ defmodule PatchbayWeb.FixLiveTest do
 
   alias Patchbay.Assist
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   test "the browser that asked follows the fix to its answer", %{conn: conn} do
     browser = Ash.UUID.generate()
@@ -74,7 +73,7 @@ defmodule PatchbayWeb.FixLiveTest do
 
     assert {:error, {:redirect, %{to: "/"}}} = live(conn, ~p"/fixes/not-a-run")
 
-    {:ok, _view, html} = conn |> signed_in(person) |> live(~p"/fixes/#{run.id}")
+    {:ok, _view, html} = conn |> sign_in(person.id) |> live(~p"/fixes/#{run.id}")
     assert html =~ "goal     Book the 9am table"
   end
 
@@ -82,12 +81,6 @@ defmodule PatchbayWeb.FixLiveTest do
     conn
     |> Plug.Test.init_test_session(%{})
     |> put_session("forum_session_id", browser)
-  end
-
-  defp signed_in(conn, person) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
   end
 
   defp person do

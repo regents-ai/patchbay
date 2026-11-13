@@ -280,8 +280,9 @@ defmodule PatchbayWeb.Router do
     get "/assists/:id", RunController, :show
   end
 
-  # Signing in and out. The browser proves itself with Privy tokens it carries
-  # in headers, over the same signed session and forgery token a form would.
+  # The browser's sign-in session (`PatchbayWeb.PrivySessionController`), as in
+  # ash-template. The browser proves itself with Privy tokens it carries in
+  # headers, over the same signed session and forgery token a form would.
   # JSON answers only, so there is no page for a policy to cover.
   # sobelow_skip ["Config.CSP"]
   pipeline :privy_session do
@@ -290,6 +291,7 @@ defmodule PatchbayWeb.Router do
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug PatchbayWeb.Plugs.ForumSession
+    plug PatchbayWeb.Plugs.CurrentProfile
   end
 
   # Paid actions act on behalf of one signed-in profile and have no anonymous
@@ -345,7 +347,7 @@ defmodule PatchbayWeb.Router do
         {PatchbayWeb.CurrentProfile, :default},
         PatchbayWeb.Moderators
       ],
-      session: {PatchbayWeb.VisitLog, :session, []} do
+      session: {PatchbayWeb.CurrentProfile, :render_context, []} do
       live "/people", PeopleAdminLive, :index
       live "/people/:public_id", PersonAdminLive, :show
       live "/messages", AdminMessagesLive, :index
@@ -362,6 +364,7 @@ defmodule PatchbayWeb.Router do
   pipeline :errors_admin do
     plug :accepts, ["html"]
     plug :fetch_session
+    plug PatchbayWeb.Plugs.CurrentProfile
     plug :protect_from_forgery
 
     plug :put_secure_browser_headers, %{
@@ -406,7 +409,7 @@ defmodule PatchbayWeb.Router do
 
     live_session :account,
       on_mount: [{PatchbayWeb.CurrentProfile, :account}],
-      session: {PatchbayWeb.VisitLog, :session, []} do
+      session: {PatchbayWeb.CurrentProfile, :render_context, []} do
       live "/account", AccountLive, :show
       live "/account/agents", AccountLive, :agents
       live "/account/inbox", AccountLive, :inbox
@@ -422,7 +425,7 @@ defmodule PatchbayWeb.Router do
 
     live_session :points,
       on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :account}],
-      session: {PatchbayWeb.VisitLog, :session, []} do
+      session: {PatchbayWeb.CurrentProfile, :render_context, []} do
       live "/points", PointsLive, :show
     end
   end
@@ -433,7 +436,7 @@ defmodule PatchbayWeb.Router do
 
     live_session :fixes,
       on_mount: [{PatchbayWeb.SiteEdition, :main}, {PatchbayWeb.CurrentProfile, :default}],
-      session: {PatchbayWeb.VisitLog, :session, []} do
+      session: {PatchbayWeb.CurrentProfile, :render_context, []} do
       live "/fixes/:id", FixLive.Show, :show
     end
   end
@@ -445,11 +448,14 @@ defmodule PatchbayWeb.Router do
     post "/visit-log", VisitLogController, :create, log: false
   end
 
-  scope "/auth/privy", PatchbayWeb do
+  scope "/auth", PatchbayWeb do
     pipe_through :privy_session
 
-    post "/session", PrivySessionController, :create
-    delete "/session", PrivySessionController, :delete
+    get "/csrf", PrivySessionController, :csrf
+    get "/session", PrivySessionController, :show
+    post "/privy/failure", PrivySessionController, :failure
+    post "/privy/session", PrivySessionController, :create
+    delete "/privy/session", PrivySessionController, :delete
   end
 
   scope "/forum", PatchbayWeb.ForumAPI do

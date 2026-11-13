@@ -13,7 +13,6 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
   alias Patchbay.Identity
   alias Patchbay.JevStandIn
   alias Patchbay.Patchbay.ModelBudget
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
   alias RegentPayments.PaymentIntent
 
@@ -469,8 +468,7 @@ defmodule PatchbayWeb.ForumAPI.PostingCheckTest do
       })
 
     conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+    |> sign_in(person.id)
     |> post("/api/payment_intents", %{
       "kind" => "special_post",
       "args" =>

@@ -13,7 +13,6 @@ defmodule PatchbayWeb.EnsIdentityTest do
   alias Patchbay.Identity
   alias PatchbayWeb.EnsStandIn
   alias PatchbayWeb.Forum.Nameplate
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   @picture "https://metadata.ens.domains/mainnet/avatar/pat.eth"
 
@@ -42,10 +41,7 @@ defmodule PatchbayWeb.EnsIdentityTest do
     person = person()
     {:ok, account} = Accounts.establish(session(person))
 
-    conn =
-      conn
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+    conn = sign_in(conn, person.id)
 
     header = conn |> get(~p"/") |> html_response(200) |> header_picture()
     assert [{"svg", _attrs, _face}] = header

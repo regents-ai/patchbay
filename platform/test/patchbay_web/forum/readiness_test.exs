@@ -10,8 +10,6 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
 
   import Plug.Conn
 
-  alias PatchbayWeb.Plugs.CurrentProfile
-
   @word_zero "0x" <> String.duplicate("0", 64)
   @word_five_usdc "0x" <> String.pad_leading(Integer.to_string(5_000_000, 16), 64, "0")
 
@@ -73,9 +71,7 @@ defmodule PatchbayWeb.Forum.ReadinessTest do
     do: subject |> :erlang.phash2(16) |> Integer.to_string(16) |> String.downcase()
 
   defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+    sign_in(conn, profile.id)
   end
 
   defp readiness(conn), do: conn |> get("/forum/readiness") |> json_response(200)

@@ -19,7 +19,7 @@ defmodule PatchbayWeb.ThreadLive do
 
   The reader's own presses change the page where it stands: the follow bell,
   a heart, "Worked" and "This answered it". Each press reads the sign-in again
-  from the session the page was opened with, as a page load would. A press
+  from the lease the page connected with, as a page load would. A press
   names the state it wants, so the same press sent twice lands in the same
   place. What it changes for everyone, a count or the names under a heart,
   comes back as the notice the write sends. A press that is refused says why
@@ -33,9 +33,9 @@ defmodule PatchbayWeb.ThreadLive do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.LivePost
+  alias PatchbayWeb.CurrentProfile
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.ForumAPI.Participation
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   # What a notice changes on the post itself.
   @live [
@@ -58,12 +58,8 @@ defmodule PatchbayWeb.ThreadLive do
 
     socket =
       socket
-      |> assign(
-        path: path,
-        claim: Map.take(session, ["agent_profile_id", "signed_in_at"]),
-        refused: %{}
-      )
-      |> assign_new(:current_profile, fn -> CurrentProfile.signed_in_profile(session) end)
+      |> assign(path: path, refused: %{})
+      |> sign_in(session)
       |> assign_new(:forum_session_id, fn -> session["forum_session_id"] end)
       |> assign_new(:report, fn -> read_report(id) end)
 
@@ -156,8 +152,20 @@ defmodule PatchbayWeb.ThreadLive do
   @impl true
   def render(assigns), do: thread_body(assigns)
 
-  # The sign-in as it reads now, from the session the page was opened with.
-  defp signed_in(socket), do: CurrentProfile.signed_in_profile(socket.assigns.claim)
+  # Drawn with the page, the thread takes the page's sign-in; connected, it reads
+  # the sign-in its own socket connected with, and keeps the lease that reads it
+  # again (`PatchbayWeb.CurrentProfile`).
+  defp sign_in(socket, session) do
+    if connected?(socket) do
+      {profile, lease} = CurrentProfile.connect_lease(session)
+      assign(socket, current_profile: profile, session_lease: lease)
+    else
+      socket |> assign_new(:current_profile, fn -> nil end) |> assign(:session_lease, nil)
+    end
+  end
+
+  # The sign-in as it reads now, from the lease the page connected with.
+  defp signed_in(socket), do: CurrentProfile.leased_profile(socket.assigns.session_lease)
 
   # Says why a press was refused, beside what was pressed: the opening post
   # (`:post`), a reply (by its id) or the bell (`:follow`).

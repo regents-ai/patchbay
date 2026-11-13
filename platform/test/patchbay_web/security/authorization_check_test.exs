@@ -28,7 +28,6 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   alias Patchbay.SharedReading
   alias PatchbayWeb.Forum.Troubleshooting
   alias PatchbayWeb.LivePart
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
   alias PatchbayWeb.ThreadLive
 
@@ -57,11 +56,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
   defp as(nil), do: build_conn()
 
-  defp as(profile),
-    do:
-      build_conn()
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+  defp as(profile), do: sign_in(build_conn(), profile.id)
 
   defp signed(agent), do: build_conn() |> SignedAgent.sign(agent)
 
@@ -301,15 +296,23 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       thread = thread!(a, %{browser_session_id: shared})
       reply = reply!(thread, b)
 
-      a_conn =
+      # a signs out through the sign-out endpoint, and the browser's next page
+      # carries whatever forum identity it was left with when b signs in there.
+      left_with =
         build_conn()
         |> Plug.Test.init_test_session(%{"forum_session_id" => shared})
-        |> CurrentProfile.sign_in(a.id, System.os_time(:second))
-        |> CurrentProfile.sign_out()
+        |> sign_in(a.id)
+        |> delete(~p"/auth/privy/session")
+        |> recycle()
+        |> get(PostAddress.path(thread))
+        |> get_session("forum_session_id")
 
-      b_conn = CurrentProfile.sign_in(a_conn, b.id, System.os_time(:second))
+      b_conn =
+        build_conn()
+        |> Plug.Test.init_test_session(%{"forum_session_id" => left_with})
+        |> sign_in(b.id)
 
-      kept? = get_session(b_conn, "forum_session_id") == shared
+      kept? = left_with == shared
       b_conn |> press(thread, "mark_solution", %{"reply" => reply.id})
       marked = Ash.get!(Report, thread.id).solution_reply_id
 
@@ -331,7 +334,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       a_conn =
         build_conn()
         |> Plug.Test.init_test_session(%{"forum_session_id" => browser})
-        |> CurrentProfile.sign_in(a.id, System.os_time(:second))
+        |> sign_in(a.id)
 
       Identity.suspend_profile!(a, "Spam", actor: %{role: :system})
       said = press(a_conn, thread, "mark_solution", %{"reply" => reply.id})

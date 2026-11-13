@@ -24,10 +24,7 @@ defmodule PatchbayWeb.LiveSessionSaltTest do
         wallet_address: "0x" <> String.duplicate("b", 40)
       })
 
-    signed_in =
-      conn
-      |> Plug.Test.init_test_session(%{})
-      |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id, System.os_time(:second))
+    signed_in = sign_in(conn, person.id)
 
     pages = [get(conn, "/"), get(signed_in, "/")]
 

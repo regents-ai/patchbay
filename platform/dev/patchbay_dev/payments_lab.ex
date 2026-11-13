@@ -38,8 +38,8 @@ defmodule PatchbayDev.PaymentsLab do
   """
   use PatchbayWeb, :controller
 
+  alias Patchbay.Accounts.SessionAuthority
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias RegentPayments.USDC
 
   @wallets [
@@ -115,8 +115,12 @@ defmodule PatchbayDev.PaymentsLab do
         wallet_address: recipient
       })
 
-    conn
-    |> CurrentProfile.sign_in(payer.id, System.os_time(:second))
+    {:bootstrap, claim} = SessionAuthority.renew(nil)
+    {:ok, :bind, claim} = SessionAuthority.sign_in(claim, payer.id, DateTime.utc_now())
+
+    claim
+    |> SessionAuthority.session()
+    |> Enum.reduce(conn, fn {key, value}, conn -> put_session(conn, key, value) end)
     |> put_session("payments_lab_recipient", tipped.public_id)
     |> redirect(to: "/dev/lab/payments")
   end

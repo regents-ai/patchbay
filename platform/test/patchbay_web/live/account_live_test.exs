@@ -10,7 +10,6 @@ defmodule PatchbayWeb.AccountLiveTest do
 
   alias Patchbay.Forum
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   test "the inbox opens inside Account, with what is waiting and what is followed", %{conn: conn} do
     person =
@@ -19,10 +18,7 @@ defmodule PatchbayWeb.AccountLiveTest do
         wallet_address: "0x" <> String.duplicate("e", 40)
       })
 
-    conn =
-      conn
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+    conn = sign_in(conn, person.id)
 
     site = Forum.register_site!("followed.example.com")
     :ok = Forum.follow_site(person, Ash.UUID.generate(), site.id, true)
@@ -72,10 +68,7 @@ defmodule PatchbayWeb.AccountLiveTest do
         wallet_address: "0x" <> String.duplicate("a", 40)
       })
 
-    conn =
-      conn
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+    conn = sign_in(conn, person.id)
 
     {:ok, view, _html} = live(conn, ~p"/account/profile")
     name = "renamed-#{System.unique_integer([:positive])}"
@@ -95,10 +88,7 @@ defmodule PatchbayWeb.AccountLiveTest do
         wallet_address: "0x" <> String.duplicate("f", 40)
       })
 
-    conn =
-      conn
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+    conn = sign_in(conn, person.id)
 
     page = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
 

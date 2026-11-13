@@ -12,6 +12,7 @@ defmodule PatchbayWeb.PageBusyTest do
 
   import Phoenix.LiveViewTest, only: [live_isolated: 3]
 
+  alias Patchbay.Accounts.SessionAuthority
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias PatchbayWeb.SignedAgent
@@ -267,12 +268,7 @@ defmodule PatchbayWeb.PageBusyTest do
           wallet_address: "0x" <> String.duplicate("c", 40)
         })
 
-      signed_in =
-        conn
-        |> Plug.Test.init_test_session(%{})
-        |> PatchbayWeb.Plugs.CurrentProfile.sign_in(person.id, System.os_time(:second))
-
-      %{person: person, signed_in: signed_in}
+      %{person: person, signed_in: sign_in(conn, person.id)}
     end
 
     test "is busy, never signed out, when its profile cannot be read", %{signed_in: conn} do
@@ -281,13 +277,15 @@ defmodule PatchbayWeb.PageBusyTest do
       assert_busy_page(page, "/about")
     end
 
-    test "is still signed out when its profile is gone, or its cookie names none", %{conn: conn} do
-      for id <- [Ecto.UUID.generate(), "not-a-profile"] do
-        gone =
-          conn
-          |> Plug.Test.init_test_session(%{})
-          |> PatchbayWeb.Plugs.CurrentProfile.sign_in(id, System.os_time(:second))
-          |> get("/about")
+    test "is still signed out when its sign-in has ended, or its cookie names none", %{
+      conn: conn,
+      signed_in: signed_in
+    } do
+      signed_in |> get_session() |> SessionAuthority.claim() |> SessionAuthority.revoke()
+      malformed = %{"session_lineage" => "not-a-lineage", "session_generation" => 1}
+
+      for cookie <- [signed_in, init_test_session(conn, malformed)] do
+        gone = get(cookie, "/about")
 
         assert gone.assigns.current_profile == nil
         assert gone.assigns.signed_out_reason == :expired
@@ -307,14 +305,13 @@ defmodule PatchbayWeb.PageBusyTest do
       conn: conn,
       person: person
     } do
-      session = %{
-        "agent_profile_id" => person.id,
-        "signed_in_at" => System.system_time(:second),
-        "site_edition" => :main
-      }
+      cookie = signed_in_session(person.id)
+      rendered = Map.put(rendered_for(cookie), "site_edition", :main)
 
       {:ok, view, _html} =
-        live_isolated(conn, PatchbayWeb.HeaderAccountLive, session: session)
+        conn
+        |> init_test_session(cookie)
+        |> live_isolated(PatchbayWeb.HeaderAccountLive, session: rendered)
 
       Process.flag(:trap_exit, true)
 

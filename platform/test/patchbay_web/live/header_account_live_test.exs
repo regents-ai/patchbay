@@ -18,9 +18,14 @@ defmodule PatchbayWeb.HeaderAccountLiveTest do
         wallet_address: "0x" <> String.duplicate("e", 40)
       })
 
-    lapsed = %{"agent_profile_id" => person.id, "signed_in_at" => 0, "site_edition" => :main}
+    lifetime = Application.fetch_env!(:patchbay, :sign_in_lifetime_seconds)
+    lapsed = signed_in_session(person.id, DateTime.add(DateTime.utc_now(), -lifetime - 1))
+    rendered = Map.put(rendered_for(lapsed), "site_edition", :main)
 
-    {:ok, view, _html} = live_isolated(conn, PatchbayWeb.HeaderAccountLive, session: lapsed)
+    {:ok, view, _html} =
+      conn
+      |> init_test_session(lapsed)
+      |> live_isolated(PatchbayWeb.HeaderAccountLive, session: rendered)
 
     send(view.pid, :agents_changed)
     refute has_element?(view, "#account-menu")

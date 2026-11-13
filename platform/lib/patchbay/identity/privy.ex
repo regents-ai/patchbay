@@ -4,6 +4,9 @@ defmodule Patchbay.Identity.Privy do
   @doc """
   Verify both proof roles before requiring the wallet used by Patchbay accounts,
   and record the person in the shared Regent account (`Patchbay.Accounts`).
+  Every refusal is `{:error, {stage, reason}}`; an account that could not be
+  saved is reduced to `{:account_evidence, :account_rejected}` without being
+  inspected.
   """
   def verify_session_pair(pair) do
     with {:ok, %RegentPrivy.Session{wallet_address: address} = evidence} when is_binary(address) <-
@@ -16,7 +19,8 @@ defmodule Patchbay.Identity.Privy do
        }}
     else
       {:ok, _} -> {:error, {:account_evidence, :missing_linked_wallet}}
-      error -> error
+      {:error, {_stage, _reason}} = refused -> refused
+      {:error, _rejected} -> {:error, {:account_evidence, :account_rejected}}
     end
   end
 
