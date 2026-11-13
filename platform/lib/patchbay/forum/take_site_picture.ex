@@ -40,11 +40,15 @@ defmodule Patchbay.Forum.TakeSitePicture do
     |> logged()
   end
 
-  # A WebP picture of the page, or why none came back: the error status the
-  # page itself answered with (`{:page_status, 403}`), the machine's status,
-  # `:not_a_picture`, why the call ended (`:timeout`), or the exception Req
-  # raised.
-  defp shoot(page_url) do
+  @doc """
+  A WebP picture of the page at `page_url`, or why none came back: the error
+  status the page itself answered with (`{:page_status, 403}`), the machine's
+  status, `:not_a_picture`, why the call ended (`:timeout`), or the exception
+  Req raised. A listed site's picture is taken with it too
+  (`Patchbay.Forum.Changes.TakeListedSitePicture`).
+  """
+  @spec shoot(String.t()) :: {:ok, binary()} | {:error, term()}
+  def shoot(page_url) do
     options =
       [
         url: Application.fetch_env!(:patchbay, :shots_url) <> "/shot",

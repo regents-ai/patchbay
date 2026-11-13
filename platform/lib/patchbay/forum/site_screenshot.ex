@@ -25,6 +25,11 @@ defmodule Patchbay.Forum.SiteScreenshot do
     belongs_to(:site, Patchbay.Forum.Site, allow_nil?: false, public?: true)
   end
 
+  calculations do
+    # Counted by the database, so the picture itself is never read for it.
+    calculate(:bytes, :integer, expr(fragment("octet_length(?)", image)))
+  end
+
   identities do
     identity(:one_per_site, [:site_id])
   end

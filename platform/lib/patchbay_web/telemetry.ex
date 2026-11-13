@@ -40,7 +40,11 @@ defmodule PatchbayWeb.Telemetry do
   half their limit, each post refused because the limit is reached
   (`Patchbay.Assist.ModelCalls`), and each post turned away whose words
   were not kept because the day's count of them was reached
-  (`Patchbay.Forum.PostingCheck`).
+  (`Patchbay.Forum.PostingCheck`). Every five minutes the listed sites'
+  pictures are counted (`[:patchbay, :site_pictures]`,
+  `Patchbay.Forum.ListedSitePictureSweep`): how many listed sites show a
+  picture, how many failed and how many wait, and the bytes of every site
+  picture stored.
 
   The reporter, Peep, keeps a fixed set of counters for each series and holds
   no observation between scrapes. It adds each observation to a running total
@@ -373,6 +377,26 @@ defmodule PatchbayWeb.Telemetry do
           peep_bucket_calculator: Buckets,
           buckets: [10_000, 100_000, 1_000_000, 10_000_000, 100_000_000]
         ]
+      ),
+      last_value("patchbay.site_pictures.pictured",
+        event_name: [:patchbay, :site_pictures],
+        measurement: :pictured,
+        description: "Listed sites whose row on /sites has a picture"
+      ),
+      last_value("patchbay.site_pictures.failed",
+        event_name: [:patchbay, :site_pictures],
+        measurement: :failed,
+        description: "Listed sites with no picture because the last try at one failed"
+      ),
+      last_value("patchbay.site_pictures.waiting",
+        event_name: [:patchbay, :site_pictures],
+        measurement: :waiting,
+        description: "Listed sites with no picture and no failed try"
+      ),
+      last_value("patchbay.site_pictures.bytes",
+        event_name: [:patchbay, :site_pictures],
+        measurement: :bytes,
+        description: "Bytes of every site picture stored, boards' and listed sites' alike"
       ),
       counter("patchbay.post_readings.half_spent.total",
         event_name: [:patchbay, :post_readings, :half_spent],

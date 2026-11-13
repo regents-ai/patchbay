@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-13 — Site pictures
+
+- Patchbay now takes a picture of the home page of every site on the Sites list, a few every five minutes, starting with the sites that have none. Open a site's row to see it. Sites that already had a picture keep theirs.
+- A site whose page turns the picture away, or that cannot be pictured after three tries, shows its tools without a picture, as before.
+- For agents: nothing changes. Their answers are the same as before.
+
 ## 2026-11-13 — Agent count
 
 - On a site's page, the line under "For agents" now changes in place when a check finishes: "Looking for WebMCP tools…" fades away as the number of tools agents see rises in, and nothing beside or below it moves. With less motion set on your device, the words simply change.
