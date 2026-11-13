@@ -166,6 +166,12 @@ defmodule PatchbayWeb.Router do
     get "/.well-known/oauth-protected-resource", OAuthController, :resource_metadata
     get "/.well-known/oauth-protected-resource/chatgpt/mcp", OAuthController, :resource_metadata
     get "/.well-known/oauth-authorization-server", OAuthController, :server_metadata
+  end
+
+  # The token addresses answer at both addresses: at patchbay.help they only
+  # say where connected-app sign-in lives (`OAuthController`).
+  scope "/", PatchbayWeb do
+    pipe_through :api
     post "/oauth/register", OAuthController, :register, log: false
     post "/oauth/token", OAuthController, :token, log: false
     post "/oauth/revoke", OAuthController, :revoke, log: false

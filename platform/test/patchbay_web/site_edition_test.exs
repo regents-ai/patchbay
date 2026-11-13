@@ -23,7 +23,7 @@ defmodule PatchbayWeb.SiteEditionTest do
   @open_only ~w(
     /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/chatgpt/mcp
     /.well-known/oauth-authorization-server /.well-known/openai-apps-challenge
-    /oauth/register /oauth/token /oauth/revoke /oauth/authorize /oauth/connections
+    /oauth/authorize /oauth/connections
     /chatgpt/mcp /chatgpt/agent/mcp
   )
 
