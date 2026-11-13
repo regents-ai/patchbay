@@ -26,22 +26,17 @@ defmodule Patchbay.Offers.Watch do
   """
   @spec refresh() :: :ok
   def refresh do
-    if Offers.enabled?() do
-      soon = DateTime.add(DateTime.utc_now(), @gap_seconds)
-
-      case Oban.insert!(job()) do
-        %Oban.Job{state: state, scheduled_at: at} = job
-        when state in ["scheduled", "retryable"] ->
-          if DateTime.after?(at, soon),
-            do: {:ok, _job} = Oban.update_job(job, %{scheduled_at: soon})
-
-        %Oban.Job{} ->
-          :ok
-      end
-    end
-
+    if Offers.enabled?(), do: bring_forward(Oban.insert!(job()))
     :ok
   end
+
+  defp bring_forward(%Oban.Job{state: state, scheduled_at: at} = job)
+       when state in ["scheduled", "retryable"] do
+    soon = DateTime.add(DateTime.utc_now(), @gap_seconds)
+    if DateTime.after?(at, soon), do: {:ok, _job} = Oban.update_job(job, %{scheduled_at: soon})
+  end
+
+  defp bring_forward(%Oban.Job{}), do: nil
 
   defp job,
     do: ReadMarket.new(%{chain_id: Offers.chain().chain_id, market: Offers.market()})

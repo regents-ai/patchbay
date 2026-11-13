@@ -99,16 +99,18 @@ defmodule Patchbay.Offers.Scanner do
   defp read_forward(client, cursor, head) do
     from = cursor.next_block
     to = min(head.number, from + @max_range - 1)
+    write = fn _from, piece_to, rows, cursor -> write_piece(rows, cursor, piece_to + 1, head) end
 
-    if to < from do
-      write_piece([], cursor, from, head)
-    else
-      with {:ok, cursor} <-
-             each_piece(client, cursor, from, to, fn _from, piece_to, rows, cursor ->
-               write_piece(rows, cursor, piece_to + 1, head)
-             end) do
-        if to < head.number, do: read_forward(client, cursor, head), else: {:ok, cursor}
-      end
+    cond do
+      to < from ->
+        write_piece([], cursor, from, head)
+
+      to < head.number ->
+        with {:ok, cursor} <- each_piece(client, cursor, from, to, write),
+             do: read_forward(client, cursor, head)
+
+      true ->
+        each_piece(client, cursor, from, to, write)
     end
   end
 
@@ -209,11 +211,9 @@ defmodule Patchbay.Offers.Scanner do
   defp still_on_chain(client, cursor, rows, from, to) do
     seen = MapSet.new(rows, fn {_kind, fields} -> {fields.transaction_hash, fields.log_index} end)
     window = %{chain_id: cursor.chain_id, market: cursor.market, from: from, to: to}
+    read = &(&1 |> Ash.Query.for_read(:in_blocks, window) |> Ash.read!())
 
-    @kinds
-    |> Enum.flat_map(fn {_kind, resource} ->
-      resource |> Ash.Query.for_read(:in_blocks, window) |> Ash.read!()
-    end)
+    (read.(Placement) ++ read.(Termination) ++ read.(Lease) ++ read.(Settlement))
     |> Enum.reject(&MapSet.member?(seen, {&1.transaction_hash, &1.log_index}))
     |> Enum.map(&{&1.block_number, &1.block_hash})
     |> Enum.uniq()

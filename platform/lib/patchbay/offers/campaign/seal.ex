@@ -26,19 +26,18 @@ defmodule Patchbay.Offers.Campaign.Seal do
   end
 
   defp sites(changeset) do
-    named = Changeset.get_attribute(changeset, :sites) || []
+    results = Enum.map(Changeset.get_attribute(changeset, :sites) || [], &Origin.normalize/1)
 
-    case Enum.map(named, &Origin.normalize/1) do
-      [] ->
+    cond do
+      results == [] ->
         Changeset.add_error(changeset, field: :sites, message: "name at least one site")
 
-      results ->
-        if Enum.all?(results, &match?({:ok, _site}, &1)) do
-          sites = results |> Enum.map(fn {:ok, site} -> site end) |> Enum.uniq() |> Enum.sort()
-          Changeset.force_change_attribute(changeset, :sites, sites)
-        else
-          Changeset.add_error(changeset, field: :sites, message: "name each site by its address")
-        end
+      Enum.all?(results, &match?({:ok, _site}, &1)) ->
+        sites = Enum.sort(for {:ok, site} <- results, uniq: true, do: site)
+        Changeset.force_change_attribute(changeset, :sites, sites)
+
+      true ->
+        Changeset.add_error(changeset, field: :sites, message: "name each site by its address")
     end
   end
 
