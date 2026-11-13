@@ -6,9 +6,9 @@ import {watch} from "./support/test"
 // while the pointer is on the row or a control in the row has keyboard focus,
 // and the row never moves when it does; on a touch screen it always shows, a
 // finger tall. Pressing it opens the site's forum and never opens the row.
-// An opened row holds the site's home page picture and its tools' names: side
-// by side on a wide screen, the picture first on a phone. A long list scrolls
-// inside its own box, never sideways.
+// An opened row holds the site's home page picture, fetched only once the row
+// opens, and its tools' names: side by side on a wide screen, the picture
+// first on a phone. A long list scrolls inside its own box, never sideways.
 
 const opacity = (forum: Locator) => forum.evaluate(el => getComputedStyle(el).opacity)
 
@@ -130,12 +130,18 @@ test("pressing View Forum opens the site's forum and never the row", async ({pag
 
 test("an opened row holds the home page picture and the tools, side by side on a wide screen", async ({page}, info) => {
   const problems = watch(page)
+  const pictures: string[] = []
+  page.on("request", request => {
+    if (new URL(request.url()).pathname.startsWith("/site-screenshots/")) pictures.push(request.url())
+  })
   expect((await page.goto("/sites"))?.status()).toBe(200)
+  expect(pictures, "no picture is fetched before its row opens").toEqual([])
   const detail = await open(page, "target.com")
 
   expect(await detail.evaluate(el => [...el.children].map(child => child.tagName))).toEqual(["IMG", "UL"])
   const picture = detail.locator("img.pb-directory-picture")
   await expect.poll(() => picture.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true)
+  expect(pictures).toHaveLength(1)
   const shot = (await picture.boundingBox())!
   const tools = (await detail.locator(".pb-directory-tool-list").boundingBox())!
   expect(shot.width / shot.height).toBeCloseTo(1.6, 1)
