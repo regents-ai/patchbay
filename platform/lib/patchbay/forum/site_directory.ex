@@ -160,7 +160,6 @@ defmodule Patchbay.Forum.SiteDirectory do
       page_url: seed["url"],
       tools: tools,
       tool_count: if(observed, do: length(tools), else: reported_count(seed, tools)),
-      reported_observation: seed["reported_observation"],
       forum_posts: nil,
       logo_path: Map.get(@logos, domain(seed)),
       checked_at: snapshot["checked_at"],

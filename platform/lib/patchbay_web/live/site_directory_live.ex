@@ -233,14 +233,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                       </span>
                     </div>
                   </div>
-                  <p :if={site.reported_observation} class="pb-directory-evidence">
-                    Reported: {site.reported_observation["count"]} tools · {site.reported_observation[
-                      "source"
-                    ]}
-                    <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation[
-                      "snapshot_date"
-                    ]}</span>
-                  </p>
                   <ul
                     :if={site.tools != []}
                     class="pb-directory-tool-list"

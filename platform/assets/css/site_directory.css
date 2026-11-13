@@ -101,7 +101,6 @@
 .pb-directory-detail-heading > span { color: var(--pb-text-muted); }
 .pb-directory-detail-links { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
 .pb-directory-detail-host { display: none; }
-.pb-directory-evidence { font-size: .75rem; color: var(--pb-text-muted); max-width: 68rem; overflow-wrap: anywhere; }
 .pb-directory-tool-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .6rem 1.5rem; max-height: 20rem; overflow: auto; padding: 0; list-style: none; margin: 1rem 0 0; }
 .pb-directory-tool-list li { padding-block: .5rem; border-top: 1px solid var(--pb-line); overflow-wrap: anywhere; }
 .pb-directory-tool-list code { font-size: .75rem; }
