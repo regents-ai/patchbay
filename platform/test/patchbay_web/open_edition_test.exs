@@ -19,8 +19,11 @@ defmodule PatchbayWeb.OpenEditionTest do
   alias Patchbay.Payments.AgentTip
   alias PatchbayTest.SharedBench
   alias PatchbayWeb.ForumAPI.Participation
+  alias PatchbayWeb.LivePart
+  alias PatchbayWeb.PostListLive
   alias PatchbayWeb.SignedAgent
   alias PatchbayWeb.SiteEdition
+  alias PatchbayWeb.ThreadLive
 
   @contract String.duplicate("a", 64)
   @arguments String.duplicate("c", 64)
@@ -143,6 +146,69 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert thread =~ "Emptying the cart first made it change."
 
     assert money_on(pages(site, report, asker), &(conn |> get(&1) |> html_response(200))) == %{}
+  end
+
+  test "what arrives on the open address's open pages names no money and no other address", %{
+    conn: conn,
+    site: site,
+    report: report,
+    asker: asker,
+    answerer: answerer
+  } do
+    join = fn conn, path, view ->
+      session = conn |> get(path) |> html_response(200) |> LivePart.session(view)
+      {:ok, live, _html} = live_isolated(build_conn(), view, session: session)
+      live
+    end
+
+    views =
+      for {path, view} <- [
+            {"/", PostListLive},
+            {"/#{site.origin}", PostListLive},
+            {PostAddress.path(report), ThreadLive}
+          ],
+          do: join.(on_open(conn), path, view)
+
+    main_home = join.(conn, "/", PostListLive)
+
+    Forum.file_priority_report!(
+      %{
+        tool_id: report.tool_id,
+        browser_session_id: Ash.UUID.generate(),
+        arguments_sha256: String.duplicate("f", 64),
+        verdict: :verified_failure,
+        note: "The coupon never applied.",
+        priority_amount_atomic: 7_000_000,
+        payment_intent_id: Ash.UUID.generate()
+      },
+      actor: asker
+    )
+
+    answer =
+      Forum.add_reply!(
+        %{
+          report_id: report.id,
+          browser_session_id: Ash.UUID.generate(),
+          verdict: :verified_success,
+          note: "Applying the coupon first worked."
+        },
+        actor: answerer
+      )
+
+    Forum.like!(report.id, answer.id, actor: asker, authorize?: false)
+
+    [home, board, thread] = Enum.map(views, &render/1)
+    assert home =~ "The coupon never applied."
+    assert board =~ "The coupon never applied."
+    assert thread =~ "Applying the coupon first worked."
+
+    for html <- [home, board, thread] do
+      assert money_words(html) == []
+      assert main_addresses(html) == []
+    end
+
+    # The same post arrives at patchbay.help with its bounty.
+    assert render(main_home) =~ "Bounty · 7.00 USDC"
   end
 
   test "a person's own words about money stay on the open address", %{

@@ -19,10 +19,28 @@
     <div class="patchbay-card-heading">
       <h2>Posts</h2>
     </div>
+    <%!-- The first page stays current while it is open. --%>
+    {if is_nil(@posts_cursor),
+      do:
+        live_render(@conn, PatchbayWeb.PostListLive,
+          id: "pb-tool-posts-live",
+          session:
+            Map.merge(PatchbayWeb.VisitLog.session(@conn), %{
+              "list" => "tool",
+              "site_id" => @site.id,
+              "origin" => @site.origin,
+              "tool" => @tool_name,
+              "empty" => "No posts",
+              "ask" =>
+                ask_path(site: @site.origin, site_url: @site.origin, tool: @current_tool.name)
+            })
+        )}
     <.post_list
+      :if={@posts_cursor}
       posts={@posts}
       site_edition={@site_edition}
       earned_tips={@earned_tips}
+      likes={:thread}
       empty="No posts"
       ask={ask_path(site: @site.origin, site_url: @site.origin, tool: @current_tool.name)}
     />

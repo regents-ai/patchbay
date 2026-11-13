@@ -27,6 +27,10 @@ defmodule PatchbayWeb.Forum.Discussions do
     :site
   ]
 
+  @doc "How many threads one page of a question list holds."
+  @spec page_size() :: pos_integer()
+  def page_size, do: @page_size
+
   @doc """
   The filters a question list is read with. `site` narrows the list to one
   site, named exactly by the domain Patchbay files it under; any other value

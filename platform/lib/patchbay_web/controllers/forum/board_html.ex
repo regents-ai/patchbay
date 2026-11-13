@@ -1169,11 +1169,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp schema_type(_spec), do: "any"
 
-  # The homepage exposes opening-post likes, matching the Popular score and API.
-  # Other lists retain their existing whole-thread tally.
-  defp list_likes(%{post_like_count: count}) when is_integer(count), do: count
-  defp list_likes(post), do: post.thread_like_count
-
   @doc """
   How a site's or a tool's posts are ordered, for its Markdown page, in the
   words of the address they are read at: the open address names no bounties.
@@ -1186,6 +1181,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:posts, :list, required: true)
   attr(:site_edition, :atom, required: true, doc: "the open address shows no bounty")
   attr(:earned_tips, :map, required: true)
+
+  attr(:likes, :atom,
+    required: true,
+    values: [:post, :thread],
+    doc:
+      "which likes the posts were read with: the opening post's (the home page's read, as Popular counts them) or the whole thread's"
+  )
+
   attr(:empty, :string, required: true)
   attr(:ask, :string, default: nil, doc: "where an empty list sends the reader to ask")
 
@@ -1203,64 +1206,119 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def post_list(assigns) do
     ~H"""
     <ol :if={@posts != []} class="pb-feed-list">
-      <li :for={post <- @posts} id={"feed-#{post.id}"} class="pb-row">
-        <p class="pb-row-stats">
-          <span class="pb-row-likes" title={count_words(list_likes(post), "like", "likes")}>
-            <strong>{list_likes(post)}</strong>
-            <span class="visually-hidden">{if list_likes(post) == 1, do: "like", else: "likes"}</span>
-          </span>
-          <span
-            class={["pb-row-replies", post.solved && "is-solved"]}
-            title={count_words(post.reply_count, "reply", "replies")}
-          >
-            <Regent.Icons.icon name="message-square" />
-            <strong>{post.reply_count}</strong>
-            <span class="visually-hidden">
-              {if post.reply_count == 1, do: "reply", else: "replies"}{if post.solved,
-                do: ", solved"}
-            </span>
-          </span>
-        </p>
-        <div class="pb-row-main">
-          <p class="pb-row-by">
-            <.nameplate
-              author={post.author}
-              session_id={post.browser_session_id}
-              kind={post.author_kind}
-              earned_usdc={post.author && @earned_tips[post.author.id]}
-              post={post}
-              id={"feed-#{post.id}-author"}
-            />
-            <time datetime={DateTime.to_iso8601(post.inserted_at)} title={moment(post.inserted_at)}>
-              {RegentFormat.relative_time(post.inserted_at, DateTime.utc_now())}
-            </time>
-          </p>
-          <a class="pb-row-title" href={PostAddress.path(post)}>{post_title(post)}</a>
-          <p :if={line = excerpt(post)} class="pb-row-excerpt">{line}</p>
-          <div class="pb-row-foot">
-            <a
-              :for={tag <- post.topic_tags}
-              class="pb-tag"
-              href={~p"/?#{[tag: tag]}"}
-            >{tag}</a>
-            <.tool_chips site={post.site} names={post.tool_names} />
-            <a class="pb-site-chip" href={site_path(post.site)}>{site_name(post.site)}</a>
-            <a
-              :if={post.bounty_open and @site_edition == :main}
-              href={PostAddress.path(post) <> "#patchbay-escrow"}
-              class="pb-feed-bounty"
-            >Bounty · {escrowed(post)} USDC</a>
-          </div>
-        </div>
-      </li>
+      <.post_row
+        :for={post <- @posts}
+        id={"feed-#{post.id}"}
+        post={post}
+        site_edition={@site_edition}
+        earned_tips={@earned_tips}
+        likes={@likes}
+      />
     </ol>
-    <Regent.Primitives.empty_state :if={@posts == []} title={@empty}>
+    <.posts_empty :if={@posts == []} empty={@empty} ask={@ask} offer_ask={@offer_ask} />
+    """
+  end
+
+  attr(:empty, :string, required: true)
+  attr(:ask, :string, default: nil)
+  attr(:offer_ask, :boolean, required: true)
+
+  @doc "What a list with no posts says, and where it sends the reader to ask."
+  def posts_empty(assigns) do
+    ~H"""
+    <Regent.Primitives.empty_state title={@empty}>
       <:action :if={@offer_ask}>
         <a class="rg-button rg-button--secondary" href={@ask || ask_path()}>
           <span class="rg-button__label">Ask a question</span>
         </a>
       </:action>
     </Regent.Primitives.empty_state>
+    """
+  end
+
+  attr(:id, :string, required: true)
+  attr(:post, :map, required: true, doc: "a thread as a list reads it, or `LivePost.row/1`")
+  attr(:site_edition, :atom, required: true, doc: "the open address shows no bounty")
+  attr(:earned_tips, :map, required: true)
+  attr(:likes, :atom, required: true, values: [:post, :thread])
+
+  attr(:live, :boolean,
+    default: false,
+    doc: "drawn by a live list: its figures tick when they change and its time keeps counting"
+  )
+
+  @doc "One question in a list (`post_list/1`): the same row whether the page drew it or it arrived."
+  def post_row(assigns) do
+    assigns =
+      assign(assigns,
+        like_count:
+          if(assigns.likes == :post,
+            do: assigns.post.post_like_count,
+            else: assigns.post.thread_like_count
+          )
+      )
+
+    ~H"""
+    <li id={@id} class="pb-row">
+      <p
+        id={@live && @id <> "-stats"}
+        class="pb-row-stats"
+        phx-hook={@live && "MotionCount"}
+        data-variant={@live && "roll"}
+      >
+        <span class="pb-row-likes" title={count_words(@like_count, "like", "likes")}>
+          <strong data-count>{@like_count}</strong>
+          <span class="visually-hidden">{if @like_count == 1, do: "like", else: "likes"}</span>
+        </span>
+        <span
+          class={["pb-row-replies", @post.solved && "is-solved"]}
+          title={count_words(@post.reply_count, "reply", "replies")}
+        >
+          <Regent.Icons.icon name="message-square" />
+          <strong data-count>{@post.reply_count}</strong>
+          <span class="visually-hidden">
+            {if @post.reply_count == 1, do: "reply", else: "replies"}{if @post.solved,
+              do: ", solved"}
+          </span>
+        </span>
+      </p>
+      <div class="pb-row-main">
+        <p class="pb-row-by">
+          <.nameplate
+            author={@post.author}
+            session_id={@post.browser_session_id}
+            kind={@post.author_kind}
+            earned_usdc={@post.author && @earned_tips[@post.author.id]}
+            post={@post}
+            id={@id <> "-author"}
+          />
+          <time
+            id={@live && @id <> "-at"}
+            phx-hook={@live && "PatchbayRelativeTime"}
+            datetime={DateTime.to_iso8601(@post.inserted_at)}
+            title={moment(@post.inserted_at)}
+          >
+            {RegentFormat.relative_time(@post.inserted_at, DateTime.utc_now())}
+          </time>
+        </p>
+        <a class="pb-row-title" href={PostAddress.path(@post)}>{post_title(@post)}</a>
+        <p :if={line = excerpt(@post)} class="pb-row-excerpt">{line}</p>
+        <div class="pb-row-foot">
+          <a
+            :for={tag <- @post.topic_tags}
+            class="pb-tag"
+            href={~p"/?#{[tag: tag]}"}
+          >{tag}</a>
+          <.tool_chips site={@post.site} names={@post.tool_names} />
+          <a class="pb-site-chip" href={site_path(@post.site)}>{site_name(@post.site)}</a>
+          <a
+            :if={@post.bounty_open and @site_edition == :main}
+            href={PostAddress.path(@post) <> "#patchbay-escrow"}
+            class="pb-feed-bounty"
+          >Bounty · {escrowed(@post)} USDC</a>
+        </div>
+      </div>
+    </li>
     """
   end
 
@@ -1275,6 +1333,16 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def worked_share(activity) do
     tries = RegentFormat.add_delimiters(Integer.to_string(activity.tries))
     "#{BoardActivity.worked_percent(activity)}% worked · #{tries} reports"
+  end
+
+  @doc """
+  Whether the home page shows the first page of Recent with nothing narrowing
+  it: the list that stays current while it is open (`PatchbayWeb.PostListLive`).
+  """
+  def live_list?(filters, current_page, reports) do
+    is_list(reports) and is_nil(current_page) and filters.scope == "newest" and
+      filters.sort == "recent" and filters.q == "" and filters.site == "" and
+      filters.tool == "" and filters.tag == ""
   end
 
   @doc "The home page's heading for a question list: every post, or the list a tab narrows to."

@@ -16,10 +16,12 @@ defmodule Patchbay.Forum.Reply do
     otp_app: :patchbay,
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
 
   import Ash.Expr
 
+  alias Patchbay.Forum.LivePost
   alias Patchbay.Forum.Types.AuthorKind
   alias Patchbay.Forum.Types.RewardEligibility
   alias Patchbay.Forum.Types.Verdict
@@ -50,6 +52,29 @@ defmodule Patchbay.Forum.Reply do
         concurrently: true
       )
     end
+  end
+
+  # Every reply written, and every reply moderation hides or shows again, is
+  # told to the pages showing its thread (`Patchbay.Forum.LivePost`).
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+    prefix("public")
+    broadcast_type(:broadcast)
+
+    publish_all(:create, ["post", :report_id],
+      event: "changed",
+      load: LivePost.reply_loads(),
+      returns: :map,
+      transform: &LivePost.reply_changed/1
+    )
+
+    publish(:set_visibility, ["post", :report_id],
+      event: "changed",
+      load: LivePost.reply_loads(),
+      returns: :map,
+      transform: &LivePost.reply_changed/1
+    )
   end
 
   attributes do

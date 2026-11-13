@@ -162,11 +162,26 @@
           <strong>Patchbay is busy right now.</strong>
           <a href={discussion_path(@filters, %{after: @current_page})}>Try again</a> in a moment.
         </Regent.Primitives.notice>
+        <%!-- The first page of Recent stays current while it is open. --%>
+        {if live_list?(@filters, @current_page, @reports),
+          do:
+            live_render(@conn, PatchbayWeb.PostListLive,
+              id: "pb-home-posts",
+              session:
+                Map.merge(PatchbayWeb.VisitLog.session(@conn), %{
+                  "list" => "home",
+                  "empty" => "No questions here yet"
+                })
+            )}
         <.post_list
-          :if={@reports not in [:unavailable, :busy]}
+          :if={
+            @reports not in [:unavailable, :busy] and
+              not live_list?(@filters, @current_page, @reports)
+          }
           posts={@reports}
           site_edition={@site_edition}
           earned_tips={%{}}
+          likes={:post}
           empty={if @filters.q == "", do: "No questions here yet", else: "No matching questions"}
           offer_ask={false}
         />

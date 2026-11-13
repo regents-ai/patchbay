@@ -44,7 +44,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.PostPreview
-  alias PatchbayWeb.Forum.ReplyCursor
   alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.Forum.Troubleshooting
   alias PatchbayWeb.ForumAPI.Participation
@@ -1433,40 +1432,36 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp show_report(conn, report, params, problems) do
     filter = if params["replies"] in ["solution", "official"], do: params["replies"], else: "all"
 
-    with {:ok, keyset} <- ReplyCursor.verify(report.id, params["after"]),
-         {:ok, replies, next_cursor} <- Board.replies(report, keyset, filter) do
-      incident = report.incident && Incidents.get(report.incident)
+    %{current_profile: profile, site_edition: site_edition} = conn.assigns
 
-      render(conn, :report,
-        page_title: PostSummary.title(report),
-        page_description:
-          if(incident, do: incident.summary, else: PostSummary.description(report)),
-        incident: incident,
-        said_worked: Board.said_worked(report, replies, conn.assigns.current_profile),
-        # Also shown in answer to a reply or refund form, whose address is not the post's.
-        canonical_path: PostAddress.path(report),
-        page_data: [
-          PatchbayWeb.Forum.BoardHTML.thread_data(report, replies, conn.assigns.site_edition)
-        ],
-        report: report,
-        # Only the reply the asker marked is shown above the question.
-        answer: report.solution_reply,
-        following: followed_sites(conn),
-        reply_filter: filter,
-        replies: replies,
-        replies_cursor: params["after"],
-        next_cursor: next_cursor,
-        reply_problem: Keyword.get(problems, :reply_problem),
-        escrow_problem: Keyword.get(problems, :escrow_problem),
-        liked: Board.liked(report, replies, conn.assigns.current_profile),
-        earned_tips:
-          Board.earned_tips(
-            [report.author | Enum.map(replies, & &1.author)],
-            conn.assigns.site_edition
-          ),
-        techtree: techtree_result(report)
-      )
-    else
+    case Board.thread_page(report, params["after"], filter, profile, site_edition) do
+      {:ok, thread} ->
+        render(
+          conn,
+          :report,
+          Map.merge(thread, %{
+            page_title: PostSummary.title(report),
+            page_description:
+              if(thread.incident,
+                do: thread.incident.summary,
+                else: PostSummary.description(report)
+              ),
+            # Also shown in answer to a reply or refund form, whose address is not the post's.
+            canonical_path: PostAddress.path(report),
+            page_data: [
+              PatchbayWeb.Forum.BoardHTML.thread_data(report, thread.replies, site_edition)
+            ],
+            report: report,
+            # The live thread under the post takes the page it was drawn with
+            # (`PatchbayWeb.ThreadLive`).
+            thread: thread,
+            following: followed_sites(conn),
+            reply_problem: Keyword.get(problems, :reply_problem),
+            escrow_problem: Keyword.get(problems, :escrow_problem),
+            techtree: techtree_result(report)
+          })
+        )
+
       {:error, :invalid_cursor} ->
         conn
         |> put_status(:bad_request)

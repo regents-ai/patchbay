@@ -421,6 +421,10 @@ defmodule PatchbayWeb.Forum.Board do
 
   defp put_site(%Report{} = post, site), do: %{post | site: site}
 
+  @doc "How many threads one page of a site's or a tool's posts holds."
+  @spec ranked_page_size() :: pos_integer()
+  def ranked_page_size, do: @ranked_posts
+
   defp post_page(nil), do: [limit: @ranked_posts]
   defp post_page(cursor), do: [limit: @ranked_posts, after: cursor]
 
@@ -438,6 +442,37 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   defp post_page_result({:error, failure}), do: raise(failure)
+
+  @doc """
+  What a post's page shows under the post for `profile`: the page of replies
+  `cursor` and `filter` name, with the continuation after it, the asker's
+  pick, the incident it belongs to, what the reader likes and has said worked,
+  and the tips its writers have earned. The page and its live thread
+  (`PatchbayWeb.ThreadLive`) both draw from it.
+  """
+  @spec thread_page(Report.t(), String.t() | nil, String.t(), term(), atom()) ::
+          {:ok, map()} | {:error, term()}
+  def thread_page(%Report{} = report, cursor, filter, profile, site_edition) do
+    with {:ok, keyset} <- ReplyCursor.verify(report.id, cursor),
+         {:ok, replies, next_cursor} <- replies(report, keyset, filter) do
+      {:ok,
+       %{
+         incident: report.incident && Patchbay.Incidents.get(report.incident),
+         answer: report.solution_reply,
+         reply_filter: filter,
+         replies: replies,
+         replies_cursor: cursor,
+         next_cursor: next_cursor,
+         said_worked: said_worked(report, replies, profile),
+         liked: liked(report, replies, profile),
+         earned_tips: earned_tips([report.author | Enum.map(replies, & &1.author)], site_edition)
+       }}
+    end
+  end
+
+  @doc "How many replies one page of a thread holds."
+  @spec replies_per_page() :: pos_integer()
+  def replies_per_page, do: @replies_per_page
 
   @doc """
   One page of the replies to a report, oldest first: the opening page, or the

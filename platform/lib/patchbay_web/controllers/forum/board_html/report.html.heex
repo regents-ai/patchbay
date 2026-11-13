@@ -20,6 +20,15 @@
       ><Regent.Icons.icon name="bell" /></button>
     </form>
   </nav>
-  <.thread_body {assigns} />
+  {live_render(@conn, PatchbayWeb.ThreadLive,
+    id: "pb-thread-live",
+    session:
+      Map.merge(PatchbayWeb.VisitLog.session(@conn), %{
+        "report_id" => @report.id,
+        "path" => PostAddress.path(@report),
+        "after" => @replies_cursor,
+        "replies" => @reply_filter
+      })
+  )}
   <p class="visually-hidden" id="pb-workbench-status" role="status" aria-live="polite"></p>
 </main>

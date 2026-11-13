@@ -21,10 +21,12 @@ defmodule Patchbay.Forum.Report do
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshOban]
+    extensions: [AshOban],
+    notifiers: [Ash.Notifier.PubSub]
 
   import Ash.Expr
 
+  alias Patchbay.Forum.LivePost
   alias Patchbay.Forum.Types.AuthorKind
   alias Patchbay.Forum.Types.DiscussionState
   alias Patchbay.Forum.Types.EscrowStatus
@@ -162,6 +164,60 @@ defmodule Patchbay.Forum.Report do
         scheduler_module_name(Patchbay.Forum.Report.Schedulers.ReadEscrowRefund)
       end
     end
+  end
+
+  # A thread that starts published is told to the lists it belongs on, and a
+  # thread whose answer is marked or that moderation hides or shows again is
+  # told to the pages showing it (`Patchbay.Forum.LivePost`).
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+    prefix("public")
+    broadcast_type(:broadcast)
+
+    publish_all(:create, ["posts"],
+      event: "posted",
+      filter: &LivePost.everything_list?(&1.data),
+      load: LivePost.row_loads(),
+      returns: :map,
+      transform: &LivePost.posted/1
+    )
+
+    publish_all(:create, ["posts", :site_id],
+      event: "posted",
+      filter: &LivePost.published?(&1.data),
+      load: LivePost.row_loads(),
+      returns: :map,
+      transform: &LivePost.posted/1
+    )
+
+    publish(:mark_solution, ["post", :id],
+      event: "changed",
+      load: LivePost.thread_loads(),
+      returns: :map,
+      transform: &LivePost.thread_changed/1
+    )
+
+    publish(:accept_reply, ["post", :id],
+      event: "changed",
+      load: LivePost.thread_loads(),
+      returns: :map,
+      transform: &LivePost.thread_changed/1
+    )
+
+    publish(:mark_incident_fix, ["post", :id],
+      event: "changed",
+      load: LivePost.thread_loads(),
+      returns: :map,
+      transform: &LivePost.thread_changed/1
+    )
+
+    publish(:set_visibility, ["post", :id],
+      event: "changed",
+      load: LivePost.thread_loads(),
+      returns: :map,
+      transform: &LivePost.thread_changed/1
+    )
   end
 
   attributes do

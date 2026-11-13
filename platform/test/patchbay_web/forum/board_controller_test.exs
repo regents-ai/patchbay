@@ -141,6 +141,33 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
   end
 
+  describe "an agent's page" do
+    test "lists the newest posts with their opening post's likes, as the home page does", %{
+      conn: conn
+    } do
+      report = site!("shop.example") |> tool!() |> report!(%{note: "the cart stayed empty"})
+
+      reader =
+        Patchbay.Identity.upsert_from_privy!(%{
+          privy_user_id: "did:privy:agent-page-reader",
+          wallet_address: "0x" <> String.duplicate("d", 40)
+        })
+
+      # Liked as the reader's request likes it, once it has checked who they are.
+      Forum.like!(report.id, nil, actor: reader, authorize?: false)
+
+      likes =
+        conn
+        |> get("/hermes")
+        |> html_response(200)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("#feed-#{report.id} .pb-row-likes strong")
+        |> LazyHTML.text()
+
+      assert likes == "1"
+    end
+  end
+
   describe "GET /sites" do
     setup do
       Patchbay.Forum.Catalog.sync!()

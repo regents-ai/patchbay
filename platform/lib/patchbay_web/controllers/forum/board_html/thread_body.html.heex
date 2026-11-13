@@ -1,3 +1,7 @@
+<%!-- Drawn by `PatchbayWeb.ThreadLive`, which keeps it current while it is
+open. A new reply settles in at the end, and a count that changes ticks once.
+What the reader may be using, and what is drawn only with the page, is kept
+as drawn (`phx-update="ignore"`). --%>
 <Regent.Discussion.thread
   id="pb-thread"
   class="pb-thread"
@@ -8,6 +12,10 @@
   likes={@report.thread_like_count}
   last_activity_at={@report.last_activity_at}
   last_activity={RegentFormat.relative_time(@report.last_activity_at, DateTime.utc_now())}
+  phx-hook="MotionThread"
+  data-variant="roll"
+  data-arrivals=".rg-discussion__replies > li"
+  data-figures="[data-count], .rg-discussion__replies-title > span"
 >
   <:context>
     <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
@@ -89,8 +97,12 @@
     <span>{jev_caption(@site_edition)}</span>
   </p>
 
-  <.techtree_result :if={@techtree} result={@techtree} digest={@report.techtree_digest} />
+  <div id="pb-kept-techtree" phx-update="ignore">
+    <.techtree_result :if={@techtree} result={@techtree} digest={@report.techtree_digest} />
+  </div>
 
+  <%!-- Each reply is drawn against `@reply_report`, which changes only when
+  the asker's pick does, so a new reply or like redraws only its own reply. --%>
   <Regent.Discussion.replies
     id="patchbay-replies"
     count={@report.reply_count}
@@ -100,21 +112,17 @@
   >
     <.reply
       :for={reply <- @replies}
+      :key={reply.id}
       reply={reply}
-      report={@report}
+      report={@reply_report}
       earned_usdc={reply.author && @earned_tips[reply.author.id]}
       cursor={@replies_cursor}
       reply_filter={@reply_filter}
       liked={reply.id in @liked}
-      can_mark={
-        reader_asked?(@report, @conn.assigns) && is_nil(@report.solution_reply) &&
-          is_nil(@report.priority_amount_atomic)
-      }
-      can_accept={
-        @site_edition == :main && can_accept?(@report, reply, @conn.assigns.current_profile)
-      }
+      can_mark={@can_mark}
+      can_accept={@site_edition == :main && can_accept?(@reply_report, reply, @current_profile)}
       said_worked={
-        if @incident && !own_reply?(reply, @conn.assigns.current_profile),
+        if @incident && !own_reply?(reply, @current_profile),
           do: reply.id in @said_worked
       }
     />
@@ -133,63 +141,69 @@
           href={PostAddress.path(@report, after: @next_cursor, replies: @reply_filter) <> "#patchbay-replies"}
         >More replies →</a>
       </nav>
-      <.human_reply_form
-        report={@report}
-        profile={@conn.assigns.current_profile}
-        problem={@reply_problem}
-        cursor={@replies_cursor}
-      />
+      <div id="pb-kept-reply-form" phx-update="ignore">
+        <.human_reply_form
+          report={@report}
+          profile={@current_profile}
+          problem={@reply_problem}
+          cursor={@replies_cursor}
+        />
+      </div>
     </:footer>
   </Regent.Discussion.replies>
 
-  <Regent.Primitives.disclosure
-    :if={!@incident}
-    id="report-evidence"
-    summary="Evidence"
-    class="pb-thread-evidence"
-  >
-    <dl class="pb-evidence-facts">
-      <dt>Record</dt><dd><.checked_mark id="pb-thread-checked" report={@report} /></dd>
-      <dt :if={@report.verdict}>Result</dt><dd :if={@report.verdict}>
-        {verdict_label(@report.verdict)}
-      </dd>
-      <dt>Reported</dt><dd>{DateTime.to_iso8601(@report.inserted_at)}</dd>
-      <dt>Report ID</dt><dd><code>{@report.id}</code></dd>
-      <dt :if={@report.tool}>Tool version</dt><dd :if={@report.tool}>
-        <code>{@report.tool.contract_sha256}</code>
-      </dd>
-      <dt :if={@report.arguments_sha256}>Arguments fingerprint</dt><dd :if={
-        @report.arguments_sha256
-      }>
-        <code>{@report.arguments_sha256}</code>
-      </dd>
-      <dt :if={@report.failure_code}>Failure code</dt><dd :if={@report.failure_code}>
-        <code>{@report.failure_code}</code>
-      </dd>
-      <dt :if={@report.invocation_id}>Invocation</dt><dd :if={@report.invocation_id}>
-        <code>{@report.invocation_id}</code>
-      </dd>
-    </dl>
-    <h3 :if={@report.handler_result}>Tool result</h3>
-    <.evidence_text :if={@report.handler_result} value={@report.handler_result} />
-    <h3 :if={@report.observed}>Page view</h3>
-    <.evidence_text :if={@report.observed} value={@report.observed} />
-    <a :if={@report.tool} href={tool_path(@report.site, @report.tool.name)}>Tool versions and observed history →</a>
-  </Regent.Primitives.disclosure>
+  <div id="pb-kept-evidence" phx-update="ignore">
+    <Regent.Primitives.disclosure
+      :if={!@incident}
+      id="report-evidence"
+      summary="Evidence"
+      class="pb-thread-evidence"
+    >
+      <dl class="pb-evidence-facts">
+        <dt>Record</dt><dd><.checked_mark id="pb-thread-checked" report={@report} /></dd>
+        <dt :if={@report.verdict}>Result</dt><dd :if={@report.verdict}>
+          {verdict_label(@report.verdict)}
+        </dd>
+        <dt>Reported</dt><dd>{DateTime.to_iso8601(@report.inserted_at)}</dd>
+        <dt>Report ID</dt><dd><code>{@report.id}</code></dd>
+        <dt :if={@report.tool}>Tool version</dt><dd :if={@report.tool}>
+          <code>{@report.tool.contract_sha256}</code>
+        </dd>
+        <dt :if={@report.arguments_sha256}>Arguments fingerprint</dt><dd :if={
+          @report.arguments_sha256
+        }>
+          <code>{@report.arguments_sha256}</code>
+        </dd>
+        <dt :if={@report.failure_code}>Failure code</dt><dd :if={@report.failure_code}>
+          <code>{@report.failure_code}</code>
+        </dd>
+        <dt :if={@report.invocation_id}>Invocation</dt><dd :if={@report.invocation_id}>
+          <code>{@report.invocation_id}</code>
+        </dd>
+      </dl>
+      <h3 :if={@report.handler_result}>Tool result</h3>
+      <.evidence_text :if={@report.handler_result} value={@report.handler_result} />
+      <h3 :if={@report.observed}>Page view</h3>
+      <.evidence_text :if={@report.observed} value={@report.observed} />
+      <a :if={@report.tool} href={tool_path(@report.site, @report.tool.name)}>Tool versions and observed history →</a>
+    </Regent.Primitives.disclosure>
+  </div>
 
-  <Regent.Primitives.disclosure
-    :if={@site_edition == :main && @report.priority_amount_atomic}
-    id="pb-thread-payment"
-    summary="Paid priority"
-    open={not is_nil(@escrow_problem)}
-  >
-    <p class="pb-thread-caption">
-      A bounty does not verify an answer. Payment status and refund eligibility must be checked onchain.
-    </p>
-    <.escrow_standing
-      report={@report}
-      profile={@conn.assigns.current_profile}
-      problem={@escrow_problem}
-    />
-  </Regent.Primitives.disclosure>
+  <div id="pb-kept-payment" phx-update="ignore">
+    <Regent.Primitives.disclosure
+      :if={@site_edition == :main && @report.priority_amount_atomic}
+      id="pb-thread-payment"
+      summary="Paid priority"
+      open={not is_nil(@escrow_problem)}
+    >
+      <p class="pb-thread-caption">
+        A bounty does not verify an answer. Payment status and refund eligibility must be checked onchain.
+      </p>
+      <.escrow_standing
+        report={@report}
+        profile={@current_profile}
+        problem={@escrow_problem}
+      />
+    </Regent.Primitives.disclosure>
+  </div>
 </Regent.Discussion.thread>

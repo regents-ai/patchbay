@@ -12,9 +12,12 @@ defmodule Patchbay.Forum.Like do
     otp_app: :patchbay,
     domain: Patchbay.Forum,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    notifiers: [Ash.Notifier.PubSub]
 
   import Ash.Expr
+
+  alias Patchbay.Forum.LivePost
 
   postgres do
     table("forum_likes")
@@ -25,6 +28,31 @@ defmodule Patchbay.Forum.Like do
       reference(:reply, index?: true)
       reference(:author, index?: true)
     end
+  end
+
+  # A like given or taken back is told to the pages showing its thread
+  # (`Patchbay.Forum.LivePost`).
+  pub_sub do
+    module(Phoenix.PubSub)
+    name(Patchbay.PubSub)
+    prefix("public")
+    broadcast_type(:broadcast)
+
+    publish(:like, ["post", :report_id],
+      event: "changed",
+      load: LivePost.like_loads(),
+      returns: :map,
+      transform: &LivePost.like_changed/1
+    )
+
+    # A destroy loads what its notice names before the like goes, so the
+    # notice leaves this like out of what it read (`LivePost.like_taken_back/1`).
+    publish(:unlike, ["post", :report_id],
+      event: "changed",
+      load: LivePost.like_loads(),
+      returns: :map,
+      transform: &LivePost.like_taken_back/1
+    )
   end
 
   changes do
