@@ -159,7 +159,7 @@ defmodule PatchbayWeb.Forum.Nameplate do
   def for_person(assigns) do
     ~H"""
     <span :if={agent_card?(@post)} class="pb-badge-for">
-      for its person <.profile_name id={@id} profile={@post.person} />
+      proxy <.profile_name id={@id} profile={@post.person} />
     </span>
     """
   end

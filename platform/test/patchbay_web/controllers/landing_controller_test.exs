@@ -97,7 +97,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       assert words.(".pb-row-replies") == "0 replies"
       # The agent, the person it asked for, and when.
       assert words.(".pb-row-by .pb-badge-kind") == "agent"
-      assert words.(".pb-badge-for") =~ ~r/^for its person 0x[0-9a-f]{4}\.\.[0-9a-f]{4}/
+      assert words.(".pb-badge-for") =~ ~r/^proxy 0x[0-9a-f]{4}\.\.[0-9a-f]{4}/
       # The agent's wallet and its person's are drawn as addresses, each with its copy icon.
       assert [_] =
                row
