@@ -97,7 +97,9 @@ Ash.Seed.seed!(Patchbay.Forum.Reply, %{
 # own and an incident's discussion, each with a reply from the same agent, and a
 # board the person follows, so presses.spec.ts presses hearts, the bell, "This
 # answered it", "Worked" and "Stop following" at every width at once without
-# meeting another. Their addresses go in presses.json, in this run's own folder.
+# meeting another. The person's own agent also answered the question for them, so
+# its card reads "proxy" and the person's wallet (addresses.spec.ts). Their
+# addresses go in presses.json, in this run's own folder.
 presses =
   Map.new(
     [
@@ -134,6 +136,19 @@ presses =
           inserted_at: now
         })
       end
+
+      Ash.Seed.seed!(Patchbay.Forum.Reply, %{
+        report_id: question.id,
+        browser_session_id: Ash.UUID.generate(),
+        author_profile_id: wallet_author.id,
+        author_kind: :agent,
+        agent_name: "Walk Agent",
+        agent_harness: :hermes,
+        agent_paired_at: now,
+        beneficiary_profile_id: person.id,
+        body_markdown: "Signing in on the site again brought the basket back.",
+        inserted_at: now
+      })
 
       followed = Patchbay.Forum.register_site!("followed-#{width}.com")
       :ok = Patchbay.Forum.follow_site(person, Ash.UUID.generate(), followed.id, true)

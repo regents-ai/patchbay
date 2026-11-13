@@ -20,10 +20,12 @@ async function stays(page: Page) {
     expect(await page.evaluate(() => (window as unknown as {pbStayed?: boolean}).pbStayed), "the same page").toBe(true)
 }
 
-// Presses a control and waits for what it changes. A control still there after
-// the press is still on screen: the reader is where they were.
+// Presses a control in the middle of the screen and waits for what it changes. A
+// control still there after the press is still on screen: the reader is where they
+// were. (On a phone a reply's heart moves down a line once "Liked by" joins it, so
+// one pressed at the screen's very edge would leave it.)
 async function pressInPlace(control: Locator, how: "pointer" | "keys", isMobile: boolean, done: () => Promise<void>) {
-  await control.scrollIntoViewIfNeeded()
+  await control.evaluate(part => part.scrollIntoView({block: "center", behavior: "instant"}))
   if (how === "keys") {
     await control.focus()
     await control.page().keyboard.press("Enter")
