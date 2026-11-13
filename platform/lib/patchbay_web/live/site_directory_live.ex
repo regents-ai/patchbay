@@ -194,6 +194,9 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   <div class="pb-directory-url">
                     <a href={site.page_url} rel="noopener noreferrer" target="_blank">{site.host}<span class="visually-hidden"> (opens website)</span></a>
                   </div>
+                  <a class="pb-directory-forum" href={"/" <> site.domain}>
+                    <span>View Forum</span><span class="visually-hidden"> for {site.name}</span>
+                  </a>
                 </div>
                 <div
                   id={"tools-" <> site.host}
