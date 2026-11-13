@@ -1,9 +1,12 @@
 defmodule PatchbayWeb.SiteDirectoryLive do
-  @moduledoc "The public site directory, with visitor-requested daily refreshes and job completion updates."
+  @moduledoc """
+  The public site directory. A row opens on the picture Patchbay took of the
+  site's home page and its WebMCP tools, and changes as Patchbay's checks of
+  its sites finish.
+  """
   use PatchbayWeb, :live_view
 
   alias Patchbay.Forum.SiteDirectory
-  alias PatchbayWeb.Forum.SiteChecks
 
   def mount(_params, session, socket) do
     # The page asked for was checked before this page was rendered.
@@ -11,13 +14,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
 
     socket =
       socket
-      |> assign(
-        page: page,
-        visitor: session["visitor"],
-        problem: nil,
-        expanded: MapSet.new(),
-        subscribed: MapSet.new()
-      )
+      |> assign(page: page, expanded: MapSet.new(), subscribed: MapSet.new())
       |> stream_configure(:sites, dom_id: &"directory-#{&1.host}")
       |> stream(:sites, page.sites)
       |> subscribe_sites(page.sites)
@@ -61,28 +58,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
     socket = assign(socket, expanded: expanded)
     site = Enum.find(socket.assigns.page.sites, &(&1.host == host))
     {:noreply, if(site, do: stream_insert(socket, :sites, site), else: socket)}
-  end
-
-  def handle_event("update", %{"host" => host}, socket) do
-    case Enum.find(socket.assigns.page.sites, &(&1.host == host)) do
-      nil ->
-        {:noreply, assign(socket, problem: "Choose a site from this page.")}
-
-      site ->
-        {status, check} =
-          SiteChecks.ask(site.domain, SiteChecks.current(site.domain), socket.assigns.visitor)
-
-        page =
-          if check,
-            do: SiteDirectory.replace_check(socket.assigns.page, check),
-            else: socket.assigns.page
-
-        problem =
-          if status == :limited, do: "You've updated several sites. Try again in a few minutes."
-
-        socket = assign(socket, page: page, problem: problem)
-        {:noreply, stream(socket, :sites, Enum.filter(page.sites, &(&1.domain == site.domain)))}
-    end
   end
 
   def handle_info(%Ash.Notifier.Notification{data: check}, socket) do
@@ -129,20 +104,6 @@ defmodule PatchbayWeb.SiteDirectoryLive do
         </p>
         <p>{length(@page.sites)} / {metric(@page.total)}</p>
       </div>
-      <p
-        :if={@problem}
-        id="pb-directory-problem"
-        role="alert"
-        class="pb-directory-notice"
-        phx-hook="MotionRefusal"
-        phx-remove={PatchbayWeb.Motion.leave()}
-        data-refused
-      >
-        {@problem}
-      </p>
-      <p :if={!@page.cache_available?} role="status" class="pb-directory-notice">
-        Saved listings are available. Refresh is temporarily unavailable.
-      </p>
 
       <div
         :if={@page.sites != []}
@@ -193,78 +154,35 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   </button>
                   <div class="pb-directory-url">
                     <a href={site.page_url} rel="noopener noreferrer" target="_blank">{site.host}<span class="visually-hidden"> (opens website)</span></a>
-                    <span
-                      :if={site.failed? and !site.pending?}
-                      class="pb-directory-failure"
-                      role="status"
-                    >Check incomplete</span>
                   </div>
+                  <a class="pb-directory-forum" href={"/" <> site.domain}>
+                    <span>View Forum</span><span class="visually-hidden"> for {site.name}</span>
+                  </a>
                 </div>
                 <div
                   id={"tools-" <> site.host}
                   class="pb-directory-detail-inner"
                   hidden={!MapSet.member?(@expanded, site.host)}
                 >
-                  <div class="pb-directory-detail-heading">
-                    <span><strong>{site.name}</strong>
-                    · {category_label(site.category, @site_edition)}</span>
-                    <div class="pb-directory-detail-links">
-                      <a
-                        class="pb-directory-detail-host"
-                        href={site.page_url}
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >{site.host}<span class="visually-hidden"> (opens website)</span></a>
-                      <a href={"/" <> site.domain}>Open forum →</a>
-                      <button
-                        :if={@page.cache_available? and site.due? and !site.pending?}
-                        type="button"
-                        class="pb-directory-refresh"
-                        phx-click="update"
-                        phx-value-host={site.host}
-                        phx-disable-with="…"
-                        aria-label={"Refresh " <> site.name}
-                        title="Refresh tools"
-                      >
-                        <Regent.Icons.icon name="rotate-cw" />
-                      </button>
-                      <span
-                        :if={site.pending?}
-                        class="pb-directory-refresh pb-directory-refresh--busy"
-                        role="status"
-                        aria-label={"Refreshing " <> site.name}
-                      >
-                        <Regent.Icons.icon name="rotate-cw" /><span class="visually-hidden">Refreshing</span>
-                      </span>
-                    </div>
-                  </div>
-                  <p :if={site.reported_observation} class="pb-directory-evidence">
-                    Reported: {site.reported_observation["count"]} tools · {site.reported_observation[
-                      "source"
-                    ]}
-                    <span :if={site.reported_observation["snapshot_date"]}> · {site.reported_observation[
-                      "snapshot_date"
-                    ]}</span>
-                  </p>
-                  <p :if={site.failed?} class="pb-directory-notice">
-                    The check was incomplete. Previous information is kept.
-                  </p>
+                  <img
+                    :if={site.screenshot_path}
+                    class="pb-directory-picture"
+                    src={site.screenshot_path}
+                    alt={site.name <> " home page"}
+                    width="1600"
+                    height="1000"
+                    loading="lazy"
+                    decoding="async"
+                  />
                   <ul
                     :if={site.tools != []}
                     class="pb-directory-tool-list"
                     tabindex="0"
-                    aria-label={"Recorded WebMCP tools for " <> site.name}
+                    aria-label={"WebMCP tools on " <> site.name}
                   >
-                    <li :for={tool <- site.tools}>
-                      <code>{tool["name"]}</code><span>{URI.parse(tool["address"]).path || "/"}</span>
-                    </li>
+                    <li :for={tool <- site.tools}><code>{tool["name"]}</code></li>
                   </ul>
-                  <p :if={site.tools == []} class="pb-directory-empty">
-                    {if site.source == "Source scan",
-                      do:
-                        "No tools found on the site's public pages. Tools that appear only in a browser may still be there.",
-                      else: "Tool names have not been recorded for this listing."}
-                  </p>
+                  <p :if={site.tools == []} class="pb-directory-empty">No tool names recorded yet.</p>
                 </div>
               </th>
               <td class="pb-directory-numeric">

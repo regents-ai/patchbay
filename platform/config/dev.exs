@@ -44,8 +44,10 @@ if walk? do
   config :patchbay, :reads_per_minute, 1_000_000
 end
 
-# A development server never copies cve.now's records into its posts.
+# A development server never copies cve.now's records into its posts, and
+# never goes round the listed sites on its own.
 config :patchbay, Patchbay.Incidents.CveNow, enabled?: false
+config :patchbay, Patchbay.Forum.SiteCheckSweep, enabled?: false
 
 config :patchbay, PatchbayWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.

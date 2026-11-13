@@ -36,7 +36,6 @@ defmodule PatchbayWeb.Forum.BoardJSON do
             category: site.category,
             tools: site.tool_count,
             tool_inventory: site.tools,
-            reported_tool_observation: site.reported_observation,
             discussions: site.forum_posts,
             relationship: nil,
             inventory: if(site.source == "Source scan", do: "partial", else: nil),

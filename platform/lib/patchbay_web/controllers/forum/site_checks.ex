@@ -1,8 +1,7 @@
 defmodule PatchbayWeb.Forum.SiteChecks do
   @moduledoc """
   How a site's page asks for its check (`Patchbay.Forum.SiteCheck`): opening
-  the page asks when the check is due, and so does the directory's "Update".
-  "Refresh this site" asks for a new picture of the site and a new check
+  the page asks when the check is due. "Refresh this site" asks for a new picture of the site and a new check
   together, once its last picture is a day old (`refresh/3`). Every ask
   counts against the visitor's share, twenty in ten minutes, so one visitor
   cannot keep Patchbay reading sites for them.
@@ -93,7 +92,7 @@ defmodule PatchbayWeb.Forum.SiteChecks do
   @doc "Whether a finished check found nothing an agent can use."
   @spec nothing?(map()) :: boolean()
   def nothing?(findings),
-    do: Enum.all?(~w(webmcp servers files code), &(findings[&1] == []))
+    do: Enum.all?(~w(webmcp servers files), &(findings[&1] == []))
 
   @doc "What an MCP server said when it was asked for its tools."
   @spec server_label(map()) :: String.t()
@@ -111,11 +110,4 @@ defmodule PatchbayWeb.Forum.SiteChecks do
   def file_label("skills"), do: "Agent skills"
   def file_label("skill_md"), do: "skill.md"
   def file_label("agent_card"), do: "Agent card"
-
-  @doc "The name of a place code and packages are listed."
-  @spec source_label(String.t()) :: String.t()
-  def source_label("github"), do: "GitHub"
-  def source_label("npm"), do: "npm"
-  def source_label("pypi"), do: "PyPI"
-  def source_label("registry"), do: "MCP Registry"
 end

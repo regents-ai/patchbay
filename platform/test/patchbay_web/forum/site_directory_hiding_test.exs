@@ -39,14 +39,13 @@ defmodule PatchbayWeb.Forum.SiteDirectoryHidingTest do
       |> Enum.zip(tools_by_page)
       |> Map.new(fn
         {url, nil} ->
-          {url, %{"failed" => true, "last_attempt_at" => "2026-10-30T12:00:00Z"}}
+          {url, %{}}
 
         {url, tools} ->
           {url,
            %{
              "checked_at" => "2026-10-30T12:00:00Z",
              "page_url" => url,
-             "failed" => false,
              "tools" => Enum.map(tools, &%{"name" => &1, "address" => url})
            }}
       end)

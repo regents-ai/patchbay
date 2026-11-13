@@ -80,6 +80,33 @@ Ash.Seed.seed!(Patchbay.Forum.Reply, %{
   inserted_at: now
 })
 
+# A picture of target.com's home page, kept as Patchbay.Forum.TakeSitePicture
+# keeps the one the screenshot machine takes (the walk never reaches that
+# machine), so its opened row on /sites has a picture (sites_forum.spec.ts).
+target = Patchbay.Forum.register_site!("target.com")
+taken_at = DateTime.utc_now()
+
+Ash.create!(
+  Patchbay.Forum.SiteScreenshot,
+  %{
+    site_id: target.id,
+    image: File.read!("priv/static/images/home-sites/target-960.webp"),
+    captured_at: taken_at
+  },
+  action: :store,
+  authorize?: false
+)
+
+Ash.update!(
+  target,
+  %{
+    screenshot_path: "/site-screenshots/#{target.id}?at=#{DateTime.to_unix(taken_at)}",
+    screenshot_captured_at: taken_at
+  },
+  action: :record_screenshot,
+  authorize?: false
+)
+
 # An incident's discussion with a reply from the same agent, so the walk's person
 # can say it worked (incidents.desktop.spec.ts).
 {:ok, incident} = Patchbay.Incidents.Discussion.open(Patchbay.Incidents.get("emudhra"))

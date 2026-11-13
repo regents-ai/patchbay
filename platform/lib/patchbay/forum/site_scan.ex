@@ -1,23 +1,18 @@
 defmodule Patchbay.Forum.SiteScan do
   @moduledoc """
-  Finds what a site offers agents, from what it publishes and what is listed
-  about it elsewhere:
+  Finds what a site offers agents, from what the site itself publishes:
 
-  - its front page: the WebMCP tools its code signs up, and its links to
-    GitHub, npm and PyPI;
+  - its front page: the WebMCP tools its code signs up;
   - its MCP servers: the ones its server card (`/.well-known/mcp.json` or
-    `/.well-known/mcp`) names, the one at `/mcp`, and the ones the official
-    MCP Registry lists under its name. Each is asked for its tools; one that
-    asks for a sign-in first is noted as such;
+    `/.well-known/mcp`) names, the one at `/mcp`, and the ones on its own
+    domain that the official MCP Registry lists under its reversed name
+    (`com.example/…`), which the registry lets only the domain's owner
+    publish. Each is asked for its tools; one that asks for a sign-in first
+    is noted as such;
   - the files agents read: `/llms.txt`, `/.well-known/api-catalog`,
     `/openapi.json`, `/.well-known/skills/index.json`, `/skill.md` and
     `/.well-known/agent-card.json`, each counted only when it is what its
-    name says;
-  - the official MCP Registry's entries under the site's reversed name
-    (`com.example/…`), which the registry lets only the domain's owner
-    publish, and GitHub repositories and npm packages named like the site.
-    A repository or package whose homepage is on the site is from the site;
-    at most three of the others are kept as maybe related.
+    name says.
 
   The site's own addresses are read through `Patchbay.Assist.Target`: public
   addresses only, nothing but a GET (and MCP's own POSTs to a server), no
@@ -27,9 +22,8 @@ defmodule Patchbay.Forum.SiteScan do
   The answer is the front page that was read (or nil), whether that page and
   every script it loads or imports from the site's own domain were read in
   full (`Patchbay.Assist.PageTools.inspect_tools/2`), and what was found: a
-  map with string keys, as it is stored, of `"webmcp"`, `"servers"`,
-  `"files"`, `"code"` and `"unsearched"` (the outside lists that could not be
-  searched just now).
+  map with string keys, as it is stored, of `"webmcp"`, `"servers"` and
+  `"files"`.
   """
 
   alias Patchbay.Assist.McpClient
@@ -45,9 +39,6 @@ defmodule Patchbay.Forum.SiteScan do
   @all_timeout_ms 45_000
   @most_servers 4
   @most_tools 100
-  @most_links 10
-  @most_related 3
-  @most_from_site 5
   @name_chars 128
   @text_chars 500
 
@@ -62,14 +53,7 @@ defmodule Patchbay.Forum.SiteScan do
     {"agent_card", "/.well-known/agent-card.json", :json}
   ]
 
-  # github.com paths that are GitHub's own pages, not an account.
-  @github_pages ~w(about apps collections contact customer-stories enterprise events explore
-                   features login marketplace new notifications orgs pricing pulls search
-                   security settings site sponsors team topics trending)
-
   @registry "https://registry.modelcontextprotocol.io/v0/servers"
-  @github "https://api.github.com/search/repositories"
-  @npm "https://registry.npmjs.org/-/v1/search"
 
   @type findings :: %{String.t() => term()}
 
@@ -84,41 +68,36 @@ defmodule Patchbay.Forum.SiteScan do
   @spec findings(String.t(), keyword()) :: {String.t() | nil, boolean(), findings()}
   def findings(domain, opts) do
     site = "https://" <> domain
-    label = label(domain)
 
     found =
       [
         page: fn -> front_page(site, opts) end,
         cards: fn -> cards(site, opts) end,
         files: fn -> files(site, opts) end,
-        registry: fn -> registry(domain) end,
-        github: fn -> github(label, domain) end,
-        npm: fn -> npm(label, domain) end
+        registry: fn -> registry(domain) end
       ]
-      |> each(fn {part, read} -> {part, read.()} end, max_concurrency: 6)
-      |> Enum.zip([:page, :cards, :files, :registry, :github, :npm])
+      |> each(fn {part, read} -> {part, read.()} end, max_concurrency: 4)
+      |> Enum.zip([:page, :cards, :files, :registry])
       |> Map.new(fn
         {{:ok, {part, answer}}, part} -> {part, answer}
         {{:exit, :timeout}, part} -> {part, timed_out(part)}
       end)
 
-    {page_url, complete?, webmcp, links} = found.page
+    {page_url, complete?, webmcp} = found.page
 
     {storable(page_url), complete?,
      storable(%{
        "webmcp" => webmcp,
        "servers" => servers(found.cards, found.registry, site, domain, opts),
-       "files" => found.files,
-       "code" => links ++ listed(found.registry) ++ listed(found.github) ++ listed(found.npm),
-       "unsearched" =>
-         for(
-           {source, :busy} <- [registry: found.registry, github: found.github, npm: found.npm],
-           do: Atom.to_string(source)
-         )
+       "files" => found.files
      })}
   end
 
-  @doc "Read the directory's exact public pages without calling any discovered tool."
+  @doc """
+  Read the directory's exact public pages without calling any discovered
+  tool. A page read whole gives its tools and when; a page that could not be
+  read whole keeps what its last whole read gave, or nothing.
+  """
   def directory_findings(domain, previous, opts) do
     earlier = (previous || %{})["directory"] || %{}
     now = DateTime.utc_now() |> DateTime.to_iso8601()
@@ -133,12 +112,10 @@ defmodule Patchbay.Forum.SiteScan do
             %{
               "checked_at" => now,
               "page_url" => page_url,
-              "failed" => false,
               "tools" => Enum.map(tools, &%{"name" => &1.name, "address" => page_url})
             }
           else
-            _incomplete ->
-              Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})
+            _incomplete -> Map.get(earlier, url, %{})
           end
 
         {url, snapshot}
@@ -151,7 +128,7 @@ defmodule Patchbay.Forum.SiteScan do
         {url, snapshot}
 
       {{:exit, :timeout}, url} ->
-        {url, Map.merge(earlier[url] || %{}, %{"failed" => true, "last_attempt_at" => now})}
+        {url, Map.get(earlier, url, %{})}
     end)
     |> storable()
   end
@@ -177,81 +154,21 @@ defmodule Patchbay.Forum.SiteScan do
     end)
   end
 
-  defp timed_out(:page), do: {nil, false, [], []}
-  defp timed_out(part) when part in [:cards, :files], do: []
-  defp timed_out(_search), do: :busy
-
-  # The name a company is searched by: the domain without its ending.
-  defp label(domain) do
-    case Domainatrex.parse(domain) do
-      {:ok, %{domain: label}} -> label
-      {:error, _not_a_domain} -> domain
-    end
-  end
+  defp timed_out(:page), do: {nil, false, []}
+  defp timed_out(_part), do: []
 
   ## The front page
 
   defp front_page(site, opts) do
     case PageTools.page(site <> "/", opts) do
-      {:ok, %{url: page_url, html: html} = page} ->
+      {:ok, %{url: page_url} = page} ->
         %{tools: tools, complete?: complete?} = PageTools.inspect_tools(page, opts)
         webmcp = Enum.map(tools, &%{"name" => &1.name, "description" => &1.description})
-        {page_url, complete?, webmcp, links(html, page_url)}
+        {page_url, complete?, webmcp}
 
       {:error, _unread} ->
-        {nil, false, [], []}
+        {nil, false, []}
     end
-  end
-
-  # The site's own links to its code and packages.
-  defp links(html, page_url) do
-    ~r/<a\b[^>]*\bhref\s*=\s*["']([^"']+)["']/i
-    |> Regex.scan(html, capture: :all_but_first)
-    |> Enum.flat_map(fn [href] -> href |> absolute(page_url) |> code_link() end)
-    |> Enum.uniq_by(& &1["url"])
-    |> Enum.take(@most_links)
-  end
-
-  defp absolute(href, base) do
-    base |> URI.merge(href) |> URI.to_string()
-  rescue
-    _not_an_address -> ""
-  end
-
-  defp code_link(url) do
-    case URI.parse(url) do
-      %URI{scheme: "https", host: host, path: path}
-      when host in ["github.com", "www.github.com"] ->
-        github_link(String.split(path || "", "/", trim: true))
-
-      %URI{scheme: "https", host: host, path: "/package/" <> name}
-      when host in ["npmjs.com", "www.npmjs.com"] ->
-        package_link("npm", "https://www.npmjs.com/package/", name)
-
-      %URI{scheme: "https", host: "pypi.org", path: "/project/" <> name} ->
-        package_link("pypi", "https://pypi.org/project/", name)
-
-      _elsewhere ->
-        []
-    end
-  end
-
-  defp github_link([owner | rest]) when owner not in @github_pages do
-    name = Enum.join([owner | Enum.take(rest, 1)], "/")
-
-    if name =~ ~r/\A[\w.-]+(\/[\w.-]+)?\z/,
-      do: [code("github", name, "https://github.com/" <> name, nil, true)],
-      else: []
-  end
-
-  defp github_link(_github_own_page), do: []
-
-  defp package_link(source, base, path) do
-    name = path |> String.trim_trailing("/") |> URI.decode()
-
-    if name =~ ~r/\A(@[\w.-]+\/)?[\w.-]+\z/,
-      do: [code(source, name, base <> name, nil, true)],
-      else: []
   end
 
   ## MCP servers
@@ -279,11 +196,7 @@ defmodule Patchbay.Forum.SiteScan do
   # The servers a card names, the one at `/mcp`, and the registry's on the
   # site's domain, each asked for its tools.
   defp servers(cards, registry, site, domain, opts) do
-    listed =
-      for %{"remotes" => remotes} <- registered(registry),
-          url <- remotes,
-          on_site?(url, domain),
-          do: %{"url" => url}
+    listed = for url <- registry, on_site?(url, domain), do: %{"url" => url}
 
     (cards ++ [%{"url" => site <> "/mcp", "guessed" => true}] ++ listed)
     |> Enum.uniq_by(& &1["url"])
@@ -382,28 +295,27 @@ defmodule Patchbay.Forum.SiteScan do
     )
   end
 
-  ## Lists elsewhere
+  ## The MCP Registry
 
+  # The addresses of the servers the official MCP Registry lists under the
+  # site's reversed name, at their latest version. A registry that is down,
+  # slow or limiting lists none just now.
   defp registry(domain) do
     namespace = domain |> String.split(".") |> Enum.reverse() |> Enum.join(".")
 
-    with {:ok, %{"servers" => servers}} when is_list(servers) <-
-           search(@registry, search: namespace, limit: 20) do
-      found =
+    case search(namespace) do
+      {:ok, %{"servers" => servers}} when is_list(servers) ->
         for %{"server" => %{"name" => name} = server} = entry <- servers,
             is_binary(name),
             String.starts_with?(name, namespace <> "/") or
               String.starts_with?(name, namespace <> "."),
-            latest?(entry) do
-          %{
-            "name" => short(name, @name_chars),
-            "description" => short(server["description"]),
-            "url" => registry_url(server),
-            "remotes" => for(%{"url" => url} <- server["remotes"] || [], https?(url), do: url)
-          }
-        end
+            latest?(entry),
+            %{"url" => url} <- server["remotes"] || [],
+            https?(url),
+            do: url
 
-      {:ok, Enum.take(found, @most_from_site)}
+      _unlisted ->
+        []
     end
   end
 
@@ -412,80 +324,11 @@ defmodule Patchbay.Forum.SiteScan do
 
   defp latest?(_unmarked), do: true
 
-  defp registry_url(server) do
-    Enum.find(
-      [get_in(server, ["repository", "url"]), server["websiteUrl"]],
-      @registry <> "?search=" <> URI.encode_www_form(server["name"]),
-      &https?/1
-    )
-  end
-
-  defp registered({:ok, entries}), do: entries
-  defp registered(:busy), do: []
-
-  defp github(label, domain) do
-    with :ok <- searchable(label),
-         {:ok, %{"items" => items}} when is_list(items) <-
-           search(@github, q: label <> " in:name", sort: "stars", per_page: 20) do
-      {:ok,
-       ranked(
-         for %{"full_name" => name, "html_url" => url} = repo <- items,
-             is_binary(name),
-             https?(url) do
-           code("github", name, url, repo["description"], on_site?(repo["homepage"], domain))
-         end
-       )}
-    end
-  end
-
-  defp npm(label, domain) do
-    with :ok <- searchable(label),
-         {:ok, %{"objects" => objects}} when is_list(objects) <-
-           search(@npm, text: label, size: 20) do
-      {:ok,
-       ranked(
-         for %{"package" => %{"name" => name} = package} <- objects, is_binary(name) do
-           links = package["links"] || %{}
-
-           code(
-             "npm",
-             name,
-             "https://www.npmjs.com/package/" <> name,
-             package["description"],
-             on_site?(links["homepage"], domain)
-           )
-         end
-       )}
-    end
-  end
-
-  # A name of one or two letters matches half of GitHub and npm.
-  defp searchable(label) when byte_size(label) >= 3, do: :ok
-  defp searchable(_short), do: {:ok, :not_searched}
-
-  defp ranked(found) do
-    {from_site, others} = Enum.split_with(found, & &1["from_site"])
-    Enum.take(from_site, @most_from_site) ++ Enum.take(others, @most_related)
-  end
-
-  defp listed({:ok, entries}) when is_list(entries) do
-    Enum.map(entries, fn
-      %{"source" => _source} = entry ->
-        entry
-
-      registry ->
-        code("registry", registry["name"], registry["url"], registry["description"], true)
-    end)
-  end
-
-  defp listed(_not_listed), do: []
-
-  # An outside list that is down, slow or rate limiting is unsearched, not empty.
-  defp search(url, params) do
+  defp search(namespace) do
     options =
       [
-        url: url,
-        params: params,
+        url: @registry,
+        params: [search: namespace, limit: 20],
         headers: [{"accept", "application/json"}, {"user-agent", "Patchbay (patchbay.help)"}],
         receive_timeout: @search_timeout_ms,
         retry: false
@@ -493,29 +336,12 @@ defmodule Patchbay.Forum.SiteScan do
 
     case Req.get(options) do
       {:ok, %Req.Response{status: 200, body: %{} = body}} -> {:ok, body}
-      {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) -> decoded(body)
-      _down_or_limited -> :busy
-    end
-  end
-
-  defp decoded(body) do
-    case Jason.decode(body) do
-      {:ok, %{} = decoded} -> {:ok, decoded}
-      _not_json -> :busy
+      {:ok, %Req.Response{status: 200, body: body}} when is_binary(body) -> Jason.decode(body)
+      _down_or_limited -> :unlisted
     end
   end
 
   ## Shapes
-
-  defp code(source, name, url, description, from_site?) do
-    %{
-      "source" => source,
-      "name" => short(name, @name_chars),
-      "url" => url,
-      "description" => short(description),
-      "from_site" => from_site?
-    }
-  end
 
   defp on_site?(url, domain) when is_binary(url) do
     case URI.parse(url) do

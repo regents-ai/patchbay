@@ -137,9 +137,10 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # and `:read_escrow_refund`) on a queue of their own, so a slow Base node holds
 # up nothing else. Each minute the producers of the figures every visitor sees
 # alike are asked to read again (`Patchbay.SharedReading.Heal`, on `default`),
-# and every ten minutes checks are asked for a few listed sites no check has
-# been asked for yet (`Patchbay.Forum.SiteCheckSweep`, on `default`, so the
-# ask never takes one of the two check places).
+# and every five minutes checks are asked for a few listed sites, those never
+# checked first, then those due again, the longest unchecked first
+# (`Patchbay.Forum.SiteCheckSweep`, on `default`, so the ask never takes one of
+# the two check places).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   notifier: Oban.Notifiers.PG,
@@ -167,7 +168,7 @@ config :patchbay, Oban,
     # apps are switched off (config/runtime.exs).
     connected_apps: [limit: 1],
     # The template runs 5 here; Patchbay's only jobs on it are the minute's
-    # SharedReading.Heal, which sends one message, and the ten-minute
+    # SharedReading.Heal, which sends one message, and the five-minute
     # SiteCheckSweep, which writes five asks, so one is enough.
     default: 1
   ],
@@ -176,8 +177,8 @@ config :patchbay, Oban,
     crontab: [
       {"17 4 * * *", Patchbay.SavedErrors},
       {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
-      # Five sites no check has been asked for yet, every ten minutes.
-      {"*/10 * * * *", Patchbay.Forum.SiteCheckSweep},
+      # Five listed sites due a check, every five minutes.
+      {"*/5 * * * *", Patchbay.Forum.SiteCheckSweep},
       {"0 6 * * 1", Patchbay.AnswerWatch.Ask},
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
@@ -204,6 +205,12 @@ config :patchbay, Patchbay.Incidents.CveNow,
   url: "https://cve.now/api/v1",
   page_size: 50,
   reads_per_run: 20
+
+# Patchbay's own round of the listed sites (`Patchbay.Forum.SiteCheckSweep`):
+# five asks every five minutes, about 1,440 checks a day, so each of the
+# 4,000 or so listed sites is read every three days or so and never more than
+# once a day. `enabled?: false` stops the asking; checks already asked for run.
+config :patchbay, Patchbay.Forum.SiteCheckSweep, enabled?: true
 
 # The Wallet Bench's minute read (`Patchbay.WalletBench.Board`): Postgres
 # cancels any one view's read that runs longer, so it frees its connection.

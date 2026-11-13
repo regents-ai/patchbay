@@ -4,8 +4,8 @@ defmodule PatchbayWeb.SiteCheckLive do
   site has and copies a short text for an agent: the site, its page here, its
   tools and the `ask_question` call. Opened, it holds one list of the tools
   (the ones the site's check found on its front page and the ones Patchbay's
-  list holds), its MCP servers, the files agents read, and its code and
-  packages. It opens closed, or open on a later page of tools.
+  list holds), its MCP servers and the files agents read. It opens closed, or
+  open on a later page of tools.
 
   The page asks for the check when it opens, and "Refresh this site"
   (`PatchbayWeb.SiteRefreshLive`) asks for a new one; this panel shows it as
@@ -111,17 +111,18 @@ defmodule PatchbayWeb.SiteCheckLive do
   end
 
   # A check's findings once one has finished; a failed check keeps the last.
-  defp check_findings(%{findings: %{"code" => _code} = findings}), do: findings
+  defp check_findings(%{findings: %{"webmcp" => _tools} = findings}), do: findings
   defp check_findings(_check), do: nil
 
+  # A check that could not be done says nothing to people: the last finished
+  # check's count stands, or none has finished yet.
   defp tools_label(check, count) do
-    case {SiteChecks.state(check), count} do
-      {:none, 0} -> "Not checked yet"
-      {:checking, 0} -> "Looking for WebMCP tools…"
-      {:failed, 0} -> "Couldn't look for WebMCP tools just now"
+    cond do
+      count == 0 and SiteChecks.state(check) == :checking -> "Looking for WebMCP tools…"
+      count == 0 and is_nil(check_findings(check)) -> "Not checked yet"
       # The owner's own words for the count.
-      {_state, 1} -> "Agents see 1 WebMCP Tool"
-      _known -> "Agents see #{count} WebMCP Tools"
+      count == 1 -> "Agents see 1 WebMCP Tool"
+      true -> "Agents see #{count} WebMCP Tools"
     end
   end
 
@@ -203,9 +204,6 @@ defmodule PatchbayWeb.SiteCheckLive do
           <p class="pb-site-check-status" role="status">
             <span :if={SiteChecks.state(@check) == :none}>Not checked yet.</span>
             <span :if={SiteChecks.state(@check) == :checking}>Checking {@domain}…</span>
-            <span :if={SiteChecks.state(@check) == :failed}>
-              {@domain} could not be checked just now.
-            </span>
             <span :if={SiteChecks.state(@check) == :done}>
               Checked
               <time
@@ -274,24 +272,16 @@ defmodule PatchbayWeb.SiteCheckLive do
             />
           </div>
 
-          <.findings
-            :if={check_findings(@check)}
-            domain={@domain}
-            findings={check_findings(@check)}
-          />
+          <.findings :if={check_findings(@check)} findings={check_findings(@check)} />
         </div>
       </details>
     </section>
     """
   end
 
-  attr(:domain, :string, required: true)
   attr(:findings, :map, required: true)
 
   defp findings(assigns) do
-    {from_site, related} = Enum.split_with(assigns.findings["code"], & &1["from_site"])
-    assigns = assign(assigns, from_site: from_site, related: related)
-
     ~H"""
     <div :if={@findings["servers"] != []} class="pb-site-check-group">
       <h3>MCP servers</h3>
@@ -315,37 +305,6 @@ defmodule PatchbayWeb.SiteCheckLive do
         </li>
       </ul>
     </div>
-
-    <div :if={@from_site != []} class="pb-site-check-group">
-      <h3>Packages</h3>
-      <.code_list entries={@from_site} />
-    </div>
-
-    <div :if={@related != []} class="pb-site-check-group">
-      <h3>May be related</h3>
-      <p class="pb-site-check-note">Named like {@domain}, but not linked to it.</p>
-      <.code_list entries={@related} />
-    </div>
-
-    <p :for={source <- @findings["unsearched"]} class="pb-site-check-note">
-      {SiteChecks.source_label(source)} could not be searched just now.
-    </p>
-    """
-  end
-
-  attr(:entries, :list, required: true)
-
-  defp code_list(assigns) do
-    ~H"""
-    <ul class="pb-site-check-list">
-      <li :for={entry <- @entries}>
-        <a href={entry["url"]} rel="nofollow noreferrer">{entry["name"]}</a>
-        <span class="pb-site-check-source">{SiteChecks.source_label(entry["source"])}</span>
-        <span :if={entry["description"]} class="pb-site-check-note pb-site-check-desc">
-          {entry["description"]}
-        </span>
-      </li>
-    </ul>
     """
   end
 end

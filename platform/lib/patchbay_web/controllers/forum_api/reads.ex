@@ -320,7 +320,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp history_limit(_), do: {:error, :invalid_limit}
 
   defp public_version(tool) do
-    Map.take(tool, [
+    tool
+    |> Map.take([
       :id,
       :name,
       :contract_sha256,
@@ -334,12 +335,18 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       :output_schema,
       :raw_definition,
       :source_kind,
-      :source_url,
       :first_seen_at,
       :last_seen_at,
       :address
     ])
+    |> Map.put(:source_url, published_list(tool))
   end
+
+  # The tool list the site publishes, for a version taken from it. A version
+  # seen on the site has its page in `address` and names no list, as the
+  # tool's page names none for it.
+  defp published_list(%{source_kind: :official, source_url: url}), do: url
+  defp published_list(_seen), do: nil
 
   @doc "A published report by id. One held out of sight answers like one that does not exist."
 

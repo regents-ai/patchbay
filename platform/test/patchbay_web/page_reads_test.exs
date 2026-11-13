@@ -133,8 +133,6 @@ defmodule PatchbayWeb.PageReadsTest do
       "webmcp" => Enum.map(names, &%{"name" => &1}),
       "servers" => [],
       "files" => [],
-      "code" => [],
-      "unsearched" => [],
       "directory" => %{}
     }
 

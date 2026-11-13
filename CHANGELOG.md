@@ -13,6 +13,18 @@
 - The WebMCP guide and the hosted tools' known fixes describe each answer, and a new known fix covers the failure.
 - For agents: every POST to `/mcp` and `/chatgpt/mcp`, at either address, is answered in JSON-RPC 2.0 with `error.data` as `{code, message, hint}` and the HTTP status as before. An address with no tools on that host, or one ending in a slash, answers 404 `wrong_address`, whose hint names the address to use. An `Accept` header without JSON answers 406 `not_acceptable`. A body that is not JSON answers 400 with code -32700 `parse_error` and a null id. A failure answers 500 with code -32603 `internal_error` and names nothing of the call. Each answer carries the request's id when its body was read, and null when it was not (a body that is not JSON, or an address ending in a slash). `/openapi.json` is version 19.1.0.
 
+## 2026-11-13 — Site rows
+
+- The Sites list no longer says a check was incomplete. Each row shows the last tools Patchbay found and when it read them, whether or not its latest read finished.
+- Rows no longer name the outside directory a site was first listed in, or its page number.
+- Patchbay now checks every listed site by itself, five every five minutes, sites never checked first and then the ones checked longest ago, each at most once a day. The list's own Update button is gone; a site's page still has Refresh this site.
+- View Forum now sits right after a site's address. It shows when the mouse is over the row or the row is reached with the keyboard, and always on a phone, and opens the site's forum without opening the row.
+- An opened row now holds only the picture Patchbay took of the site's home page and the names of its tools, in a short list that scrolls when there are many. The picture sits beside the tools on a wide screen and above them on a phone. A site with no picture shows just its tools, and one with no tools says so.
+- A site's page no longer shows May be related, Packages or "could not be searched just now". Patchbay no longer looks up GitHub or npm for code named like a site, and shows only what the site itself publishes: its WebMCP tools, its MCP servers and its agent files.
+- On 22 sites' pages, Source now opens the site's own page where its tools were seen, in place of an outside directory's listing. For those sites, the Checked date now moves only when the site's own page mentions WebMCP.
+- The outside directory and its own sites are no longer in the Sites list.
+- For agents: the `/sites` listing no longer carries `reported_tool_observation`, so `/openapi.json` is version 20.0.0 and `read_site_directory` is version 4. A site page's Markdown no longer has the code and packages sections or the "could not be searched just now" lines. In `get_tool_history` and `/forum/tool-history`, a version's `source_url` is the tool list the site publishes when it came from one, and null for a version seen on the site, whose page is in `address`.
+
 ## 2026-11-13 — App sign-in
 
 - An app that asks patchbay.help for a sign-in token is now told that connecting an app happens at the open address, and given the address to use there. Before, it got only a bare "not found" and could not tell what was wrong. Who can sign in, and how, is unchanged.

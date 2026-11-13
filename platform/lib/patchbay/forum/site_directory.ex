@@ -79,7 +79,7 @@ defmodule Patchbay.Forum.SiteDirectory do
     result =
       Site
       |> Ash.Query.filter(origin in ^domains)
-      |> Ash.Query.select([:origin, :logo_path])
+      |> Ash.Query.select([:origin, :logo_path, :screenshot_path])
       |> Ash.Query.load(:report_count)
       |> Ash.read()
 
@@ -98,8 +98,16 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   defp attach_forum(entry, nil), do: %{entry | forum_posts: 0}
 
-  defp attach_forum(entry, site),
-    do: %{entry | forum_posts: site.report_count, logo_path: site.logo_path || entry.logo_path}
+  # The picture is the one Patchbay took of the site's home page, kept and
+  # served by Patchbay itself (`Patchbay.Forum.TakeSitePicture`).
+  defp attach_forum(entry, site) do
+    %{
+      entry
+      | forum_posts: site.report_count,
+        logo_path: site.logo_path || entry.logo_path,
+        screenshot_path: site.screenshot_path
+    }
+  end
 
   # Filter and paginate the saved public listing, leaving out the hidden hosts.
   defp select(params, number, hidden) do
@@ -142,10 +150,17 @@ defmodule Patchbay.Forum.SiteDirectory do
   end
 
   defp replace_entry(%{domain: domain} = site, %{domain: domain} = check),
-    do: Map.merge(entry(site.seed, check), Map.take(site, [:forum_posts, :logo_path]))
+    do:
+      Map.merge(
+        entry(site.seed, check),
+        Map.take(site, [:forum_posts, :logo_path, :screenshot_path])
+      )
 
   defp replace_entry(site, _check), do: site
 
+  # The listing's own words for a site, with what Patchbay's checks found:
+  # the tools on its listed pages once every one of them was read in full,
+  # and when the oldest of those reads was.
   defp entry(seed, check) do
     snapshot = snapshot(seed, (check && check.findings) || %{})
     observed = snapshot["tools"]
@@ -160,11 +175,10 @@ defmodule Patchbay.Forum.SiteDirectory do
       page_url: seed["url"],
       tools: tools,
       tool_count: if(observed, do: length(tools), else: reported_count(seed, tools)),
-      reported_observation: seed["reported_observation"],
       forum_posts: nil,
       logo_path: Map.get(@logos, domain(seed)),
+      screenshot_path: nil,
       checked_at: snapshot["checked_at"],
-      failed?: failed?(snapshot, check),
       pending?: pending?(check),
       due?: SiteCheck.due?(check),
       retry_at: retry_at(check),
@@ -183,24 +197,20 @@ defmodule Patchbay.Forum.SiteDirectory do
           Map.get(seed, "additional_urls", [])
       )
 
+  # A page's snapshot keeps its last full read's tools and time when a later
+  # read could not finish (`Patchbay.Forum.SiteScan.directory_findings/3`).
   defp snapshot(seed, findings) do
     snapshots = Enum.map(entry_pages(seed), &get_in(findings, ["directory", &1]))
-    failed? = Enum.any?(snapshots, &match?(%{"failed" => true}, &1))
 
     if Enum.all?(snapshots, &match?(%{"tools" => tools} when is_list(tools), &1)) do
       %{
         "tools" => snapshots |> Enum.flat_map(& &1["tools"]) |> Enum.uniq(),
-        "checked_at" => snapshots |> Enum.map(& &1["checked_at"]) |> Enum.min(),
-        "failed" => failed?
+        "checked_at" => snapshots |> Enum.map(& &1["checked_at"]) |> Enum.min()
       }
     else
-      %{"tools" => nil, "checked_at" => nil, "failed" => failed?}
+      %{"tools" => nil, "checked_at" => nil}
     end
   end
-
-  defp failed?(%{"failed" => true}, _check), do: true
-  defp failed?(_snapshot, %{findings: %{"failed" => true}}), do: true
-  defp failed?(_snapshot, _check), do: false
 
   defp pending?(nil), do: false
   defp pending?(check), do: SiteCheck.pending?(check)

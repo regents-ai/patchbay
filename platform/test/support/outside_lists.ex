@@ -1,35 +1,28 @@
 defmodule Patchbay.OutsideLists do
   @moduledoc """
-  The lists a site check searches, for tests: the MCP Registry, GitHub and
-  npm each answer with what `answer/1` was given for them, and with nothing
-  found otherwise.
+  The outside lists a site check reads, for tests. Every address answers
+  that it lists nothing, as the MCP Registry does for a name it does not
+  hold, and after `watch/0` each address asked is sent to the test that
+  called it, so a test sees which lists a check reached.
   """
 
   import Plug.Conn
 
-  @lists %{
-    "registry.modelcontextprotocol.io" => {:registry, %{"servers" => []}},
-    "api.github.com" => {:github, %{"items" => []}},
-    "registry.npmjs.org" => {:npm, %{"objects" => []}}
-  }
-
-  @doc "Has `list` (`:registry`, `:github` or `:npm`) answer `status` and `body` for the rest of the test."
-  @spec answer(atom(), pos_integer(), map()) :: :ok
-  def answer(list, status, body) do
-    ExUnit.Callbacks.on_exit(fn -> Application.delete_env(:patchbay, :outside_lists) end)
-    answers = Application.get_env(:patchbay, :outside_lists, %{})
-    Application.put_env(:patchbay, :outside_lists, Map.put(answers, list, {status, body}))
+  @doc "Sends `{:outside_list, host}` to this test for each outside list asked, for the rest of the test."
+  @spec watch() :: :ok
+  def watch do
+    ExUnit.Callbacks.on_exit(fn -> Application.delete_env(:patchbay, :outside_lists_watcher) end)
+    Application.put_env(:patchbay, :outside_lists_watcher, self())
   end
 
   def init(opts), do: opts
 
   def call(conn, _opts) do
-    {list, nothing} = Map.fetch!(@lists, conn.host)
-    answers = Application.get_env(:patchbay, :outside_lists, %{})
-    {status, body} = Map.get(answers, list, {200, nothing})
+    if watcher = Application.get_env(:patchbay, :outside_lists_watcher),
+      do: send(watcher, {:outside_list, conn.host})
 
     conn
     |> put_resp_content_type("application/json")
-    |> send_resp(status, Jason.encode!(body))
+    |> send_resp(200, Jason.encode!(%{"servers" => []}))
   end
 end
