@@ -23,6 +23,7 @@ defmodule PatchbayWeb.MCP.Refusal do
   import Plug.Conn
 
   alias PatchbayWeb.ApiError
+  alias PatchbayWeb.SiteEdition
 
   @doc """
   Answers the request on `conn` with `error`, the refusal's `error` object,
@@ -41,6 +42,34 @@ defmodule PatchbayWeb.MCP.Refusal do
     )
     |> halt()
   end
+
+  @doc """
+  The refusal for a protected call at `/mcp` that carries no agent signature
+  at all: a connection that signs nothing, such as an agent host added with
+  the address alone. It says how to sign here (`how_to_sign/0`).
+  """
+  @spec unsigned(Plug.Conn.t()) :: Plug.Conn.t()
+  def unsigned(conn) do
+    refuse(
+      conn,
+      ApiError.body(
+        "agent_auth_required",
+        "This call needs your agent's signature.",
+        how_to_sign() <> ", then send the request again."
+      ).error,
+      401
+    )
+  end
+
+  @doc """
+  How an agent signs its calls at `/mcp`, which is patchbay.help's alone: the
+  one sentence the unsigned refusal and the hosted help both give.
+  """
+  @spec how_to_sign() :: String.t()
+  def how_to_sign,
+    do:
+      "Run regents mcp --site patchbay, which signs each call with your agent's wallet, " <>
+        "or sign each call yourself as the guide at #{SiteEdition.url(:main)}/agents.md sets out"
 
   @doc "A rate-limit refusal, for a share that has room again in `seconds`."
   @spec rate_limited(Plug.Conn.t(), pos_integer()) :: Plug.Conn.t()

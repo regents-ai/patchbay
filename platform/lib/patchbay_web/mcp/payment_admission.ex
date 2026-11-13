@@ -6,7 +6,10 @@ defmodule PatchbayWeb.MCP.PaymentAdmission do
   request is verified as a wallet author (`PatchbayWeb.Plugs.WalletAuthor`),
   then that wallet's current pairing is required
   (`PatchbayWeb.Plugs.AgentPaymentAdmission`). Only the answer to a refusal
-  differs: JSON-RPC with the request's id (`PatchbayWeb.MCP.Refusal`).
+  differs: JSON-RPC with the request's id (`PatchbayWeb.MCP.Refusal`). A
+  call with no signature at all is refused as every unsigned protected call
+  at `/mcp` is (`PatchbayWeb.MCP.Refusal.unsigned/1`), and the sign-in
+  service is never asked about it.
   """
 
   @behaviour Siwa.AgentAuthPlug.Hooks
@@ -26,16 +29,25 @@ defmodule PatchbayWeb.MCP.PaymentAdmission do
       {:ok, conn} ->
         conn
         |> put_resp_header("cache-control", "no-store")
-        |> Siwa.AgentAuthPlug.call(
-          client: WalletAuthor,
-          hooks: __MODULE__,
-          audience: "patchbay",
-          body: :if_present
-        )
-        |> paired()
+        |> verify()
 
       {:rate_limited, conn, seconds} ->
         Refusal.rate_limited(conn, seconds)
+    end
+  end
+
+  defp verify(conn) do
+    if Siwa.AgentAuthPlug.signed_request?(conn) do
+      conn
+      |> Siwa.AgentAuthPlug.call(
+        client: WalletAuthor,
+        hooks: __MODULE__,
+        audience: "patchbay",
+        body: :if_present
+      )
+      |> paired()
+    else
+      Refusal.unsigned(conn)
     end
   end
 
@@ -53,15 +65,7 @@ defmodule PatchbayWeb.MCP.PaymentAdmission do
   # `/mcp` is not one of the wallet author's HTTP addresses, so only the
   # shared exact-request checks apply before verification.
   @impl Siwa.AgentAuthPlug.Hooks
-  # A call with no signed headers is refused here, as `/mcp` refuses every
-  # unsigned protected call, so the sign-in service is never asked about it.
-  def before_verify(conn, _headers) do
-    with {:ok, _context} = admitted <- WalletAuthor.validate_signed_request(conn, true) do
-      if Siwa.AgentAuthPlug.signed_request?(conn),
-        do: admitted,
-        else: {:error, PairedAgent.unsigned()}
-    end
-  end
+  def before_verify(conn, _headers), do: WalletAuthor.validate_signed_request(conn, true)
 
   @impl Siwa.AgentAuthPlug.Hooks
   defdelegate accept(conn, data, context), to: WalletAuthor

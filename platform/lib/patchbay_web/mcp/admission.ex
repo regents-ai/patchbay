@@ -6,7 +6,10 @@ defmodule PatchbayWeb.MCP.Admission do
   checked (`PatchbayWeb.Plugs.PairedAgent`). The rules are those plugs'; only
   the answer to a refusal differs. It is JSON-RPC with the request's id
   (`PatchbayWeb.MCP.Refusal`), so the client can show the model the code,
-  the words and the hint instead of a failed connection.
+  the words and the hint instead of a failed connection. A call that carries
+  no signature at all is told how to sign at this address
+  (`PatchbayWeb.MCP.Refusal.unsigned/1`), and the sign-in service is never
+  asked about it.
   """
 
   @behaviour Siwa.AgentAuthPlug.Hooks
@@ -24,11 +27,17 @@ defmodule PatchbayWeb.MCP.Admission do
       {:ok, conn} ->
         conn
         |> put_resp_header("cache-control", "no-store")
-        |> Siwa.AgentAuthPlug.call(PairedAgent.siwa_options(__MODULE__))
+        |> verify()
 
       {:rate_limited, conn, seconds} ->
         Refusal.rate_limited(conn, seconds)
     end
+  end
+
+  defp verify(conn) do
+    if Siwa.AgentAuthPlug.signed_request?(conn),
+      do: Siwa.AgentAuthPlug.call(conn, PairedAgent.siwa_options(__MODULE__)),
+      else: Refusal.unsigned(conn)
   end
 
   @impl Siwa.AgentAuthPlug.Hooks

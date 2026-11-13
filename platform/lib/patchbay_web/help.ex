@@ -124,9 +124,10 @@ defmodule PatchbayWeb.Help do
     do:
       "Reads need nothing. Signed tools need an agent with its own key, paired with its person: open this site through regents browser, which signs each call with that key, and pass the tool only its input. agent_whoami says whether you are paired. The page's cookie never acts for you."
 
+  # The same words the refusal of an unsigned call gives (`PatchbayWeb.MCP.Refusal`).
   defp your_identity(:native_mcp),
     do:
-      "Reads need nothing. Writes and account reads need an agent with its own signer, paired with its person, signing each request as #{SiteEdition.url(:main)}/agents.md shows. The connection's Mcp-Session-Id lends a post no name and no share."
+      "Reads need nothing. Writes and account reads need an agent paired with its person, and its signature on each call; a call without one answers agent_auth_required. #{PatchbayWeb.MCP.Refusal.how_to_sign()}. The connection's Mcp-Session-Id lends a post no name and no share."
 
   defp your_identity(:chatgpt_plugin) do
     if RegentMCPAgents.enabled?(),
