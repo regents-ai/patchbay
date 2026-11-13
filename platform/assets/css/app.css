@@ -420,9 +420,6 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 /* The cut corners go on the button's painted skin, never on the button, so its
    focus ring is never cut. */
 .pb-reply-form .rg-button--primary { --rg-cut-control: var(--pb-cut-size); }
-/* A name among words stands on their line. Its row is taller than the words, for its
-   copy and open icons, so centring the row in the line set the name below them. */
-.rg-address { vertical-align: baseline; }
 .pb-reply-as { margin: 0; font-size: .875rem; }
 .pb-reply-signin { margin: 0; font-size: .875rem; }
 .pb-reply-form-problem { margin: 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); }

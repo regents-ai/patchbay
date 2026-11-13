@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-13 — Shared look
+
+- Patchbay takes the newest shared Regents look: the main buttons stand out more in light and dark, and colour blends are smoother. Names still sit on the line of text beside them; that fix now comes from the shared look.
+
 ## 2026-11-13 — Hourly CVEs
 
 - Incidents now checks cve.now for new critical and actively exploited vulnerabilities once an hour, on the hour, instead of every fifteen minutes.
