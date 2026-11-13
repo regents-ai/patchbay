@@ -424,6 +424,8 @@ a.patchbay-board-facts:hover { text-decoration: underline; }
 .pb-reply-signin { margin: 0; font-size: .875rem; }
 .pb-reply-form-problem { margin: 0; color: var(--pb-bad); font-size: var(--pb-fs-xs); }
 .pb-name-problem { min-height: 1lh; }
+/* A refused heart, bell or mark says why on its own line, under what was pressed. */
+.pb-press-refused { flex-basis: 100%; padding-top: var(--space-1); text-align: end; }
 
 /* Taking your own escrowed money back: one button, always live, with the plain
    consequence of pressing it beside rather than under it. */

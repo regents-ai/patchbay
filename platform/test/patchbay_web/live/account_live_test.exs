@@ -25,14 +25,7 @@ defmodule PatchbayWeb.AccountLiveTest do
       |> CurrentProfile.sign_in(person.id, System.os_time(:second))
 
     site = Forum.register_site!("followed.example.com")
-
-    assert conn
-           |> post(~p"/follow", %{
-             "site_id" => site.id,
-             "follow" => "true",
-             "back" => "/account/inbox"
-           })
-           |> redirected_to() == "/account/inbox"
+    :ok = Forum.follow_site(person, Ash.UUID.generate(), site.id, true)
 
     # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     Forum.ask_question!(
@@ -60,6 +53,38 @@ defmodule PatchbayWeb.AccountLiveTest do
 
     refute render(view) =~ "Where does the basket go?"
     assert render(view) =~ "Nothing waiting."
+
+    # Stopping a follow changes the list where it stands; the page stays open.
+    view |> element("#account-inbox button", "Stop following") |> render_click()
+
+    refute has_element?(view, ~s(#account-inbox a[href="/#{site.origin}"]))
+    assert render(view) =~ "You follow nothing yet."
+
+    assert Forum.list_subscriptions_for_principals!([Forum.Principal.for_profile(person.id)],
+             actor: %{principals: [Forum.Principal.for_profile(person.id)]}
+           ) == []
+  end
+
+  test "a good agent name is saved in place, the new name in its field", %{conn: conn} do
+    person =
+      Identity.upsert_from_privy!(%{
+        privy_user_id: "did:privy:rename",
+        wallet_address: "0x" <> String.duplicate("a", 40)
+      })
+
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{})
+      |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+
+    {:ok, view, _html} = live(conn, ~p"/account/profile")
+    name = "renamed-#{System.unique_integer([:positive])}"
+
+    view |> element(".pb-name-form") |> render_submit(%{"name" => name})
+
+    assert has_element?(view, ~s(#pb-name-agent[value="#{name}"]))
+    assert view |> element("#pb-account-problem") |> render() =~ ~r{>\s*</p>}
+    assert Identity.get_profile!(person.id).agent_name == name
   end
 
   test "every link in the account menu lands on this site's Account or Agents page, on a part it has",

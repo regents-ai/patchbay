@@ -85,7 +85,7 @@ defmodule PatchbayWeb.AccountLive do
 
     socket
     |> assign(PatchbayWeb.PublicDocuments.page("/account/inbox"))
-    |> assign(inbox_cursor: cursor, inbox_expired?: false)
+    |> assign(inbox_cursor: cursor, inbox_expired?: false, unfollow_problem: nil)
     |> read_inbox()
   end
 
@@ -160,9 +160,20 @@ defmodule PatchbayWeb.AccountLive do
     me = socket.assigns.current_profile
 
     case Identity.rename_agent(me, %{agent_name: name}, actor: me) do
-      # The header carries the name too, so the whole page opens again.
-      {:ok, _profile} -> {:noreply, redirect(socket, to: ~p"/account/profile")}
+      # The tab is read again where it stands, the new name in it.
+      {:ok, _profile} -> {:noreply, open_tab(socket, :profile, %{})}
       {:error, refused} -> {:noreply, assign(socket, problem: refusal(refused))}
+    end
+  end
+
+  # Only a site's follow is ended here, and only the reader's own: the
+  # signed-in profile's, or this browser's when no one is signed in.
+  def handle_event("unfollow", %{"site" => site_id}, socket) do
+    %{current_profile: profile, forum_session_id: session_id} = socket.assigns
+
+    case Forum.follow_site(profile, session_id, site_id, false) do
+      :ok -> {:noreply, socket |> assign(unfollow_problem: nil) |> read_inbox()}
+      {:error, _failure} -> {:noreply, assign(socket, unfollow_problem: site_id)}
     end
   end
 
@@ -364,20 +375,27 @@ defmodule PatchbayWeb.AccountLive do
               <span class="patchbay-pill is-neutral">{subscription_kind(sub.scope_kind)}</span>
               <span :if={sub.scope_kind != :site}>{site_name(target.site)}</span>
             </div>
-            <.form
-              :if={sub.scope_kind == :site}
-              for={%{}}
-              action={~p"/follow"}
-              method="post"
-              class="pb-inbox-ack"
-            >
-              <input type="hidden" name="site_id" value={sub.scope_id} />
-              <input type="hidden" name="follow" value="false" />
-              <input type="hidden" name="back" value={~p"/account/inbox"} />
-              <Regent.Primitives.button variant="secondary" type="submit">
+            <div :if={sub.scope_kind == :site} class="pb-inbox-ack">
+              <Regent.Primitives.button
+                variant="secondary"
+                type="button"
+                phx-click="unfollow"
+                phx-value-site={sub.scope_id}
+              >
                 <span class="pb-action-label" data-press-label>Stop following</span>
               </Regent.Primitives.button>
-            </.form>
+            </div>
+            <p
+              :if={@unfollow_problem == sub.scope_id}
+              id={"pb-unfollow-problem-#{sub.id}"}
+              class="pb-reply-form-problem"
+              role="alert"
+              phx-hook="MotionRefusal"
+              phx-remove={PatchbayWeb.Motion.leave()}
+              data-refused
+            >
+              That change to what you follow was not saved. Try again.
+            </p>
           </li>
         </ul>
         <p :if={@following == []} class="patchbay-muted">You follow nothing yet.</p>

@@ -2032,6 +2032,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     doc: "Whether the reader has said this reply worked; nil where the page does not ask."
   )
 
+  attr(:refused, :string,
+    default: nil,
+    doc: "Why the reader's last press on this reply was refused."
+  )
+
   def reply(assigns) do
     ~H"""
     <Regent.Discussion.post
@@ -2086,34 +2091,27 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         Reported outcome: {verdict_label(@reply.verdict)}
       </p>
       <:actions>
-        <form
+        <button
           :if={not is_nil(@said_worked)}
-          method="post"
-          action={~p"/posts/#{@report.id}/worked"}
-          class="pb-mark-solution"
+          type="button"
+          class="pb-quiet-button"
+          phx-click="worked"
+          phx-value-reply={@reply.id}
+          phx-value-worked={to_string(!@said_worked)}
+          aria-pressed={to_string(@said_worked)}
         >
-          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-          <input type="hidden" name="reply_id" value={@reply.id} />
-          <input type="hidden" name="worked" value={to_string(!@said_worked)} />
-          <input :if={@cursor} type="hidden" name="after" value={@cursor} />
-          <input type="hidden" name="replies" value={@reply_filter} />
-          <button type="submit" class="pb-quiet-button" aria-pressed={to_string(@said_worked)}>
-            <span class="pb-action-label" data-press-label><Regent.Icons.icon name="check" /> Worked</span>
-          </button>
-        </form>
-        <form
+          <span class="pb-action-label" data-press-label><Regent.Icons.icon name="check" /> Worked</span>
+        </button>
+        <button
           :if={@can_mark}
-          method="post"
-          action={~p"/posts/#{@report.id}/solution"}
-          class="pb-mark-solution"
+          type="button"
+          class="pb-quiet-button"
+          phx-click="mark_solution"
+          phx-value-reply={@reply.id}
         >
-          <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-          <input type="hidden" name="reply_id" value={@reply.id} />
-          <button type="submit" class="pb-quiet-button">
-            <span class="pb-action-label" data-press-label><Regent.Icons.icon name="check" />
-            This answered it</span>
-          </button>
-        </form>
+          <span class="pb-action-label" data-press-label><Regent.Icons.icon name="check" />
+          This answered it</span>
+        </button>
         <form
           :if={@can_accept}
           method="post"
@@ -2127,15 +2125,8 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             Accept and pay</span>
           </button>
         </form>
-        <.like_button
-          :if={!is_nil(@liked)}
-          report={@report}
-          reply={@reply}
-          likes={@reply.likes}
-          liked={@liked}
-          cursor={@cursor}
-          reply_filter={@reply_filter}
-        />
+        <.like_button :if={!is_nil(@liked)} reply={@reply} likes={@reply.likes} liked={@liked} />
+        <.press_refused id={"reply-#{@reply.id}-refused"} words={@refused} />
       </:actions>
     </Regent.Discussion.post>
     """
@@ -2169,15 +2160,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   @doc """
   A heart with the post's like count, and the names of the first few who
   liked it. Pressing it likes the post, or takes the reader's like back when
-  they already like it, and returns to the same place on the same page of
-  replies.
+  they already like it, where it stands (`PatchbayWeb.ThreadLive`); the press
+  names which, so pressing twice before the page answers still ends where
+  the reader last pressed.
   """
-  attr(:report, :any, required: true)
   attr(:reply, :any, required: true, doc: "The reply, or nil for the opening post.")
   attr(:likes, :list, required: true, doc: "The post's likes, oldest first, with their authors.")
   attr(:liked, :boolean, required: true)
-  attr(:cursor, :string, default: nil)
-  attr(:reply_filter, :string, default: "all")
 
   def like_button(assigns) do
     {named, others} = Enum.split(assigns.likes, @named_likers)
@@ -2193,20 +2182,38 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       )
 
     ~H"""
-    <form method="post" action={~p"/posts/#{@report.id}/likes"}>
-      <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-      <input :if={@reply} type="hidden" name="reply_id" value={@reply.id} />
-      <input type="hidden" name="like" value={to_string(!@liked)} />
-      <input :if={@cursor} type="hidden" name="after" value={@cursor} />
-      <input type="hidden" name="replies" value={@reply_filter} />
-      <Regent.Discussion.like
-        type="submit"
-        count={length(@likes)}
-        liked={@liked}
-        likers={@likers}
-        others={@others}
-      />
-    </form>
+    <Regent.Discussion.like
+      count={length(@likes)}
+      liked={@liked}
+      likers={@likers}
+      others={@others}
+      phx-click="like"
+      phx-value-reply={@reply && @reply.id}
+      phx-value-like={to_string(!@liked)}
+    />
+    """
+  end
+
+  @doc """
+  Why the reader's last press here was refused, said beside what they
+  pressed; nothing when it was not.
+  """
+  attr(:id, :string, required: true)
+  attr(:words, :string, default: nil)
+
+  def press_refused(assigns) do
+    ~H"""
+    <p
+      :if={@words}
+      id={@id}
+      class="pb-reply-form-problem pb-press-refused"
+      role="alert"
+      phx-hook="MotionRefusal"
+      phx-remove={PatchbayWeb.Motion.leave()}
+      data-refused
+    >
+      {@words}
+    </p>
     """
   end
 

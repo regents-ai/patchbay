@@ -249,8 +249,11 @@ test("a post's follow bell tips under a mouse and stays still under the keyboard
   test.skip(isMobile, "pressed with a mouse and with keys, on a desktop")
   await page.goto("/")
   await page.goto((await page.locator("a.pb-row-title").first().getAttribute("href"))!)
+  // The bell is part of the thread's live part, which joins once.
+  await page.locator("[data-phx-session].phx-connected:has(#pb-thread)").waitFor({state: "attached"})
   const bell = page.locator(".pb-follow-bell")
   const tilt = () => bell.locator(".rg-icon").evaluate(el => getComputedStyle(el).transform)
+  const drawn = () => page.evaluate(() => new Promise(drawn => requestAnimationFrame(() => requestAnimationFrame(drawn))))
 
   // Slid off before it is let go, so the press follows nothing.
   await bell.hover()
@@ -259,13 +262,16 @@ test("a post's follow bell tips under a mouse and stays still under the keyboard
   await page.mouse.move(0, 0)
   await page.mouse.up()
   await expect.poll(tilt).toBe("none")
+  // A busy page can finish the swing back between two frames; the browser
+  // tells of it in the next frame, so the moves are read once it is drawn.
+  await drawn()
 
   const moves = await movesOf(bell.locator(".rg-icon"))
   await page.keyboard.press("Shift+Tab")
   await page.keyboard.press("Tab")
   await expect(bell).toBeFocused()
   await page.keyboard.down(" ")
-  await page.evaluate(() => new Promise(drawn => requestAnimationFrame(() => requestAnimationFrame(drawn))))
+  await drawn()
   expect(await movesOf(bell.locator(".rg-icon"))).toEqual(moves)
   expect(await tilt()).toBe("none")
 })

@@ -521,6 +521,20 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
+  The ids of the sites this reader follows: as the signed-in profile and as
+  the browser's own forum session. The policy confines the read to them.
+  """
+  @spec followed_sites(AgentProfile.t() | nil, String.t()) :: [String.t()]
+  def followed_sites(profile, session_id) do
+    principals = Principal.for_request(profile, session_id)
+
+    principals
+    |> Forum.list_subscriptions_for_principals!(actor: %{principals: principals})
+    |> Enum.filter(&(&1.scope_kind == :site))
+    |> Enum.map(& &1.scope_id)
+  end
+
+  @doc """
   What the signed-in reader has liked among the posts on screen: the ids of
   the replies, and `nil` for the opening post. Nobody signed in has liked
   nothing.

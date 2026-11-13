@@ -27,8 +27,10 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   alias Patchbay.Repo
   alias Patchbay.SharedReading
   alias PatchbayWeb.Forum.Troubleshooting
+  alias PatchbayWeb.LivePart
   alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
+  alias PatchbayWeb.ThreadLive
 
   @site "authz-shop.example"
 
@@ -62,6 +64,16 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
 
   defp signed(agent), do: build_conn() |> SignedAgent.sign(agent)
+
+  # A press on a post's page, sent as the page's live part sends it, whether or
+  # not the page shows the button: a crafted press reaches the same door. The
+  # page as it answers.
+  defp press(conn, thread, event, values) do
+    page = get(conn, PostAddress.path(thread))
+    session = page |> html_response(200) |> LivePart.session(ThreadLive)
+    {:ok, view, _html} = live_isolated(LivePart.browser(page), ThreadLive, session: session)
+    render_click(view, event, values)
+  end
 
   defp post_json(agent, path, body),
     do: agent |> signed() |> post(path, Jason.encode!(body))
@@ -247,8 +259,8 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       thread = thread!(a)
       reply = reply!(thread, b)
 
-      as(b) |> post("/posts/#{thread.id}/solution", %{"reply_id" => reply.id})
-      expect("solution after b's form press", nil, Ash.get!(Report, thread.id).solution_reply_id)
+      as(b) |> press(thread, "mark_solution", %{"reply" => reply.id})
+      expect("solution after b's press", nil, Ash.get!(Report, thread.id).solution_reply_id)
 
       %{"thread_id" => api_thread} = a_agent |> ask("authz api thread") |> json_response(201)
 
@@ -269,10 +281,10 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       })
 
       # The same presses by the asker do mark it, so the refusals above are b's.
-      as(a) |> post("/posts/#{thread.id}/solution", %{"reply_id" => reply.id})
+      as(a) |> press(thread, "mark_solution", %{"reply" => reply.id})
 
       expect(
-        "solution after a's form press",
+        "solution after a's press",
         reply.id,
         Ash.get!(Report, thread.id).solution_reply_id
       )
@@ -298,7 +310,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       b_conn = CurrentProfile.sign_in(a_conn, b.id, System.os_time(:second))
 
       kept? = get_session(b_conn, "forum_session_id") == shared
-      b_conn |> post("/posts/#{thread.id}/solution", %{"reply_id" => reply.id})
+      b_conn |> press(thread, "mark_solution", %{"reply" => reply.id})
       marked = Ash.get!(Report, thread.id).solution_reply_id
 
       judge("shared browser", [
@@ -322,11 +334,15 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         |> CurrentProfile.sign_in(a.id, System.os_time(:second))
 
       Identity.suspend_profile!(a, "Spam", actor: %{role: :system})
-      pressed = post(a_conn, "/posts/#{thread.id}/solution", %{"reply_id" => reply.id})
+      said = press(a_conn, thread, "mark_solution", %{"reply" => reply.id})
+      opened = get(a_conn, PostAddress.path(thread))
 
       judge("suspended asker's browser", [
-        {"the browser's forum identity", get_session(pressed, "forum_session_id") == browser,
-         "the one a posted from", get_session(pressed, "forum_session_id")},
+        {"the browser's forum identity", get_session(opened, "forum_session_id") == browser,
+         "the one a posted from", get_session(opened, "forum_session_id")},
+        {"what the page says where a pressed",
+         said =~ "Only whoever asked this question can say which answer worked.",
+         "that only the asker can mark it", said},
         {"solution after the suspended a's press",
          is_nil(Ash.get!(Report, thread.id).solution_reply_id), "nil",
          Ash.get!(Report, thread.id).solution_reply_id}
@@ -335,26 +351,21 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
     test "b cannot follow or unfollow for a", %{a: a, b: b, a_agent: a_agent, b_agent: b_agent} do
       site = site!()
+      thread = thread!(a)
 
-      as(a) |> post(~p"/follow", %{"site_id" => site.id, "follow" => "true"})
+      as(a) |> press(thread, "follow", %{"follow" => "true"})
       a_principal = Forum.Principal.for_profile(a.id)
 
-      # b names a's principal and profile in every way a form could.
-      as(b)
-      |> post(~p"/follow", %{
-        "site_id" => site.id,
-        "follow" => "false",
-        "principal" => a_principal,
-        "profile_id" => a.id
-      })
-
-      as(b)
-      |> post(~p"/follow", %{
-        "site_id" => site.id,
-        "follow" => "true",
-        "principal" => a_principal,
-        "profile_id" => a.id
-      })
+      # b names a's principal, profile and another site in every way a press could.
+      for wanted <- ["false", "true"] do
+        as(b)
+        |> press(thread, "follow", %{
+          "follow" => wanted,
+          "site_id" => Ash.UUID.generate(),
+          "principal" => a_principal,
+          "profile_id" => a.id
+        })
+      end
 
       expect("a's follows after b's presses", [site.id], site_follows(a_principal))
       expect("b's follows", [site.id], site_follows(Forum.Principal.for_profile(b.id)))
@@ -1006,22 +1017,6 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         status_row("reply form: thread id is not an id", [404 | refused], fn ->
           as(a) |> post("/threads/not-an-id/replies", %{"reply" => %{"body_markdown" => "a"}})
         end),
-        status_row("follow: follow is neither true nor false", refused, fn ->
-          as(a) |> post(~p"/follow", %{"site_id" => thread.site_id, "follow" => "maybe"})
-        end),
-        status_row("follow: site id is not an id", fine, fn ->
-          as(a) |> post(~p"/follow", %{"site_id" => "not-an-id", "follow" => "true"})
-        end),
-        status_row("follow: site id is a list", fine, fn ->
-          as(a) |> post(~p"/follow", %{"site_id" => ["x"], "follow" => "true"})
-        end),
-        status_row("solution: reply id is not an id", fine, fn ->
-          as(a) |> post("/posts/#{thread.id}/solution", %{"reply_id" => "not-an-id"})
-        end),
-        status_row("like: reply id is not an id", fine, fn ->
-          as(a)
-          |> post("/posts/#{thread.id}/likes", %{"like" => "true", "reply_id" => "not-an-id"})
-        end),
         status_row(
           "API thread: 9 MB JSON",
           [413],
@@ -1161,98 +1156,35 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
       judge("input handling", rows)
     end
+
+    test "a post page's presses that name no reply on it change nothing, and the page stays", %{
+      a: a
+    } do
+      thread = thread!(a)
+
+      rows =
+        for {event, values} <- [
+              {"like", %{"like" => "true", "reply" => "not-an-id"}},
+              {"like", %{"like" => "true", "reply" => ["x"]}},
+              {"mark_solution", %{"reply" => "not-an-id"}},
+              {"worked", %{"reply" => "not-an-id", "worked" => "true"}}
+            ] do
+          page = as(a) |> press(thread, event, values)
+
+          {"#{event} #{inspect(values)}", page =~ thread.title, "the page, still answering",
+           String.slice(page, 0, 200)}
+        end
+
+      judge("presses naming no reply", rows)
+      expect("a's likes after them", [], Forum.list_my_likes!(thread.id, actor: a))
+      expect("solution after them", nil, Ash.get!(Report, thread.id).solution_reply_id)
+    end
   end
 
   # ---------------------------------------------------------------------------
   # 7. Redirects stay on this site
 
-  # Where a browser would go for a Location header: nowhere else, if the
-  # address is a path on this site.
-  defp same_site?(location) when is_binary(location) do
-    uri = URI.parse(location)
-
-    Phoenix.URL.classify_local_path(location) == :ok and is_nil(uri.host) and
-      is_nil(uri.scheme) and not String.contains?(location, ["\\", "\t", "\r", "\n"])
-  end
-
-  defp same_site?(_location), do: false
-
-  defp redirect_row(label, fun) do
-    {status, conn} = outcome(fun)
-
-    location =
-      if is_struct(conn, Plug.Conn), do: get_resp_header(conn, "location") |> List.first()
-
-    ok? =
-      (status in [301, 302, 303] and same_site?(location)) or
-        (status in [400, 404, 422] and is_nil(location))
-
-    {label, ok?, "a redirect to a path on this site, or a 4xx refusal", {status, location}}
-  end
-
   describe "7. redirects only go to same-site paths" do
-    test "the follow form's way back", %{a: a} do
-      site = site!()
-
-      backs = [
-        "https://evil.example/x",
-        "http:evil.example",
-        "//evil.example",
-        "///evil.example",
-        "/\\evil.example",
-        "\\\\evil.example",
-        "/\\/evil.example",
-        "/%09/evil.example",
-        "/\t/evil.example",
-        " //evil.example",
-        "javascript:alert(1)",
-        "/%2F%2Fevil.example",
-        "/\r\nlocation: https://evil.example",
-        "/account/inbox"
-      ]
-
-      follow_rows =
-        for back <- backs do
-          redirect_row("follow back=#{inspect(back)}", fn ->
-            as(a)
-            |> post(~p"/follow", %{"site_id" => site.id, "follow" => "true", "back" => back})
-          end)
-        end
-
-      # The same addresses percent-encoded in the form body, as a browser sends them.
-      encoded_rows =
-        for back <- ["%2F%2Fevil.example", "%2F%5Cevil.example", "https%3A%2F%2Fevil.example"] do
-          redirect_row("follow back sent encoded #{back}", fn ->
-            as(a)
-            |> raw(
-              ~p"/follow",
-              "application/x-www-form-urlencoded",
-              "site_id=#{site.id}&follow=true&back=#{back}"
-            )
-          end)
-        end
-
-      judge("follow redirects", follow_rows ++ encoded_rows)
-    end
-
-    test "a like's way back to the post", %{a: a} do
-      thread = thread!(a)
-
-      like_rows =
-        for reply_id <- [
-              "\\evil.example",
-              "/\\evil.example",
-              "x\r\nlocation: https://evil.example"
-            ] do
-          redirect_row("like reply_id=#{inspect(reply_id)}", fn ->
-            as(a)
-            |> post("/posts/#{thread.id}/likes", %{"like" => "true", "reply_id" => reply_id})
-          end)
-        end
-
-      judge("like redirects", like_rows)
-    end
-
     test "the sign-in consent page", %{a: a} do
       oauth_rows =
         for redirect_uri <- ["https://evil.example/cb", "//evil.example/cb"] do

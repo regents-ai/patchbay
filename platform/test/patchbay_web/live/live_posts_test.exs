@@ -249,8 +249,9 @@ defmodule PatchbayWeb.LivePostsTest do
 
   # A page's live part, joined as the browser joins it.
   defp open(conn, path, view) do
-    session = conn |> get(path) |> html_response(200) |> LivePart.session(view)
-    {:ok, live, _html} = live_isolated(build_conn(), view, session: session)
+    page = get(conn, path)
+    session = page |> html_response(200) |> LivePart.session(view)
+    {:ok, live, _html} = live_isolated(LivePart.browser(page), view, session: session)
     {:ok, live}
   end
 

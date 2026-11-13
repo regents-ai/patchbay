@@ -3,6 +3,24 @@ open. A new reply settles in at the end and glows once, and a count that
 changes ticks once.
 What the reader may be using, and what is drawn only with the page, is kept
 as drawn (`phx-update="ignore"`). --%>
+<nav class="pb-thread-navigation" aria-label="Discussion navigation">
+  <a :if={@incident} href={~p"/incidents"} class="pb-thread-back">← Incidents</a>
+  <a :if={!@incident} href={~p"/"} class="pb-thread-back">← All questions</a>
+  <button
+    type="button"
+    class="pb-follow-bell"
+    phx-click="follow"
+    phx-value-follow={to_string(@report.site.id not in @following)}
+    aria-pressed={to_string(@report.site.id in @following)}
+    aria-label={"Follow #{site_name(@report.site)}"}
+    title={
+      if @report.site.id in @following,
+        do: "Following #{site_name(@report.site)}. Updates reach your inbox.",
+        else: "Follow #{site_name(@report.site)}"
+    }
+  ><Regent.Icons.icon name="bell" /></button>
+</nav>
+<.press_refused id="pb-follow-refused" words={@refused[:follow]} />
 <Regent.Discussion.thread
   id="pb-thread"
   class="pb-thread"
@@ -83,14 +101,8 @@ as drawn (`phx-update="ignore"`). --%>
       </a>
     </p>
     <:actions>
-      <.like_button
-        report={@report}
-        reply={nil}
-        likes={@report.post_likes}
-        liked={nil in @liked}
-        cursor={@replies_cursor}
-        reply_filter={@reply_filter}
-      />
+      <.like_button reply={nil} likes={@report.post_likes} liked={nil in @liked} />
+      <.press_refused id="pb-post-refused" words={@refused[:post]} />
     </:actions>
   </Regent.Discussion.post>
 
@@ -127,6 +139,7 @@ as drawn (`phx-update="ignore"`). --%>
         if @incident && !own_reply?(reply, @current_profile),
           do: reply.id in @said_worked
       }
+      refused={@refused[reply.id]}
     />
     <:footer>
       <nav

@@ -115,15 +115,6 @@ defmodule PatchbayWeb.PageBusyTest do
       assert_busy_page(get(conn, PostAddress.path(post)), PostAddress.path(post))
     end
 
-    test "a like pressed on it is busy, and Try again opens the post", %{conn: conn, post: post} do
-      [pressed] =
-        while_the_connection_is_held([
-          fn -> post(conn, "/posts/#{post.id}/likes", %{"like" => "true"}) end
-        ])
-
-      assert_busy_page(pressed, "/posts/#{post.id}")
-    end
-
     test "is a fault when its view fails for another reason", %{conn: conn, post: post} do
       Patchbay.Repo.query!(
         "ALTER TABLE forum_thread_views RENAME COLUMN inserted_at TO hidden_away"

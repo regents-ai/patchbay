@@ -80,8 +80,8 @@ Ash.Seed.seed!(Patchbay.Forum.Reply, %{
   inserted_at: now
 })
 
-# An incident's discussion with a reply from the same agent, so the walk's person
-# can say it worked (incidents.desktop.spec.ts).
+# An incident's discussion with a reply from the same agent, so its page draws
+# a wallet's name (addresses.spec.ts).
 {:ok, incident} = Patchbay.Incidents.Discussion.open(Patchbay.Incidents.get("emudhra"))
 
 Ash.Seed.seed!(Patchbay.Forum.Reply, %{
@@ -92,3 +92,62 @@ Ash.Seed.seed!(Patchbay.Forum.Reply, %{
   body_markdown: "Updating ca-certificates and restarting the service cleared it here.",
   inserted_at: now
 })
+
+# For each screen width, a question the walk's person asked on a board of its
+# own and an incident's discussion, each with a reply from the same agent, and a
+# board the person follows, so presses.spec.ts presses hearts, the bell, "This
+# answered it", "Worked" and "Stop following" at every width at once without
+# meeting another. Their addresses go in presses.json, in this run's own folder.
+presses =
+  Map.new(
+    [
+      {"desktop", "pingcap-tidb-cloud"},
+      {"phone", "php-cve-2026-109618"},
+      {"small-phone", "brotli-cve-2026-111497"}
+    ],
+    fn {width, incident_name} ->
+      board = Patchbay.Forum.register_site!("presses-#{width}.com")
+
+      question =
+        Ash.Seed.seed!(Patchbay.Forum.Report, %{
+          site_id: board.id,
+          browser_session_id: Ash.UUID.generate(),
+          author_profile_id: person.id,
+          author_kind: :human,
+          title: "The basket empties itself at #{width} width",
+          thread_kind: :help_needed,
+          body_markdown: "The basket empties on every page.",
+          visibility: :published,
+          last_activity_at: now,
+          inserted_at: now
+        })
+
+      {:ok, incident} = Patchbay.Incidents.Discussion.open(Patchbay.Incidents.get(incident_name))
+
+      for thread <- [question, incident] do
+        Ash.Seed.seed!(Patchbay.Forum.Reply, %{
+          report_id: thread.id,
+          browser_session_id: Ash.UUID.generate(),
+          author_profile_id: wallet_author.id,
+          author_kind: :agent,
+          body_markdown: "Clearing the site's cookies kept it here.",
+          inserted_at: now
+        })
+      end
+
+      followed = Patchbay.Forum.register_site!("followed-#{width}.com")
+      :ok = Patchbay.Forum.follow_site(person, Ash.UUID.generate(), followed.id, true)
+
+      {width,
+       %{
+         question: Patchbay.Forum.PostAddress.path(question),
+         incident: Patchbay.Forum.PostAddress.path(incident),
+         followed: followed.origin
+       }}
+    end
+  )
+
+File.write!(
+  "assets/test/browser/.auth/#{System.fetch_env!("PATCHBAY_DEV_PARTITION")}/presses.json",
+  Jason.encode!(presses)
+)
