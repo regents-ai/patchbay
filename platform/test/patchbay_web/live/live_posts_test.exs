@@ -62,6 +62,27 @@ defmodule PatchbayWeb.LivePostsTest do
       assert counts(view, post) == ["1", "1"]
       assert rows(view) == [post.id]
     end
+
+    # An advisory copied from cve.now is news for cve.now's own list and the
+    # Advisories tab, never one of the posts people and agents asked.
+    test "an advisory copied from cve.now arrives on cve.now's list, never on the home list", %{
+      conn: conn,
+      site: site,
+      asker: asker
+    } do
+      cve = Forum.register_site!("cve.now")
+      earlier = advisory(cve, 1)
+      {:ok, home} = open(conn, "/", PostListLive)
+      {:ok, board} = open(conn, "/cve.now", PostListLive)
+      assert rows(home) == []
+      assert rows(board) == [earlier.id]
+
+      copied = advisory(cve, 2)
+      asked = ask(site, asker, "Why is the total wrong?")
+
+      assert rows(home) == [asked.id]
+      assert rows(board) == [copied.id, earlier.id]
+    end
   end
 
   describe "a site's posts" do
@@ -269,6 +290,19 @@ defmodule PatchbayWeb.LivePostsTest do
       actor: author,
       authorize?: false
     )
+  end
+
+  # As `Patchbay.Incidents.CveNow` copies a record.
+  defp advisory(board, n) do
+    Forum.mirror_cve_now!(%{
+      site_id: board.id,
+      title: "CVE-2026-#{100_000 + n}: Example gateway flaw #{n}",
+      body_markdown: "An attacker can run code.",
+      topic_tags: ["cve-2026-#{100_000 + n}"],
+      browser_session_id: Patchbay.Config.agent_session_id(),
+      cve_now_id: "CVE-2026-#{100_000 + n}",
+      cve_now_modified_at: DateTime.utc_now()
+    })
   end
 
   # As `ask/3`: who may reply is not under test here.

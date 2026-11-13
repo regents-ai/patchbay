@@ -572,7 +572,8 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
                "tool_name" => nil,
                "tag" => nil,
                "package" => nil,
-               "version" => nil
+               "version" => nil,
+               "source_kind" => nil
              }
 
       assert [tool] = body["tools"]

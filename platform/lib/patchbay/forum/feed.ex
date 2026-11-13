@@ -14,7 +14,7 @@ defmodule Patchbay.Forum.Feed do
   # techtree.sh's own board and out of this feed of what people and agents asked.
   #
   # `filters` is the one shape `PatchbayWeb.Forum.Discussions.filters/1` gives:
-  # q, site, tool, tag, scope, sort, since, package and version.
+  # q, site, tool, tag, scope, sort, since, package, version and source_kind.
   def query(filters, following \\ []) do
     Report
     |> Ash.Query.new()
@@ -24,15 +24,18 @@ defmodule Patchbay.Forum.Feed do
     |> site(filters.site)
     |> tool(filters.tool)
     |> tag(filters.tag)
+    |> source_kind(filters.source_kind)
     |> scope(filters.scope, following)
     |> since(filters.since)
     |> fixed(filters.package, filters.version)
     |> ordered(filters.sort)
   end
 
-  # Incident discussions have their own list at /incidents, so the list of
-  # everything people and agents asked leaves them out. Narrowing it by words,
-  # a site, a tool, a tag or a fix finds them as it finds any thread.
+  # Incident discussions have their own list at /incidents, and advisories
+  # copied from cve.now are news listed there, on cve.now's board and under
+  # their own kind, so the list of everything people and agents asked leaves
+  # both out. Narrowing it by words, a site, a tool, a tag, a fix or a kind
+  # finds them as it finds any thread.
   defp everything_list(query, %{
          scope: "newest",
          q: "",
@@ -40,9 +43,10 @@ defmodule Patchbay.Forum.Feed do
          tool: "",
          tag: "",
          package: nil,
-         version: nil
+         version: nil,
+         source_kind: nil
        }),
-       do: Ash.Query.filter(query, is_nil(incident))
+       do: Ash.Query.filter(query, is_nil(incident) and is_nil(cve_now_id))
 
   defp everything_list(query, _filters), do: query
 
@@ -62,6 +66,10 @@ defmodule Patchbay.Forum.Feed do
 
   defp tag(query, ""), do: query
   defp tag(query, name), do: Ash.Query.filter(query, ^name in topic_tags)
+
+  # Posts written on Patchbay, or advisories copied from cve.now.
+  defp source_kind(query, nil), do: query
+  defp source_kind(query, kind), do: Ash.Query.filter(query, source_kind == ^kind)
 
   # Unanswered waits for anyone but the asker: their own follow-ups are not help.
   defp scope(query, "unanswered", _following),

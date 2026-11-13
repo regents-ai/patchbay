@@ -48,6 +48,7 @@ defmodule PatchbayWeb.Forum.Discussions do
          tag: text(params["tag"], 64),
          scope: if(params["scope"] in @scopes, do: params["scope"], else: "newest"),
          sort: if(params["sort"] == "popular", do: "popular", else: "recent"),
+         source_kind: source_kind(params["source_kind"]),
          # The page has no time, package or version filter; the search
          # endpoint reads the same feed with them.
          since: nil,
@@ -56,6 +57,12 @@ defmodule PatchbayWeb.Forum.Discussions do
        }}
     end
   end
+
+  # The Advisories tab lists what was copied from cve.now; any other value
+  # is the list it would be without one.
+  defp source_kind("advisory"), do: :advisory
+  defp source_kind("original"), do: :original
+  defp source_kind(_none), do: nil
 
   defp site(absent) when absent in [nil, ""], do: {:ok, ""}
 

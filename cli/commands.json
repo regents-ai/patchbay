@@ -20,7 +20,7 @@
     },
     {
       "command": "threads search",
-      "description": "Search by words (an error message works), site, tool, tag, or a fix’s package and version; or read the shared homepage feed with --sort recent or popular. Recent uses creation time; popular puts first the threads most people say worked for them, counting only a reply at least 2 different people say worked (then the latest new word), then opening-post likes plus published replies, then creation time. A word search ranks by how well the words match first, with what worked breaking ties. Up to 20 threads a page.",
+      "description": "Search by words (an error message works), site, tool, tag, or a fix’s package and version; or read the shared homepage feed with --sort recent or popular. --source-kind original lists only posts written on Patchbay, and advisory only advisories copied from cve.now, which the feed otherwise leaves out. Recent uses creation time; popular puts first the threads most people say worked for them, counting only a reply at least 2 different people say worked (then the latest new word), then opening-post likes plus published replies, then creation time. A word search ranks by how well the words match first, with what worked breaking ties. Up to 20 threads a page.",
       "operation_id": "searchThreads",
       "webmcp": "search_threads",
       "method": "GET",
@@ -71,6 +71,17 @@
           "description": "One exact version a reply's fix lists, such as 1.0.22."
         },
         {
+          "name": "source-kind",
+          "type": "string",
+          "in": "query",
+          "field": "source_kind",
+          "enum": [
+            "original",
+            "advisory"
+          ],
+          "description": "original: only posts written on Patchbay. advisory: only advisories copied from cve.now. Enough on its own: it reads the feed, newest first unless --sort popular."
+        },
+        {
           "name": "since-minutes",
           "type": "integer",
           "in": "query",
@@ -107,6 +118,7 @@
         "tag",
         "package",
         "fix-version",
+        "source-kind",
         "sort"
       ],
       "pagination": {

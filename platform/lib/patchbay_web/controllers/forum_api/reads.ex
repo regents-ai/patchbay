@@ -108,6 +108,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          :ok <- feed_sort(params["sort"]),
          {:ok, tool_name} <- searchable_tool_name(presence(params["tool_name"])),
          {:ok, tag} <- searchable_tag(presence(params["tag"])),
+         {:ok, kind} <- searchable_source_kind(presence(params["source_kind"])),
          {:ok, fixed} <- fixed_in(params),
          {:ok, site} <- search_site(origin),
          {:ok, since} <- since_minutes(params["since_minutes"]),
@@ -115,8 +116,16 @@ defmodule PatchbayWeb.ForumAPI.Reads do
          {:ok, tools} <- search_tools(site, tool_name),
          {:ok, page} <-
            thread_search(
-             %{q: q, tool_name: tool_name, tag: tag, site: site, fixed: fixed, since: since},
-             feed_order(params["sort"], tag),
+             %{
+               q: q,
+               tool_name: tool_name,
+               tag: tag,
+               site: site,
+               fixed: fixed,
+               since: since,
+               source_kind: kind
+             },
+             feed_order(params["sort"], tag || kind),
              offset
            ) do
       search_payload(
@@ -126,7 +135,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
           tool_name: tool_name,
           tag: tag,
           package: fixed.software,
-          version: fixed.version
+          version: fixed.version,
+          source_kind: kind
         },
         tools,
         page,
@@ -152,7 +162,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
              load: [
                :author,
                :site,
+               :source_kind,
                :discussion_state,
+               :needs_answer,
                :solved,
                :solution_cards,
                tool: [:site],
@@ -420,7 +432,9 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   @thread_search_loads [
     :author,
     :site,
+    :source_kind,
     :discussion_state,
+    :needs_answer,
     :solved,
     :worked_count,
     :last_worked_at,
@@ -475,11 +489,19 @@ defmodule PatchbayWeb.ForumAPI.Reads do
   defp feed_sort(value) when value in [nil, "recent", "popular"], do: :ok
   defp feed_sort(_), do: {:error, {:invalid, ["sort: use recent or popular."]}}
 
-  # A tag reads the website's feed, as its tag filter does: newest first
-  # unless popular is asked for.
+  # Where a post's words come from: written on Patchbay, or copied from cve.now.
+  defp searchable_source_kind(nil), do: {:ok, nil}
+  defp searchable_source_kind("original"), do: {:ok, :original}
+  defp searchable_source_kind("advisory"), do: {:ok, :advisory}
+
+  defp searchable_source_kind(_other),
+    do: {:error, {:invalid, ["source_kind: use original or advisory."]}}
+
+  # A tag or a source kind reads the website's feed, as its tag filter does:
+  # newest first unless popular is asked for.
   defp feed_order(nil, nil), do: nil
-  defp feed_order(nil, _tag), do: "recent"
-  defp feed_order(sort, _tag), do: sort
+  defp feed_order(nil, _tag_or_kind), do: "recent"
+  defp feed_order(sort, _tag_or_kind), do: sort
 
   # Explicit ordering reads the same feed as the website, including without a filter.
   # Omitting sort retains the existing full-text search contract.
@@ -496,7 +518,8 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       sort: sort,
       since: search.since,
       package: search.fixed.software,
-      version: search.fixed.version
+      version: search.fixed.version,
+      source_kind: search.source_kind
     }
 
     # Loaded after the read: an aggregate loaded with it pages the newest
@@ -828,9 +851,11 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       id: report.id,
       url: Patchbay.Forum.PostAddress.path(report),
       thread_kind: report.thread_kind,
+      source_kind: report.source_kind,
       title: report.title,
       body_markdown: report.body_markdown,
       discussion_state: report.discussion_state,
+      needs_answer: report.needs_answer,
       topic_tags: report.topic_tags,
       last_activity_at: report.last_activity_at,
       solution_reply_id: if(report.solved, do: report.solution_reply_id),
