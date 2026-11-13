@@ -83,6 +83,19 @@ test.describe("on a phone", () => {
       expect(small, "controls under 44 px tall or 24 px wide").toEqual([])
     })
   }
+
+  // A site's solved and still-open questions are links on lines of their own:
+  // every part of one a finger lands on is a full finger tall, one line long or
+  // several.
+  test("every question in a site's status is a full finger tall, line by line", async ({page}) => {
+    await page.goto("/keyfleet.ai")
+    const questions = page.locator(".pb-standing li a")
+    await expect(questions).not.toHaveCount(0)
+    const short = await questions.evaluateAll(links =>
+      links.flatMap(link => [...link.getClientRects()].map(box => Math.round(box.height))).filter(height => height < 44),
+    )
+    expect(short, "parts of a question link under 44 px tall").toEqual([])
+  })
 })
 
 test("the Wallet Bench board takes the sheet's width", async ({page, isMobile}) => {

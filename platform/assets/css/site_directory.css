@@ -163,6 +163,12 @@
 .pb-standing-count { font-variant-numeric: tabular-nums; color: var(--pb-text-muted); }
 .pb-standing ol { display: grid; gap: .35rem; margin: 0; padding: 0; list-style: none; }
 .pb-standing li a { font-size: var(--pb-fs-sm); overflow-wrap: anywhere; }
+/* On a touch screen each question is a full finger tall: the link takes its
+   line's width and the padding that makes up the rest, so the list closes up. */
+@media (pointer: coarse), (hover: none) {
+  .pb-standing ol { gap: 0; }
+  .pb-standing li a { display: block; padding-block: .8125rem; }
+}
 .pb-standing p { margin: 0; font-size: var(--pb-fs-xs); }
 @media (max-width: 640px) {
   .pb-standing-lists { grid-template-columns: minmax(0, 1fr); }
