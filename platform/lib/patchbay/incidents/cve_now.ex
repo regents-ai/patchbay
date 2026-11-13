@@ -7,7 +7,7 @@ defmodule Patchbay.Incidents.CveNow do
   home page's Advisories tab as they are written, `/incidents` lists them
   after the incidents, and they never wait for an answer.
 
-  One job runs every fifteen minutes (config/config.exs). It reads the newest
+  One job runs every hour (config/config.exs). It reads the newest
   page of `GET /api/v1/entries?filter=critical,kev` and works through it
   oldest first: a record with no post gets one, and a record cve.now changed
   since it was copied has its post brought in line. Nothing older than that
@@ -36,7 +36,7 @@ defmodule Patchbay.Incidents.CveNow do
   require Logger
 
   # How often the job runs: the cron line in config/config.exs.
-  @every_seconds 15 * 60
+  @every_seconds 60 * 60
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do

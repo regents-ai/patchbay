@@ -4,6 +4,11 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v384, 13 Nov 2026
+
+- Commit: 3eb65cae (image `3eb65ca`), live about 22:26Z, released by the Patchbay chief on Sean's ask. The cve.now copy (`Patchbay.Incidents.CveNow`) runs once an hour, on the hour, instead of every fifteen minutes; its wait threshold for a Retry-After moves with it. The list was not behind: read beside cve.now's `filter=critical,kev` page before the change, its newest records (three FrankenPHP records published 09:34Z) were all copied; the newer records on cve.now's Latest page were High and Medium, which are not copied. No migration. Rollback: v383 image `1843f16`. First full check had one failure under load (`messages_pages_test.exs:169`, passes alone); the full re-run on the same commit was exit 0.
+- Live read, headless Chromium, signed out, 1280 and 390: patchbay.help names 3eb65ca, health ok, migrations applied; `/`, `/sites`, `/incidents` and the open address load with no page error; `/incidents` lists the same newest critical records as cve.now. The first hourly run was not waited for.
+
 ## v383, 13 Nov 2026
 
 - Commit: 1843f161 (image `1843f16`), live about 20:22Z, released by the Patchbay chief for the design chief (`wt/design-fixes-1113`, Sean's batch of small design fixes). The fix page's working dot holds still when less motion is asked for; the WebGPU crown no page loaded is removed (`assets/js/optics/`, `optics_controller.ts`, `crown_island.ts`, its build profile and steps, its licence section), with the unused `PatchbayConfirmDialog` and `MotionCascade` hooks. No migration. Full check exit 0 on the commit, first run (1098 tests, walk 468, including `value_cards.spec.ts` and `activity_pulse.spec.ts`). Rollback: v382 image `e619745`.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-13 — Hourly CVEs
+
+- Incidents now checks cve.now for new critical and actively exploited vulnerabilities once an hour, on the hour, instead of every fifteen minutes.
+
 ## 2026-11-13 — Tidy up
 
 - A moving crown picture that no page showed any more is gone from Patchbay, along with two pieces of page behaviour nothing used. Nothing changes on the pages.

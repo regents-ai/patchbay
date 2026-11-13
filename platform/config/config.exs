@@ -185,7 +185,7 @@ config :patchbay, Oban,
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
       # cve.now's newest critical records, each copied into a post.
-      {"*/15 * * * *", Patchbay.Incidents.CveNow},
+      {"0 * * * *", Patchbay.Incidents.CveNow},
       # One line for each kind of shared reading a producer rereads on notice:
       # the Wallet Bench board (`Patchbay.WalletBench.Board`), the directory's
       # hidden sites (`Patchbay.Forum.HiddenSites`) and the Points board
@@ -199,7 +199,7 @@ config :patchbay, Oban,
   lifeline: [rescue_after: {10, :minutes}]
 
 # cve.now's critical and actively exploited records, copied into posts every
-# fifteen minutes (`Patchbay.Incidents.CveNow`): the newest `page_size` records
+# hour (`Patchbay.Incidents.CveNow`): the newest `page_size` records
 # listed, and at most `reads_per_run` of them read in full each run.
 # `enabled?: false` stops the copying; the posts already made stay.
 config :patchbay, Patchbay.Incidents.CveNow,
