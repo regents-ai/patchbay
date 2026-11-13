@@ -1,9 +1,9 @@
 import type * as PrivyBridge from "../privy_bridge.tsx"
 import {signInChoices} from "./provider.ts"
+import {clearLocalSession, createLocalSession, reportSignInFailure, SessionRefusal} from "./session.ts"
+import type {SignInFailureDiagnostic} from "./session.ts"
 import {returnedFromOAuth} from "./sign_in.ts"
 import type {Proof, Refusal} from "./sign_in.ts"
-
-const SESSION_PATH = "/auth/privy/session"
 
 export type PrivyBridgeModule = typeof PrivyBridge
 
@@ -18,17 +18,25 @@ export type MetaDocument = {
 type AccountOptions = {
   document?: Document
   fetch?: typeof globalThis.fetch
-  csrfToken?: string
   location?: {reload?: () => void}
   loadBridge?: (doc: MetaDocument) => Promise<Pick<PrivyBridgeModule, "signIn" | "finishRedirectSignIn" | "signOut"> | null>
 }
 
-// Patchbay refuses a sign-in whose Privy account has no wallet; the page says so
-// in the server's words when the account's wallet never appears here either. The
-// open address, which shows no wallets, says the account is not ready.
+// Patchbay signs in only an account with a wallet, so a sign-in whose wallet
+// never appears here sends nothing and says so. The open address, which shows
+// no wallets, says the account is not ready.
 const NO_WALLET = {
   email: "Your account is not ready yet. Sign in again to finish.",
   dashboard: "Your account has no wallet yet. Sign in again to get one.",
+}
+
+// Why a Privy sign-in ended before Patchbay was asked, by the reasons the
+// session endpoint records. A sign-in whose tokens or wallet never arrived
+// failed on its way to the session, as in ash-template.
+const DIAGNOSTICS: Record<string, SignInFailureDiagnostic> = {
+  unready: "bridge_startup",
+  closed: "flow_closed",
+  refused: "provider_error",
 }
 
 /**
@@ -91,7 +99,10 @@ async function performAccountAction(action: string, doc: Document, options: Acco
   if (!appId) return
 
   const bridge = await (options.loadBridge ?? loadPrivyBridge)(doc)
-  if (!bridge) return
+  if (!bridge) {
+    if (action !== "sign-out") reportSignInFailure("bridge_startup", fetcher(options))
+    return
+  }
 
   if (action === "sign-in") return signIn(bridge.signIn(appId), doc, options)
   if (action === "redirect-sign-in") return signIn(bridge.finishRedirectSignIn(appId), doc, options)
@@ -102,25 +113,33 @@ async function signIn(proving: Promise<Proof | Refusal>, doc: Document, options:
   showStatus(doc, null)
   const proof = await proving
   if (!proof.ok) {
+    reportSignInFailure(DIAGNOSTICS[proof.reason] ?? "session_exchange", fetcher(options))
     if (proof.reason === "no_wallet") showStatus(doc, NO_WALLET[signInChoices(doc) ?? "dashboard"])
     return
   }
 
-  const response = await send(options, "POST", {
-    authorization: `Bearer ${proof.access}`,
-    "privy-id-token": proof.identity,
-  })
+  try {
+    await createLocalSession(proof, fetcher(options))
+  } catch (failure) {
+    // The server records a sign-in it refused; one that never reached it is
+    // reported from here.
+    if (failure instanceof SessionRefusal) return showStatus(doc, failure.words)
+    return reportSignInFailure("session_exchange", fetcher(options))
+  }
 
   // The page is drawn from the session, so the session is what a reload reads.
-  if (response?.ok) return reload(options)
-  showStatus(doc, await refusalWords(response))
+  reload(options)
 }
 
 // The Patchbay session goes first, because that is the one this page is drawn
 // from. Ending the Privy session behind it is cleanup: if it fails, the visitor
 // is still signed out of Patchbay.
 async function signOut(bridge: Pick<PrivyBridgeModule, "signOut">, appId: string, options: AccountOptions): Promise<void> {
-  if (!(await send(options, "DELETE", {}))?.ok) return
+  try {
+    await clearLocalSession(fetcher(options))
+  } catch {
+    return
+  }
 
   try {
     await bridge.signOut(appId)
@@ -155,31 +174,8 @@ export async function loadPrivyBridge(doc: MetaDocument | undefined): Promise<Pr
   }
 }
 
-// The session endpoint's answer, or null when it could not be asked.
-async function send(options: AccountOptions, method: string, headers: Record<string, string>): Promise<Response | null> {
-  const fetchImpl = options.fetch ?? globalThis.fetch
-  if (typeof fetchImpl !== "function") return null
-
-  try {
-    return await fetchImpl(SESSION_PATH, {
-      method,
-      credentials: "same-origin",
-      headers: {accept: "application/json", "x-csrf-token": options.csrfToken ?? "", ...headers},
-    })
-  } catch {
-    return null
-  }
-}
-
-// A refusal's own words and what to do, as the session endpoint wrote them, or
-// nothing when it gave none.
-async function refusalWords(response: Response | null): Promise<string | null> {
-  try {
-    const {error} = await response!.json()
-    return typeof error?.message === "string" && typeof error?.hint === "string" ? `${error.message} ${error.hint}` : null
-  } catch {
-    return null
-  }
+function fetcher(options: AccountOptions): typeof globalThis.fetch {
+  return options.fetch ?? globalThis.fetch.bind(globalThis)
 }
 
 // The note under the header's account control, or none.

@@ -80,9 +80,9 @@ test("an email sign-in with no wallet is refused and the page stays signed out",
   const answered = page.waitForResponse(response => response.url().endsWith("/auth/privy/session"))
   await signInButton(page).click()
   const refusal = await answered
-  expect(refusal.status()).toBe(422)
-  expect((await refusal.json()).error.code).toBe("no_wallet")
-  await expect(page.locator("#account-auth-status")).toHaveText("Your account has no wallet yet. Sign in again to get one.")
+  expect(refusal.status()).toBe(401)
+  expect((await refusal.json()).error.code).toBe("unauthorized")
+  await expect(page.locator("#account-auth-status")).toHaveText("This sign-in couldn't be confirmed. Sign in again.")
 
   await page.reload()
   await expect(signInButton(page)).toBeVisible()

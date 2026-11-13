@@ -3,9 +3,10 @@ import {test} from "node:test"
 
 import {installAccountControl, requestAccountAction} from "../../js/privy/account.ts"
 
-// The account control's sign-in, with the bridge and the session address faked:
-// a refusal says why under the header, a sign-in with no wallet sends nothing,
-// and a page Privy brought back from Google finishes that sign-in by itself.
+// The account control's sign-in and sign-out, with the bridge and the session
+// endpoints faked: a refusal says why under the header, a sign-in with no
+// wallet sends nothing, and a page Privy brought back from Google finishes that
+// sign-in by itself.
 type Status = {textContent: string; hidden: boolean}
 
 function page(search = "", signedOut = true, choices: string | null = null) {
@@ -24,20 +25,24 @@ function page(search = "", signedOut = true, choices: string | null = null) {
   return {doc: doc as unknown as Document, status}
 }
 
+// The CSRF bootstrap answers a fresh token each time it is asked; the session
+// address answers `answer`.
 function session(answer: {status: number; body?: unknown}) {
-  const sent: {method: string; headers: Record<string, string>}[] = []
-  const fetch = (async (_path: string, init: {method: string; headers: Record<string, string>}) => {
-    sent.push(init)
+  const sent: {method: string; path: string; headers: Record<string, string>}[] = []
+  let tokens = 0
+  const fetch = (async (path: string, init: {method?: string; headers?: Record<string, string>} = {}) => {
+    sent.push({method: init.method ?? "GET", path, headers: init.headers ?? {}})
+    if (path === "/auth/csrf") return Response.json({csrf_token: `token-${(tokens += 1)}`})
     return new Response(JSON.stringify(answer.body ?? {}), {status: answer.status})
   }) as unknown as typeof globalThis.fetch
   return {sent, fetch}
 }
 
 const proof = {ok: true as const, access: "access-token", identity: "identity-token"}
-const bridge = (signIn: unknown, finishRedirectSignIn: unknown = signIn) => async () => ({
+const bridge = (signIn: unknown, finishRedirectSignIn: unknown = signIn, signedOut: string[] = []) => async () => ({
   signIn: async () => signIn,
   finishRedirectSignIn: async () => finishRedirectSignIn,
-  signOut: async () => {},
+  signOut: async (appId: string) => { signedOut.push(appId) },
 }) as never
 
 test("a sign-in whose wallet never appears sends nothing and says so", async () => {
@@ -59,22 +64,23 @@ test("at the open address a sign-in whose wallet never appears says the account 
   assert.equal(status.textContent, "Your account is not ready yet. Sign in again to finish.")
 })
 
-test("a sign-in Patchbay refuses shows the refusal's words and stays on the page", async () => {
+test("a sign-in Patchbay refuses is sent under a fresh token, shows the refusal's words and stays on the page", async () => {
   const {doc, status} = page()
-  const {sent, fetch} = session({status: 422, body: {error: {code: "no_wallet", message: "Your account has no wallet yet.", hint: "Sign in again to get one."}}})
+  const {sent, fetch} = session({status: 429, body: {error: {code: "rate_limited", message: "Too many new sign-ins came from this address.", hint: "Wait, then try again."}}})
   let reloaded = false
   await requestAccountAction("sign-in", doc, {fetch, loadBridge: bridge(proof), location: {reload: () => { reloaded = true }}})
-  assert.equal(sent.length, 1)
-  assert.equal(sent[0].headers.authorization, "Bearer access-token")
-  assert.equal(sent[0].headers["privy-id-token"], "identity-token")
+  assert.deepEqual(sent.map(({method, path}) => `${method} ${path}`), ["GET /auth/csrf", "POST /auth/privy/session"])
+  assert.equal(sent[1].headers.authorization, "Bearer access-token")
+  assert.equal(sent[1].headers["privy-id-token"], "identity-token")
+  assert.equal(sent[1].headers["x-csrf-token"], "token-1")
   assert.equal(reloaded, false)
   assert.equal(status.hidden, false)
-  assert.equal(status.textContent, "Your account has no wallet yet. Sign in again to get one.")
+  assert.equal(status.textContent, "Too many new sign-ins came from this address. Wait, then try again.")
 })
 
 test("a sign-in that goes through reloads, and a closed window says nothing", async () => {
   const signedIn = page()
-  const ok = session({status: 200})
+  const ok = session({status: 200, body: {authenticated: true}})
   let reloaded = false
   await requestAccountAction("sign-in", signedIn.doc, {fetch: ok.fetch, loadBridge: bridge(proof), location: {reload: () => { reloaded = true }}})
   assert.equal(reloaded, true)
@@ -89,14 +95,25 @@ test("a sign-in that goes through reloads, and a closed window says nothing", as
 
 test("a signed-out page Privy brought back from Google finishes that sign-in through the session address", async () => {
   const {doc} = page("?privy_oauth_code=abc&privy_oauth_state=def")
-  const {sent, fetch} = session({status: 200})
+  const {sent, fetch} = session({status: 200, body: {authenticated: true}})
   const reloaded = new Promise<void>(resolve => {
     installAccountControl({document: doc, fetch, loadBridge: bridge({ok: false, reason: "not this one"}, proof), location: {reload: resolve}})
   })
   await reloaded
-  assert.equal(sent.length, 1)
-  assert.equal(sent[0].method, "POST")
-  assert.equal(sent[0].headers["privy-id-token"], "identity-token")
+  const post = sent.find(({method}) => method === "POST")!
+  assert.equal(post.path, "/auth/privy/session")
+  assert.equal(post.headers["privy-id-token"], "identity-token")
+})
+
+test("sign out ends the Patchbay session first, then Privy's, then reloads", async () => {
+  const {doc} = page("", false)
+  const {sent, fetch} = session({status: 200, body: {ok: true}})
+  const signedOut: string[] = []
+  let reloaded = false
+  await requestAccountAction("sign-out", doc, {fetch, loadBridge: bridge(proof, proof, signedOut), location: {reload: () => { reloaded = true }}})
+  assert.deepEqual(sent.map(({method, path}) => `${method} ${path}`), ["DELETE /auth/privy/session"])
+  assert.deepEqual(signedOut, ["app-1"])
+  assert.equal(reloaded, true)
 })
 
 test("a page without Privy's return, or one already signed in, starts nothing on load", async () => {

@@ -23,7 +23,6 @@ const WORDS: Record<string, string> = {
 type HeroFormOptions = {
   document?: Document
   fetch?: typeof globalThis.fetch
-  csrfToken?: string
   storage?: Storage | null
   navigate?: (url: string) => void
 }
