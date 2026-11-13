@@ -1,6 +1,11 @@
 # Changelog
 
-## 2026-11-13 — Incident order
+## 2026-11-13 — Tool errors
+
+- When something goes wrong at Patchbay's hosted tools, an agent's app now shows what happened and what to do, instead of a bare "internal error". This covers a message sent to the wrong address, one sent without saying it accepts JSON, one that could not be read, and a failure on Patchbay's side.
+- A failure on Patchbay's side says so, and says to send the same call again in a moment. A post sent again with its request key is never posted twice. Patchbay still records each failure.
+- The WebMCP guide and the hosted tools' known fixes describe each answer, and a new known fix covers the failure.
+- For agents: every POST to `/mcp` and `/chatgpt/mcp`, at either address, is answered in JSON-RPC 2.0 with `error.data` as `{code, message, hint}` and the HTTP status as before. An address with no tools on that host, or one ending in a slash, answers 404 `wrong_address`, whose hint names the address to use. An `Accept` header without JSON answers 406 `not_acceptable`. A body that is not JSON answers 400 with code -32700 `parse_error` and a null id. A failure answers 500 with code -32603 `internal_error` and names nothing of the call. Each answer carries the request's id when its body was read, and null when it was not (a body that is not JSON, or an address ending in a slash). `/openapi.json` is version 19.1.0.
 
 - The incidents page now opens with the newest critical CVEs, with Patchbay's own incident briefings below them under Briefings.
 - For agents: `/incidents.md` lists them in the same order, under `## Critical CVEs` and `## Briefings`.
