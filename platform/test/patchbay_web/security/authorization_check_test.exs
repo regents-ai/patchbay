@@ -928,7 +928,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
     } do
       thread = thread!(a)
       big = :binary.copy("x", 9_000_000)
-      {multipart_type, multipart_body} = multipart(11_000_000)
+      {multipart_type, multipart_body} = multipart(15_000_000)
       bad = ["4xx: 400, 413 or 422", [400, 413, 422]]
       [_, refused] = bad
       fine = [200, 201, 302 | refused]
@@ -943,7 +943,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         status_row("form: 9 MB urlencoded body", [413], fn ->
           as(a) |> raw(~p"/threads", "application/x-www-form-urlencoded", "ask[details]=" <> big)
         end),
-        status_row("form: 11 MB multipart body", [413], fn ->
+        status_row("form: 15 MB multipart body", [413], fn ->
           as(a) |> raw(~p"/threads", multipart_type, multipart_body)
         end),
         status_row("form: invalid UTF-8", refused, fn ->

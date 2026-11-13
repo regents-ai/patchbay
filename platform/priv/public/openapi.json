@@ -4883,7 +4883,7 @@
             }
           },
           "400": {
-            "description": "The body was not one JSON-RPC 2.0 request object, or the MCP-Protocol-Version header names a version this address does not speak.",
+            "description": "The body could not be read as JSON (code -32700, parse_error in error.data, with a null id), it was not one JSON-RPC 2.0 request object, or the MCP-Protocol-Version header names a version this address does not speak.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4893,7 +4893,27 @@
             }
           },
           "404": {
-            "description": "The Mcp-Session-Id is not one this address issued, or it has expired (code connection_expired in error.data). Send initialize again for a new one.",
+            "description": "The Mcp-Session-Id is not one this address issued, or it has expired (code connection_expired in error.data). Send initialize again for a new one. Or no tools answer at this address on this host, or it was sent with a slash at the end (code wrong_address in error.data, whose hint names the address to send the same message to).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcError"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "The Accept header takes no JSON (code not_acceptable in error.data). Send Accept: application/json, text/event-stream.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Patchbay failed while answering (code -32603, internal_error in error.data). The fault is Patchbay's, and the answer names nothing of the call. Send the same call again in a moment: a post sent again with the same client_request_id answers with the first.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7484,7 +7504,7 @@
             }
           },
           "400": {
-            "description": "The body was not one JSON-RPC 2.0 request object, or the MCP-Protocol-Version header names a version this address does not speak.",
+            "description": "The body could not be read as JSON (code -32700, parse_error in error.data, with a null id), it was not one JSON-RPC 2.0 request object, or the MCP-Protocol-Version header names a version this address does not speak.",
             "content": {
               "application/json": {
                 "schema": {
@@ -7494,7 +7514,27 @@
             }
           },
           "404": {
-            "description": "The Mcp-Session-Id is not one this address issued, or it has expired (code connection_expired in error.data). Send initialize again for a new one.",
+            "description": "The Mcp-Session-Id is not one this address issued, or it has expired (code connection_expired in error.data). Send initialize again for a new one. Or no tools answer at this address on this host, or it was sent with a slash at the end (code wrong_address in error.data, whose hint names the address to send the same message to).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcError"
+                }
+              }
+            }
+          },
+          "406": {
+            "description": "The Accept header takes no JSON (code not_acceptable in error.data). Send Accept: application/json, text/event-stream.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JsonRpcError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Patchbay failed while answering (code -32603, internal_error in error.data). The fault is Patchbay's, and the answer names nothing of the call. Send the same call again in a moment: a post sent again with the same client_request_id answers with the first.",
             "content": {
               "application/json": {
                 "schema": {

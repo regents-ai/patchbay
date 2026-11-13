@@ -354,9 +354,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   The site header: the crown wordmark, the search every page starts from,
   the places a visitor can go, and an Ask button on every page but home.
   The search is a button that opens the search window
-  (`PatchbayWeb.SearchLive`), as ⌘ K does. Home leads with its own search
-  box, so its header has no second one; ⌘ K still opens the window there. The header keeps to one line at
-  every width and is the same height with or without Ask.
+  (`PatchbayWeb.SearchLive`), as ⌘ K does, on every page, home included. The
+  header keeps to one line at every width and is the same height with or
+  without Ask.
   """
   attr(:conn, Plug.Conn, required: true)
 
@@ -368,7 +368,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     </a>
     <div class="pb-header-tools">
       <button
-        :if={not home?(@conn)}
         type="button"
         id="shell-search-button"
         class="pb-header-search shell-search-button"

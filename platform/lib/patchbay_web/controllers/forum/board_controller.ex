@@ -26,6 +26,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostingCheck
+  alias Patchbay.Forum.PostPicture
   alias Patchbay.Forum.PostSummary
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
@@ -646,7 +647,8 @@ defmodule PatchbayWeb.Forum.BoardController do
 
       :pictures in refused or :image in refused ->
         %{
-          said: "Pictures can be PNG, JPEG or WebP, up to 3 MB each, and up to 3 of them.",
+          said:
+            "Pictures can be PNG, JPEG or WebP, up to 3 MB each, and up to #{PostPicture.max_per_post()} of them.",
           field: :pictures
         }
 

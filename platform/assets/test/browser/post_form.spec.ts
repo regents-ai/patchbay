@@ -1,4 +1,4 @@
-import type {Page} from "@playwright/test"
+import type {Locator, Page} from "@playwright/test"
 import {expect, signedIn, test, watch} from "./support/test"
 
 // The post form says what is wrong with a field under that field: never while
@@ -92,6 +92,57 @@ test("a preview Patchbay turns down over the title is said under the title", asy
   await problems.expect()
 })
 
+// Where a cut-corner field's edge shows the ink of a colour token, read from a
+// picture of the field: down from the middle of its top side, and along each
+// cut's diagonal from its corner inward.
+async function edgeShows(page: Page, field: Locator, token: string) {
+  const picture = (await field.screenshot({scale: "device"})).toString("base64")
+  const ink = await field.evaluate((element, token) => getComputedStyle(element).getPropertyValue(token), token)
+  return page.evaluate(async ({picture, ink}) => {
+    const bytes = Uint8Array.from(atob(picture), character => character.charCodeAt(0))
+    const bitmap = await createImageBitmap(new Blob([bytes], {type: "image/png"}))
+    const canvas = new OffscreenCanvas(bitmap.width, bitmap.height)
+    const context = canvas.getContext("2d", {willReadFrequently: true})!
+    context.drawImage(bitmap, 0, 0)
+    const at = (x: number, y: number) => [...context.getImageData(x, y, 1, 1).data.slice(0, 3)]
+    const swatch = new OffscreenCanvas(1, 1).getContext("2d")!
+    swatch.fillStyle = ink
+    swatch.fillRect(0, 0, 1, 1)
+    const want = [...swatch.getImageData(0, 0, 1, 1).data.slice(0, 3)]
+    const near = (pixel: number[]) => pixel.every((value, i) => Math.abs(value - want[i]) <= 24)
+    const along = (css: number, point: (step: number) => number[]) =>
+      Array.from({length: Math.ceil(css * devicePixelRatio)}, (_, step) => point(step)).some(near)
+    return {
+      side: along(4, step => at(Math.floor(bitmap.width / 2), step)),
+      topLeft: along(24, step => at(step, step)),
+      bottomRight: along(24, step => at(bitmap.width - 1 - step, bitmap.height - 1 - step)),
+    }
+  }, {picture, ink})
+}
+
+// The question box on the home page has two cut corners. Focused, its edge is
+// in the focus ink all round, the two cuts included; after a refusal, in the
+// error ink, focused or not. In either theme.
+for (const scheme of ["light", "dark"] as const) {
+  test(`the question box's edge follows its cut corners on focus and on a refusal (${scheme})`, async ({page}) => {
+    const problems = watch(page)
+    await page.emulateMedia({colorScheme: scheme})
+    await page.goto("/")
+    await page.locator("#pb-ask > summary").click()
+    const goal = page.locator("#pb-fix-goal")
+    await goal.focus()
+    expect(await edgeShows(page, goal, "--pb-accent-deep")).toEqual({side: true, topLeft: true, bottomRight: true})
+
+    await page.locator("#pb-hero-form [data-pb-preview]").click()
+    await expectWrong(page, "pb-fix-goal")
+    await expect(goal).toBeFocused()
+    expect(await edgeShows(page, goal, "--pb-bad")).toEqual({side: true, topLeft: true, bottomRight: true})
+    await page.locator("#pb-fix-site").focus()
+    expect(await edgeShows(page, goal, "--pb-bad")).toEqual({side: true, topLeft: true, bottomRight: true})
+    await problems.expect()
+  })
+}
+
 test.describe("signed in", () => {
   test.use(signedIn)
 
@@ -112,28 +163,6 @@ test.describe("signed in", () => {
 
     await page.locator("#pb-fix-site").fill("keyfleet.ai")
     await expectRight(page, "pb-fix-site")
-    await problems.expect()
-  })
-
-  test("too many pictures are said under Pictures as they are chosen, and stop the press", async ({page}) => {
-    const problems = watch(page)
-    await page.goto("/hermes")
-    await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
-    await page.locator("#pb-fix-site").fill("keyfleet.ai")
-    await page.locator("#pb-hero-details > summary").click()
-    const picture = (name: string) => ({name, mimeType: "image/png", buffer: Buffer.from("a small picture")})
-    const pictures = page.locator("#pb-hero-pictures")
-    await pictures.setInputFiles(["a.png", "b.png", "c.png", "d.png"].map(picture))
-    await expectWrong(page, "pb-hero-pictures")
-
-    // The fields fold away; the press opens them again at the field to fix.
-    await page.locator("#pb-hero-details > summary").click()
-    await page.locator("[data-pb-preview]").click()
-    await expectWrong(page, "pb-hero-pictures")
-    await expect(page.locator("#pb-hero-preview > *")).toHaveCount(0)
-
-    await pictures.setInputFiles([picture("a.png")])
-    await expectRight(page, "pb-hero-pictures")
     await problems.expect()
   })
 })

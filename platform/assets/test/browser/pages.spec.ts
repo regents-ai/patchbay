@@ -119,9 +119,14 @@ test("How the bench works keeps its cards in the sheet's colours in dark mode", 
   await problems.expect()
 })
 
-// The walk's one report (support/report.exs) is about the not_signed_in error.
+// The walk's one report (support/report.exs) is about the not_signed_in error. It
+// is found on its site's list, which no walk posts to: the home page's first
+// screen of posts fills with the posts the walks publish. The site's tool check
+// that page asks for is answered here: it is not what this walk is about.
 test("a report's page leads its tab title and its address with its error", async ({page}) => {
-  await page.goto("/")
+  await page.route(/\/fix-check\?/, route =>
+    route.fulfill({contentType: "application/json", body: JSON.stringify({status: "none", said: "", tools: [], directory: false})}))
+  await page.goto("/keyfleet.ai")
   const address = (await page.getByRole("link", {name: /not_signed_in/}).first().getAttribute("href"))!
   expect(address).toMatch(/^\/posts\/[0-9a-f-]{36}\/not_signed_in-sign-in-first-regents-auth-login-/)
 

@@ -1,9 +1,9 @@
 /* The front page: the posts, and beside them a sheet saying what Patchbay is
    and how to connect, then one with the board's figures. On a narrow page the
-   search and the posts come first, so a phone's first screen reaches a post,
-   then the intro and connect box, then the figures. At patchbay.help three
-   small value cards lead the page, over the search, and three full ones come
-   last, both rows across the whole page. */
+   title, Ask and the posts come first, so a phone's first screen reaches a
+   post, then the intro and connect box, then the figures. At patchbay.help
+   three small value cards lead the page, over the title, and three full ones
+   come last, both rows across the whole page. */
 
 .pb-feed-home {
   display: grid;
@@ -18,7 +18,7 @@
    16px on top of the side column's own 32px. */
 .pb-feed-home > .pb-home-cards { margin-top: var(--space-2); }
 
-/* The small cards over the search: the shared card, shortened. Its panel is a
+/* The small cards over the title: the shared card, shortened. Its panel is a
    band a third as tall as it is wide, a window on the middle of the square
    panel: the moving panel and its still frame stay square behind it, so the
    still is never stretched and the panel takes over from it in place. The name
@@ -47,7 +47,7 @@
 }
 
 @container pb-page (min-width: 900px) {
-  /* The side column stacks its two sheets beside the search and the posts,
+  /* The side column stacks its two sheets beside the title and the posts,
      so an open ask form never pushes the figures down. Over and under both
      columns, whichever is longer, the cards take the whole width. */
   .pb-feed-home {
@@ -222,42 +222,36 @@
 .pb-pulse[data-activity-pulse-ready="true"] canvas { visibility: visible; }
 .pb-pulse[data-activity-pulse-ready="true"] .pb-pulse-still { visibility: hidden; }
 
-/* Search and the button that open the post form lead the posts' column, and
-   lead the page on a phone. */
-.pb-home-find .pb-home-search {
-  grid-template-columns: minmax(0, 1fr) auto;
-  padding: .75rem; border: 1px solid var(--pb-form-edge);
-  background:
-    linear-gradient(135deg, transparent 50%, var(--pb-form-edge) 0 calc(50% + 1px), transparent 0) left top / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
-    linear-gradient(315deg, transparent 50%, var(--pb-form-edge) 0 calc(50% + 1px), transparent 0) right bottom / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
-    var(--pb-form);
-  clip-path: var(--pb-cut);
-}
-.pb-home-find .pb-home-search > .pb-fix-ask { grid-area: 1 / 1; }
-.pb-home-find .pb-home-search > .pb-hero-actions { grid-area: 1 / 2; flex-wrap: nowrap; }
-@container pb-page (max-width: 25rem) {
-  .pb-home-find .pb-home-search { grid-template-columns: minmax(0, 1fr); }
-  .pb-home-find .pb-home-search > .pb-hero-actions { grid-area: 2 / 1; }
-}
-/* The question box wears the same two cut corners as the post button; its
-   focus ring is drawn inside, along the cut too. */
+/* The question box wears the same two cut corners as the post button. Its
+   edge is one ink and one width all round, the two cuts included, so focus and
+   a refusal colour the whole outline. Each cut is a stripe of the edge's width
+   from the clipped line inward (the cut's size over √2 along the 45-degree
+   gradient), in a tile that grows with the edge past 1px so the stripe meets
+   the straight sides. */
 .pb-home-find .pb-fix-ask input {
-  border-color: var(--pb-text); box-shadow: none;
+  --pb-edge-ink: var(--pb-text);
+  --pb-edge-width: 1px;
+  --pb-edge-tile: calc(var(--pb-cut-size) + 2 * var(--pb-edge-width) - 2px);
+  --pb-edge-from: calc(var(--pb-cut-size) / sqrt(2));
+  border-color: var(--pb-edge-ink); box-shadow: none;
   background:
-    linear-gradient(135deg, transparent 50%, var(--pb-text) 0 calc(50% + 1px), transparent 0) left top / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
-    linear-gradient(315deg, transparent 50%, var(--pb-text) 0 calc(50% + 1px), transparent 0) right bottom / var(--pb-cut-size) var(--pb-cut-size) no-repeat border-box,
+    linear-gradient(135deg, transparent var(--pb-edge-from), var(--pb-edge-ink) 0 calc(var(--pb-edge-from) + var(--pb-edge-width)), transparent 0) left top / var(--pb-edge-tile) var(--pb-edge-tile) no-repeat border-box,
+    linear-gradient(315deg, transparent var(--pb-edge-from), var(--pb-edge-ink) 0 calc(var(--pb-edge-from) + var(--pb-edge-width)), transparent 0) right bottom / var(--pb-edge-tile) var(--pb-edge-tile) no-repeat border-box,
     var(--pb-field);
   clip-path: var(--pb-cut);
 }
-/* The ring is drawn as a shadow along the cut; the transparent outline is what
-   forced colours draw in its place. */
-/* The input's cut corners clip anything drawn outside it, so the outline sits
-   inside its edge. */
-.pb-home-find .pb-fix-ask input:focus-visible { outline: 2px solid transparent; outline-offset: -4px; box-shadow: inset 0 0 0 2px var(--pb-accent-deep); }
+/* Focus, and a field to fix, double the edge as every field does: an outline
+   laid over the border, inside the box, since the cuts clip anything outside
+   it. The error ink holds through focus. */
+.pb-home-find .pb-fix-ask input:is(:focus-visible, [aria-invalid="true"]) {
+  --pb-edge-width: 2px;
+  outline: var(--pb-edge-width) solid var(--pb-edge-ink); outline-offset: calc(-1 * var(--pb-edge-width));
+}
+.pb-home-find .pb-fix-ask input:focus-visible { --pb-edge-ink: var(--pb-accent-deep); }
+.pb-home-find .pb-fix-ask input[aria-invalid="true"] { --pb-edge-ink: var(--pb-bad); }
 
-/* The post form waits behind the shared secondary button. Open, it takes
-   the column's width in the same powder box as the search. */
-.pb-home-ask { margin-top: var(--space-2); }
+/* The post form waits behind the shared secondary button under the title.
+   Open, it takes the column's width in a powder box. */
 .pb-home-ask > summary { list-style: none; }
 .pb-home-ask > summary::-webkit-details-marker { display: none; }
 .pb-home-ask[open] > summary { display: none; }

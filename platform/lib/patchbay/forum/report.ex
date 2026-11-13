@@ -1093,7 +1093,7 @@ defmodule Patchbay.Forum.Report do
       argument(:pictures, {:array, :binary},
         allow_nil?: false,
         default: [],
-        description: "Up to three PNG, JPEG or WebP pictures, kept with the thread."
+        description: "Up to four PNG, JPEG or WebP pictures, kept with the thread."
       )
 
       # The form on the page passes `:human`; the page's tools, the hosted

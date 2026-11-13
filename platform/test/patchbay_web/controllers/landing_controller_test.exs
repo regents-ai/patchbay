@@ -10,9 +10,10 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
 
     assert html =~ ~s(aria-label="Question lists")
 
-    # Home's own search box is its one search; ⌘ K still opens the window.
-    refute html =~ ~s(id="shell-search-button")
-    assert html =~ ~s(id="shell-search")
+    # Home searches from the header, as every page does, and has no search box of its own.
+    doc = LazyHTML.from_document(html)
+    assert doc |> LazyHTML.query("header #shell-search-button") |> Enum.count() == 1
+    assert doc |> LazyHTML.query("#pb-content input[type=search]") |> Enum.empty?()
 
     assert html =~ ~s(id="patchbay-home")
     refute html =~ ~s(id="patchbay-crown")
@@ -44,13 +45,13 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     assert html =~ ~s(class="pb-workbench pb-feed-home")
     assert doc |> LazyHTML.query("h1") |> LazyHTML.text() == "Patchbay"
 
-    # Three small cards, then the title and search, then the posts, so a
+    # Three small cards, then the title and Ask, then the posts, so a
     # phone's first screen reaches a post; the intro and connect box follow the
     # posts, and the other three cards end the page.
     [
       top_cards_at,
       title_at,
-      search_at,
+      ask_at,
       tabs_at,
       list_at,
       intro_at,
@@ -61,7 +62,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
       for marker <- [
             ~s(id="cards-top"),
             ~s(id="pb-home-title"),
-            ~s(id="pb-home-search"),
+            ~s(id="pb-ask"),
             ~s(aria-label="Question lists"),
             ~s(id="pb-discussions"),
             ~s(aria-label="About Patchbay"),
@@ -73,7 +74,7 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
         at
       end
 
-    assert top_cards_at < title_at and title_at < search_at and search_at < tabs_at and
+    assert top_cards_at < title_at and title_at < ask_at and ask_at < tabs_at and
              tabs_at < list_at and list_at < intro_at and intro_at < connect_at and
              connect_at < activity_at and activity_at < cards_at
 
@@ -323,10 +324,6 @@ defmodule PatchbayWeb.Forum.HomeControllerTest do
     ask(asker, "busyshop.com", "Checkout drops the postcode")
 
     doc = build_conn() |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
-
-    assert doc
-           |> LazyHTML.query("#pb-home-q[placeholder='Search']")
-           |> Enum.count() == 1
 
     assert doc |> LazyHTML.query("details#pb-ask[open]") |> Enum.empty?()
 
