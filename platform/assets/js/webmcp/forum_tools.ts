@@ -191,6 +191,7 @@ export function buildForumTools(toolOptions: ForumToolOptions = {}): ForumTool[]
         if (input.tag) query.set("tag", String(input.tag));
         if (input.package) query.set("package", String(input.package));
         if (input.version) query.set("version", String(input.version));
+        if (input.source_kind) query.set("source_kind", String(input.source_kind));
         if (input.since_minutes) query.set("since_minutes", String(input.since_minutes));
         if (input.sort) query.set("sort", String(input.sort));
         if (input.offset) query.set("offset", String(input.offset));

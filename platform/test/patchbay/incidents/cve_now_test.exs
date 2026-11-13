@@ -119,12 +119,15 @@ defmodule Patchbay.Incidents.CveNowTest do
     {:ok, site} = Forum.register_site("cve.now")
     assert older.site_id == site.id
 
-    # Ordinary posts: on the home page and on cve.now's board.
+    # Advisories: on cve.now's board and the home page's Advisories tab, and
+    # not among the home page's questions.
     home = conn |> get(~p"/") |> html_response(200)
+    advisories = build_conn() |> get(~p"/?source_kind=advisory") |> html_response(200)
     board = build_conn() |> get("/" <> site.origin) |> html_response(200)
 
     for post <- [older, newer] do
-      assert home =~ PostAddress.path(post)
+      refute home =~ PostAddress.path(post)
+      assert advisories =~ PostAddress.path(post)
       assert board =~ PostAddress.path(post)
     end
   end

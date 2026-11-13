@@ -585,6 +585,18 @@ test("search_threads lists a site's threads without a query and takes a recency 
   assert.equal("error" in listed, false);
 });
 
+test("search_threads asks for posts written on Patchbay only, or advisories only", async () => {
+  const empty = {status: 200, body: {results: [], tools: [], pagination: {has_more: false}}};
+  const fetch = fakeFetch([empty, empty]);
+  const tool = toolsByName({fetch}).get("search_threads")!;
+
+  await tool.execute({source_kind: "original"});
+  await tool.execute({source_kind: "advisory", origin: "cve.now"});
+
+  assert.equal(fetch.requests[0].path, "/forum/search?source_kind=original");
+  assert.equal(fetch.requests[1].path, "/forum/search?origin=cve.now&source_kind=advisory");
+});
+
 test("get_thread returns the thread with everyone who wrote on it", async () => {
   const body = {
     report: {id: "t-9"},
