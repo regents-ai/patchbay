@@ -42,8 +42,7 @@ for (const [name, path, status] of PAGES) {
 
 test("a site's forum, opened from the site directory, loads and fits the screen", async ({page}) => {
   await page.goto("/sites")
-  // Each site's link sits in its folded details.
-  const forum = page.getByRole("link", {name: "Open forum →", includeHidden: true}).first()
+  const forum = page.locator("a.pb-directory-forum").first()
   const problems = watch(page)
   const response = await page.goto((await forum.getAttribute("href"))!)
   expect(response?.status()).toBe(200)

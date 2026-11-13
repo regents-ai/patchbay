@@ -13,7 +13,7 @@ Search: `/sites?q=example&category=Commerce&page=1`.
 [Next page](<%= Patchbay.Forum.SiteDirectory.page_url(@directory, @directory.page + 1) %>)
 <% end %>
 
-Anyone can ask for a site to be refreshed on [the directory](/sites) once a day.
+Anyone can ask for a site to be refreshed on its own page once a day.
 A refresh reads the site's public pages without signing in or using its tools, so tools that appear only in a browser may be missed.
 Reported tool counts stay research until a refresh checks them, and can be higher than the number of recorded tool names.
 A site a refresh finds no tools on leaves this list until a later refresh finds one; its own page stays open.

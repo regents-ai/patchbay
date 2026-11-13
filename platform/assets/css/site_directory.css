@@ -83,14 +83,10 @@
 .pb-directory-mark img { width: 28px; height: 28px; padding: 2px; object-fit: contain; background: var(--pb-porcelain); }
 /* A long name wraps rather than losing its end. */
 .pb-directory-name { min-width: 0; overflow-wrap: anywhere; }
-.pb-directory-expand, .pb-directory-count, .pb-directory-refresh { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; }
+.pb-directory-expand, .pb-directory-count { border: 0; background: transparent; color: inherit; cursor: pointer; font: inherit; }
 .pb-directory-expand { display: flex; align-items: center; gap: .65rem; text-align: left; padding: 0; min-height: 32px; max-width: 55%; min-width: 0; flex-shrink: 0; }
 .pb-directory-url { display: flex; align-items: center; gap: .25rem; min-width: 0; min-height: 32px; color: var(--pb-text-muted); font-size: .72rem; }
 .pb-directory-url > a { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pb-directory-refresh { display: inline-grid; place-items: center; width: 32px; height: 32px; padding: 0; flex: 0 0 32px; }
-.pb-directory-refresh .rg-icon { display: block; font-size: 16px; }
-.pb-directory-refresh--busy { cursor: default; }
-.pb-directory-refresh--busy svg { animation: pb-directory-spin .8s linear infinite; }
 .pb-directory-count { display: inline-flex; flex-direction: column; align-items: end; justify-content: center; min-width: 44px; min-height: 34px; padding: 0; }
 .pb-directory-count strong { font-weight: 400; font-size: 1rem; }
 .pb-directory-posts { display: inline-flex; min-width: 44px; min-height: 34px; align-items: center; justify-content: end; }
@@ -99,26 +95,25 @@
    in the row has keyboard focus; on a touch screen it always shows. */
 .pb-directory-forum { flex: 0 0 auto; display: inline-flex; align-items: center; color: var(--pb-text); font-size: .72rem; line-height: 1; white-space: nowrap; text-decoration: none; }
 .pb-directory-forum > span:first-child { display: inline-flex; align-items: center; min-height: 26px; padding: 0 .6rem; border: 1px solid var(--pb-line); background: var(--pb-canvas); }
-.pb-directory-detail-inner[hidden] { display: none; }
 .pb-directory-row > td { vertical-align: top; }
-.pb-directory-detail-inner { margin-block: .5rem; padding: 1.1rem 1.25rem 1.25rem; background: var(--pb-surface); }
-.pb-directory-detail-heading { display: flex; justify-content: space-between; align-items: center; gap: 1rem; font-size: .8rem; margin-bottom: 1rem; }
-.pb-directory-detail-heading > span { color: var(--pb-text-muted); }
-.pb-directory-detail-links { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; }
-.pb-directory-detail-host { display: none; }
-.pb-directory-tool-list { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: .6rem 1.5rem; max-height: 20rem; overflow: auto; padding: 0; list-style: none; margin: 1rem 0 0; }
-.pb-directory-tool-list li { padding-block: .5rem; border-top: 1px solid var(--pb-line); overflow-wrap: anywhere; }
-.pb-directory-tool-list code { font-size: .75rem; }
-.pb-directory-tool-list li > span { display: block; font-size: .7rem; color: var(--pb-text-muted); margin-top: .25rem; }
-.pb-directory-empty, .pb-directory-notice { font-size: .8125rem; line-height: 1.5; }
-.pb-directory-notice { border-left: 2px solid var(--pb-accent); padding-left: .65rem; }
+/* An opened row holds the picture of the site's home page and, beside it, the
+   names of its tools. The picture's box is laid out before it loads, so
+   nothing moves when it arrives; a site without one shows the tools alone. */
+.pb-directory-detail-inner { display: flex; align-items: start; gap: 1.25rem; margin-block: .5rem; padding: 1rem; background: var(--pb-surface); }
+.pb-directory-detail-inner[hidden] { display: none; }
+.pb-directory-picture { display: block; flex: 0 0 18rem; width: 18rem; height: auto; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; border: 1px solid var(--pb-line); background: var(--pb-canvas); }
+/* Names only, as small chips that wrap. A long list scrolls inside a box as
+   tall as the picture (11.25rem), never sideways. */
+.pb-directory-tool-list { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-content: start; gap: .375rem; max-height: 11.25rem; margin: 0; padding: 0; list-style: none; overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.pb-directory-tool-list li { max-width: 100%; }
+.pb-directory-tool-list code { display: block; padding: .125rem .5rem; border: 1px solid var(--pb-line); border-radius: var(--radius); background: var(--pb-canvas); color: var(--pb-text); font-size: .72rem; line-height: 1.5; overflow-wrap: anywhere; }
+.pb-directory-empty { flex: 1 1 0; min-width: 0; margin: 0; font-size: .8125rem; line-height: 1.5; color: var(--pb-text-muted); }
 .pb-directory-pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin: 1.5rem 0; font-size: .8125rem; }
 .pb-directory-method { margin: 0; text-align: center; font-size: .8125rem; }
 .pb-directory-method a { display: inline-block; min-height: 44px; line-height: 44px; }
 .pb-site-directory :is(button, a, input, select, summary, [tabindex]):focus-visible { outline: 2px solid var(--pb-text); outline-offset: 3px; }
 @media (hover: hover) and (pointer: fine) {
   .pb-directory-row:hover { background: var(--pb-surface); }
-  .pb-directory-refresh:hover { background: color-mix(in srgb, var(--pb-text) 8%, transparent); }
   .pb-directory-forum { opacity: 0; transform: translateX(-4px); transition: opacity 150ms ease-out, transform 150ms cubic-bezier(.23, 1, .32, 1); }
   .pb-directory-row:hover .pb-directory-forum { opacity: 1; transform: none; }
   .pb-directory-forum:hover > span:first-child { border-color: var(--pb-text); }
@@ -146,20 +141,16 @@
   .pb-directory-expand { flex: 1 1 100%; max-width: none; }
   .pb-directory-forum { margin-left: calc(28px + .65rem); opacity: 1; transform: none; }
   .pb-directory-url { display: none; }
-  .pb-directory-detail-heading { flex-wrap: wrap; }
-  .pb-directory-detail-host { display: inline; }
-  .pb-directory-tool-list { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .pb-directory-detail-inner { width: calc(100cqw - 1.5rem); padding: 1rem .75rem; }
+  /* The picture takes the panel's width, the tools go under it. */
+  .pb-directory-detail-inner { flex-direction: column; align-items: stretch; gap: .75rem; width: calc(100cqw - 1.5rem); padding: .75rem; }
+  .pb-directory-picture { flex: none; width: 100%; }
+  .pb-directory-tool-list, .pb-directory-empty { flex: none; }
 }
 /* On a touch screen every control in a row is at least 44 px tall. */
 @media (pointer: coarse), (hover: none) {
-  .pb-directory-refresh { width: 44px; height: 44px; flex-basis: 44px; }
   .pb-directory-expand, .pb-directory-count, .pb-directory-posts, .pb-directory-url, .pb-directory-forum { min-height: 44px; }
   .pb-directory-url > a { display: block; line-height: 44px; }
-  .pb-directory-detail-heading a { display: inline-flex; align-items: center; min-height: 44px; }
 }
-@keyframes pb-directory-spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .pb-directory-refresh--busy svg { animation: none; } }
 
 /* A site page opens on what works and what breaks there: its tools, then its
    solved and still-open questions side by side, one column on a phone. */
