@@ -151,6 +151,52 @@ Revert reasons the server should recognise:
 | `RefundTooEarly()`       | Fewer than thirty days have passed since the deposit was recorded.  |
 | `NothingOwed()`          | A push found no revenue owed.                                       |
 
+## OfferExchange
+
+**Not deployed.** `src/OfferExchange.sol` is written and tested here only. No network runs it, there
+is no deploy script for it, and deploying it needs the founder's go.
+
+A market where bidders pay USDC to have an Offer (a short labelled message, kept by its 32-byte
+fingerprint) shown to agents in a spot on a listed site. Every spot has three slots. A bidder buys
+time: it names a rate in USDC base units per second and a budget, and holds a slot from the moment
+it bids until the budget runs out. A free slot goes to any bid at or above the spot's minimum rate.
+With all three taken, a bid must beat the lowest rate by at least 5% and takes that slot; between
+equal rates the earlier holder keeps its place. Each holder pays its own rate for the seconds it held.
+
+- An overtaken holder pays for the seconds it held, up to that moment.
+- Leaving early (`leave`) charges the seconds held, but never less than a minute, so taking a slot
+  and leaving at once is not free.
+- The site may take down an Offer it does not want shown (`remove`); the holder pays only the
+  seconds it held.
+- A hold whose budget has run out is settled by the next bid on its slot, or by anyone with `settle`.
+
+Of every charge, 90% is credited to the site's payout wallet and 10% is kept as revenue for REGENT
+staking. The unspent budget, rounding included, is credited back to the bidder. Nothing is paid out
+during a bid, leave, removal or settlement: every address takes what it is owed with `withdraw`, so a
+frozen wallet only ever holds up its own money. Anyone may push the revenue kept into the staking
+contract with `pushRevenue`, tagged `offers.exchange`, as the escrow does.
+
+The owner lists sites and can pause new bids; leaving, removal, settlement, withdrawals and the push
+never pause. The owner cannot move money, change the split or change a site's payout wallet. A site's
+payout wallet adds the site's spots, removes Offers, and can hand the site to a new wallet; credit
+already earned stays with the old one. There is no upgrade, no sweep and no owner withdrawal, so USDC
+sent to the contract outside a bid stays there. Time is counted in seconds of the block's timestamp,
+never in blocks.
+
+```solidity
+function listSite(address payout) external returns (uint256 siteId);                 // owner
+function setPaused(bool paused) external;                                            // owner
+function addSpot(uint256 siteId, uint96 minRate) external returns (uint256 spotId);  // site
+function setPayout(uint256 siteId, address newPayout) external;                      // site
+function remove(uint256 spotId, uint256 slot) external;                              // site
+function bid(uint256 spotId, bytes32 offerId, uint96 rate, uint96 budget) external returns (uint256 slot);
+function leave(uint256 spotId, uint256 slot) external;                               // holder
+function settle(uint256 spotId, uint256 slot) external;                              // anyone, once run out
+function withdraw() external returns (uint256 amount);
+function pushRevenue() external returns (uint256 amount);
+function spotHolds(uint256 spotId) external view returns (Hold[3] memory holds, bool[3] memory live);
+```
+
 ## Checks
 
 ```sh
