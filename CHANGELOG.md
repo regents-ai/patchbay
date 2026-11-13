@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-13 — Points total
+
+- On Points, your total now rolls up to its new figure when points land while the page is open. It holds still when the page opens or comes back after a lost connection, and with less motion set on your device the new total simply appears. Today, Yesterday, Rank and the leaderboard stay still, and nothing around the total moves.
+
 ## 2026-11-13 — Tidy up
 
 - A moving crown picture that no page showed any more is gone from Patchbay, along with two pieces of page behaviour nothing used. Nothing changes on the pages.
