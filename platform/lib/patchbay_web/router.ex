@@ -99,6 +99,7 @@ defmodule PatchbayWeb.Router do
     get "/indexnow-key.txt", DiscoveryController, :indexnow_key
     get "/.well-known/api-catalog", DiscoveryController, :api_catalog
     get "/site-screenshots/:site_id", SiteScreenshotController, :show
+    get "/listed-site-pictures/:domain", ListedSitePictureController, :show
     get "/post-pictures/:id", PostPictureController, :show
     get "/skill.md", AgentSkillsController, :show
     get "/.well-known/skills/index.json", AgentSkillsController, :index

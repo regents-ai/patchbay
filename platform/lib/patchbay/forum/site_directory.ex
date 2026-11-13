@@ -4,7 +4,7 @@ defmodule Patchbay.Forum.SiteDirectory do
   require Ash.Query
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.{HiddenSites, Origin, Site, SiteCheck}
+  alias Patchbay.Forum.{HiddenSites, ListedSitePicture, Origin, Site, SiteCheck}
 
   @external_resource "priv/data/site_directory.json"
   @document Jason.decode!(File.read!(@external_resource))
@@ -77,30 +77,37 @@ defmodule Patchbay.Forum.SiteDirectory do
 
     # One public aggregate read for the visible domains. Hidden posts never count.
     result =
-      Site
-      |> Ash.Query.filter(origin in ^domains)
-      |> Ash.Query.select([:origin, :logo_path, :screenshot_path])
-      |> Ash.Query.load(:report_count)
-      |> Ash.read()
+      with {:ok, sites} <-
+             Site
+             |> Ash.Query.filter(origin in ^domains)
+             |> Ash.Query.select([:origin, :logo_path, :screenshot_path])
+             |> Ash.Query.load(:report_count)
+             |> Ash.read(),
+           {:ok, pictures} <- Forum.list_shown_listed_site_pictures(domains),
+           do: {:ok, sites, pictures}
 
     with_forum(page, result)
   end
 
   defp with_forum(page, {:error, _failure}), do: page
 
-  defp with_forum(page, {:ok, sites}) do
+  defp with_forum(page, {:ok, sites, pictures}) do
     sites = Map.new(sites, &{&1.origin, &1})
+    pictures = Map.new(pictures, &{&1.domain, ListedSitePicture.path(&1)})
 
     Map.update!(page, :sites, fn entries ->
-      Enum.map(entries, &attach_forum(&1, Map.get(sites, &1.domain)))
+      Enum.map(entries, &attach_forum(&1, Map.get(sites, &1.domain), pictures))
     end)
   end
 
-  defp attach_forum(entry, nil), do: %{entry | forum_posts: 0}
+  # A site with no board shows the picture Patchbay took of its home page for
+  # the list (`Patchbay.Forum.ListedSitePictureSweep`).
+  defp attach_forum(entry, nil, pictures),
+    do: %{entry | forum_posts: 0, screenshot_path: Map.get(pictures, entry.domain)}
 
   # The picture is the one Patchbay took of the site's home page, kept and
   # served by Patchbay itself (`Patchbay.Forum.TakeSitePicture`).
-  defp attach_forum(entry, site) do
+  defp attach_forum(entry, site, _pictures) do
     %{
       entry
       | forum_posts: site.report_count,

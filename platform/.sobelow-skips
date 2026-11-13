@@ -1,5 +1,5 @@
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:200,48168FE
-Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:211,2BE63F2
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:201,71FDF5A
+Config.CSRFRoute: CSRF via Action Reuse,lib/patchbay_web/router.ex:212,57ED207
 Config.CSWH: Cross-Site Websocket Hijacking,lib/patchbay_web/endpoint.ex:36,5D3337F
 Config.CSWH: Cross-Site Websocket Hijacking,lib/patchbay_web/endpoint.ex:69,50037E
 XSS.Raw: XSS,lib/patchbay_web/components/address_text.ex:38,A782A4
