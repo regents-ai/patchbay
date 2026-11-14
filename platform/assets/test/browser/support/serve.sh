@@ -24,6 +24,8 @@ export PATCHBAY_WALK=true POOL_SIZE=3 PRIVY_APP_ID=browser-walk-app
 # asked, and answered on this machine (PatchbayDev.WalkJev). Every other use of
 # it is a scheduled job, and none runs during a walk.
 export OPENROUTER_API_KEY=browser-walk
+# patchbay.help's sign-in for connected apps, which connected_app.spec.ts approves.
+export PATCHBAY_CONNECTOR_ENABLED=true
 # The walk's moderator (sign_in.exs), who opens the admin pages.
 export PATCHBAY_MODERATOR_WALLETS=0x9999999999999999999999999999999999999999
 walk_auth="assets/test/browser/.auth/${PATCHBAY_DEV_PARTITION}"

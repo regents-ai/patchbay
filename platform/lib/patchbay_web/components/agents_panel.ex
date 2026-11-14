@@ -8,6 +8,11 @@ defmodule PatchbayWeb.AgentsPanel do
   marked as its own. It never touches their wallet. Pairing is shared by every
   Regent site, so an agent paired on another one is listed here too.
 
+  Under them, the apps the person approved to connect to their account, such
+  as Claude or ChatGPT, each with Disconnect, which ends the app's access
+  until the person approves it again (`Patchbay.OAuth.disconnect_app/2`). An
+  app that paired is also listed above as its agent.
+
   The parent passes `profile` (signed in with Privy), the page's
   `session_lease` as `lease`, `id` and its `site_edition` (the open address
   names no wallet), and sends `agents_changed: true` when an agent
@@ -25,7 +30,7 @@ defmodule PatchbayWeb.AgentsPanel do
       {:ok,
        socket
        |> CurrentProfile.check_component_lease(&take_profile/2)
-       |> assign(notice: nil)}
+       |> assign(notice: nil, apps_notice: nil)}
 
   @impl true
   def update(%{agents_changed: true}, socket), do: {:ok, read_agents(socket)}
@@ -58,6 +63,18 @@ defmodule PatchbayWeb.AgentsPanel do
       end
 
     {:noreply, socket |> assign(notice: notice) |> read_agents()}
+  end
+
+  # The id is the page's to send, so only an app this account connected is
+  # disconnected (`Patchbay.OAuth.disconnect_app/2`).
+  def handle_event("disconnect_app", %{"id" => id}, socket) when is_binary(id) do
+    notice =
+      case Patchbay.OAuth.disconnect_app(socket.assigns.person.privy_user_id, id) do
+        {:ok, name} -> "#{name} is disconnected. It needs your approval to connect again."
+        {:error, :not_connected} -> "That app is no longer connected. Nothing changed."
+      end
+
+    {:noreply, socket |> assign(apps_notice: notice) |> read_agents()}
   end
 
   @impl true
@@ -97,6 +114,39 @@ defmodule PatchbayWeb.AgentsPanel do
           </P.button>
         </:footer>
       </Regent.Account.agents>
+      <section
+        :if={@apps != [] or @apps_notice}
+        id={"#{@id}-apps"}
+        class="rg-account"
+        aria-labelledby={"#{@id}-apps-title"}
+      >
+        <h2 id={"#{@id}-apps-title"}>Apps</h2>
+        <p class="rg-account__status" role="status">
+          {@apps_notice || "Apps you approved. Each one pairs as its own agent."}
+        </p>
+        <p :if={@apps == []} class="rg-account__empty">No apps connected.</p>
+        <ul :if={@apps != []} class="rg-account__agents">
+          <li :for={app <- @apps} id={"#{@id}-app-#{app.id}"}>
+            <p class="rg-account__agent"><strong>{app.name}</strong></p>
+            <div class="rg-account__controls">
+              <div class="rg-account__actions">
+                <P.button
+                  type="button"
+                  variant="quiet"
+                  aria-label={"Disconnect #{app.name}"}
+                  phx-click="disconnect_app"
+                  phx-value-id={app.id}
+                  phx-target={@myself}
+                  data-confirm={"Disconnect #{app.name}? It loses access until you approve it again."}
+                  data-confirm-action="Disconnect"
+                >
+                  Disconnect
+                </P.button>
+              </div>
+            </div>
+          </li>
+        </ul>
+      </section>
     </div>
     """
   end
@@ -132,6 +182,9 @@ defmodule PatchbayWeb.AgentsPanel do
         {:error, _error} -> :unavailable
       end
 
-    assign(socket, agents: agents)
+    assign(socket,
+      agents: agents,
+      apps: RegentOAuth.connected_clients(socket.assigns.person.privy_user_id)
+    )
   end
 end
