@@ -86,6 +86,42 @@ test("until the form is connected its fields take nothing, then they take text a
   await problems.expect()
 })
 
+test("Ask a question and More opened before the form is connected stay open once it is, and as it answers", async ({page}) => {
+  const problems = watch(page)
+  // The page's live answers wait until both have been opened unconnected; each
+  // answer to a change is counted.
+  let release!: () => void
+  const held = new Promise<void>(resolve => (release = resolve))
+  let replies = 0
+  await page.routeWebSocket(/\/live\/websocket/, socket => {
+    const server = socket.connectToServer()
+    socket.onMessage(message => server.send(message))
+    server.onMessage(message => void held.then(() => {
+      if (String(message).includes("phx_reply")) replies++
+      socket.send(message)
+    }))
+  })
+  await page.goto("/")
+  const [ask, more, steps] = [page.locator("#pb-ask"), page.locator("#pb-hero-details"), page.getByLabel("Steps")]
+  await ask.locator("> summary").click()
+  await more.locator("> summary").click()
+  await expect(steps).toBeVisible()
+
+  release()
+  await formJoined(page)
+  await expect(ask).toHaveJSProperty("open", true)
+  await expect(more).toHaveJSProperty("open", true)
+  await expect(steps).toBeVisible()
+
+  // Typed, and still open through the form's answer to the change.
+  const answered = replies
+  await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
+  await expect.poll(() => replies).toBeGreaterThan(answered)
+  await expect(more).toHaveJSProperty("open", true)
+  await expect(steps).toBeVisible()
+  await problems.expect()
+})
+
 test("a title too long is said under it once the field is left, and typing it right takes the line away", async ({page}) => {
   const problems = watch(page)
   await page.goto("/hermes")
