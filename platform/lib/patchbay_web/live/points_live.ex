@@ -1,7 +1,8 @@
 defmodule PatchbayWeb.PointsLive do
   @moduledoc """
   The signed-in person's Regent Points, as in the Regent template: the total
-  with today and yesterday, the actions left, the leaderboard, the NFT bonus
+  with today and yesterday, every action Points lists under the site it belongs
+  to with what is done, the leaderboard, the NFT bonus
   added at the end of each 30-day period, and the activity. The pieces are
   `Regent.Points`; this page supplies their words. Nothing earns until earning
   opens.
@@ -145,6 +146,7 @@ defmodule PatchbayWeb.PointsLive do
         summary: summary,
         groups: Enum.map(groups, &linked/1),
         left: if(summary && open?, do: PointsEntries.left(groups)),
+        limit: summary && PointsEntries.daily_limit(summary),
         places: places,
         rows: if(summary, do: Enum.map(summary.entries, &row(&1, summary.agent_names)), else: [])
       )
@@ -201,6 +203,11 @@ defmodule PatchbayWeb.PointsLive do
         <:main>
           <Regent.Points.todo :if={@summary} id="points-todo" left={@left} groups={@groups}>
             <p :if={!@open?} role="status">Earning hasn’t opened yet.</p>
+            <p :if={@limit} id="points-limit" class="rg-points-todo__limit rg-figure">
+              <span>{@limit.label}</span>
+              <progress max={@limit.of} value={@limit.used}>{@limit.value}</progress>
+              <span>{@limit.value}</span>
+            </p>
           </Regent.Points.todo>
           <Regent.Points.activity
             :if={@summary}

@@ -7,6 +7,7 @@ defmodule PatchbayWeb.AgentPointsTest do
   alias Patchbay.Points.Board
   alias Patchbay.SharedReading
   alias PatchbayWeb.SignedAgent
+  alias RegentPoints.Rules
 
   setup do
     SignedAgent.stub_siwa()
@@ -26,13 +27,26 @@ defmodule PatchbayWeb.AgentPointsTest do
              "earned_yesterday" => "0",
              "rank" => nil,
              "activity_being_verified" => 0,
-             "to_do" => [],
              "leaderboard" => [],
              "entries" => [],
              "period_bonuses" => [],
              "more" => false,
              "note" => "Earning Points is off on this site."
            } = body
+
+    # Every listed action, by site in the page's order, none done, none left and
+    # none priced while earning is off here.
+    to_do = body["to_do"]
+    assert length(to_do) == length(Rules.listed())
+    assert to_do |> Enum.map(& &1["site"]) |> Enum.dedup() == Enum.map(Rules.groups(), & &1.site)
+
+    assert Enum.all?(
+             to_do,
+             &match?(
+               %{"done" => false, "left" => false, "points" => nil, "earns_here" => false},
+               &1
+             )
+           )
   end
 
   test "an agent nobody paired is refused as not paired", %{conn: conn} do
