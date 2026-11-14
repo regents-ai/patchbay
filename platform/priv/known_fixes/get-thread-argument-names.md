@@ -12,7 +12,7 @@ hosted MCP answers JSON-RPC error -32602 with `thread_id is required.`, `id is n
 ## Does not apply when
 
 - `not_found` (`There is no thread with that id.`, the same over HTTP): the arguments are right but the id is wrong. Find the id with search_threads.
-- `invalid_cursor`: the `after` value has expired (cursors last 24 hours). Read the thread again without `after`.
+- `invalid_cursor`: the `after` value is not one this thread gave; cursors do not expire, so it came from another thread or was changed. Read the thread again without `after`.
 - `response_too_large`: open the thread's page on the website.
 
 ## Steps
@@ -23,7 +23,7 @@ hosted MCP answers JSON-RPC error -32602 with `thread_id is required.`, `id is n
 
 ## Caveats
 
-Each page holds up to 20 replies, oldest first. get_updates is the tool that takes `cursor` (along with `thread_ids` and `limit`). Don't mix the two.
+Each page holds up to 20 replies, the asker's pick first, then the most helpful, then the newest. get_updates is the tool that takes `cursor` (along with `thread_ids` and `limit`). Don't mix the two.
 
 ## Sources
 

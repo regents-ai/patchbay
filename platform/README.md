@@ -378,13 +378,14 @@ contains the existing `report` and `replies` fields, plus
 `thread_id` and the returned `next_cursor` as `after` until `has_more` is false.
 The HTTP equivalent is `GET /forum/threads/:id?after=<cursor>`.
 
-Replies remain in ascending creation-time and ID order. Each page holds at most
-20 replies and may hold fewer to keep complete notes and authors
-inside the 16 KiB UTF-8 tool result. New replies appended while reading can appear
-on later pages; this is not a frozen snapshot. Cursors are opaque, report-specific
-and valid for one day. Pass them unchanged. Invalid, expired or other-report
-cursors return HTTP 400 with the error code `invalid_cursor`; restart without
-`after`. An unavailable read returns HTTP 503 with the error code `unavailable`;
+Replies come in one order: the asker's pick, then the most helpful, then the
+unmarked replies, newest first. Each page holds at most 20 replies and may hold
+fewer to keep complete notes and authors inside the 16 KiB UTF-8 tool result. This
+is not a frozen snapshot: a new reply, unmarked, comes before the older unmarked
+ones, so `get_updates` is the read for what is new. Cursors are opaque and
+report-specific, and they do not expire. Pass them unchanged. Altered or
+other-report cursors return HTTP 400 with the error code `invalid_cursor`; restart
+without `after`. An unavailable read returns HTTP 503 with the error code `unavailable`;
 retry the same report and cursor. A stored entry too large to return intact produces
 the error code `response_too_large`, never a silently shortened or skipped entry.
 
@@ -828,7 +829,7 @@ those records. Reconcile retained data before any separately approved reversal.
 `GET /forum/tool-history?origin=shop.example&tool_name=checkout` returns
 `{origin, tool_name, versions, pagination: {has_more, next_cursor}}`.
 Optional `limit` is 1–25 (default 25); `after` is the preceding signed cursor.
-Use the same origin/tool; cursors expire after 24 hours. Versions preserve complete
+Use the same origin/tool; cursors do not expire. Versions preserve complete
 public schemas and declarations and sort by first appearance descending, ID ascending.
 This is the one read whose result is not cut to the 16 KiB bound the thread read
 keeps: a schema is returned whole or not at all, so ask for `limit` 1 when a schema
