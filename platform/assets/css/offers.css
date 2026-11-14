@@ -29,7 +29,7 @@
    each site's that opens to its slots, so a placement for every site still
    reads as a short list. */
 .pb-placement-group { display: grid; gap: var(--space-2); min-width: 0; }
-.pb-placement-group-title { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.pb-placement-group-title { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }
 .pb-placement-count { margin-inline-start: .25em; color: var(--pb-text-muted); font-variant-numeric: tabular-nums; }
 
 /* A placement: its name and terms, then its slots side by side. */
@@ -48,7 +48,7 @@
 .pb-placement-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-1) var(--space-3); min-height: 3rem; padding: var(--space-2) var(--space-3); cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
 .pb-placement-summary::-webkit-details-marker { display: none; }
 .pb-placement-summary:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
-.pb-placement-name { min-width: 0; font-weight: 500; overflow-wrap: anywhere; }
+.pb-placement-name { min-width: 0; overflow-wrap: anywhere; }
 .pb-placement-facts { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); color: var(--pb-text-muted); font-size: var(--pb-fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pb-placement-chevron { color: var(--pb-text-muted); font-size: 1.125rem; transition: transform 160ms var(--pb-offers-ease); }
 .pb-placement-row[open] .pb-placement-chevron { transform: rotate(180deg); }
@@ -173,15 +173,15 @@ a.pb-slot-title:focus-visible { outline: 2px solid var(--pb-accent-deep); outlin
    marked Paid with its title, which opens in place to the advertiser's text,
    link and wallet. */
 .pb-paid { display: grid; gap: var(--space-2); min-width: 0; }
-.pb-paid-title { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.pb-paid-title { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }
 .pb-paid-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); align-items: start; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
 .pb-paid-offer { min-width: 0; border: 1px solid var(--pb-line); background: var(--pb-surface); transition: border-color 160ms ease; }
 .pb-paid-summary { display: flex; align-items: center; gap: var(--space-2); min-height: 2.75rem; padding: var(--space-2) var(--space-3); cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
 .pb-paid-summary::-webkit-details-marker { display: none; }
 .pb-paid-summary:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
-.pb-paid-mark { flex: none; padding: 0 var(--space-1); border: 1px solid var(--pb-line-strong); color: var(--pb-text); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; line-height: 1.6; text-transform: uppercase; }
+.pb-paid-mark { flex: none; padding: 0 var(--space-1); border: 1px solid var(--pb-line-strong); color: var(--pb-text); font-size: var(--pb-fs-micro); letter-spacing: .06em; line-height: 1.6; text-transform: uppercase; }
 /* Closed, the title keeps to one line; open, it reads whole. */
-.pb-paid-name { flex: 1; min-width: 0; overflow: hidden; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.pb-paid-name { flex: 1; min-width: 0; overflow: hidden; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
 .pb-paid-entry[open] .pb-paid-name { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
 .pb-paid-chevron { flex: none; color: var(--pb-text-muted); font-size: 1.125rem; transition: transform 160ms cubic-bezier(.23, 1, .32, 1); }
 .pb-paid-entry[open] .pb-paid-chevron { transform: rotate(180deg); }
@@ -204,11 +204,12 @@ a.pb-slot-title:focus-visible { outline: 2px solid var(--pb-accent-deep); outlin
    least as wide as the window, moved by a transform alone. They stop while a
    pointer or the keyboard is in them; for a reader who asked for less motion
    they stand still in a row that scrolls. A link the keyboard reaches is
-   scrolled to above it. */
+   scrolled to above it. The window holds all it shows, the purchases' words
+   for screen readers too, so a still row never widens the page. */
 :root:has(#pb-ticker) { scroll-padding-bottom: 4rem; }
 .pb-ticker { position: sticky; bottom: 0; z-index: var(--rg-layer-panel); display: flex; align-items: center; gap: var(--space-2); min-height: 3rem; padding: 0 1.5rem env(safe-area-inset-bottom, 0px); border-top: 1px solid var(--pb-line); background: var(--pb-surface); }
-.pb-ticker-title { flex: none; margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
-.pb-ticker-window { flex: 1; min-width: 0; overflow: hidden; container-type: inline-size; mask-image: linear-gradient(to right, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); }
+.pb-ticker-title { flex: none; margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }
+.pb-ticker-window { position: relative; flex: 1; min-width: 0; overflow: hidden; container-type: inline-size; mask-image: linear-gradient(to right, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); }
 .pb-ticker-track { display: flex; width: max-content; animation: pb-ticker var(--pb-ticker-time) linear infinite; }
 .pb-ticker-window:is(:hover, :focus-within) .pb-ticker-track { animation-play-state: paused; }
 @keyframes pb-ticker { to { transform: translateX(-50%); } }
@@ -216,8 +217,8 @@ a.pb-slot-title:focus-visible { outline: 2px solid var(--pb-accent-deep); outlin
 .pb-ticker-item { flex: none; }
 .pb-ticker-item a { display: flex; align-items: center; gap: var(--space-1); min-height: 2.75rem; padding-inline: var(--space-3); border-inline-start: 1px solid var(--pb-line); color: var(--pb-text); font-size: var(--pb-fs-xs); text-decoration: none; white-space: nowrap; }
 .pb-ticker-item a:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -4px; }
-.pb-ticker-top { padding: 0 var(--space-1); border: 1px solid color-mix(in srgb, var(--pb-accent) 45%, var(--pb-line)); background: var(--pb-accent-wash); color: var(--pb-accent-deep); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; line-height: 1.6; text-transform: uppercase; }
-.pb-ticker-name { max-width: 24ch; overflow: hidden; font-weight: 500; text-overflow: ellipsis; }
+.pb-ticker-top { padding: 0 var(--space-1); border: 1px solid color-mix(in srgb, var(--pb-accent) 45%, var(--pb-line)); background: var(--pb-accent-wash); color: var(--pb-accent-deep); font-size: var(--pb-fs-micro); letter-spacing: .06em; line-height: 1.6; text-transform: uppercase; }
+.pb-ticker-name { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; }
 .pb-ticker-where { color: var(--pb-text-muted); }
 .pb-ticker-paid { font-variant-numeric: tabular-nums; }
 @media (hover: hover) and (pointer: fine) {
@@ -262,7 +263,7 @@ a.pb-oa-name { text-decoration: none; }
 .pb-oa-card { padding: var(--space-3); border: 1px solid var(--pb-bad); background: var(--pb-bad-wash); }
 .pb-oa-pull { flex: 1 1 20rem; }
 /* Placements: Patchbay's own two, then a line for each site's that opens in place. */
-.pb-oa-group { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
+.pb-oa-group { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }
 .pb-oa-fold { padding: 0; }
 .pb-oa-fold > details { display: grid; gap: var(--space-2); min-width: 0; }
 .pb-oa-fold > details[open] { padding-bottom: var(--space-3); }
