@@ -50,7 +50,7 @@ defmodule RegentNearIntentsTest do
              }
 
       assert {:ok, _deadline, 0} = DateTime.from_iso8601(sent["deadline"])
-      conn |> Plug.Conn.put_status(201) |> Req.Test.json(fixture("quote_dry.json"))
+      Req.Test.json(conn, fixture("quote_dry.json"))
     end)
 
     assert {:ok, quote} =
