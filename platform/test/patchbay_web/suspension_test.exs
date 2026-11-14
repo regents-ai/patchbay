@@ -227,21 +227,22 @@ defmodule PatchbayWeb.SuspensionTest do
   defp put_system_env(name, nil), do: System.delete_env(name)
   defp put_system_env(name, value), do: System.put_env(name, value)
 
+  # The open address's connected apps switched on or off.
   defp switch_apps(on?) do
     Application.put_env(
       :patchbay,
       Patchbay.OAuth,
-      Keyword.put(Application.fetch_env!(:patchbay, Patchbay.OAuth), :enabled?, on?)
+      Keyword.update!(
+        Application.fetch_env!(:patchbay, Patchbay.OAuth),
+        :open,
+        &Keyword.put(&1, :enabled?, on?)
+      )
     )
   end
 
   # Connected apps switched on, with ChatGPT registered as an app.
   defp connect_apps(_context) do
-    put_env(
-      :patchbay,
-      Patchbay.OAuth,
-      Keyword.put(Application.fetch_env!(:patchbay, Patchbay.OAuth), :enabled?, true)
-    )
+    Patchbay.OAuthSwitch.on(:open)
 
     {:ok, client} =
       Boruta.Ecto.Admin.Clients.create_client(%{
@@ -269,11 +270,11 @@ defmodule PatchbayWeb.SuspensionTest do
         value: RegentOAuth.hash_token(bearer),
         client_id: client.id,
         sub: person.privy_user_id,
-        scope: RegentOAuth.scope(),
+        scope: "patchbay.events.read",
         expires_at: System.system_time(:second) + 3600
       })
 
-    :ok = RegentOAuth.bind(token.id)
+    :ok = PatchbayWeb.SiteEdition.within(:open, fn -> RegentOAuth.bind(token.id) end)
     bearer
   end
 
@@ -301,10 +302,4 @@ defmodule PatchbayWeb.SuspensionTest do
   end
 
   defp wallet, do: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
-
-  defp put_env(app, key, value) do
-    old = Application.fetch_env!(app, key)
-    Application.put_env(app, key, value)
-    on_exit(fn -> Application.put_env(app, key, old) end)
-  end
 end

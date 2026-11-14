@@ -2,32 +2,75 @@ import Config
 
 mcp_identity_enabled? = System.get_env("PATCHBAY_MCP_IDENTITY_ENABLED") == "true"
 oauth_enabled? = System.get_env("PATCHBAY_OAUTH_ENABLED") == "true"
+connector_enabled? = System.get_env("PATCHBAY_CONNECTOR_ENABLED") == "true"
 
-# Remains off unless a separately authorized release opts in after migrations.
-# Only patchbay.events.read exists until ChatGPT identities are switched on.
-# Apps connected before then hold only that one, and the consent page never adds
-# a scope, so the release that switches them on carries a migration calling
+# A connected app at patchbay.help keeps its identity with the hosted signer, so
+# switching its sign-in on needs hosted identities on too.
+if config_env() == :prod and connector_enabled? and not mcp_identity_enabled? do
+  raise "PATCHBAY_CONNECTOR_ENABLED is true, so PATCHBAY_MCP_IDENTITY_ENABLED must be true too"
+end
+
+# The open address's sign-in, for the ChatGPT plugin. Remains off unless a
+# separately authorized release opts in after migrations. Only
+# patchbay.events.read exists until ChatGPT identities are switched on. Apps
+# connected before then hold only that one, and the consent page never adds a
+# scope, so the release that switches them on carries a migration calling
 # `RegentOAuth.Migration.ClientScopes.up/1` with every scope below.
 config :patchbay, Patchbay.OAuth,
-  enabled?: oauth_enabled?,
-  additional_scopes:
-    if(mcp_identity_enabled?,
-      do: %{
-        "regent.identity.manage" =>
-          "connect and pair ChatGPT with your existing Regents identity across chats",
-        "patchbay.posts.write" =>
-          "publish free public questions and replies, and nothing else, under your paired identity when you approve each one"
-      },
-      else: %{}
-    )
+  open: [
+    enabled?: oauth_enabled?,
+    additional_scopes:
+      if(mcp_identity_enabled?,
+        do: %{
+          "regent.identity.manage" =>
+            "connect and pair ChatGPT with your existing Regents identity across chats",
+          "patchbay.posts.write" =>
+            "publish free public questions and replies, and nothing else, under your paired identity when you approve each one"
+        },
+        else: %{}
+      )
+  ]
+
+# patchbay.help's sign-in, for every other connected app, such as Claude's
+# connector, behind its own switch (PATCHBAY_CONNECTOR_ENABLED). It answers at the
+# site's own address, https://PHX_HOST in production and the endpoint's own
+# address elsewhere, and its MCP address is `/mcp` under it. Each code and token
+# has these written on it as it is issued, and one whose values differ from the
+# running address's is refused, so a token from the open address never works
+# here, nor one from here there.
+main_url =
+  if config_env() == :prod do
+    case String.trim(System.get_env("PHX_HOST", "")) do
+      "" -> nil
+      host -> "https://" <> host
+    end
+  else
+    url = Application.fetch_env!(:patchbay, PatchbayWeb.Endpoint)[:url]
+    URI.to_string(%URI{scheme: url[:scheme] || "http", host: url[:host], port: url[:port]})
+  end
+
+config :patchbay, Patchbay.OAuth,
+  main: [
+    enabled?: connector_enabled?,
+    issuer: main_url,
+    resource: main_url && main_url <> "/mcp"
+  ]
 
 # The queue that disconnects a suspended person's apps
 # (`Patchbay.Identity.DisconnectApps`) starts paused while connected apps are
-# switched off, so its jobs wait for a boot that switches them on.
-config :patchbay, Oban, queues: [connected_apps: [paused: not oauth_enabled?]]
+# switched off at both addresses, so its jobs wait for a boot that switches
+# either on.
+config :patchbay, Oban,
+  queues: [connected_apps: [paused: not (oauth_enabled? or connector_enabled?)]]
 
-# ChatGPT is the one hosted app that pairs here, and only while identities are on.
-config :regent_agents, hosted_pairing: if(mcp_identity_enabled?, do: [:chatgpt], else: [])
+# The hosted apps that pair here, and only while identities are on: ChatGPT, and
+# Claude while patchbay.help's sign-in is on too.
+config :regent_agents,
+  hosted_pairing:
+    if(mcp_identity_enabled?,
+      do: [:chatgpt] ++ if(connector_enabled?, do: [:claude], else: []),
+      else: []
+    )
 
 config :regent_mcp_agents, :config,
   enabled?: mcp_identity_enabled?,

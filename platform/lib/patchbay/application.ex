@@ -12,8 +12,7 @@ defmodule Patchbay.Application do
     # Debian image can lag by weeks. Req, Finch and Mint read this list through
     # `:public_key.cacerts_get/0`, so it is loaded before anything connects.
     :ok = :public_key.cacerts_load(CAStore.file_path())
-    :ok = RegentOAuth.configure(Patchbay.OAuth)
-    :ok = RegentMCPAgents.configure!()
+    :ok = Patchbay.OAuth.configure!()
     :ok = RegentHttp.ErrorSaving.attach()
 
     # Attached before the endpoint so the first browser event of a boot is logged.
@@ -37,6 +36,8 @@ defmodule Patchbay.Application do
         Patchbay.WalletBench.Board.builds(),
         # Each paired agent's sign-in service reading, kept five minutes.
         Patchbay.Agents.ActivityReading,
+        # The wallet of each connected app's own identity, asked for once.
+        Patchbay.Agents.HostedAddress,
         # The home page's board figures, kept a minute.
         Patchbay.Forum.BoardActivity,
         # Each question list's thread count, kept a minute.

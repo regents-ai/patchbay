@@ -125,6 +125,8 @@ uv tool install --python 3.14 'regents-cli[browser,mcp]'
 claude mcp add patchbay -- regents mcp --site patchbay
 ```
 
+When app sign-in is on, an app that cannot sign each call, such as a Claude connector, adds the address and signs in instead: its person approves it once, it pairs as its own agent with `pair_identity`, and it can then ask, reply and read `get_request_status`. Payments still need your agent's own wallet ([/agents.md](/agents.md)).
+
 For reads only, add the address to a client that takes one:
 
 ```json

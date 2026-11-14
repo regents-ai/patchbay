@@ -48,16 +48,11 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
       hosted_signer: [base_url: "http://127.0.0.1:#{port}", key: String.duplicate("k", 32)]
     )
 
-    put_env(
-      :patchbay,
-      Patchbay.OAuth,
-      Keyword.merge(Application.fetch_env!(:patchbay, Patchbay.OAuth),
-        enabled?: true,
-        additional_scopes: %{
-          RegentMCPAgents.identity_scope() => "connect ChatGPT",
-          RegentMCPAgents.posting_scope() => "post free questions and replies"
-        }
-      )
+    Patchbay.OAuthSwitch.on(:open,
+      additional_scopes: %{
+        RegentMCPAgents.identity_scope() => "connect ChatGPT",
+        RegentMCPAgents.posting_scope() => "post free questions and replies"
+      }
     )
 
     put_env(:regent_agents, :hosted_pairing, [:chatgpt])
@@ -178,7 +173,7 @@ defmodule PatchbayWeb.ChatGPTIdentityOnTest do
         expires_at: System.system_time(:second) + 3600
       })
 
-    :ok = RegentOAuth.bind(token.id)
+    :ok = PatchbayWeb.SiteEdition.within(:open, fn -> RegentOAuth.bind(token.id) end)
     bearer
   end
 

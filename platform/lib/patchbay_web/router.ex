@@ -160,26 +160,36 @@ defmodule PatchbayWeb.Router do
     get "/hello", HelloController, :index
   end
 
-  # Consent uses the existing Privy session and CSRF; token grants never use cookies.
   scope "/", PatchbayWeb do
     pipe_through [:open_only, :api]
     get "/.well-known/openai-apps-challenge", DiscoveryController, :openai_apps_challenge
-    get "/.well-known/oauth-protected-resource", OAuthController, :resource_metadata
-    get "/.well-known/oauth-protected-resource/chatgpt/mcp", OAuthController, :resource_metadata
-    get "/.well-known/oauth-authorization-server", OAuthController, :server_metadata
   end
 
-  # The token addresses answer at both addresses: at patchbay.help they only
-  # say where connected-app sign-in lives (`OAuthController`).
+  # Connected-app sign-in (Patchbay.OAuth): each address answers with its own
+  # sign-in, for its own MCP address, whose metadata also answers under that
+  # address's path, where RFC 9728 places it. Consent uses the existing Privy
+  # session and CSRF; token grants never use cookies.
   scope "/", PatchbayWeb do
     pipe_through :api
+    get "/.well-known/oauth-protected-resource", OAuthController, :resource_metadata
+    get "/.well-known/oauth-authorization-server", OAuthController, :server_metadata
     post "/oauth/register", OAuthController, :register, log: false
     post "/oauth/token", OAuthController, :token, log: false
     post "/oauth/revoke", OAuthController, :revoke, log: false
   end
 
+  scope "/", PatchbayWeb do
+    pipe_through [:main_only, :api]
+    get "/.well-known/oauth-protected-resource/mcp", OAuthController, :resource_metadata
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through [:open_only, :api]
+    get "/.well-known/oauth-protected-resource/chatgpt/mcp", OAuthController, :resource_metadata
+  end
+
   scope "/oauth", PatchbayWeb do
-    pipe_through [:open_only, :browser]
+    pipe_through :browser
     get "/authorize", OAuthController, :authorize, log: false
     post "/authorize", OAuthController, :approve, log: false
     get "/connections", OAuthController, :connections, log: false

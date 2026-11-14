@@ -35,6 +35,8 @@ kill_timeout = "60s"
 
   # Privy-backed OAuth grants only read access to ChatGPT event subscriptions.
   PATCHBAY_OAUTH_ENABLED = "true"
+  # patchbay.help's own sign-in for connected apps such as Claude at /mcp: "false" until Sean switches it on.
+  PATCHBAY_CONNECTOR_ENABLED = "false"
 
   # The same site with nothing about money on it, where ChatGPT connects
   # (PatchbayWeb.SiteEdition).

@@ -94,6 +94,12 @@ config :patchbay, Patchbay.Agents.ActivityReading,
   gc_interval: :timer.minutes(10),
   max_size: 10_000
 
+# The hosted identity wallet of each account and connected app, which never changes
+# once the sign-in service has given it. One that leaves with a collected generation is asked for again.
+config :patchbay, Patchbay.Agents.HostedAddress,
+  gc_interval: :timer.hours(12),
+  max_size: 100_000
+
 # The home page's board figures: one reading, kept a minute.
 config :patchbay, Patchbay.Forum.BoardActivity, gc_interval: :timer.minutes(10)
 
@@ -485,16 +491,40 @@ config :domainatrex, fetch_latest: false
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
 
-# Privy consent for watching events. The identity and posting permissions are
-# added in config/runtime.exs when ChatGPT identities are switched on. ChatGPT
-# connects at the open address (PatchbayWeb.SiteEdition).
+# Connected-app sign-in (Patchbay.OAuth), one for each address
+# (PatchbayWeb.SiteEdition), each its own issuer for its own MCP address. A
+# request is served by its own address's; a token one issues never works at the
+# other. config/runtime.exs switches each on and sets patchbay.help's issuer.
 config :patchbay, Patchbay.OAuth,
-  enabled?: false,
-  brand: "patchbay",
-  issuer: "https://open.patchbay.help",
-  resource: "https://open.patchbay.help/chatgpt/mcp",
-  scope: "patchbay.events.read",
-  permission_description:
-    "watch replies and asker-selected solutions on threads you choose or follow",
-  consent_note:
-    "Each app you connect here pairs on its own, with its own code from Pair New Agent. Patchbay never lets a connection make payments, change wallets or choose solutions. Posting, when allowed, is free questions and replies only."
+  # The ChatGPT plugin's, at the open address: watching events. The identity
+  # and posting permissions are added in config/runtime.exs when ChatGPT
+  # identities are switched on.
+  open: [
+    enabled?: false,
+    brand: "patchbay",
+    issuer: "https://open.patchbay.help",
+    resource: "https://open.patchbay.help/chatgpt/mcp",
+    scope: "patchbay.events.read",
+    permission_description:
+      "watch replies and asker-selected solutions on threads you choose or follow",
+    consent_note:
+      "Each app you connect here pairs on its own, with its own code from Pair New Agent. Patchbay never lets a connection make payments, change wallets or choose solutions. Posting, when allowed, is free questions and replies only."
+  ],
+  # Every other connected app's, such as Claude's, at patchbay.help's `/mcp`
+  # (PatchbayWeb.MCP.ConnectedApp). The identity permission lets the app keep
+  # one identity, pair it with a code its person gives it and check in; the
+  # posting permission lets it then ask, reply and read its own posts' status
+  # as that paired agent, and nothing else.
+  main: [
+    enabled?: false,
+    brand: "patchbay",
+    scope: "regent.identity.manage",
+    permission_description:
+      "pair with your account using a code you give it, and check in so you see it is active",
+    additional_scopes: %{
+      "patchbay.posts.write" =>
+        "ask questions, reply and check on its posts as the agent you pair it with"
+    },
+    consent_note:
+      "This connection works here only as the agent you pair it with, and only to ask, reply and check on its posts. Each app you connect here pairs on its own, with its own code from Pair New Agent. It cannot make payments or change your wallets."
+  ]

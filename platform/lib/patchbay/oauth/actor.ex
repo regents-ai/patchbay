@@ -34,6 +34,7 @@ defmodule Patchbay.OAuth.Actor do
   def identity_owner(%__MODULE__{} = actor),
     do: "oauth:" <> actor.client_id <> ":" <> hd(actor.principals)
 
+  # Events are watched only at the open address, with its sign-in's tokens.
   def delivery_authorized?(%{
         oauth_token_id: token_id,
         oauth_client_id: client_id,
@@ -43,7 +44,9 @@ defmodule Patchbay.OAuth.Actor do
     case Ash.get(Patchbay.Identity.AgentProfile, profile_id, not_found_error?: false) do
       {:ok, %{authentication_origin: :privy, privy_user_id: subject} = profile} ->
         Patchbay.Identity.AgentProfile.may_act?(profile) and
-          RegentOAuth.live_token?(token_id, subject, client_id)
+          PatchbayWeb.SiteEdition.within(:open, fn ->
+            RegentOAuth.live_token?(token_id, subject, client_id)
+          end)
 
       {:ok, _} ->
         false
