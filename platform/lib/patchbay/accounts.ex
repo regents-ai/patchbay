@@ -30,12 +30,18 @@ defmodule Patchbay.Accounts do
 
   @actor %{role: :system}
 
+  @doc """
+  Registers or refreshes the account the verified sign-in names, gives the
+  person their shared profile when they have none (`RegentIdentity.ensure/1`)
+  and asks Ethereum for its wallet's ENS name again.
+  """
   def establish(%RegentPrivy.Session{} = verified) do
     attrs = Map.take(verified, [:privy_user_id, :wallet_address, :wallet_addresses])
 
     with {:ok, account} <- register_verified(attrs, actor: @actor),
          {:ok, account} <-
            refresh_verified(account, Map.delete(attrs, :privy_user_id), actor: @actor),
+         {:ok, _profile} <- RegentIdentity.ensure(verified),
          :ok <- request_ens_lookup(account),
          do: {:ok, account}
   end

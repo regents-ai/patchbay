@@ -108,13 +108,17 @@ defmodule Mix.Tasks.Patchbay.SeedFixes do
     person =
       Identity.upsert_from_privy!(%{privy_user_id: @person, wallet_address: @person_wallet})
 
+    now = System.system_time(:second)
+
     {:ok, _account} =
       Patchbay.Accounts.establish(%RegentPrivy.Session{
         app_id: "local",
         session_id: "local-seed",
         privy_user_id: @person,
         wallet_address: @person_wallet,
-        wallet_addresses: [@person_wallet]
+        wallet_addresses: [@person_wallet],
+        issued_at: now,
+        expires_at: now + 600
       })
 
     {:ok, pairing} = pairing!()

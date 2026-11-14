@@ -146,6 +146,9 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
 
     assert json_response(signed_in, 200) == %{"authenticated" => true}
     assert signed_in_as(signed_in).wallet_address == @made
+    # The person's shared profile, whose public name the Account page saves.
+    assert {:ok, profile_id} = RegentIdentity.profile_id("test-app", did)
+    assert is_binary(profile_id)
 
     assert signed_in |> recycle([]) |> get("/auth/session") |> json_response(200) ==
              %{"authenticated" => true}
@@ -183,6 +186,7 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
            } = json_response(refused, 401)
 
     assert Identity.get_profile_by_privy_user_id!(did) == nil
+    assert RegentIdentity.profile_id("test-app", did) == {:ok, nil}
     assert signed_in_as(refused) == nil
     assert refused |> recycle([]) |> get("/account") |> html_response(200) =~ @sign_in_button
   end

@@ -3,10 +3,10 @@ defmodule Patchbay.Identity.Privy do
 
   @doc """
   Verify both proof roles before requiring the wallet used by Patchbay accounts,
-  and record the person in the shared Regent account (`Patchbay.Accounts`).
-  Every refusal is `{:error, {stage, reason}}`; an account that could not be
-  saved is reduced to `{:account_evidence, :account_rejected}` without being
-  inspected.
+  and record the person in the shared Regent account and their shared profile
+  (`Patchbay.Accounts.establish/1`). Every refusal is `{:error, {stage, reason}}`;
+  an account or profile that could not be saved is reduced to
+  `{:account_evidence, :account_rejected}` without being inspected.
   """
   def verify_session_pair(pair) do
     with {:ok, %RegentPrivy.Session{wallet_address: address} = evidence} when is_binary(address) <-

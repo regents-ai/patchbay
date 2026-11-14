@@ -169,13 +169,17 @@ defmodule PatchbayWeb.ChatGPTSignedFlowTest do
         wallet_address: "0x" <> Base.encode16(:crypto.strong_rand_bytes(20), case: :lower)
       })
 
+    now = System.system_time(:second)
+
     {:ok, _account} =
       Patchbay.Accounts.establish(%RegentPrivy.Session{
         app_id: "test-app",
         session_id: "test-session",
         privy_user_id: profile.privy_user_id,
         wallet_address: profile.wallet_address,
-        wallet_addresses: [profile.wallet_address]
+        wallet_addresses: [profile.wallet_address],
+        issued_at: now,
+        expires_at: now + 600
       })
 
     bearer = Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
