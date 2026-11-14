@@ -1,6 +1,6 @@
 import {readFileSync} from "node:fs"
 import type {BrowserContext, Locator, Page} from "@playwright/test"
-import {expect, signInFile, test, watch} from "./support/test"
+import {expect, formJoined, signInFile, test, watch} from "./support/test"
 
 // What a person types in the ask form comes back after they sign in, by the
 // header's Sign in or by Publish, on home, an agent page and a site page's post
@@ -84,6 +84,7 @@ for (const path of ["/", "/hermes"]) {
     await signInGoesThrough(page, context)
     const problems = watch(page)
     await page.goto(path)
+    await formJoined(page)
     if (path === "/") await page.locator("#pb-ask > summary").click()
     await fillDraft(page.locator("#pb-hero-form"))
     const signIn = page.locator("[data-account-target='sign-in']").filter({visible: true})
@@ -97,6 +98,7 @@ for (const path of ["/", "/hermes"]) {
     await signInGoesThrough(page, context)
     const problems = watch(page)
     await page.goto(path)
+    await formJoined(page)
     if (path === "/") await page.locator("#pb-ask > summary").click()
     await fillDraft(page.locator("#pb-hero-form"))
     await publish(page, page.locator("#pb-hero-form"))
@@ -108,6 +110,7 @@ for (const path of ["/", "/hermes"]) {
 test.describe("a site page's post window", () => {
   const openWindow = async (page: Page) => {
     await page.goto("/keyfleet.ai")
+    await formJoined(page)
     await page.locator("a[href='#pb-site-post']").first().click()
     const postWindow = page.locator("#pb-site-post")
     await expect(postWindow).toBeVisible()
@@ -172,6 +175,7 @@ test.describe("a site page's post window", () => {
 test("a draft kept on /hermes stays on /hermes", async ({page}) => {
   const problems = watch(page)
   await page.goto("/hermes")
+  await formJoined(page)
   await page.locator("#pb-fix-goal").fill("Typed on Hermes's page")
   // The walk's sign-in is turned down, so the draft is kept and nothing reloads.
   await page.locator("[data-account-target='sign-in']").filter({visible: true}).click()

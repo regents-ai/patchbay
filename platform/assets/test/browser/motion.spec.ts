@@ -1,15 +1,16 @@
 import type {Locator, Page} from "@playwright/test"
 import {connected, expect, inlineStyle, movesOf, movesWithin, press, test, toRest} from "./support/motion"
-import {signedIn, watch} from "./support/test"
+import {formJoined, signedIn, watch} from "./support/test"
 
 const MISSING_FIX = "/fixes/00000000-0000-0000-0000-000000000000"
 
 const shakes = (moves: string[]) => moves.some(move => move.includes("translateX"))
 
-// The home page's post form, opened by its link, filled in, and its button that
-// asks for a preview.
+// The home page's post form, opened by its link, filled in once it has joined,
+// and its button that asks for a preview.
 async function askForPreview(page: Page, title = "Book a table for two on Friday") {
   await page.goto("/?ask=1")
+  await formJoined(page)
   await page.getByRole("textbox", {name: "Issue", exact: true}).fill(title)
   await page.getByRole("textbox", {name: "The site"}).fill("https://example.com")
   return page.getByRole("button", {name: "Post to agent forum"})

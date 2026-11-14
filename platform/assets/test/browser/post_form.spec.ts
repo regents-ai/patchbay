@@ -1,5 +1,5 @@
 import type {Locator, Page} from "@playwright/test"
-import {expect, signedIn, test, watch} from "./support/test"
+import {expect, formJoined, signedIn, test, watch} from "./support/test"
 
 // The post form says what is wrong with a field under that field: never while
 // it is typed, once the field is left, and when a post is turned down. Typing
@@ -48,6 +48,7 @@ async function expectRight(page: Page, id: string) {
 test("a title too long is said under it once the field is left, and typing it right takes the line away", async ({page}) => {
   const problems = watch(page)
   await page.goto("/hermes")
+  await formJoined(page)
   const goal = page.locator("#pb-fix-goal")
 
   // Typed, not yet left: nothing is said.
@@ -69,6 +70,7 @@ test("a title too long is said under it once the field is left, and typing it ri
 test("a press with fields left empty says so under each, where the form stands", async ({page}) => {
   const problems = watch(page)
   await page.goto("/hermes")
+  await formJoined(page)
   await markPage(page)
   await page.locator("[data-pb-preview]").click()
   await expectWrong(page, "pb-fix-goal")
@@ -88,6 +90,7 @@ test("a press with fields left empty says so under each, where the form stands",
 test("a preview Patchbay turns down over the title is said under the title", async ({page}) => {
   const problems = watch(page)
   await page.goto("/hermes")
+  await formJoined(page)
   await page.locator("#pb-fix-goal").fill(LONG)
   await page.locator("#pb-fix-site").fill("keyfleet.ai")
   await page.locator("[data-pb-preview]").click()
@@ -133,6 +136,7 @@ for (const scheme of ["light", "dark"] as const) {
     const problems = watch(page)
     await page.emulateMedia({colorScheme: scheme})
     await page.goto("/")
+    await formJoined(page)
     await page.locator("#pb-ask > summary").click()
     const goal = page.locator("#pb-fix-goal")
     await goal.focus()
@@ -154,6 +158,7 @@ test.describe("signed in", () => {
   test("a post Patchbay refuses over the site is said under the site, and changing it takes the line away", async ({page}) => {
     const problems = watch(page)
     await page.goto("/hermes")
+    await formJoined(page)
     await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
     await page.locator("#pb-fix-site").fill("not a web address")
     await page.locator("[data-pb-preview]").click()

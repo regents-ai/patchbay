@@ -2,7 +2,7 @@ import {readFileSync, writeFileSync} from "node:fs"
 import {basename} from "node:path"
 import {crc32, deflateSync} from "node:zlib"
 import type {Locator, Page} from "@playwright/test"
-import {expect, signedIn, test, watch} from "./support/test"
+import {expect, formJoined, signedIn, test, watch} from "./support/test"
 
 // Pictures on the post form: added with Add pictures, shown small and named by
 // their files, each taken away with its own Remove, four at most, kept through
@@ -87,6 +87,7 @@ test("pictures are added, shown, taken away and posted with the post, four at mo
   writeFileSync(large, Buffer.alloc(3 * 1024 * 1024 + 1))
 
   await page.goto("/hermes")
+  await formJoined(page)
   await page.locator("#pb-hero-details > summary").click()
   const box = page.locator("#pb-hero-pictures-box")
   const add = box.getByRole("button", {name: "Add pictures"})

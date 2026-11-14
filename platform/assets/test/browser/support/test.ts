@@ -51,6 +51,11 @@ export const signInFile = (person: string) => `test/browser/.auth/${process.env.
 // The walk's person.
 export const signedIn = {storageState: signInFile("person")}
 
+// The post form's live part has joined (PatchbayWeb.PostFormLive): what is typed
+// and pressed from now on reaches it.
+export const formJoined = (page: Page) =>
+  page.locator("[data-phx-session].phx-connected:has(#pb-hero-form)").waitFor({state: "attached"})
+
 // What a broken page shows: an uncaught error, or content wider than the screen.
 // The width is read once the page has loaded: a page a link has only just opened
 // may not have its styles yet, and is laid out as plain HTML that no visitor sees.

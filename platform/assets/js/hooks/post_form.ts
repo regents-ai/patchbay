@@ -105,16 +105,20 @@ function showRestored(form: PageForm) {
 }
 
 // The field to fix under the cursor, its section opened first, with the line
-// that says what to fix in view, shaking as a refusal does.
+// that says what to fix in view, shaking as a refusal does. LiveView gives the
+// focus back to the pressed button once it has handled the answer, so the
+// field takes it on the next frame, after that.
 function reach(form: PageForm, to: string, line: string) {
   const field = form.querySelector<HTMLElement>(`#${to}`)
   const said = form.querySelector<HTMLElement>(`#${line}`)
   if (!field || !said) return
   const section = field.closest("details")
   if (section) section.open = true
-  field.focus()
-  said.scrollIntoView({block: "nearest"})
-  deny(said)
+  requestAnimationFrame(() => {
+    field.focus()
+    said.scrollIntoView({block: "nearest"})
+    deny(said)
+  })
 }
 
 // The preview settles in under the form when it was asked for by hand.
