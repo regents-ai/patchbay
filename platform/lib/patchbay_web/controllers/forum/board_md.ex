@@ -115,7 +115,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
   def step_lines(items), do: Enum.map_join(items, "\n\n", &step_line/1)
 
   defp step_line({:say, parts}), do: sentence(parts)
-  defp step_line({:run, text}), do: "```\n" <> text <> "\n```"
+  defp step_line({:run, text}), do: block(text)
 
   @doc "One sentence of an agent page or a troubleshooting page, from its parts."
   def sentence(parts), do: Enum.map_join(parts, &step_part/1)

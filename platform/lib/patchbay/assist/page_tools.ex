@@ -12,6 +12,13 @@ defmodule Patchbay.Assist.PageTools do
   seen, and none of them can be called from here. The call that signs tools
   up may be in one script and the tools in another it imports, at any depth.
 
+  The code is read as JavaScript (`Patchbay.Assist.ObjectLiterals`), so a
+  tool's description is the one written on the tool object itself, read
+  whole and as the browser would read it, never one of its parameters'. A
+  description put together at run time is not seen, and the tool is kept
+  with none. A description longer than is kept is cut between words and
+  ends with "…".
+
   `Patchbay.Forum.ToolName` alone decides what a tool name is: the reader
   picks out every candidate and keeps only the names the board would store.
 
@@ -20,7 +27,9 @@ defmodule Patchbay.Assist.PageTools do
   cookies, and every answer bounded.
   """
 
+  alias Patchbay.Assist.ObjectLiterals
   alias Patchbay.Assist.Target
+  alias Patchbay.BoundedText
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.ToolName
 
@@ -32,14 +41,6 @@ defmodule Patchbay.Assist.PageTools do
   @max_description_chars 1_000
   @concurrency 6
   @fetch_timeout_ms 12_000
-  # How far past a tool's name its description and schema are looked for.
-  @tool_window_bytes 2_000
-
-  # Any quoted name; `ToolName` decides which of them are tool names.
-  @tool_name ~r/["']?name["']?\s*:\s*["'`]([\w.\-]{1,64})["'`]/
-  @takes_input ~r/["']?(inputSchema|input_schema|execute)["']?\s*[:(]/
-  # A description in double, single or back quotes.
-  @description ~r/["']?description["']?\s*:\s*(?:"((?:[^"\\]|\\.)*)"|'((?:[^'\\]|\\.)*)'|`([^`]*)`)/s
 
   @type page :: %{url: String.t(), html: binary(), cut?: boolean()}
 
@@ -98,9 +99,11 @@ defmodule Patchbay.Assist.PageTools do
 
     # The call that signs tools up and the tools it is handed are often in
     # different scripts, so the page as a whole is asked whether it signs any up.
+    code = inline_scripts(html) ++ Enum.map(scripts, fn {_url, code} -> code end)
+
     tools =
       if Enum.any?(read, fn {_url, code} -> code =~ ~r/registerTool|provideContext/ end),
-        do: Enum.flat_map(read, fn {_url, code} -> script_tools(code) end),
+        do: Enum.flat_map(code, &script_tools/1),
         else: []
 
     tools = Enum.uniq_by(form_tools(html) ++ tools, & &1.name)
@@ -229,60 +232,41 @@ defmodule Patchbay.Assist.PageTools do
         do: tool(name, attribute(tag, "tooldescription") || "")
   end
 
-  # Tool objects in a page's code: a name, then within the same object a
-  # description and either an input schema or the function run.
+  # Tool objects in a page's code: an object whose own keys name the tool in
+  # text and hold an input schema or the function run. Its description is
+  # the one written on that object, never one written inside it, such as a
+  # parameter's; a tool whose description is not written as text, or not
+  # written at all, is kept with none.
   defp script_tools(code) do
-    starts = Regex.scan(@tool_name, code, return: :index)
-
-    starts
-    |> Enum.with_index()
-    |> Enum.flat_map(fn {[{at, _length}, {name_at, name_length}], index} ->
-      window = window(code, at, Enum.at(starts, index + 1))
-      tool_object(binary_part(code, name_at, name_length), window)
-    end)
-  end
-
-  defp window(code, at, next) do
-    stop =
-      case next do
-        [{next_at, _length} | _rest] -> next_at
-        nil -> byte_size(code)
-      end
-
-    binary_part(code, at, min(stop - at, @tool_window_bytes))
-  end
-
-  defp tool_object(name, window) do
-    with true <- ToolName.valid?(name),
-         true <- window =~ @takes_input,
-         [_ | _] = texts <- Regex.run(@description, window, capture: :all_but_first) do
-      [tool(name, first_written(texts))]
-    else
-      _not_a_tool -> []
+    for keys <- ObjectLiterals.read(code),
+        {:text, name} <- [keys["name"]],
+        ToolName.valid?(name),
+        Enum.any?(~w(inputSchema input_schema execute), &Map.has_key?(keys, &1)) do
+      tool(name, own_description(keys["description"]))
     end
+  end
+
+  defp own_description({:text, description}), do: description
+  defp own_description(_not_written_as_text), do: ""
+
+  # The code inside a page's own `<script>` elements.
+  defp inline_scripts(html) do
+    for [code] <- Regex.scan(~r/<script\b[^>]*>(.*?)<\/script/is, html, capture: :all_but_first),
+        do: code
   end
 
   defp tool(name, description) do
     %{
       name: name,
-      description: description |> unescape() |> String.slice(0, @max_description_chars),
+      description:
+        description
+        |> String.replace_invalid("")
+        |> String.trim()
+        |> BoundedText.cut(@max_description_chars),
       input_schema: nil,
       read_only?: false
     }
   end
-
-  defp unescape(text) do
-    ~r/\\u([0-9a-fA-F]{4})/
-    |> Regex.replace(text, fn escape, code -> character(String.to_integer(code, 16), escape) end)
-    |> String.replace(~S(\n), " ")
-    |> String.replace(~S(\"), ~S("))
-    |> String.replace(~S(\'), "'")
-    |> String.trim()
-  end
-
-  # Half of a pair that spells one character is not a character alone.
-  defp character(code, escape) when code in 0xD800..0xDFFF, do: escape
-  defp character(code, _escape), do: <<code::utf8>>
 
   defp attribute(tag, name) do
     case Regex.run(~r/\s#{name}\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i, tag,

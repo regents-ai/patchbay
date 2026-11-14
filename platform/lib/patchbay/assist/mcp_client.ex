@@ -11,6 +11,7 @@ defmodule Patchbay.Assist.McpClient do
   """
 
   alias Patchbay.Assist.Target
+  alias Patchbay.BoundedText
 
   @protocol_version "2025-06-18"
   @call_timeout_ms 20_000
@@ -135,7 +136,7 @@ defmodule Patchbay.Assist.McpClient do
     [
       %{
         name: String.slice(name, 0, 128),
-        description: String.slice(description, 0, 1_000),
+        description: BoundedText.cut(description, 1_000),
         input_schema: bounded_schema(tool["inputSchema"]),
         read_only?: marked_read_only?(tool)
       }

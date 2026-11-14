@@ -490,15 +490,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     do:
       MDEx.to_html!(markdown, extension: [inline_code_attributes: false], render: [unsafe: false])
 
-  @doc """
-  Tool arguments as JSON for a code block. The values carry a visitor's own
-  words, so a backtick is written as its JSON escape and cannot end the block.
-  """
-  @spec call_json(Jason.OrderedObject.t()) :: String.t()
-  def call_json(arguments) do
-    arguments |> Jason.encode!(pretty: true) |> String.replace("`", "\\u0060")
-  end
-
   @doc "A site's page: its domain, under Patchbay's own address."
   def site_path(site), do: "/" <> site.origin
 

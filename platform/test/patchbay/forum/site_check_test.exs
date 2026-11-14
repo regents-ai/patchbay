@@ -212,6 +212,75 @@ defmodule Patchbay.Forum.SiteCheckTest do
            } = Map.new(Forum.list_tools_for_site!(site.id).results, &{&1.name, &1.description})
   end
 
+  test "a long description from a site's MCP server or its card is cut between words and ends with …" do
+    words = String.duplicate("Lists the orders placed today. ", 30)
+
+    card = %{
+      "name" => "Example orders",
+      "description" => words,
+      "endpoints" => [%{"url" => "https://example.com/mcp"}]
+    }
+
+    serve_with_server(
+      %{"/" => PageSite.without_tools(), "/.well-known/mcp.json" => Jason.encode!(card)},
+      [%{"name" => "list_orders", "description" => words, "inputSchema" => %{"type" => "object"}}]
+    )
+
+    Forum.request_site_check!("example.com")
+    Oban.drain_queue(queue: :site_checks)
+
+    {:ok, check} = Forum.get_site_check("example.com")
+
+    assert [%{"description" => card_text, "tools" => [%{"description" => tool_text}]}] =
+             check.findings["servers"]
+
+    for kept <- [card_text, tool_text] do
+      assert String.length(kept) <= 500
+      assert String.ends_with?(kept, "…")
+      assert String.starts_with?(words, String.trim_trailing(kept, "…"))
+      assert String.at(words, String.length(kept) - 1) =~ ~r/[\s.]/
+    end
+  end
+
+  # The site answers `pages`, and its MCP server at /mcp lists `tools`.
+  defp serve_with_server(pages, tools) do
+    PageSite.serve(pages)
+    target = Application.get_env(:patchbay, :assist_target)
+    [plug: page] = target[:req_options]
+
+    server = fn
+      %{method: "POST", request_path: "/mcp"} = conn ->
+        {:ok, body, conn} = Plug.Conn.read_body(conn)
+        mcp_answer(conn, Jason.decode!(body), tools)
+
+      conn ->
+        page.(conn)
+    end
+
+    Application.put_env(
+      :patchbay,
+      :assist_target,
+      Keyword.put(target, :req_options, plug: server)
+    )
+  end
+
+  defp mcp_answer(conn, %{"id" => id, "method" => method}, tools) do
+    result =
+      case method do
+        "initialize" -> %{"protocolVersion" => "2025-06-18", "capabilities" => %{"tools" => %{}}}
+        "tools/list" -> %{"tools" => tools}
+      end
+
+    conn
+    |> Plug.Conn.put_resp_content_type("application/json")
+    |> Plug.Conn.send_resp(
+      200,
+      Jason.encode!(%{"jsonrpc" => "2.0", "id" => id, "result" => result})
+    )
+  end
+
+  defp mcp_answer(conn, _notification, _tools), do: Plug.Conn.send_resp(conn, 202, "")
+
   test "a site without tools gets its picture too" do
     PageSite.serve(%{"/" => PageSite.without_tools()})
     site = Forum.register_site!("plain.example.com")

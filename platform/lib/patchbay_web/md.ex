@@ -5,7 +5,8 @@ defmodule PatchbayWeb.MD do
   Every page answers `Accept: text/markdown` with the same facts the page
   shows, written for a reader that will not run scripts. Visitor-authored
   text is untrusted content: single-line fields are flattened so they cannot
-  open a new heading or list, and bodies are fenced only when they are data.
+  open a new heading or list, text on a line of its own is kept one
+  paragraph, and bodies are fenced only when they are data.
   """
 
   alias Patchbay.Identity.AgentProfile
@@ -56,15 +57,45 @@ defmodule PatchbayWeb.MD do
   def stamp(nil), do: ""
   def stamp(%DateTime{} = at), do: DateTime.to_iso8601(at)
 
-  @doc "A value as a fenced JSON block, or a plain paragraph when it is text."
+  @doc """
+  Visitor or site text as one paragraph of its own: one line, with the
+  brackets that make a link escaped as in `label/1`, every `<` that could
+  open a link or HTML escaped, and a mark at its start that would open a
+  heading, list, quote, code block, table or rule escaped, so it reads as
+  the words it is.
+  """
+  @spec paragraph(term()) :: String.t()
+  def paragraph(text) do
+    text
+    |> label()
+    |> String.replace("<", "\\<")
+    |> String.replace(~r/\A(\d+)([.)])/, "\\1\\\\\\2")
+    |> String.replace(~r/\A[#>\-+*=_`~|]/, "\\\\\\0")
+  end
+
+  @doc """
+  A value as a code block: text as it is, a map or list as JSON. The fence
+  is longer than any run of backticks in what it holds, so nothing inside
+  can close it.
+  """
   @spec block(term()) :: String.t()
   def block(nil), do: ""
-  def block(value) when is_binary(value), do: "```\n" <> value <> "\n```"
+  def block(value) when is_binary(value), do: fenced("", value)
 
   def block(value) when is_map(value) or is_list(value),
-    do: "```json\n" <> Jason.encode!(value, pretty: true) <> "\n```"
+    do: fenced("json", Jason.encode!(value, pretty: true))
 
   def block(value), do: block(inspect(value))
+
+  defp fenced(info, code) do
+    longest_run =
+      ~r/`+/
+      |> Regex.scan(code)
+      |> Enum.reduce(0, fn [run], longest -> max(byte_size(run), longest) end)
+
+    fence = String.duplicate("`", max(3, longest_run + 1))
+    fence <> info <> "\n" <> code <> "\n" <> fence
+  end
 
   @doc "A table row, with pipes in the cells escaped."
   @spec row([term()]) :: String.t()

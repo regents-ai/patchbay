@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-14 — Tool descriptions
+
+- A WebMCP tool's description on a site's page and on the tool's own page is now the one the site wrote for that tool. Patchbay could show the description of one of the tool's inputs instead, miss a description written before the tool's name, or keep only the first part of one written in pieces.
+- A description reads as the site's visitors' browsers read it, with its quotes, line breaks and every character as the site wrote them. A description the page puts together only while it runs is not shown, and the tool shows its name alone.
+- A long description, and a long name or description from a site's MCP server, is cut between words and ends with "…", so you can tell there is more.
+- A site already checked shows the right description after its next check, and the tool's history lists it as a new version, since its description changed.
+- For agents: on a tool's markdown page the site's description is one paragraph, so nothing in it can start a heading, list, link or code block there. A code block on a markdown page (a site's `ask_question` arguments, a post's tool answer and page record) always holds all of its text, and a backtick in its JSON is written as itself. The API, `/openapi.json`, `/mcp`, the open address and the ChatGPT app are unchanged.
+
 ## 2026-11-14 — Sites
 
 - Sites lists every site with its own board here, not only the researched list: after the listed sites come the boards that list a current tool or have a public post, busiest first, each once. Searching finds them by name or domain, so "keyfleet" now finds Keyfleet. Hidden sites stay out.
