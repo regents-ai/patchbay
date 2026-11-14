@@ -96,11 +96,13 @@ would be replaced when it connects. Read-only looks the same as editable. --%>
         <ul id="pb-fix-tools-list" class="pb-fix-tools-list"></ul>
       </fieldset>
     </div>
+    <%!-- Opened or closed by the person, it stays so when the form connects
+    and as it answers (app.ts). --%>
     <details
       id="pb-hero-details"
       class="pb-ask-more pb-hero-details"
       open={PatchbayWeb.Forum.Hero.details?(@draft)}
-      phx-mounted={JS.ignore_attributes(["open"])}
+      data-pb-open-kept
     >
       <summary>
         <span>More</span>

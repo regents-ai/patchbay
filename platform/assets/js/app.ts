@@ -82,6 +82,14 @@ const liveSocket = new LiveSocket("/live", Socket, {
     // The motion lab's own presses and moments, used only on /animations.
     ...labHooks,
   },
+  dom: {
+    // A section marked `data-pb-open-kept` stays open or closed as the person
+    // left it whenever the page is patched, its first connection included.
+    // `JS.ignore_attributes` cannot do that: it starts only once connected.
+    onBeforeElUpdated(from, to) {
+      if (from instanceof HTMLDetailsElement && from.hasAttribute("data-pb-open-kept")) to.toggleAttribute("open", from.open)
+    },
+  },
 })
 
 // Show progress bar on live navigation and form submits, in Patchbay's own
