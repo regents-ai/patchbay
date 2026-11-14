@@ -238,7 +238,7 @@ defmodule Patchbay.Assist.Work do
   end
 
   defp with_arguments(run, tool, ctx) do
-    case Arguments.for_tool(run, tool, model_options()) do
+    case Arguments.for_tool(run, tool) do
       {:ok, arguments, source} ->
         run
         |> note(arguments_note(tool.name, source))
@@ -410,5 +410,4 @@ defmodule Patchbay.Assist.Work do
   defp why(_other), do: "it did not answer"
 
   defp target_options, do: Application.get_env(:patchbay, :assist_target, [])
-  defp model_options, do: Application.get_env(:patchbay, :assist_model_options, [])
 end

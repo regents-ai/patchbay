@@ -13,12 +13,12 @@ defmodule Patchbay.Assist.Arguments do
   @type source :: :believed | :drafted
 
   @doc "The arguments to call `tool` with for the run, and where they came from."
-  @spec for_tool(Run.t(), map(), keyword()) ::
+  @spec for_tool(Run.t(), map()) ::
           {:ok, map(), source()} | {:error, :arguments_unusable | {:provider, term()}}
-  def for_tool(%Run{} = run, tool, opts \\ []) do
+  def for_tool(%Run{} = run, tool) do
     case believed(run, tool) do
       {:ok, arguments} -> {:ok, arguments, :believed}
-      :none -> drafted(run, tool, opts)
+      :none -> drafted(run, tool)
     end
   end
 
@@ -34,7 +34,7 @@ defmodule Patchbay.Assist.Arguments do
     end
   end
 
-  defp drafted(run, tool, opts) do
+  defp drafted(run, tool) do
     input = %{
       tool: tool.name,
       description: tool.description,
@@ -43,7 +43,7 @@ defmodule Patchbay.Assist.Arguments do
       what_went_wrong: run.error
     }
 
-    case Drafter.draft(input, run.id, opts) do
+    case Drafter.draft(input, run.id) do
       {:ok, arguments} ->
         case Schema.check(arguments, tool.input_schema) do
           :ok -> {:ok, arguments, :drafted}
