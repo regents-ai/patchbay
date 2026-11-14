@@ -23,6 +23,7 @@ defmodule Patchbay.Points.AwardTest do
   alias Patchbay.ModeratorFixtures
   alias Patchbay.Points.PublishedReply
   alias Patchbay.Points.PublishedReport
+  alias Patchbay.Points.TakeBack
   alias PatchbayWeb.SignedAgent
   alias RegentPoints.Rules
   alias RegentPoints.Store
@@ -49,6 +50,7 @@ defmodule Patchbay.Points.AwardTest do
       moderate!(Ash.get!(Forum.Report, thread_id), :redact)
 
       refute_enqueued(worker: RegentPoints.IntakeWorker)
+      refute_enqueued(worker: TakeBack)
       assert points() == {%{}, %{}}
       assert RegentPoints.read_entries!(actor: Store.system()) == []
     end
@@ -234,13 +236,49 @@ defmodule Patchbay.Points.AwardTest do
       answer = reply!(helper, thread_id)
       {_earned, _refused} = points()
 
-      # A word that leaves it able to earn takes nothing.
+      # A word that leaves it able to earn queues nothing and takes nothing.
       Forum.set_reward_eligibility!(Ash.get!(Reply, answer), :eligible, authorize?: false)
+      refute_enqueued(worker: TakeBack)
       {earned, _refused} = points()
       assert %{points: 5, taken_back: 0} = earned[{"patchbay.reply_published", answer}]
 
+      # Two words while the take-back waits are one job.
       Forum.set_reward_eligibility!(Ash.get!(Reply, answer), :ineligible_spam, authorize?: false)
       moderate!(Ash.get!(Reply, answer), :redact)
+      assert [_one] = all_enqueued(worker: TakeBack)
+
+      {earned, _refused} = points()
+      assert %{points: 0, taken_back: 1} = earned[{"patchbay.reply_published", answer}]
+      assert balance(helper) == 0
+
+      # A word after it ran is a new job, which takes nothing more.
+      moderate!(Ash.get!(Reply, answer), :quarantine)
+      assert [_again] = all_enqueued(worker: TakeBack)
+      {earned, _refused} = points()
+      assert %{points: 0, taken_back: 1} = earned[{"patchbay.reply_published", answer}]
+      assert balance(helper) == 0
+    end
+
+    test "moderation is saved when Points cannot take back, and the job takes it back later" do
+      thread_id = ask!(SignedAgent.pair!())
+      helper = SignedAgent.pair!()
+      answer = reply!(helper, thread_id)
+      {_earned, _refused} = points()
+
+      # Points' ledger cannot be read, only while this test lasts.
+      Patchbay.Repo.query!("ALTER TABLE regent_points.point_events RENAME TO point_events_away")
+
+      assert %{visibility: :quarantined} = moderate!(Ash.get!(Reply, answer), :quarantine)
+      assert %{failure: 1, discard: 0} = Oban.drain_queue(queue: :points)
+
+      assert %Oban.Job{state: "retryable", errors: [_attempt]} =
+               Patchbay.Repo.get_by!(Oban.Job, worker: inspect(TakeBack))
+
+      assert %{visibility: :quarantined} = Ash.get!(Reply, answer)
+
+      # Points answers again: the waiting job takes the award back, once.
+      Patchbay.Repo.query!("ALTER TABLE regent_points.point_events_away RENAME TO point_events")
+      assert %{success: 1} = Oban.drain_queue(queue: :points, with_scheduled: true)
 
       {earned, _refused} = points()
       assert %{points: 0, taken_back: 1} = earned[{"patchbay.reply_published", answer}]
