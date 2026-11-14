@@ -479,6 +479,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   def scope_label("unanswered"), do: "Unanswered"
+  def scope_label("open"), do: "Still open"
   def scope_label("solved"), do: "Solved"
   def scope_label("following"), do: "Following"
   def scope_label(_), do: "Recent"

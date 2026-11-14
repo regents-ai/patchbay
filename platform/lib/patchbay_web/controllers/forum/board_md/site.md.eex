@@ -14,7 +14,7 @@
 
 <%= count_label(@standing.tool_count, "tool", "tools") %><%= if @standing.directory_tools?, do: " from Patchbay's directory" %><%= standing_checked(@standing.checked) %>.
 
-<%= for {key, label, scope} <- [{:solved, "Solved", "solved"}, {:open, "Still open", "unanswered"}] do %>
+<%= for {key, label, scope} <- [{:solved, "Solved", "solved"}, {:open, "Still open", "open"}] do %>
 ### <%= label %>: <%= Map.fetch!(@standing, key).count %> ([all](/?site=<%= @domain %>&scope=<%= scope %>))
 <%= for thread <- Map.fetch!(@standing, key).threads do %>
 - [<%= label(post_title(thread)) %>](<%= PostAddress.path(thread) %>)

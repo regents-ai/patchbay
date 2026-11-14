@@ -351,7 +351,7 @@ defmodule PatchbayWeb.Forum.Board do
       directory_tools?: directory_tools?(site),
       checked: PatchbayWeb.Forum.SiteChecks.last_checked(check),
       solved: site_questions(site, "solved"),
-      open: site_questions(site, "unanswered")
+      open: site_questions(site, "open")
     }
   end
 
