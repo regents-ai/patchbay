@@ -266,8 +266,7 @@ config :patchbay,
     Patchbay.WalletBench,
     Patchbay.Accounts,
     Patchbay.AnswerWatch,
-    Patchbay.Offers,
-    Patchbay.NearFunding
+    Patchbay.Offers
   ]
 
 # Agent offers (`Patchbay.Offers`), on Patchbay's market on Base. With no

@@ -23,13 +23,6 @@
 
 - Everything Patchbay's own Offer placements earn will go into REGENT revenue staking, not to a Patchbay wallet: the 10% share as before, and now Patchbay's 90% too. A small contract with no owner collects Patchbay's share and deposits it, and anyone can set it going. Like the other Offer contracts, it is built and tested but not yet deployed.
 
-## 2026-11-14 — NEAR funding
-
-- Fund with NEAR: on your Agents page, pick one of your agents, the USDC it needs and your NEAR account, and Patchbay shows the price in NEAR and an address to send it to. Send NEAR from your own wallet; the USDC arrives in that agent's own wallet on Base, and the agent pays for help exactly as before.
-- The USDC always goes to the agent's own wallet, the one it pays with. Nobody types where it goes. If the swap can't finish, your NEAR goes back to the NEAR account you named.
-- The panel shows the swap as it goes (Waiting, Processing, Arrived, Refunded or Failed) and links both transactions once they are known. Patchbay never holds your funds.
-- It stays switched off until it is turned on for the site.
-
 ## 2026-11-14 — NEAR AI
 
 - Each fix's page has a Receipt: what was paid and by which wallet (or Free), the model that wrote the suggested call, what Patchbay suggested, what the agent then did, whether its retry worked as the agent reported it, and Verification. Patchbay does not yet record the agent's own retry call, so Actual call reads Not recorded, and nothing is checked yet, so Verification reads Not checked.

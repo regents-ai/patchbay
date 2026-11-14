@@ -123,9 +123,6 @@ config :patchbay, :public_run_req_options, plug: {Req.Test, Patchbay.WalletBench
 # IndexNow is answered by the test itself (Patchbay.IndexNow).
 config :patchbay, :indexnow_req, plug: {Req.Test, Patchbay.IndexNow}
 
-# NEAR Intents is answered by the test itself (RegentNearIntents).
-config :patchbay, :near_intents_req_options, plug: {Req.Test, RegentNearIntents}
-
 # cve.now is answered by the test itself (Patchbay.Incidents.CveNow).
 config :patchbay, :cve_now_req_options, plug: {Req.Test, Patchbay.Incidents.CveNow}
 

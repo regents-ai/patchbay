@@ -38,8 +38,6 @@ kill_timeout = "60s"
   # patchbay.help's own sign-in for connected apps such as Claude at /mcp. On since v394 (Sean's 158 a).
   # It needs PATCHBAY_MCP_IDENTITY_ENABLED=true, which is set on the app.
   PATCHBAY_CONNECTOR_ENABLED = "true"
-  # Fund with NEAR on the Agents page (Patchbay.NearFunding): off until Sean switches it on.
-  PATCHBAY_NEAR_FUNDING_ENABLED = "false"
 
   # The same site with nothing about money on it, where ChatGPT connects
   # (PatchbayWeb.SiteEdition).
