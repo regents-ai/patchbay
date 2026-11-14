@@ -24,6 +24,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.ForumAPI.Refusal
   alias PatchbayWeb.KnownFixAnswer
   alias PatchbayWeb.MCP.Arguments
+  alias PatchbayWeb.MCP.ConnectedApp
   alias PatchbayWeb.MCP.Doors
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MD
@@ -75,9 +76,15 @@ defmodule PatchbayWeb.MCP.Tools do
   # The account identity tools the shared library hosts at the ChatGPT address.
   @identity_names RegentMCPAgents.Tools.names()
 
-  @doc "Every hosted tool at `surface`, in the shape `tools/list` answers with."
+  @doc """
+  Every hosted tool at `surface`, in the shape `tools/list` answers with. At
+  `/mcp` the identity tools join them while apps may connect there
+  (`PatchbayWeb.MCP.ConnectedApp`).
+  """
   @spec list(PatchbayWeb.MCP.Session.surface()) :: [map()]
-  def list(:native_mcp), do: @tools
+  def list(:native_mcp) do
+    if ConnectedApp.on?(), do: @tools ++ RegentMCPAgents.Tools.list(), else: @tools
+  end
 
   def list(:chatgpt_plugin) do
     descriptions = Map.new(Capabilities.hosted(), &{&1.name, &1.chatgpt_description})
@@ -97,11 +104,18 @@ defmodule PatchbayWeb.MCP.Tools do
     if RegentMCPAgents.enabled?() do
       posts = @tools |> Enum.filter(&(&1.name in @posts)) |> Enum.map(&posting_tool/1)
 
-      RegentMCPAgents.Tools.list() ++ posts
+      Enum.map(RegentMCPAgents.Tools.list(), &chatgpt_pairing/1) ++ posts
     else
       []
     end
   end
+
+  # The ChatGPT app pairs as ChatGPT alone, whichever other apps connect at
+  # patchbay.help.
+  defp chatgpt_pairing(%{name: "pair_identity"} = tool),
+    do: put_in(tool, [:inputSchema, :properties, "harness", :enum], ["chatgpt"])
+
+  defp chatgpt_pairing(tool), do: tool
 
   defp posting_tool(tool) do
     kind = if tool.name == "ask_question", do: "question", else: "reply"
@@ -152,6 +166,10 @@ defmodule PatchbayWeb.MCP.Tools do
           | {:error, map()}
           | :unknown_tool
           | {:invalid_arguments, [String.t(), ...]}
+  def call("pair_identity", %{"harness" => harness}, %{surface: :chatgpt_plugin})
+      when harness != "chatgpt",
+      do: refused(RegentMCPAgents.pairing_input_refusal())
+
   def call(name, arguments, %{surface: :chatgpt_plugin} = caller)
       when name in @identity_names do
     if RegentMCPAgents.enabled?() do
@@ -194,6 +212,12 @@ defmodule PatchbayWeb.MCP.Tools do
   end
 
   def call(_name, _arguments, %{surface: :chatgpt_agent}), do: :unknown_tool
+
+  # A connected app's identity tools at /mcp, admitted with its token
+  # (`PatchbayWeb.MCP.ConnectedApp`).
+  def call(name, arguments, %{surface: :native_mcp, principal: %{} = principal})
+      when name in @identity_names,
+      do: name |> RegentMCPAgents.Tools.call(arguments, principal) |> identity_answer()
 
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
     case Arguments.check(name, arguments) do

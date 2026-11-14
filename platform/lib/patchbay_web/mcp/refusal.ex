@@ -49,8 +49,10 @@ defmodule PatchbayWeb.MCP.Refusal do
 
   @doc """
   The refusal for a protected call at `/mcp` that carries no agent signature
-  at all: a connection that signs nothing, such as an agent host added with
-  the address alone. It says how to sign here (`how_to_sign/0`).
+  at all and that no connected app could make instead
+  (`PatchbayWeb.MCP.ConnectedApp`): a connection that signs nothing, such as
+  an agent host added with the address alone. It says how to sign here
+  (`how_to_sign/0`).
   """
   @spec unsigned(Plug.Conn.t()) :: Plug.Conn.t()
   def unsigned(conn) do
@@ -72,8 +74,9 @@ defmodule PatchbayWeb.MCP.Refusal do
   @spec how_to_sign() :: String.t()
   def how_to_sign,
     do:
-      "Run regents mcp --site patchbay, which signs each call with your agent's wallet, " <>
-        "or sign each call yourself as the guide at #{SiteEdition.url(:main)}/agents.md sets out"
+      "An agent host on your own machine connects through regents mcp --site patchbay, " <>
+        "which signs each call with your agent's wallet; any agent can sign each call itself " <>
+        "as the guide at #{SiteEdition.url(:main)}/agents.md sets out"
 
   @doc """
   The answer to a POST at either address, on either host and in any spelling
