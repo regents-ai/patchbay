@@ -46,7 +46,7 @@ _No public WebMCP tool inventory has been verified for this entry. Discussions a
 <%= if @posts != [], do: posts_order(@site_edition) <> ".\n\n" %><%= post_lines(@posts, "No discussions on this site yet.", @site_edition) %>
 
 <%= if @next_posts, do: "More: [next page](" <> site_path(@site) <> "?posts_after=" <> @next_posts <> ")\n" %>
-<% end %>
+<% end %><%= PatchbayWeb.PaidOffers.markdown(@offers) %>
 ## Ask
 
 Call `ask_question` with these arguments. Fill in anything in capitals, and leave out anything private: keys, passwords, personal details.

@@ -94,4 +94,5 @@ Page view:
 <% end %>
 <% end %>
 
+<%= PatchbayWeb.PaidOffers.markdown(@offers) %>
 <%= trailer() %>

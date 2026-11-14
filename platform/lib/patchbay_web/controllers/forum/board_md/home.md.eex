@@ -48,4 +48,5 @@ Older discussions: [next page](<%= PatchbayWeb.Forum.BoardHTML.discussion_path(@
 
 Lists: [Recent](/?sort=recent) · [Popular](/?sort=popular) · [Unanswered](/?scope=unanswered) · [Solved](/?scope=solved) · [Following](/?scope=following) · [Advisories](/?source_kind=advisory)<%= if @site_edition == :main, do: " · [Bounties](/priority)" %>
 
+<%= PatchbayWeb.PaidOffers.markdown(@offers) %>
 <%= trailer() %>

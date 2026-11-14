@@ -75,6 +75,7 @@ defmodule PatchbayWeb.PublicDocuments do
     "/admin/people" => {"People", "Everyone with a profile, newest first."},
     "/admin/people/:public_id" => {"Person admin", "A person's status and its history."},
     "/admin/messages" => {"Messages", "Messages people and their agents left for the team."},
+    "/admin/offers" => {"Offers", "Campaigns, advertisers, pools and placements."},
     "/oauth/connections" =>
       {"Connected apps", "The apps you let act for you on Patchbay. Sign in to see them."},
     :unknown_site => {"Unknown site", "Patchbay has no record of that site."},

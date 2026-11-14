@@ -36,6 +36,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
   alias PatchbayWeb.ForumAPI.Participation
   alias PatchbayWeb.ForumAPI.Reads
   alias PatchbayWeb.ForumAPI.Refusal
+  alias PatchbayWeb.PaidOffers
 
   @try_again "Try the same call again in a moment."
   @wait_then_retry "Wait retry_after_seconds, then send it again."
@@ -168,17 +169,23 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   def search(conn, params) do
     case Reads.search(params, Reads.audience(conn.assigns.site_edition)) do
-      {:ok, payload} -> json(conn, payload)
+      {:ok, payload} -> json(conn, with_offers(conn, payload, &PaidOffers.search_answer/3))
       {:error, failure} -> send_failure(conn, failure)
     end
   end
 
   def show(conn, %{"id" => id} = params) do
     case Reads.thread(id, params, Reads.audience(conn.assigns.site_edition)) do
-      {:ok, payload} -> json(conn, payload)
+      {:ok, payload} -> json(conn, with_offers(conn, payload, &PaidOffers.thread_answer/3))
       {:error, failure} -> send_thread_failure(conn, failure)
     end
   end
+
+  # Paid offers follow a whole answer at patchbay.help only (`PatchbayWeb.PaidOffers`).
+  defp with_offers(%{assigns: %{site_edition: :main}} = conn, payload, add),
+    do: add.(payload, PaidOffers.reader(conn), :json)
+
+  defp with_offers(_open, payload, _add), do: payload
 
   defp send_thread_failure(conn, failure)
        when failure in [:not_found, :invalid_cursor, :response_too_large],

@@ -119,9 +119,17 @@ reading job runs and `/capabilities.json` shows `readOffers` closed under the
 `offers` switch. Only `config/runtime.exs` in development sets one, from a lab
 chain on this machine: `scripts/offers-lab.sh start` runs anvil as Base (chain
 8453), places a stand-in USDC at Circle's address with `anvil_setCode`, deploys a
-market and writes its settings to `/tmp/patchbay-offers-lab/env`. Placements and
-advertiser rules are made with `mix patchbay.offers` (development only) until a
-publisher page exists.
+market and writes its settings to `/tmp/patchbay-offers-lab/env`; its `place` and
+`fund` make lab placements and lab USDC.
+
+Offers are served beside the answers on a site's page, its threads and searches
+narrowed to it, in their Markdown and JSON and at `/mcp`
+(`Patchbay.Offers.Serving`), each marked paid with the campaign id an agent can
+check against `/api/offers/campaigns/:campaign_id`. Only campaigns Patchbay
+approved are shown or admitted. Moderators run the publisher's side at
+`/admin/offers` (`PatchbayWeb.OffersAdminLive`): approve and pull campaigns,
+accept and block advertiser wallets, keep pools and choose which a placement
+shows from.
 
 ## Shared dependencies
 

@@ -1,11 +1,14 @@
 defmodule Patchbay.Offers.MarketLabTest do
   @moduledoc """
   Agent offers end to end against the real contracts on anvil: a placement is
-  made, an advertiser writes a campaign, Patchbay admits the purchase, the
-  advertiser approves and buys with the steps the page sends, the record shows
-  the lease, a rival buys the slot out, and the first advertiser claims the
-  refund. The market itself checks every admission: it takes Patchbay's
-  signature and refuses one made over any other value of each field.
+  made, an advertiser writes a campaign, Patchbay approves it and admits the
+  purchase, the advertiser approves and buys with the steps the page sends,
+  the record shows the lease, a rival buys the slot out, and the first
+  advertiser claims the refund. The offer bought is shown over HTTP and at
+  `/mcp` until Patchbay pulls it, and the publisher's ending of the placement
+  refunds it on Base. The market itself checks every admission: it takes
+  Patchbay's signature and refuses one made over any other value of each
+  field.
 
   Left out of the default run. Start anvil as Base on this machine, then run
   this file alone:
@@ -16,17 +19,17 @@ defmodule Patchbay.Offers.MarketLabTest do
   The contracts must be built first (`forge build` in contracts/).
   """
 
-  use Patchbay.DataCase, async: false
+  use PatchbayWeb.ConnCase, async: false
 
-  import PatchbayTest.OfferFixtures, only: [person!: 1]
+  import Patchbay.ModeratorFixtures, only: [moderator: 0]
+  import PatchbayTest.OfferFixtures, only: [person!: 1, rule!: 1, rule!: 2, approve!: 1]
 
-  alias Patchbay.Offers
+  alias Patchbay.{Forum, Offers}
   alias Patchbay.Offers.{Admission, Board, Market, Node, Publisher, Scanner, Steps}
   alias PatchbayDev.OffersLab
 
   @moduletag :anvil
   @rpc_url "http://127.0.0.1:58621"
-  @system %{role: :system}
 
   setup do
     %{market: market, from_block: from_block} = OffersLab.deploy(@rpc_url)
@@ -61,8 +64,7 @@ defmodule Patchbay.Offers.MarketLabTest do
     advertiser = person!(accounts.advertiser)
     rival = person!(accounts.rival)
 
-    for wallet <- [accounts.advertiser, accounts.rival],
-        do: Offers.set_advertiser_rule!(wallet, :accepted, actor: @system)
+    Enum.each([accounts.advertiser, accounts.rival], &rule!/1)
 
     %{market: market, accounts: accounts, advertiser: advertiser, rival: rival}
   end
@@ -78,6 +80,8 @@ defmodule Patchbay.Offers.MarketLabTest do
 
     campaign =
       PatchbayTest.OfferFixtures.campaign!(advertiser, %{audience: :sites, sites: ["stripe.com"]})
+
+    approve!(campaign)
 
     # The campaign runs only on Stripe's page.
     assert {:error, :not_on_site} = Admission.admit(advertiser, campaign, 2, 0, 5_000_000, 0)
@@ -101,6 +105,7 @@ defmodule Patchbay.Offers.MarketLabTest do
     # A rival buys the slot out at the minimum; the first lease is refunded
     # for the time it had left.
     rival_campaign = PatchbayTest.OfferFixtures.campaign!(rival, %{title: "Rival payments"})
+    approve!(rival_campaign)
     OffersLab.wait!(@rpc_url, 60)
 
     assert {:ok, buyout} =
@@ -140,6 +145,7 @@ defmodule Patchbay.Offers.MarketLabTest do
   } do
     [stripe | _] = Offers.open_placements!(8453, market)
     campaign = PatchbayTest.OfferFixtures.campaign!(advertiser)
+    approve!(campaign)
 
     assert {:ok, admission} =
              Admission.admit(advertiser, campaign, stripe.placement_id, 0, 5_000_000, 0)
@@ -190,7 +196,7 @@ defmodule Patchbay.Offers.MarketLabTest do
     [stripe | _] = Offers.open_placements!(8453, market)
     campaign = PatchbayTest.OfferFixtures.campaign!(advertiser)
 
-    Offers.set_advertiser_rule!(accounts.advertiser, :blocked, actor: @system)
+    rule!(accounts.advertiser, :blocked)
 
     assert {:error, :blocked} =
              Admission.admit(advertiser, campaign, stripe.placement_id, 0, 5_000_000, 0)
@@ -200,6 +206,102 @@ defmodule Patchbay.Offers.MarketLabTest do
 
     assert {:error, :not_accepted} =
              Admission.admit(stranger, unknown, stripe.placement_id, 0, 5_000_000, 0)
+  end
+
+  test "bought and approved, it is shown over HTTP and at /mcp; pulled, it is gone at once", %{
+    conn: conn,
+    market: market,
+    accounts: accounts,
+    advertiser: advertiser
+  } do
+    [stripe | _] = Offers.open_placements!(8453, market)
+    thread = thread!("stripe.com")
+    campaign = PatchbayTest.OfferFixtures.campaign!(advertiser)
+
+    # Patchbay admits nothing it has not approved.
+    assert {:error, :not_approved} =
+             Admission.admit(advertiser, campaign, stripe.placement_id, 0, 5_000_000, 0)
+
+    approve!(campaign)
+
+    assert {:ok, admission} =
+             Admission.admit(advertiser, campaign, stripe.placement_id, 0, 5_000_000, 0)
+
+    sent!(accounts.advertiser, Steps.approve(5_000_000))
+    sent!(accounts.advertiser, Steps.buy(admission))
+    assert :ok = Scanner.pass(Node, 8453, market)
+
+    assert [%{"campaign_id" => id, "paid" => true}] = over_http(conn, thread)
+    assert id == campaign.campaign_id
+    assert [%{"campaign_id" => ^id}] = at_mcp(conn, thread)
+    assert conn |> recycle() |> get("/stripe.com") |> html_response(200) =~ campaign.title
+
+    Offers.pull_campaign!(campaign.campaign_id, %{reason: "Misleading"}, actor: moderator())
+
+    assert over_http(conn, thread) == []
+    assert at_mcp(conn, thread) == []
+    refute conn |> recycle() |> get("/stripe.com") |> html_response(200) =~ campaign.title
+
+    # Its money follows the market's own path: the publisher's wallet ends the
+    # placement, anyone settles the slot, and the advertiser may claim.
+    sent!(accounts.publisher, %{
+      to: market,
+      data: RegentChain.Call.encode("terminatePlacement(uint256)", [stripe.placement_id])
+    })
+
+    sent!(accounts.rival, %{
+      to: market,
+      data: RegentChain.Call.encode("settleTerminated(uint256,uint16)", [stripe.placement_id, 0])
+    })
+
+    assert :ok = Scanner.pass(Node, 8453, market)
+
+    assert [%{reason: :terminated, buyer: buyer, refund_usdc: refund}] =
+             Ash.read!(Offers.Settlement)
+
+    assert buyer == accounts.advertiser
+    assert {:ok, claimable} = Market.claimable(accounts.advertiser)
+    assert claimable == Decimal.to_integer(refund) and claimable > 0
+  end
+
+  defp thread!(origin) do
+    site = Forum.register_site!(origin)
+
+    # A question to show the offer beside; who may ask is not what this tests.
+    Forum.ask_question!(
+      %{
+        site_id: site.id,
+        browser_session_id: Ash.UUID.generate(),
+        title: "How do I refund a card payment?",
+        thread_kind: :help_needed,
+        body_markdown: "Looking for a refund flow."
+      },
+      authorize?: false
+    )
+  end
+
+  defp over_http(conn, thread) do
+    answer = conn |> recycle() |> get("/forum/threads/#{thread.id}") |> json_response(200)
+    get_in(answer, ["paid_offers", "offers"]) || []
+  end
+
+  defp at_mcp(conn, thread) do
+    %{"result" => %{"structuredContent" => answer}} =
+      conn
+      |> recycle()
+      |> put_req_header("content-type", "application/json")
+      |> post(
+        "/mcp",
+        Jason.encode!(%{
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: %{name: "get_thread", arguments: %{thread_id: thread.id}}
+        })
+      )
+      |> json_response(200)
+
+    get_in(answer, ["paid_offers", "offers"]) || []
   end
 
   defp sent!(from, step) do

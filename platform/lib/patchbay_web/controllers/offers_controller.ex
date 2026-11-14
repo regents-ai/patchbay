@@ -2,7 +2,8 @@ defmodule PatchbayWeb.OffersController do
   @moduledoc """
   Patchbay's offer market as agents read it, from the record `/offers` shows
   (`Patchbay.Offers.Board`): `GET /api/offers` as JSON, `/offers.md` as
-  Markdown, and the `read_offers` tool at `/mcp` (`PatchbayWeb.MCP.Doors`).
+  Markdown, and the `read_offers` tool at `/mcp` (`PatchbayWeb.MCP.Doors`); and each
+  campaign a lease names, as its manifest.
 
   Each answers only at patchbay.help, and only while a market is set; with
   none, there is nothing at the address. Reading needs nothing and changes
@@ -12,7 +13,8 @@ defmodule PatchbayWeb.OffersController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Offers
-  alias Patchbay.Offers.Board
+  alias Patchbay.Offers.{Board, Campaign}
+  alias PatchbayWeb.ErrorJSON
   alias PatchbayWeb.Forum.NotFoundError
   alias RegentPayments.USDC
 
@@ -41,6 +43,23 @@ defmodule PatchbayWeb.OffersController do
   end
 
   @doc """
+  A campaign's manifest, byte for byte as its id was hashed from: keccak256
+  of this body is the campaign id a lease names on Base, so an agent shown
+  an offer can check it is the one bought. Only a campaign some lease names
+  is here.
+  """
+  def manifest(conn, %{"campaign_id" => campaign_id}) do
+    with true <- Offers.enabled?(),
+         {:ok, [campaign]} <- Offers.campaigns_by_ids([campaign_id]) do
+      conn
+      |> put_resp_content_type("application/json")
+      |> send_resp(200, Campaign.manifest(campaign))
+    else
+      _nothing -> conn |> put_status(:not_found) |> json(ErrorJSON.render("404.json", %{}))
+    end
+  end
+
+  @doc """
   The market's open placements and their slots, as a status and a body:
   `GET /api/offers`, `/offers.md` and the `read_offers` tool answer with it.
   With no market set, the body is the site's own "nothing at this address".
@@ -58,7 +77,7 @@ defmodule PatchbayWeb.OffersController do
          next_step: @next_step
        }}
     else
-      {:not_found, PatchbayWeb.ErrorJSON.render("404.json", %{})}
+      {:not_found, ErrorJSON.render("404.json", %{})}
     end
   end
 

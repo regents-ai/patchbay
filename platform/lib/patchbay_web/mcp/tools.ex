@@ -27,6 +27,7 @@ defmodule PatchbayWeb.MCP.Tools do
   alias PatchbayWeb.MCP.Doors
   alias PatchbayWeb.MCP.RepairCard
   alias PatchbayWeb.MD
+  alias PatchbayWeb.PaidOffers
   alias PatchbayWeb.SiteEdition
 
   # How a signed tool is signed on a page, the last sentence of its manifest
@@ -196,8 +197,14 @@ defmodule PatchbayWeb.MCP.Tools do
 
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
     case Arguments.check(name, arguments) do
-      {:ok, arguments} -> dispatch(name, arguments, caller) |> for_surface(caller.surface)
-      {:invalid, lines} -> {:invalid_arguments, lines}
+      {:ok, arguments} ->
+        name
+        |> dispatch(arguments, caller)
+        |> for_surface(caller.surface)
+        |> offered(name, caller)
+
+      {:invalid, lines} ->
+        {:invalid_arguments, lines}
     end
   end
 
@@ -280,6 +287,16 @@ defmodule PatchbayWeb.MCP.Tools do
     do: {:ok, Map.put(answer, :next_step, empty_search_next_step())}
 
   defp for_surface(answer, _surface), do: answer
+
+  # Paid offers follow a whole search or thread answer at /mcp, and nowhere
+  # else: never at the ChatGPT address (`PatchbayWeb.PaidOffers`).
+  defp offered({:ok, answer}, "search_threads", %{surface: :native_mcp} = caller),
+    do: {:ok, PaidOffers.search_answer(answer, PaidOffers.caller_reader(caller), :mcp)}
+
+  defp offered({:ok, answer}, "get_thread", %{surface: :native_mcp} = caller),
+    do: {:ok, PaidOffers.thread_answer(answer, PaidOffers.caller_reader(caller), :mcp)}
+
+  defp offered(answer, _name, _caller), do: answer
 
   defp empty_search_next_step do
     if RegentMCPAgents.enabled?(),

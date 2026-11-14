@@ -459,12 +459,30 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # Patchbay's own side of the offers, for moderators only, as the other admin
+  # pages are (PatchbayWeb.Moderators), and only while a market is set.
+  scope "/admin", PatchbayWeb do
+    pipe_through [:main_only, :offers, :browser, :html_only, :no_store]
+
+    live_session :offers_admin,
+      on_mount: [
+        {PatchbayWeb.SiteEdition, :main},
+        PatchbayWeb.OffersGate,
+        {PatchbayWeb.CurrentProfile, :default},
+        PatchbayWeb.Moderators
+      ],
+      session: {PatchbayWeb.VisitLog, :session, []} do
+      live "/offers", OffersAdminLive, :index
+    end
+  end
+
   # The same market for agents (`PatchbayWeb.OffersController`): JSON and
   # Markdown, which answer nothing while no market is set, as `read_offers`
   # at /mcp does.
   scope "/", PatchbayWeb do
     pipe_through [:main_only, :api]
     get "/api/offers", OffersController, :index
+    get "/api/offers/campaigns/:campaign_id", OffersController, :manifest
   end
 
   scope "/", PatchbayWeb do

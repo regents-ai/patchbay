@@ -2,8 +2,9 @@ defmodule PatchbayDev.OffersLab do
   @moduledoc """
   The agent offers lab: Patchbay's offer market on a lab chain on this
   machine, never anywhere else. `scripts/offers-lab.sh start` runs anvil as
-  Base (chain 8453) and calls `deploy/1` through `mix patchbay.offers lab`;
-  the end-to-end test calls it too.
+  Base (chain 8453) and calls `start!/2`, and its `place` and `fund` call
+  `place_site!/2` and `fund_wallet!/1`; the end-to-end test calls `deploy/1`
+  and the rest directly.
 
   The factory refuses any chain but Base with Circle's USDC at its address, so
   the lab places a stand-in USDC (the contracts' `FreezableUSDC`, anyone may
@@ -38,6 +39,48 @@ defmodule PatchbayDev.OffersLab do
 
   @doc "The publisher's key: anvil's account 1, Foundry's published test key."
   def publisher_key, do: @publisher_key
+
+  @doc """
+  `scripts/offers-lab.sh start`: deploys a fresh market on the lab chain at
+  `rpc_url` and writes the settings the site starts with to `env_file`.
+  """
+  def start!(rpc_url, env_file) do
+    {:ok, _apps} = Application.ensure_all_started(:req)
+    %{market: market, from_block: from_block} = deploy(rpc_url)
+
+    File.write!(env_file, """
+    export PATCHBAY_OFFERS_MARKET=#{market}
+    export PATCHBAY_OFFERS_RPC_URL=#{rpc_url}
+    export PATCHBAY_OFFERS_FROM_BLOCK=#{from_block}
+    export PATCHBAY_OFFERS_PUBLISHER_KEY=#{@publisher_key}
+    """)
+
+    IO.puts("Market #{market}, made in block #{from_block}.")
+  end
+
+  @doc """
+  `scripts/offers-lab.sh place SITE [FLOOR]`: a placement for the listed
+  site on the market the site is set to, then a read of the market.
+  """
+  def place_site!(site, floor) do
+    {:ok, origin} = Patchbay.Forum.Origin.normalize(site)
+
+    place!(
+      Patchbay.Offers.chain().rpc_url,
+      Patchbay.Offers.market(),
+      origin,
+      String.to_integer(floor)
+    )
+
+    Patchbay.Offers.Watch.refresh()
+    IO.puts("Placement made for #{origin}.")
+  end
+
+  @doc "`scripts/offers-lab.sh fund WALLET`: 1,000 stand-in USDC to `wallet`."
+  def fund_wallet!(wallet) do
+    fund!(Patchbay.Offers.chain().rpc_url, String.downcase(wallet))
+    IO.puts("Sent 1,000 lab USDC to #{wallet}.")
+  end
 
   @doc """
   Deploys a fresh factory and market on the lab chain at `rpc_url` and funds

@@ -88,6 +88,15 @@ defmodule PatchbayWeb.OffersLive.Words do
   def refusal(:other_policy, _campaign, _placement),
     do: ["This placement takes offers on other terms."]
 
+  def refusal(:not_approved, _campaign, _placement),
+    do: ["Patchbay hasn't approved this campaign yet."]
+
+  def refusal(:pulled, _campaign, _placement),
+    do: ["Patchbay took this campaign down, so it can't be bought."]
+
+  def refusal(:not_in_pool, _campaign, %{source_origin: origin}),
+    do: ["#{origin} doesn't show this kind of campaign in this placement."]
+
   def refusal(reason, _campaign, _placement)
       when reason in [:unknown_site, :unknown_placement, :unknown_slot, :not_your_campaign],
       do: ["This slot isn't open to your campaigns."]

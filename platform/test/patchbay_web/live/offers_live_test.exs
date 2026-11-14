@@ -4,7 +4,10 @@ defmodule PatchbayWeb.OffersLiveTest do
   (`PatchbayTest.OfferChain`): the board from Patchbay's record, campaigns
   written from the form, and the Buy and Claim buttons, disabled only when the
   chain at the latest block makes a press certain to fail. Every other press
-  reaches the wallet, a repeat one too.
+  reaches the wallet, a repeat one too. Each campaign shows Patchbay's review
+  and how often each of its leases was shown.
+
+  The moderator list is application-wide, so this file runs alone.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -19,7 +22,6 @@ defmodule PatchbayWeb.OffersLiveTest do
   alias PatchbayWeb.Plugs.CurrentProfile
 
   @moduletag :capture_log
-  @system %{role: :system}
 
   setup do
     offers_on!(client: Chain, publisher_private_key: OffersLab.publisher_key())
@@ -100,10 +102,79 @@ defmodule PatchbayWeb.OffersLiveTest do
     assert has_element?(view, "#campaign-#{campaign.id}[data-new]")
   end
 
+  test "a person seals who a campaign is shown to from the form", %{conn: conn} do
+    person = person!(wallet())
+    left_out = wallet()
+    {:ok, view, _html} = conn |> signed_in(person) |> live(~p"/offers")
+
+    view
+    |> form("#offers-new-campaign", %{
+      "campaign" => %{
+        "title" => "Acme payments",
+        "body" => "Take card payments in one line of code.",
+        "link" => "https://acme.example/agents",
+        "audience" => "all",
+        "tags" => "Payments, checkout",
+        "kinds" => ["", "help_needed"],
+        "requires" => ["", "paired"],
+        "excluded_wallets" => left_out,
+        "daily_limit" => "3"
+      }
+    })
+    |> render_submit()
+
+    assert [campaign] = Offers.my_campaigns!(actor: person)
+    assert campaign.tags == ["checkout", "payments"]
+    assert campaign.kinds == [:help_needed]
+    assert campaign.requires == [:paired]
+    assert campaign.excluded_wallets == [left_out]
+    assert campaign.daily_limit == 3
+    assert has_element?(view, "#campaign-#{campaign.id} [data-review=waiting]")
+  end
+
+  test "an advertiser sees how often each of their leases was shown, and never to whom", %{
+    conn: conn
+  } do
+    person = person!(wallet())
+    campaign = campaign!(person)
+    approve!(campaign)
+    lease = lease!(1, 0, campaign)
+
+    for viewer <- ["visitor-key-a", "visitor-key-b"] do
+      Offers.record_delivery!(
+        %{
+          lease_id: lease.id,
+          campaign_id: campaign.campaign_id,
+          surface: :page,
+          viewer_kind: :visitor,
+          viewer: viewer,
+          context: "/stripe.com"
+        },
+        actor: %{role: :system}
+      )
+    end
+
+    {:ok, view, html} = conn |> signed_in(person) |> live(~p"/offers")
+
+    assert has_element?(view, "#campaign-#{campaign.id} [data-review=approved]")
+    assert view |> element("#campaign-lease-#{lease.id}") |> render() =~ "Shown 2 times"
+    refute html =~ "visitor-key-a"
+
+    # Another advertiser reads no count of it.
+    stranger = person!(wallet())
+
+    assert [%{delivery_count: 0}] =
+             Offers.placement_leases!(8453, market(), [1],
+               actor: stranger,
+               load: [:delivery_count]
+             )
+  end
+
   describe "Buy" do
     setup %{conn: conn} do
       person = person!(wallet())
       campaign = campaign!(person)
+      approve!(campaign)
       %{person: person, campaign: campaign, conn: signed_in(conn, person)}
     end
 
@@ -117,7 +188,7 @@ defmodule PatchbayWeb.OffersLiveTest do
 
     test "is disabled only when the chain makes it certain to fail, and every other press is sent",
          %{conn: conn, person: person, campaign: campaign, placement: placement} do
-      Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: @system)
+      rule!(person.wallet_address)
       open_slot!(placement, 0, 5_000_000, 0)
       Chain.usdc!(person.wallet_address, 20_000_000, 0)
 
@@ -157,7 +228,7 @@ defmodule PatchbayWeb.OffersLiveTest do
       campaign: campaign,
       placement: placement
     } do
-      Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: @system)
+      rule!(person.wallet_address)
       open_slot!(placement, 0, 5_000_000, 0)
       Chain.usdc!(person.wallet_address, 20_000_000, 0)
 

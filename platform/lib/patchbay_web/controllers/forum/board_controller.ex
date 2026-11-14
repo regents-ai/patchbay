@@ -32,6 +32,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Incidents
   alias Patchbay.Incidents.Discussion
+  alias Patchbay.Offers.Serving
   alias PatchbayWeb.BusyPage
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.AgentPages
@@ -43,6 +44,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.Forum.Troubleshooting
+  alias PatchbayWeb.PaidOffers
 
   @not_posted "That reply could not be posted."
   @agent_page_posts 8
@@ -185,7 +187,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           ask_open: found_nothing? or ask_open?(forum_params, draft),
           directory: FixCheck.directory?(conn),
           draft: if(found_nothing?, do: ask_about(draft, filters.q), else: draft),
-          incidents: Incidents.active()
+          incidents: Incidents.active(),
+          offers: paid_offers(conn, PaidOffers.search(filters.site, filters.tag, surface(conn)))
         )
     end
   end
@@ -543,7 +546,9 @@ defmodule PatchbayWeb.Forum.BoardController do
             ask: ask,
             directory: FixCheck.directory?(conn),
             # The page's form, filled in from the link that opened the page.
-            draft: Hero.draft(%{"goal" => goal, "site_url" => page || domain, "details" => error})
+            draft:
+              Hero.draft(%{"goal" => goal, "site_url" => page || domain, "details" => error}),
+            offers: paid_offers(conn, PaidOffers.site(domain, surface(conn)))
           })
         )
 
@@ -1053,7 +1058,17 @@ defmodule PatchbayWeb.Forum.BoardController do
             following: Board.followed_sites(profile, conn.assigns.forum_session_id),
             reply_problem: Keyword.get(problems, :reply_problem),
             escrow_problem: Keyword.get(problems, :escrow_problem),
-            techtree: techtree_result(report)
+            techtree: techtree_result(report),
+            offers:
+              paid_offers(
+                conn,
+                PaidOffers.thread(
+                  report.id,
+                  report.site.origin,
+                  %{tags: report.topic_tags, kind: report.thread_kind},
+                  surface(conn)
+                )
+              )
           })
         )
 
@@ -1082,6 +1097,15 @@ defmodule PatchbayWeb.Forum.BoardController do
         )
     end
   end
+
+  # Paid offers go beside a page at patchbay.help only, after its answers are
+  # read (`PatchbayWeb.PaidOffers`).
+  defp paid_offers(%{assigns: %{site_edition: :main}} = conn, request),
+    do: Serving.serve(request, PaidOffers.reader(conn))
+
+  defp paid_offers(_open, _request), do: []
+
+  defp surface(conn), do: if(get_format(conn) == "md", do: :markdown, else: :page)
 
   defp error_type(failure) when is_struct(failure), do: failure.__struct__
   defp error_type(failure), do: failure
