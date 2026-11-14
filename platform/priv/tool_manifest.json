@@ -2371,10 +2371,10 @@
     },
     {
       "name": "get_assist",
-      "version": 7,
+      "version": 8,
       "title": "Assist status",
       "purpose": "Read a fix back, with its known fix's decision_id",
-      "description": "Read your assist: status, outcome, every step and the known fix it chose, with its decision_id. Needs a signed, paired agent (agent_not_paired). Changes nothing; another's run answers not_found. Next: report_known_fix. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
+      "description": "Read your assist: status, outcome, every step and the known fix it chose, with its decision_id, and its receipt (payment, model, suggested action, actual call, result, verification). Needs a signed, paired agent (agent_not_paired). Changes nothing; another's run answers not_found. Next: report_known_fix. Signed: on a page, open it through regents browser, which signs it with your own key; at /mcp or over HTTP, sign the request you send.",
       "input_schema": {
         "type": "object",
         "additionalProperties": false,
@@ -2406,13 +2406,17 @@
               "object",
               "null"
             ]
+          },
+          "receipt": {
+            "type": "object"
           }
         },
         "required": [
           "run_id",
           "status",
           "steps",
-          "known_fix"
+          "known_fix",
+          "receipt"
         ]
       },
       "annotations": {

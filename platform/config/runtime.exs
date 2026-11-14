@@ -94,6 +94,44 @@ config :regent_agents, :activity_read_token, System.get_env("SIWA_ACTIVITY_READ_
 
 config :patchbay, :openrouter, api_key: System.get_env("OPENROUTER_API_KEY")
 
+# The model that drafts a tool's arguments for an assist (Patchbay.Assist.Drafter),
+# chosen by PATCHBAY_DRAFTER_PROVIDER: "openrouter" when unset, or "near_ai",
+# NEAR AI Cloud's gateway with GLM 5.3 Flash, which runs in NEAR AI's own
+# confidential enclave ("Private TEE" at https://near.ai/models; address from
+# https://docs.near.ai/cloud/quickstart.md). `effort` is the provider's own
+# words for asking for little reasoning. Production with NEAR AI chosen and no
+# NEAR_AI_API_KEY stops the boot.
+drafter =
+  case System.get_env("PATCHBAY_DRAFTER_PROVIDER", "openrouter") do
+    "openrouter" ->
+      [
+        provider: "openrouter",
+        url: "https://openrouter.ai/api/v1/chat/completions",
+        model: "openai/gpt-5.6-terra",
+        api_key: System.get_env("OPENROUTER_API_KEY"),
+        effort: %{reasoning: %{effort: "low"}}
+      ]
+
+    "near_ai" ->
+      [
+        provider: "near_ai",
+        url: "https://cloud-api.near.ai/v1/chat/completions",
+        model: "z-ai/glm-5.3-flash",
+        api_key: System.get_env("NEAR_AI_API_KEY"),
+        effort: %{reasoning_effort: "low"}
+      ]
+
+    _other ->
+      raise ~s(PATCHBAY_DRAFTER_PROVIDER must be "openrouter" or "near_ai")
+  end
+
+if config_env() == :prod and drafter[:provider] == "near_ai" and
+     drafter[:api_key] in [nil, ""] do
+  raise "PATCHBAY_DRAFTER_PROVIDER is near_ai, so NEAR_AI_API_KEY must be set too"
+end
+
+config :patchbay, :drafter, drafter
+
 config :patchbay, :answer_watch, openai_api_key: System.get_env("OPENAI_API_KEY")
 
 # The token OpenAI's plugin portal asks Patchbay to show, proving it owns the

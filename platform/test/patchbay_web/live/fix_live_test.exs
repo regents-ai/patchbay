@@ -7,7 +7,7 @@ defmodule PatchbayWeb.FixLiveTest do
 
   use PatchbayWeb.ConnCase, async: false
 
-  import Patchbay.AssistFixtures, only: [browser_run: 1]
+  import Patchbay.AssistFixtures, only: [browser_run: 1, paid_run: 2]
   import Phoenix.LiveViewTest
 
   alias Patchbay.Assist
@@ -75,6 +75,29 @@ defmodule PatchbayWeb.FixLiveTest do
 
     {:ok, _view, html} = conn |> sign_in(person.id) |> live(~p"/fixes/#{run.id}")
     assert html =~ "goal     Book the 9am table"
+  end
+
+  test "the payer sees the receipt: what was paid, by which wallet, and nothing claimed as checked",
+       %{conn: conn} do
+    payer = person()
+    run = paid_run(payer, "0x" <> String.duplicate("d", 40))
+    %{transaction_hash: hash} = Ash.read_one!(RegentPayments.PaymentReceipt, authorize?: false)
+
+    {:ok, view, _html} = conn |> sign_in(payer.id) |> live(~p"/fixes/#{run.id}")
+
+    payment = view |> element("#pb-fix-receipt-payment") |> render()
+    assert payment =~ "0.10 USDC"
+    assert payment =~ payer.wallet_address
+    assert payment =~ hash
+    assert view |> element("#pb-fix-receipt-model") |> render() =~ "No draft"
+    assert view |> element("#pb-fix-receipt-result") |> render() =~ "Not reported"
+    assert view |> element("#pb-fix-receipt-verification") |> render() =~ "Not checked"
+
+    # A free fix the browser asked for says so.
+    browser = Ash.UUID.generate()
+    free = browser_run(%{browser_session_id: browser})
+    {:ok, view, _html} = conn |> as_browser(browser) |> live(~p"/fixes/#{free.id}")
+    assert view |> element("#pb-fix-receipt-payment") |> render() =~ "Free"
   end
 
   defp as_browser(conn, browser) do

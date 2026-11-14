@@ -26,6 +26,14 @@ Application.put_env(
   Keyword.put(Application.fetch_env!(:patchbay, :openrouter), :api_key, "test-key-never-sent")
 )
 
+# The same for the drafting model's key; tests answer through
+# `config :patchbay, :drafter_req_options`.
+Application.put_env(
+  :patchbay,
+  :drafter,
+  Keyword.put(Application.fetch_env!(:patchbay, :drafter), :api_key, "test-key-never-sent")
+)
+
 # Techtree owns and publishes the Agent Wallet Bench in the shared database; a
 # test database has only Patchbay's copy of the columns it reads.
 PatchbayDev.WalletBenchTables.create!(Patchbay.Repo)

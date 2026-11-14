@@ -231,7 +231,7 @@ defmodule Patchbay.Assist.WorkTest do
     end)
 
     # The drafting model is away: the run waits on a person, and nothing was called.
-    drafter(fn -> {:error, {:http_status, 429}} end)
+    drafter(fn -> {429, %{"error" => %{"message" => "busy"}}} end)
     assert :ok = work(run)
     {:ok, waiting} = Assist.get_run(run.id, authorize?: false)
     assert {waiting.status, waiting.outcome} == {:assessment_pending, :provider_unavailable}
@@ -406,25 +406,37 @@ defmodule Patchbay.Assist.WorkTest do
     }
   end
 
-  # The drafting model on OpenRouter, answered by `answer.()`; the request
-  # is checked to be the one the drafter is meant to send.
+  # The drafting model on OpenRouter, answered with the status and body
+  # `answer.()` gives; the request is checked to be the one the drafter is
+  # meant to send.
   defp drafter(answer) do
-    Application.put_env(:patchbay, :assist_model_options,
-      request: fn payload, _opts, url ->
-        assert url == "https://openrouter.ai/api/v1/chat/completions"
-        assert payload.model == "openai/gpt-5.6-terra"
-        assert payload.response_format.json_schema.strict
-        assert [%{role: "system"}, %{role: "user"}] = payload.messages
-        answer.()
+    Application.put_env(:patchbay, :drafter_req_options,
+      plug: fn conn ->
+        {:ok, body, conn} = read_body(conn)
+        payload = Jason.decode!(body)
+        assert {conn.host, conn.request_path} == {"openrouter.ai", "/api/v1/chat/completions"}
+        assert payload["model"] == "openai/gpt-5.6-terra"
+        assert payload["reasoning"] == %{"effort" => "low"}
+        assert payload["response_format"]["json_schema"]["strict"]
+        assert [%{"role" => "system"}, %{"role" => "user"}] = payload["messages"]
+        {status, answered} = answer.()
+
+        conn
+        |> put_resp_content_type("application/json")
+        |> send_resp(status, Jason.encode!(answered))
       end
     )
 
-    on_exit(fn -> Application.delete_env(:patchbay, :assist_model_options) end)
+    on_exit(fn ->
+      Application.put_env(:patchbay, :drafter_req_options,
+        plug: {Req.Test, Patchbay.Assist.Drafter}
+      )
+    end)
   end
 
   defp drafted(arguments) do
     content = Jason.encode!(%{"arguments_json" => Jason.encode!(arguments)})
-    {:ok, %{"choices" => [%{"message" => %{"content" => content}}]}}
+    {200, %{"choices" => [%{"message" => %{"content" => content}}]}}
   end
 
   # Jev's Decisions endpoint, answered by `answer.(state, questions)`.

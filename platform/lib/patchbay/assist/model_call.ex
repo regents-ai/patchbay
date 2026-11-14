@@ -55,6 +55,12 @@ defmodule Patchbay.Assist.ModelCall do
     attribute(:completion_tokens, :integer, allow_nil?: true, public?: true)
     attribute(:cost_usd, :decimal, allow_nil?: true, public?: true)
 
+    # A draft's provider (`openrouter` or `near_ai`), and the ids it gave the
+    # answer: the answer's own `id` and the `X-Request-Id` header, when sent.
+    attribute(:provider, :string, allow_nil?: true, public?: true)
+    attribute(:response_id, :string, allow_nil?: true, public?: true)
+    attribute(:request_id, :string, allow_nil?: true, public?: true)
+
     create_timestamp(:inserted_at)
     update_timestamp(:updated_at)
   end
@@ -68,7 +74,7 @@ defmodule Patchbay.Assist.ModelCall do
 
     create :ask do
       description("A question about to be sent, for a fix's run or a priority report.")
-      accept([:purpose, :model, :assist_run_id])
+      accept([:purpose, :model, :assist_run_id, :provider])
     end
 
     create :ask_to_check_post do
@@ -79,7 +85,7 @@ defmodule Patchbay.Assist.ModelCall do
     end
 
     update :answered do
-      accept([:prompt_tokens, :completion_tokens, :cost_usd])
+      accept([:prompt_tokens, :completion_tokens, :cost_usd, :response_id, :request_id])
       change(set_attribute(:outcome, :answered))
     end
 

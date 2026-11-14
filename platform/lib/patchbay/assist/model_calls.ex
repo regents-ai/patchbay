@@ -22,11 +22,17 @@ defmodule Patchbay.Assist.ModelCalls do
   alias Patchbay.Assist
   alias Patchbay.Assist.ModelCall
 
-  @doc "Opens the record of a question for `purpose`, asked of `model`, for the run `run_id` if any."
-  @spec ask(atom(), String.t(), Ash.UUID.t() | nil) :: ModelCall.t()
-  def ask(purpose, model, run_id \\ nil) do
+  @doc """
+  Opens the record of a question for `purpose`, asked of `model`, for the
+  run `run_id` if any, naming the `provider` when the asker names one.
+  """
+  @spec ask(atom(), String.t(), Ash.UUID.t() | nil, String.t() | nil) :: ModelCall.t()
+  def ask(purpose, model, run_id \\ nil, provider \\ nil) do
     # Patchbay's own record of a question it is about to send.
-    Assist.ask_model!(%{purpose: purpose, model: model, assist_run_id: run_id}, authorize?: false)
+    Assist.ask_model!(
+      %{purpose: purpose, model: model, assist_run_id: run_id, provider: provider},
+      authorize?: false
+    )
   end
 
   @post_readings_per_person_an_hour 60
@@ -136,22 +142,29 @@ defmodule Patchbay.Assist.ModelCalls do
   @doc """
   Closes `call` with what the provider answered, and hands that answer back
   unchanged. `tokens` names the answer's `usage` fields holding the tokens
-  sent and received, since each OpenRouter endpoint names its own.
+  sent and received, since each endpoint names its own. `ids` are the
+  answer's `response_id` and `request_id`, for an asker that reads them.
   """
-  @spec close(ModelCall.t(), {:ok, map()} | {:error, term()}, {String.t(), String.t()}) ::
-          {:ok, map()} | {:error, term()}
-  def close(%ModelCall{} = call, {:ok, body} = answered, {sent, received}) do
+  @spec close(
+          ModelCall.t(),
+          {:ok, map()} | {:error, term()},
+          {String.t(), String.t()},
+          %{optional(:response_id | :request_id) => String.t() | nil}
+        ) :: {:ok, map()} | {:error, term()}
+  def close(call, answered, tokens, ids \\ %{})
+
+  def close(%ModelCall{} = call, {:ok, body} = answered, {sent, received}, ids) do
     usage = if is_map(body["usage"]), do: body["usage"], else: %{}
 
     # Patchbay's own record, closed with what the provider said it used.
     closed =
       Assist.close_model_call!(
         call,
-        %{
+        Map.merge(ids, %{
           prompt_tokens: integer(usage[sent]),
           completion_tokens: integer(usage[received]),
           cost_usd: cost(usage["cost"])
-        },
+        }),
         authorize?: false
       )
 
@@ -159,7 +172,7 @@ defmodule Patchbay.Assist.ModelCalls do
     answered
   end
 
-  def close(%ModelCall{} = call, {:error, _reason} = failed, _tokens) do
+  def close(%ModelCall{} = call, {:error, _reason} = failed, _tokens, _ids) do
     # Same: the question got no answer.
     call |> Assist.fail_model_call!(authorize?: false) |> emit()
     failed

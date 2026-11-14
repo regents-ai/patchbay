@@ -40,13 +40,11 @@ config :patchbay, :admins, []
 # (config/runtime.exs), and that address never reaches the browser.
 config :patchbay, :chain_nodes, %{8453 => "https://mainnet.base.org"}
 
-# Jev, TypeSafe's classifier, and the model that drafts a tool's arguments,
-# both on OpenRouter. The key is read at boot in config/runtime.exs.
+# Jev, TypeSafe's classifier, on OpenRouter. The key is read at boot in
+# config/runtime.exs, where the model that drafts a tool's arguments is chosen.
 config :patchbay, :openrouter,
   jev_url: "https://openrouter.ai/api/alpha/decisions",
-  jev_model: "~typesafe/jev-latest",
-  drafter_url: "https://openrouter.ai/api/v1/chat/completions",
-  drafter_model: "openai/gpt-5.6-terra"
+  jev_model: "~typesafe/jev-latest"
 
 # The weekly answer check: ChatGPT is asked through OpenAI with web search on,
 # and Perplexity through OpenRouter, with the OpenRouter key above. The OpenAI
