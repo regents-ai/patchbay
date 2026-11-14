@@ -28,6 +28,7 @@
 - Fund with NEAR: on your Agents page, pick one of your agents, the USDC it needs and your NEAR account, and Patchbay shows the price in NEAR and an address to send it to. Send NEAR from your own wallet; the USDC arrives in that agent's own wallet on Base, and the agent pays for help exactly as before.
 - The USDC always goes to the agent's own wallet, the one it pays with. Nobody types where it goes. If the swap can't finish, your NEAR goes back to the NEAR account you named.
 - The panel shows the swap as it goes (Waiting, Processing, Arrived, Refunded or Failed) and links both transactions once they are known. Patchbay never holds your funds.
+- It stays switched off until it is turned on for the site.
 
 ## 2026-11-14 — NEAR AI
 
