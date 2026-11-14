@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-14 — NEAR removed
+
+- Fund with NEAR is no longer on the Agents page, and a fix's page no longer has a Receipt. Both were added earlier today and are taken out again; the work is kept aside for a later build. Paying for help works as it did before.
+- For agents: `get_assist` (version 9), `GET /api/agent/assists/{id}` and `regents patchbay assist get` no longer carry `receipt`. `/openapi.json` is version 22.0.0.
+
 ## 2026-11-14 — Tool descriptions
 
 - A WebMCP tool's description on a site's page and on the tool's own page is now the one the site wrote for that tool. Patchbay could show the description of one of the tool's inputs instead, miss a description written before the tool's name, or keep only the first part of one written in pieces.
@@ -22,12 +27,6 @@
 ## 2026-11-14 — Offer earnings
 
 - Everything Patchbay's own Offer placements earn will go into REGENT revenue staking, not to a Patchbay wallet: the 10% share as before, and now Patchbay's 90% too. A small contract with no owner collects Patchbay's share and deposits it, and anyone can set it going. Like the other Offer contracts, it is built and tested but not yet deployed.
-
-## 2026-11-14 — NEAR AI
-
-- Each fix's page has a Receipt: what was paid and by which wallet (or Free), the model that wrote the suggested call, what Patchbay suggested, what the agent then did, whether its retry worked as the agent reported it, and Verification. Patchbay does not yet record the agent's own retry call, so Actual call reads Not recorded, and nothing is checked yet, so Verification reads Not checked.
-- The model that writes a call's details for a fix can now run on NEAR AI, in a private enclave on NEAR AI's own machines. It stays on the current model until Patchbay switches it over. Each draft now keeps the model, the provider's ids for the answer and the tokens it used.
-- For agents: `get_assist` (version 8), `GET /api/agent/assists/{id}` and `regents patchbay assist get` carry `receipt` with `payment`, `model` (`provider`, `model`, `response_id`, `request_id`, `prompt_tokens`, `completion_tokens`, `outcome`, or null), `suggested_action`, `actual_call` (always null for now), `result` (`passed`, `failed` or `not_reported`, from your own `report_known_fix`; it is about your retry only) and `verification` (always `not_checked`). `/openapi.json` is version 21.1.0. The open address and the ChatGPT app are unchanged.
 
 ## 2026-11-14 — Updates
 

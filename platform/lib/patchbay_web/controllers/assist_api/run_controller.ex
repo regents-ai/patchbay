@@ -10,7 +10,6 @@ defmodule PatchbayWeb.AssistAPI.RunController do
 
   alias Patchbay.Assist
   alias Patchbay.Assist.Allowance
-  alias Patchbay.Assist.Receipt
   alias Patchbay.Assist.Request
   alias PatchbayWeb.ApiError
   alias PatchbayWeb.AssistAPI.Runs
@@ -59,19 +58,14 @@ defmodule PatchbayWeb.AssistAPI.RunController do
   end
 
   @doc """
-  The assist `id` as `asker` reads it back, with its receipt
-  (`Patchbay.Assist.Receipt`), as a status and a body. Every door that reads
-  an assist answers with it, the hosted `get_assist` too.
+  The assist `id` as `asker` reads it back, as a status and a body. Every
+  door that reads an assist answers with it, the hosted `get_assist` too.
   """
   @spec get_assist(struct(), String.t()) :: {atom(), map()}
   def get_assist(asker, id) do
     case Runs.read(asker, id) do
       {:ok, run} ->
-        {:ok,
-         Map.merge(Runs.payload(run), %{
-           next_action: Runs.next_action(run),
-           receipt: Receipt.for_run(run)
-         })}
+        {:ok, Map.put(Runs.payload(run), :next_action, Runs.next_action(run))}
 
       {:error, :not_found} ->
         {:not_found,

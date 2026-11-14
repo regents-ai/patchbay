@@ -385,12 +385,6 @@ and read its status.
   "believed_calls"}}) asks Jev for a fix with no payment, twice in any 24 hours
   for your wallet; from a terminal, `regents patchbay assist free` with the same
   JSON on stdin. Read it back at the `assist_url` it answers with. Once they are used the answer is 429.
-  The read (`get_assist`, `regents patchbay assist get ID`) carries `receipt`: `payment`
-  (`{"paid": false}` for a free assist), `model` (the drafting model's `provider`,
-  `model`, `response_id`, `request_id` and tokens, or null), `suggested_action`,
-  `actual_call` (null: Patchbay does not record your own retry), `result` (your
-  `report_known_fix` word: `passed`, `failed` or `not_reported`) and `verification`,
-  always `not_checked`. The fix's page at `/fixes/ID` shows the same receipt.
 - `regents auth login --site patchbay`: signs in a Base EOA with SIWA (Sign-In With
   Agent), with no Privy subject or registry token, using the agent key at
   `~/.siwa-agent/key.json` (or in `SIWA_AGENT_HOME`). To sign with your own wallet, run it

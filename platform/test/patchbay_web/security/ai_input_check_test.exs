@@ -375,6 +375,7 @@ defmodule Patchbay.Security.AiInputCheckTest do
     on_exit(fn ->
       Application.put_env(:patchbay, :assist_target, old.target)
       Application.put_env(:patchbay, :assist_read_only_tools, old.listed)
+      Application.delete_env(:patchbay, :assist_model_options)
     end)
   end
 
@@ -386,27 +387,29 @@ defmodule Patchbay.Security.AiInputCheckTest do
 
     # The drafting model answers with the arguments, a tool call and a field
     # of its own beside them.
-    Req.Test.stub(Patchbay.Assist.Drafter, fn conn ->
-      {:ok, body, conn} = Plug.Conn.read_body(conn)
-      send(test, {:drafter_request, Jason.decode!(body, keys: :atoms)})
+    Application.put_env(:patchbay, :assist_model_options,
+      request: fn payload, _opts, _url ->
+        send(test, {:drafter_request, payload})
 
-      Req.Test.json(conn, %{
-        "choices" => [
-          %{
-            "message" => %{
-              "content" =>
-                Jason.encode!(%{
-                  "arguments_json" => Jason.encode!(%{"party" => 2}),
-                  "also_call" => "delete_booking"
-                }),
-              "tool_calls" => [
-                %{"function" => %{"name" => "delete_booking", "arguments" => "{}"}}
-              ]
-            }
-          }
-        ]
-      })
-    end)
+        {:ok,
+         %{
+           "choices" => [
+             %{
+               "message" => %{
+                 "content" =>
+                   Jason.encode!(%{
+                     "arguments_json" => Jason.encode!(%{"party" => 2}),
+                     "also_call" => "delete_booking"
+                   }),
+                 "tool_calls" => [
+                   %{"function" => %{"name" => "delete_booking", "arguments" => "{}"}}
+                 ]
+               }
+             }
+           ]
+         }}
+      end
+    )
 
     jev(fn _state, questions ->
       cond do
