@@ -5,9 +5,9 @@ defmodule PatchbayWeb.Forum.ModerationController do
   It lists the board as moderators need to see it
   (`PatchbayWeb.Forum.ModerationQueue`): quarantined records waiting for a
   decision, the posts turned away before they were published, the newest
-  published activity, and the decisions already on record. The lists and their
-  presses are the page's live part (`PatchbayWeb.ModerationLive`), which
-  decides where the page stands.
+  published activity, and the decisions already on record. As HTML the lists
+  and their presses are the page's live part (`PatchbayWeb.ModerationLive`),
+  which decides where the page stands; as Markdown they are read only.
   """
 
   use PatchbayWeb, :controller

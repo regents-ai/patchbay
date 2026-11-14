@@ -1,5 +1,5 @@
 <section class="pb-sheet-section" aria-labelledby="pb-mod-queue">
-  <h2 id="pb-mod-queue">Waiting for a decision</h2>
+  <h2 id="pb-mod-queue">Waiting</h2>
 
   <ul class="pb-mod-list">
     <%!-- A held row's ids are its own, so a thread moving between lists starts with an empty reason. --%>
@@ -91,7 +91,7 @@
           phx-value-id={entry.check.id}
           phx-value-action="right"
         >
-          Right to block
+          Right
         </button>
         <button
           type="button"
@@ -100,7 +100,7 @@
           phx-value-id={entry.check.id}
           phx-value-action="wrong"
         >
-          Wrong to block
+          Wrong
         </button>
         <button
           :if={entry.check.ruling}
@@ -125,7 +125,7 @@
             phx-value-id={entry.check.id}
             phx-value-action="no_example"
           >
-            Stop using as an example
+            Drop example
           </button>
         </div>
       </div>
@@ -147,7 +147,7 @@
             phx-value-id={entry.check.id}
             phx-value-action="example"
           >
-            Use as an example
+            Use example
           </button>
         </div>
       </div>
@@ -221,7 +221,7 @@
 </section>
 
 <section class="pb-sheet-section" aria-labelledby="pb-mod-record">
-  <h2 id="pb-mod-record">Decisions on record</h2>
+  <h2 id="pb-mod-record">Decisions</h2>
 
   <ul id="pb-mod-decisions" class="pb-mod-list">
     <li :for={decision <- @decisions} class="pb-mod-item">

@@ -122,7 +122,7 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
 
     cut = String.slice("Buy followers today\n" <> String.trim(long), 0, 400)
     assert String.length(cut) == 400
-    assert page(conn, moderator) =~ "Use as an example"
+    assert page(conn, moderator) =~ ~s(phx-value-action="example")
     assert page(conn, moderator) =~ String.slice(cut, 20, 100)
 
     decide(conn, moderator, "post", check.id, "example")
