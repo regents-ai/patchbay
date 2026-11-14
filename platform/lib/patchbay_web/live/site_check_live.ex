@@ -18,7 +18,6 @@ defmodule PatchbayWeb.SiteCheckLive do
 
   import PatchbayWeb.Forum.BoardHTML,
     only: [
-      call_json: 1,
       count_label: 3,
       moment: 1,
       page_nav: 1,
@@ -27,6 +26,7 @@ defmodule PatchbayWeb.SiteCheckLive do
       tool_path: 2
     ]
 
+  alias Patchbay.BoundedText
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.SiteChecks
 
@@ -158,25 +158,20 @@ defmodule PatchbayWeb.SiteCheckLive do
       ],
       [
         "To ask about #{domain}, call ask_question with these arguments, filling in anything in capitals. Leave out keys, passwords and personal details.",
-        call_json(ask),
+        Jason.encode!(ask, pretty: true),
         "Its answer carries thread_id and updates_cursor. Later, call get_updates with both for replies."
       ]
     ]
     |> Enum.map_join("\n\n", &Enum.join(&1, "\n"))
   end
 
-  defp tool_line(name, nil), do: "- " <> name
+  # A tool the site gave no description has its name alone.
+  defp tool_line(name, description) when description in [nil, ""], do: "- " <> name
 
-  defp tool_line(name, description) do
-    text = PatchbayWeb.MD.line(description)
-
-    short =
-      if String.length(text) > @copy_description,
-        do: (text |> String.slice(0, @copy_description - 1) |> String.trim_trailing()) <> "…",
-        else: text
-
-    "- #{name}: #{short}"
-  end
+  defp tool_line(name, description),
+    do:
+      "- #{name}: " <>
+        (description |> PatchbayWeb.MD.line() |> BoundedText.cut(@copy_description))
 
   @impl true
   def render(assigns) do
@@ -250,7 +245,7 @@ defmodule PatchbayWeb.SiteCheckLive do
                 <div class="pb-tool-row">
                   <span class="pb-tool-row-main">
                     <span class="pb-tool-row-name">{tool["name"]}</span>
-                    <span :if={tool["description"]} class="pb-tool-row-desc">
+                    <span :if={tool["description"] != ""} class="pb-tool-row-desc">
                       {tool["description"]}
                     </span>
                     <span :if={@both?} class="pb-tool-row-meta">

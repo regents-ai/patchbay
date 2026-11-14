@@ -16,6 +16,7 @@ defmodule Patchbay.Assist.Judge do
   alias Patchbay.Assist.ModelCalls
   alias Patchbay.Assist.Request
   alias Patchbay.Assist.Run
+  alias Patchbay.BoundedText
   alias Patchbay.Forum.Jev
 
   @max_candidates 40
@@ -49,7 +50,7 @@ defmodule Patchbay.Assist.Judge do
   def choose_tool(%Run{} = run, tools, tried) do
     criteria =
       Map.new(tools, fn tool ->
-        {tool.name, String.slice(described(tool.description), 0, @max_description_chars)}
+        {tool.name, BoundedText.cut(described(tool.description), @max_description_chars)}
       end)
 
     state = %{
