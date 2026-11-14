@@ -214,6 +214,19 @@ defmodule PatchbayWeb.AccountLive do
   def handle_info({:acknowledged, id}, socket),
     do: {:noreply, socket |> update(:leaving, &MapSet.delete(&1, id)) |> read_inbox()}
 
+  # A funding the NEAR panel shows, told here each time its status job reads it.
+  def handle_info({:watch_near_funding, id}, socket) do
+    if connected?(socket),
+      do: :ok = Phoenix.PubSub.subscribe(Patchbay.PubSub, "near_funding:" <> id)
+
+    {:noreply, socket}
+  end
+
+  def handle_info(%Ash.Notifier.Notification{data: %Patchbay.NearFunding.Funding{} = funding}, socket) do
+    send_update(PatchbayWeb.NearFundingPanel, id: "near-funding", funding: funding)
+    {:noreply, socket}
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -305,6 +318,8 @@ defmodule PatchbayWeb.AccountLive do
     """
   end
 
+  # Fund with NEAR follows the agents at patchbay.help while it is switched on
+  # (`Patchbay.NearFunding`).
   defp agents(assigns) do
     ~H"""
     <.live_component
@@ -313,6 +328,13 @@ defmodule PatchbayWeb.AccountLive do
       profile={@current_profile}
       lease={@session_lease}
       site_edition={@site_edition}
+    />
+    <.live_component
+      :if={@site_edition == :main and Patchbay.NearFunding.enabled?()}
+      module={PatchbayWeb.NearFundingPanel}
+      id="near-funding"
+      profile={@current_profile}
+      lease={@session_lease}
     />
     """
   end

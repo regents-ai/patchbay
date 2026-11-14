@@ -92,6 +92,12 @@ end
 # service (RegentAgents.Activity).
 config :regent_agents, :activity_read_token, System.get_env("SIWA_ACTIVITY_READ_TOKEN")
 
+# Fund with NEAR on the Agents page (`Patchbay.NearFunding`). Off unless set to
+# "true"; while off there is no panel.
+config :patchbay,
+       :near_funding_enabled?,
+       System.get_env("PATCHBAY_NEAR_FUNDING_ENABLED") == "true"
+
 config :patchbay, :openrouter, api_key: System.get_env("OPENROUTER_API_KEY")
 
 config :patchbay, :answer_watch, openai_api_key: System.get_env("OPENAI_API_KEY")
