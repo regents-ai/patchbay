@@ -8,6 +8,8 @@ defmodule Patchbay.Offers.Board do
   """
 
   alias Patchbay.Offers
+  alias Patchbay.Offers.Eligibility
+  alias Patchbay.Offers.Source
 
   @bps 10_000
 
@@ -18,13 +20,21 @@ defmodule Patchbay.Offers.Board do
           minimum_usdc: non_neg_integer()
         }
 
-  @doc "Every open placement with its slots, and whether the record is up to date."
+  @doc """
+  Every open placement with its slots, General's and CVE incidents' first,
+  then each site's by its address (`Source.rank/1`), and whether the record is
+  up to date. The same few reads however many placements there are.
+  """
   @spec read() :: %{placements: [%{placement: map(), slots: [slot()]}], fresh?: boolean()}
   def read do
     %{chain_id: chain_id} = Offers.chain()
     market = Offers.market()
 
-    placements = Offers.open_placements!(chain_id, market)
+    placements =
+      chain_id
+      |> Offers.open_placements!(market)
+      |> Enum.sort_by(&Source.rank(&1.source_origin))
+
     current = chain_id |> Offers.live_leases!(market) |> Enum.uniq_by(&{&1.placement_id, &1.slot})
 
     offers =
@@ -42,6 +52,46 @@ defmodule Patchbay.Offers.Board do
         end),
       fresh?: fresh?(chain_id, market)
     }
+  end
+
+  @doc """
+  The listed sites showing a paid offer now, each with the term of its
+  soonest-ending one: a live lease, in an open placement for the site, whose
+  campaign Patchbay would show there (`Eligibility.runnable/2`). The same few
+  reads however many sites and placements there are. None while no market is
+  set.
+  """
+  @spec sponsored() :: %{String.t() => %{starts_at: DateTime.t(), ends_at: DateTime.t()}}
+  def sponsored do
+    if Offers.enabled?(), do: read_sponsored(), else: %{}
+  end
+
+  defp read_sponsored do
+    %{chain_id: chain_id} = Offers.chain()
+    market = Offers.market()
+
+    placements =
+      chain_id
+      |> Offers.open_placements!(market)
+      |> Enum.filter(&Source.site?(&1.source_origin))
+
+    ids = MapSet.new(placements, & &1.placement_id)
+
+    leases =
+      chain_id
+      |> Offers.live_leases!(market)
+      |> Enum.uniq_by(&{&1.placement_id, &1.slot})
+      |> Enum.filter(&(&1.placement_id in ids))
+
+    placements
+    |> Eligibility.runnable(leases)
+    |> Enum.group_by(
+      fn {_lease, _campaign, placement} -> placement.source_origin end,
+      &elem(&1, 0)
+    )
+    |> Map.new(fn {origin, leases} ->
+      {origin, leases |> Enum.min_by(& &1.ends_at, DateTime) |> Map.take([:starts_at, :ends_at])}
+    end)
   end
 
   @doc """

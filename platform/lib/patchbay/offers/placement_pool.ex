@@ -1,8 +1,8 @@
 defmodule Patchbay.Offers.PlacementPool do
   @moduledoc """
   One pool Patchbay chose for a placement (`Patchbay.Offers.Pool`): the
-  placement shows campaigns from its chosen pools, and from General, every
-  campaign Patchbay accepts, while it has none. The placement is named as the
+  placement shows campaigns from its chosen pools, and any campaign Patchbay
+  accepts while it has none. The placement is named as the
   market names it, by chain, market and placement id. Choosing a pool already
   chosen leaves it as it is.
 

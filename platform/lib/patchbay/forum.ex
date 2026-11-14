@@ -27,6 +27,7 @@ defmodule Patchbay.Forum do
       define(:list_directory, action: :directory)
       define(:list_showcase, action: :showcase)
       define(:list_site_picture_states, action: :picture_states, args: [:domains])
+      define(:list_site_kinds, action: :kinds, args: [:origins])
       define(:find_sites, action: :find, args: [:text])
     end
 

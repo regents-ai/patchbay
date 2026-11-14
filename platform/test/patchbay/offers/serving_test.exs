@@ -1,7 +1,8 @@
 defmodule Patchbay.Offers.ServingTest do
   @moduledoc """
-  Which paid offers go with a page or answer about a site, for one reader
-  (`Patchbay.Offers.Serving`): each open placement's live leases in slot
+  Which paid offers go with a page or answer, for one reader
+  (`Patchbay.Offers.Serving`): a site's own placements', else General's; CVE
+  incidents', else General's; each open placement's live leases in slot
   order, at most its capacity, only for campaigns Patchbay approved from
   wallets it accepts, in the placement's pools, sealed for this question and
   this reader; each shown once a day per page and reader, and no more pages
@@ -117,7 +118,7 @@ defmodule Patchbay.Offers.ServingTest do
     assert ["Tagged", "Help"] = titles(question, %{agent | wallet: left_out})
   end
 
-  test "a placement shows from its chosen pools, else from General", %{
+  test "a placement shows from its chosen pools, else any campaign Patchbay accepts", %{
     advertiser: advertiser,
     campaign: campaign
   } do
@@ -136,10 +137,76 @@ defmodule Patchbay.Offers.ServingTest do
     Offers.add_pool_member!(pool.id, advertiser.wallet_address, actor: moderator)
     assert [{1, 0}] = shown(request())
 
-    # Another placement with no pools chosen shows from General.
+    # Another placement with no pools chosen shows any accepted campaign.
     placement!(2, "stripe.com")
     lease!(2, 0, campaign)
     assert [{1, 0}, {2, 0}] = shown(request())
+  end
+
+  test "a site's page shows the site's offers, and General's only while it has none", %{
+    advertiser: advertiser,
+    campaign: campaign
+  } do
+    placement!(9, "general")
+    general = lease!(9, 0, shown_campaign!(advertiser, %{title: "Acme everywhere"}))
+
+    assert [{9, 0}] = shown(request())
+    assert [{9, 0}] = shown(request(%{about: :general, context: "/"}))
+
+    own = lease!(1, 0, campaign)
+    assert [{1, 0}] = shown(request())
+    assert [{9, 0}] = shown(request(%{about: :general, context: "/"}))
+
+    # A delivery for each offer shown, none for General's on the site's page
+    # once the site has its own.
+    assert MapSet.new([{general.id, "/stripe.com"}, {general.id, "/"}, {own.id, "/stripe.com"}]) ==
+             Offers.Delivery
+             |> Ash.read!(actor: @system)
+             |> MapSet.new(&{&1.lease_id, &1.context})
+  end
+
+  test "General's stand in while the site's offers are not for this reader", %{
+    advertiser: advertiser
+  } do
+    placement!(9, "general")
+    lease!(9, 0, shown_campaign!(advertiser, %{title: "Acme everywhere"}))
+    lease!(1, 0, shown_campaign!(advertiser, %{title: "Paired only", requires: [:paired]}))
+
+    agent = %{kind: :agent, id: "agent-1", wallet: wallet(), evidence: [:paired]}
+
+    assert ["Acme everywhere"] = titles(request(), @visitor)
+    assert ["Paired only"] = titles(request(), agent)
+  end
+
+  test "the incidents show CVE incidents' offers, else General's", %{
+    advertiser: advertiser,
+    campaign: campaign
+  } do
+    placement!(8, "incidents")
+    placement!(9, "general")
+    lease!(9, 0, shown_campaign!(advertiser, %{title: "Acme everywhere"}))
+    incidents = request(%{about: :incidents, context: "/incidents"})
+
+    assert [{9, 0}] = shown(incidents)
+
+    lease!(8, 0, campaign)
+    assert [{8, 0}] = shown(incidents)
+
+    # A site's page never shows CVE incidents'.
+    assert [{9, 0}] = shown(request())
+  end
+
+  test "General and CVE incidents show only campaigns that run on all sites", %{
+    advertiser: advertiser
+  } do
+    placement!(9, "general")
+    one_site = shown_campaign!(advertiser, %{audience: :sites, sites: ["stripe.com"]})
+    lease!(9, 0, one_site)
+
+    assert serve(request(%{about: :general})) == []
+
+    lease!(1, 0, one_site)
+    assert [{1, 0}] = shown(request())
   end
 
   test "the same page read again by the same reader is the same delivery", %{campaign: campaign} do
@@ -175,11 +242,12 @@ defmodule Patchbay.Offers.ServingTest do
     assert [_shown] = serve(request(%{context: "/c"}), %{@visitor | id: "visitor-2"})
   end
 
-  test "while no market is set, or the answer is about no site, nothing is read or shown", %{
+  test "while no market is set, or nothing is open for the page, nothing is read or shown", %{
     campaign: campaign
   } do
     lease!(1, 0, campaign)
-    assert serve(request(%{site: nil})) == []
+    # A page about no one site shows General's, and there is no General.
+    assert serve(request(%{about: :general})) == []
 
     offers_on!(market_address: nil)
     assert serve(request()) == []
@@ -188,7 +256,12 @@ defmodule Patchbay.Offers.ServingTest do
 
   defp request(attrs \\ %{}) do
     Map.merge(
-      %{site: "stripe.com", task: %{tags: [], kind: nil}, surface: :page, context: "/stripe.com"},
+      %{
+        about: {:site, "stripe.com"},
+        task: %{tags: [], kind: nil},
+        surface: :page,
+        context: "/stripe.com"
+      },
       attrs
     )
   end

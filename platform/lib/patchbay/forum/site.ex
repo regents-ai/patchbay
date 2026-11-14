@@ -314,6 +314,13 @@ defmodule Patchbay.Forum.Site do
       prepare(build(select: [:origin, :screenshot_captured_at, :picture_failed_at]))
     end
 
+    read :kinds do
+      description("The sites among `origins`, each with its kind, in one read.")
+      argument(:origins, {:array, :string}, allow_nil?: false)
+      filter(expr(origin in ^arg(:origins)))
+      prepare(build(select: [:origin, :entity_type]))
+    end
+
     create :register_site do
       description("Records a site the first time an agent reports on it.")
       accept([])

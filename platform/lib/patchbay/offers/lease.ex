@@ -19,6 +19,8 @@ defmodule Patchbay.Offers.Lease do
 
   @address ~r/\A0x[0-9a-f]{40}\z/
   @hash ~r/\A0x[0-9a-f]{64}\z/
+  # The most purchases a list of them reads (`Patchbay.Offers.Ticker`).
+  @window 40
 
   postgres do
     table("agent_offer_leases")
@@ -131,6 +133,41 @@ defmodule Patchbay.Offers.Lease do
       )
 
       prepare(build(sort: [placement_id: :asc, slot: :asc, nonce: :desc]))
+    end
+
+    read :bought_since do
+      description("Purchases in these placements since a moment, the largest first.")
+      argument(:chain_id, :integer, allow_nil?: false)
+      argument(:market, :string, allow_nil?: false)
+      argument(:placement_ids, {:array, :integer}, allow_nil?: false)
+      argument(:since, :utc_datetime, allow_nil?: false)
+
+      filter(
+        expr(
+          chain_id == ^arg(:chain_id) and market == ^arg(:market) and
+            placement_id in ^arg(:placement_ids) and starts_at >= ^arg(:since)
+        )
+      )
+
+      prepare(
+        build(sort: [paid_usdc: :desc, block_number: :asc, log_index: :asc], limit: @window)
+      )
+    end
+
+    read :latest_in do
+      description("The newest purchases in these placements, newest first.")
+      argument(:chain_id, :integer, allow_nil?: false)
+      argument(:market, :string, allow_nil?: false)
+      argument(:placement_ids, {:array, :integer}, allow_nil?: false)
+
+      filter(
+        expr(
+          chain_id == ^arg(:chain_id) and market == ^arg(:market) and
+            placement_id in ^arg(:placement_ids)
+        )
+      )
+
+      prepare(build(sort: [block_number: :desc, log_index: :desc], limit: @window))
     end
 
     read :in_blocks do
