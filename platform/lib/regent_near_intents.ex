@@ -96,7 +96,13 @@ defmodule RegentNearIntents do
 
   @doc "Where the swap behind `deposit_address` stands, with its transactions once known."
   @spec status(String.t()) ::
-          {:ok, %{state: state(), origin_tx: String.t() | nil, destination_tx: String.t() | nil, raw: map()}}
+          {:ok,
+           %{
+             state: state(),
+             origin_tx: String.t() | nil,
+             destination_tx: String.t() | nil,
+             raw: map()
+           }}
           | error()
   def status(deposit_address) do
     with {:ok, raw} <-
@@ -116,8 +122,11 @@ defmodule RegentNearIntents do
 
   defp state(status) do
     case Map.fetch(@states, status) do
-      {:ok, state} -> {:ok, state}
-      :error -> {:error, %{reason: :unknown_status, message: "Unknown swap status: #{inspect(status)}"}}
+      {:ok, state} ->
+        {:ok, state}
+
+      :error ->
+        {:error, %{reason: :unknown_status, message: "Unknown swap status: #{inspect(status)}"}}
     end
   end
 

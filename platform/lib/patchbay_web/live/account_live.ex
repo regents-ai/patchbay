@@ -222,7 +222,10 @@ defmodule PatchbayWeb.AccountLive do
     {:noreply, socket}
   end
 
-  def handle_info(%Ash.Notifier.Notification{data: %Patchbay.NearFunding.Funding{} = funding}, socket) do
+  def handle_info(
+        %Ash.Notifier.Notification{data: %Patchbay.NearFunding.Funding{} = funding},
+        socket
+      ) do
     send_update(PatchbayWeb.NearFundingPanel, id: "near-funding", funding: funding)
     {:noreply, socket}
   end

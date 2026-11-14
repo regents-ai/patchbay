@@ -42,7 +42,7 @@ defmodule PatchbayWeb.NearFundingPanel do
     if Map.has_key?(socket.assigns, :funding) do
       {:ok, socket}
     else
-      funding = NearFunding.latest_funding!(profile.privy_user_id)
+      funding = NearFunding.latest_funding!(actor: socket.assigns.person)
       if funding, do: send(self(), {:watch_near_funding, funding.id})
       {:ok, assign(socket, funding: funding)}
     end
@@ -67,7 +67,7 @@ defmodule PatchbayWeb.NearFundingPanel do
 
     with {:ok, id} <- Ecto.UUID.cast(params["agent_id"]),
          {:ok, %{} = agent} <- RegentAgents.get_my_agent(id, actor: socket.assigns.person) do
-      case NearFunding.start(agent, params) do
+      case NearFunding.start(socket.assigns.person, agent, params) do
         {:ok, funding} ->
           send(self(), {:watch_near_funding, funding.id})
           {:noreply, assign(socket, funding: funding, errors: %{}, problem: nil, params: params)}
@@ -90,7 +90,8 @@ defmodule PatchbayWeb.NearFundingPanel do
 
     assign(socket,
       errors: %{
-        amount: if(:usdc_amount in fields, do: ["Enter an amount from 0.01 to 1000, such as 5.00."]),
+        amount:
+          if(:usdc_amount in fields, do: ["Enter an amount from 0.01 to 1000, such as 5.00."]),
         refund: if(:refund_to in fields, do: ["Enter a NEAR account, such as alice.near."])
       },
       problem:
@@ -144,7 +145,9 @@ defmodule PatchbayWeb.NearFundingPanel do
           />
         </P.field>
         <P.field id={"#{@id}-refund"} label="Refund account" errors={@errors[:refund] || []}>
-          <:hint>Your NEAR account, such as alice.near. NEAR comes back here if the swap can't finish.</:hint>
+          <:hint>
+            Your NEAR account, such as alice.near. NEAR comes back here if the swap can't finish.
+          </:hint>
           <input
             id={"#{@id}-refund"}
             name="refund_to"
@@ -189,6 +192,7 @@ defmodule PatchbayWeb.NearFundingPanel do
               <P.address
                 id={"#{@id}-deposit"}
                 address={@funding.deposit_address}
+                label={@funding.deposit_address}
                 kind="id"
                 variant="full"
               />

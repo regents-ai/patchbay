@@ -21,12 +21,7 @@ defmodule Patchbay.NearFunding do
     resource Funding do
       define(:get_funding, action: :read, get_by: [:id])
 
-      define(:latest_funding,
-        action: :latest,
-        args: [:privy_user_id],
-        get?: true,
-        not_found_error?: false
-      )
+      define(:latest_funding, action: :latest, get?: true, not_found_error?: false)
 
       define(:refresh_funding, action: :refresh)
       define(:record_funding_status, action: :record_status)
@@ -38,22 +33,30 @@ defmodule Patchbay.NearFunding do
   def enabled?, do: Application.get_env(:patchbay, :near_funding_enabled?, false)
 
   @doc """
-  Starts a funding for `agent`, one of the signed-in person's own paired
-  agents as `RegentAgents` returned it: a live quote and its deposit address.
-  From `params` only the USDC amount (`"amount_usdc"`, such as `"5.00"`) and
-  the NEAR refund account (`"refund_to"`) are read; the recipient is always
-  the agent's own wallet.
+  Starts a funding for `person` (`RegentAgents.Person`) and `agent`, one of
+  that person's own paired agents as `RegentAgents.get_my_agent/2` read it
+  for them: a live quote and its deposit address. From `params` only the
+  USDC amount (`"amount_usdc"`, such as `"5.00"`) and the NEAR refund account
+  (`"refund_to"`) are read; the recipient is always the agent's own wallet.
   """
-  @spec start(map(), map()) :: {:ok, Funding.t()} | {:error, Ash.Error.t()}
-  def start(%{id: pairing_id, wallet: wallet, privy_user_id: privy_user_id}, params) do
+  @spec start(RegentAgents.Person.t(), map(), map()) ::
+          {:ok, Funding.t()} | {:error, Ash.Error.t()}
+  def start(
+        %RegentAgents.Person{privy_user_id: owner} = person,
+        %{id: pairing_id, wallet: wallet, privy_user_id: owner},
+        params
+      ) do
     Funding
-    |> Ash.Changeset.for_create(:start, %{
-      pairing_id: pairing_id,
-      privy_user_id: privy_user_id,
-      recipient: wallet,
-      refund_to: params["refund_to"],
-      usdc_amount: usdc_amount(params["amount_usdc"])
-    })
+    |> Ash.Changeset.for_create(
+      :start,
+      %{
+        pairing_id: pairing_id,
+        recipient: wallet,
+        refund_to: params["refund_to"],
+        usdc_amount: usdc_amount(params["amount_usdc"])
+      },
+      actor: person
+    )
     |> Ash.create()
   end
 

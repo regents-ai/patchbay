@@ -18,6 +18,7 @@ defmodule Patchbay.NearFunding.Funding do
     otp_app: :patchbay,
     domain: Patchbay.NearFunding,
     data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer],
     notifiers: [Ash.Notifier.PubSub],
     extensions: [AshOban]
 
@@ -38,9 +39,7 @@ defmodule Patchbay.NearFunding.Funding do
         queue(:outside_calls)
 
         where(
-          expr(
-            state == :processing or (state == :pending_deposit and deadline > ago(1, :hour))
-          )
+          expr(state == :processing or (state == :pending_deposit and deadline > ago(1, :hour)))
         )
 
         max_attempts(3)
@@ -102,15 +101,14 @@ defmodule Patchbay.NearFunding.Funding do
     defaults([:read])
 
     read :latest do
-      description("A person's newest funding.")
-      argument(:privy_user_id, :string, allow_nil?: false)
-      filter(expr(privy_user_id == ^arg(:privy_user_id)))
+      description("The person's newest funding.")
       prepare(build(sort: [inserted_at: :desc], limit: 1))
     end
 
     create :start do
       description("A live quote for the USDC asked for, and the address to send NEAR to.")
-      accept([:pairing_id, :privy_user_id, :recipient, :refund_to, :usdc_amount])
+      accept([:pairing_id, :recipient, :refund_to, :usdc_amount])
+      change(set_attribute(:privy_user_id, actor(:privy_user_id)))
 
       validate(match(:recipient, ~r/\A0x[0-9a-fA-F]{40}\z/))
 
@@ -122,7 +120,10 @@ defmodule Patchbay.NearFunding.Funding do
     end
 
     update :refresh do
-      description("Reads where the swap stands. It calls the service, so it holds no transaction.")
+      description(
+        "Reads where the swap stands. It calls the service, so it holds no transaction."
+      )
+
       accept([])
       transaction?(false)
       require_atomic?(false)
@@ -132,6 +133,18 @@ defmodule Patchbay.NearFunding.Funding do
     update :record_status do
       description("Keeps where the swap stands and its transactions.")
       accept([:state, :origin_tx, :destination_tx])
+    end
+  end
+
+  # A person reads only their own fundings and starts one only as themselves
+  # (`Patchbay.NearFunding.start/3`). Reading progress is Patchbay's own job.
+  policies do
+    policy action_type(:read) do
+      authorize_if(expr(privy_user_id == ^actor(:privy_user_id)))
+    end
+
+    policy action(:start) do
+      authorize_if(actor_present())
     end
   end
 
