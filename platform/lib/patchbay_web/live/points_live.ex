@@ -137,11 +137,7 @@ defmodule PatchbayWeb.PointsLive do
 
     places =
       assigns.person && assigns.board.value &&
-        PointsEntries.board(
-          assigns.board.value,
-          assigns.person.human_account_id,
-          summary && summary.balance_micro
-        )
+        PointsEntries.board(assigns.board.value, assigns.person.human_account_id, summary)
 
     assigns =
       assign(assigns,
