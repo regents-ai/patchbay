@@ -81,7 +81,7 @@ defmodule Patchbay.Assist.DrafterTest do
     refute Map.has_key?(payload, "reasoning")
     assert payload["response_format"]["json_schema"]["strict"]
 
-    assert [call] = Ash.read!(ModelCall, authorize?: false)
+    assert [call] = drafts()
 
     assert %{
              assist_run_id: run_id,
@@ -108,7 +108,7 @@ defmodule Patchbay.Assist.DrafterTest do
     assert Drafter.draft(@input, run.id) == {:error, {:http_status, 402}}
 
     assert [%{outcome: :failed, provider: "near_ai", response_id: nil, request_id: nil}] =
-             Ash.read!(ModelCall, authorize?: false)
+             drafts()
   end
 
   test "an answer that holds no arguments is unusable", %{run: run} do
@@ -117,8 +117,11 @@ defmodule Patchbay.Assist.DrafterTest do
     end)
 
     assert Drafter.draft(@input, run.id) == {:error, :response_shape_invalid}
-    assert [%{outcome: :answered, response_id: "x"}] = Ash.read!(ModelCall, authorize?: false)
+    assert [%{outcome: :answered, response_id: "x"}] = drafts()
   end
+
+  # Patchbay's own records of the questions it sent; no visitor reads them.
+  defp drafts, do: Ash.read!(ModelCall, authorize?: false)
 
   describe "PATCHBAY_DRAFTER_PROVIDER" do
     setup do

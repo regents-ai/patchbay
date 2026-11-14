@@ -194,6 +194,22 @@ defmodule PatchbayWeb.AssistAPI.FreeFixTest do
     assert read["fee_deposit"]["status"] == "pending"
     assert read["next_action"] =~ "Do not pay again"
 
+    # Its receipt names what was paid and from which wallet, and claims no check.
+    assert %{
+             "payment" => %{
+               "paid" => true,
+               "amount_usdc" => "0.10",
+               "wallet" => wallet,
+               "transaction" => "0x" <> _hash
+             },
+             "model" => nil,
+             "actual_call" => nil,
+             "result" => "not_reported",
+             "verification" => "not_checked"
+           } = read["receipt"]
+
+    assert wallet == payer.wallet_address
+
     stranger = person()
     hidden = stranger |> signed_in() |> get(~p"/api/assists/#{run.id}") |> json_response(404)
 

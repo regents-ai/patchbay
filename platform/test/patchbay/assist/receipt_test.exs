@@ -99,6 +99,7 @@ defmodule Patchbay.Assist.ReceiptTest do
         ] do
       run = browser_run(%{})
 
+      # Patchbay writes a decision itself, as Jev's look at the known fixes does.
       decision =
         Assist.record_decision!(
           %{
