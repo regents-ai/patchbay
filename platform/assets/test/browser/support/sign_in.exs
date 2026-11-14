@@ -91,8 +91,11 @@ end
 signed_in.(person, "person")
 
 # A person who saves their Public Display Name (public_name.spec.ts), with the
-# shared profile their sign-in gives them (`Patchbay.Accounts.establish/1`). The
-# name is theirs alone, so it shows on no other check's pages.
+# account and shared profile their sign-in gives them
+# (`Patchbay.Accounts.establish/1`) and a point, so they are on the Points board.
+# Their name is as long as a name may be, with no space to break at, as
+# public_name.spec.ts saves it too, so every page that names them shows whether
+# it fits the screen (long_name.spec.ts).
 namer =
   Identity.upsert_from_privy!(%{
     privy_user_id: "did:privy:browser-walk-namer",
@@ -101,16 +104,25 @@ namer =
 
 now = System.system_time(:second)
 
-{:ok, _profile} =
-  RegentIdentity.ensure(%RegentPrivy.Session{
-    app_id: Patchbay.Identity.Privy.app_id(),
-    session_id: "browser-walk-namer",
-    privy_user_id: namer.privy_user_id,
-    wallet_address: namer.wallet_address,
-    wallet_addresses: [namer.wallet_address],
-    issued_at: now,
-    expires_at: now + 600
-  })
+namer_session = %RegentPrivy.Session{
+  app_id: Patchbay.Identity.Privy.app_id(),
+  session_id: "browser-walk-namer",
+  privy_user_id: namer.privy_user_id,
+  wallet_address: namer.wallet_address,
+  wallet_addresses: [namer.wallet_address],
+  issued_at: now,
+  expires_at: now + 600
+}
+
+{:ok, namer_account} = Patchbay.Accounts.establish(namer_session)
+owner = RegentIdentity.Owner.of(namer_session)
+
+RegentIdentity.get_my_profile!(actor: owner)
+|> RegentIdentity.edit_profile!(%{display_name: String.pad_trailing("Walk namer", 80, "W")},
+  actor: owner
+)
+
+Ash.Seed.seed!(RegentPoints.Account, %{id: namer_account.id, balance_micro: 1_000_000})
 
 signed_in.(namer, "namer")
 
