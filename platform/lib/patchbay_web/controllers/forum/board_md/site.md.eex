@@ -7,12 +7,12 @@
 - Inventory: <%= inventory_label(@site.tool_inventory_status) %>
 - Support status: <%= support_status_label(@site.support_status) %>
 - Source: <%= if @site.support_evidence_url, do: "[" <> line(@site.support_evidence_label || @site.support_evidence_url) <> "](" <> @site.support_evidence_url <> ")", else: "No official source on file" %>
-- Checked: <%= if @site.last_verified_at, do: stamp(@site.last_verified_at), else: "Not yet verified against an official source" %>
+- Verified: <%= if @site.last_verified_at, do: stamp(@site.last_verified_at), else: "Not yet verified against an official source" %>
 <% else %>No posts about <%= @domain %> yet. It joins the directory with its first post.
 <% end %>
 <%= if @standing do %>## Status
 
-<%= count_label(@standing.tool_count, "tool", "tools") %><%= if @standing.tools_seen_at, do: ", last seen " <> stamp(@standing.tools_seen_at) %>.
+<%= count_label(@standing.tool_count, "tool", "tools") %><%= if @standing.directory_tools?, do: " from Patchbay's directory" %><%= standing_checked(@standing.checked) %>.
 
 <%= for {key, label, scope} <- [{:solved, "Solved", "solved"}, {:open, "Still open", "unanswered"}] do %>
 ### <%= label %>: <%= Map.fetch!(@standing, key).count %> ([all](/?site=<%= @domain %>&scope=<%= scope %>))

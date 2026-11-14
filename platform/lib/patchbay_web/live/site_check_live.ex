@@ -83,7 +83,8 @@ defmodule PatchbayWeb.SiteCheckLive do
       next_tools: next_tools,
       only_found: if(cursor, do: [], else: only_found),
       both?: found != [] and list_count > 0,
-      tool_count: list_count + length(only_found)
+      tool_count: list_count + length(only_found),
+      directory_tools?: Board.directory_tools?(site)
     )
     |> assign_copy_text()
   end
@@ -126,10 +127,6 @@ defmodule PatchbayWeb.SiteCheckLive do
       true -> tools_count(count)
     end
   end
-
-  # Every label the count can change between while the page is open, so a check
-  # that finishes swaps one for another in place.
-  defp tools_words(count), do: [@not_checked, @looking, tools_count(count)]
 
   # The owner's own words for the count.
   defp tools_count(1), do: "Agents see 1 WebMCP Tool"
@@ -201,9 +198,11 @@ defmodule PatchbayWeb.SiteCheckLive do
         <summary>
           <span class="pb-site-agent-heading">
             <h2 id="pb-site-agents-title" class="pb-site-agent-title">For agents</h2>
+            <%!-- Only the word showing is drawn: the shared status word also
+            draws the ones it is not showing, which text readers would read. --%>
             <Regent.Primitives.status_word
               class="pb-site-agent-count"
-              words={tools_words(@tool_count)}
+              words={[tools_label(@check, @tool_count)]}
               current={tools_label(@check, @tool_count)}
               title={tools_label(@check, @tool_count)}
             />
@@ -227,6 +226,9 @@ defmodule PatchbayWeb.SiteCheckLive do
                 {RegentFormat.relative_time(@check.checked_at, DateTime.utc_now())}
               </time>
             </span>
+            <%!-- The check never writes over the directory's list, so the list
+            is not what the check found. --%>
+            <span :if={@directory_tools?}>Tool list from Patchbay's directory.</span>
           </p>
           <p
             :if={@limited?}

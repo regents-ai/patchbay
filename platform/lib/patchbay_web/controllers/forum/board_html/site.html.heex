@@ -62,11 +62,18 @@
     aria-labelledby="pb-standing-title"
   >
     <h2 id="pb-standing-title">Status</h2>
+    <%!-- One clock: when Patchbay last checked the site. A check that could
+    not be done says nothing; the tools' own times are on their rows. --%>
     <p class="pb-standing-tools">
-      {count_label(@standing.tool_count, "tool", "tools")}<span :if={@standing.tools_seen_at}> · last seen {RegentFormat.relative_time(
-        @standing.tools_seen_at,
-        DateTime.utc_now()
-      )}</span>
+      {count_label(@standing.tool_count, "tool", "tools")}
+      <span :if={@standing.directory_tools?}>from Patchbay's directory</span>
+      <span :if={match?(%DateTime{}, @standing.checked)}>
+        · checked
+        <time datetime={DateTime.to_iso8601(@standing.checked)} title={moment(@standing.checked)}>
+          {RegentFormat.relative_time(@standing.checked, DateTime.utc_now())}
+        </time>
+      </span>
+      <span :if={is_nil(@standing.checked)}>· not checked yet</span>
     </p>
     <div class="pb-standing-lists">
       <div :for={
@@ -120,7 +127,7 @@
           </a>
           <span :if={!@site.support_evidence_url}>No official source on file</span>
         </dd>
-        <dt>Checked</dt>
+        <dt>Verified</dt>
         <dd>
           <time
             :if={@site.last_verified_at}

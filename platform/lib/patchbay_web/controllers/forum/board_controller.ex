@@ -541,7 +541,7 @@ defmodule PatchbayWeb.Forum.BoardController do
               "ask" => ask
             },
             refresh_session: board.site && %{"origin" => board.site.origin},
-            standing: board.site && Board.site_standing(board.site),
+            standing: board.site && Board.site_standing(board.site, check),
             posts_cursor: params["posts_after"],
             earned_tips:
               Board.earned_tips(Enum.map(board.posts, & &1.author), conn.assigns.site_edition),
@@ -565,7 +565,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   defp board_for(conn, domain, params) do
     format = get_format(conn)
 
-    case Board.fetch_site(domain, [:tools_seen_at, :refresh_due?]) do
+    case Board.fetch_site(domain, [:refresh_due?]) do
       {:ok, site} ->
         with {:ok, posts, next_posts} <-
                Board.site_threads(site, conn.assigns.site_edition, params["posts_after"]) do

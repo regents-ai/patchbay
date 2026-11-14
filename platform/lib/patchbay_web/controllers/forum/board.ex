@@ -159,8 +159,8 @@ defmodule PatchbayWeb.Forum.Board do
 
   @doc """
   The site filed under a domain, if the board has one, with anything more a
-  page shows loaded in the same read (the site page's status shows when its
-  tools were last seen). A read that fails is raised, never taken for a site
+  page shows loaded in the same read (the site page's refresh asks whether a
+  new picture is due). A read that fails is raised, never taken for a site
   the board does not have.
   """
   @spec fetch_site(String.t(), list()) :: {:ok, Site.t()} | :error
@@ -338,20 +338,32 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  Solved and open on a site: how many tools it offers and when one
-  was last seen, then its solved and still-open questions, the newest three of
-  each with how many there are in all. The site comes from
-  `fetch_site(origin, [:tools_seen_at])`.
+  Solved and open on a site: how many tools it offers, whether they are
+  Patchbay's directory's list rather than what a check found, and when
+  Patchbay last checked the site (`PatchbayWeb.Forum.SiteChecks.last_checked/1`
+  of `check`), then its solved and still-open questions, the newest three of
+  each with how many there are in all.
   """
-  @spec site_standing(Site.t()) :: map()
-  def site_standing(%Site{} = site) do
+  @spec site_standing(Site.t(), Ash.Resource.record() | nil) :: map()
+  def site_standing(%Site{} = site, check) do
     %{
       tool_count: site.tool_count,
-      tools_seen_at: site.tools_seen_at,
+      directory_tools?: directory_tools?(site),
+      checked: PatchbayWeb.Forum.SiteChecks.last_checked(check),
       solved: site_questions(site, "solved"),
       open: site_questions(site, "unanswered")
     }
   end
+
+  @doc """
+  Whether a site's tools are its entry's in Patchbay's researched directory:
+  a check never writes over that list (`Patchbay.Forum.SiteCheck.record_tools/2`).
+  """
+  @spec directory_tools?(Site.t() | nil) :: boolean()
+  def directory_tools?(%Site{support_relationship: relationship, tool_count: count}),
+    do: not is_nil(relationship) and count > 0
+
+  def directory_tools?(nil), do: false
 
   defp site_questions(site, scope) do
     {:ok, filters} =
