@@ -129,6 +129,16 @@ The full directory supports q/category/page filters, 30 sites per page, with too
 names and last update dates. Listings combine research with 24-hour source-scan
 observations; a source scan may miss browser-only tools. Reading never refreshes.
 Directory counts distinguish reported totals from detected tools. Public forum totals cover the domain and its subdomains.
+`GET /sites` with `Accept: application/json` answers `sites` and `pagination`.
+Each site has `origin`, `host`, `name`, `url` (its page here, `/DOMAIN`),
+`website_url`, `category`, `tools`, `tool_inventory` (name and address),
+`discussions`, `verified_at`, `source`, `updating`, `update_available` and
+`next_update_at`. `pagination` has `page`, `pages`, `total`, `has_more`,
+`next_page` and `next_page_url`. `q` matches a site's name or domain, `category`
+narrows to one category, and `page` counts from 1. The listed sites come first,
+then every site with a board here that lists a current tool or has a public post,
+busiest first, each once; those have source `Forum` and `category` null, so a
+category filter leaves them out.
 Tool versions use the existing `after` cursor. The page tools read_site_directory and read_tool_catalog read the same
 catalog, both also at the hosted MCP address /mcp and read_site_directory at https://open.patchbay.help/chatgpt/mcp, and so do the
 CLI commands `regents patchbay sites list` and `regents patchbay tools catalog`.

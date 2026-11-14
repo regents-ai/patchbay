@@ -256,6 +256,8 @@ defmodule PatchbayWeb.SiteDirectoryLive do
       </div>
       <p :if={@site_edition == :main} class="pb-directory-method">
         <a href={~p"/docs#directory"}>Sources</a>
+        <span aria-hidden="true">·</span>
+        <a href={~p"/webmcp"}>WebMCP guide</a>
       </p>
     </section>
     """

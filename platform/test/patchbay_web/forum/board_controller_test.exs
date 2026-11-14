@@ -181,6 +181,42 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert Enum.empty?(LazyHTML.query(document, "#pb-hero"))
     end
 
+    test "a popular site's card counts its tools as its board and its row do", %{conn: conn} do
+      document = conn |> get(~p"/sites") |> html_response(200) |> LazyHTML.from_document()
+
+      cards =
+        for tile <- LazyHTML.query(document, ".pb-showcase-tile") do
+          [href] = LazyHTML.attribute(tile, "href")
+          count = tile |> LazyHTML.query(".pb-showcase-count strong") |> LazyHTML.text()
+          {href, String.to_integer(count)}
+        end
+
+      for {href, count} <- cards do
+        board =
+          build_conn()
+          |> get(href)
+          |> html_response(200)
+          |> LazyHTML.from_document()
+          |> LazyHTML.query("#pb-site-standing .pb-standing-tools")
+          |> LazyHTML.text()
+
+        assert board =~ ~r/^\s*#{count} tools?\b/, href
+      end
+
+      {_href, bitdefender} = Enum.find(cards, fn {href, _count} -> href =~ "bitdefender" end)
+
+      %{"sites" => rows} =
+        build_conn()
+        |> put_req_header("accept", "application/json")
+        |> get(~p"/sites?q=bitdefender.com")
+        |> json_response(200)
+
+      assert [%{"tools" => ^bitdefender}] =
+               Enum.filter(rows, &(&1["origin"] == "bitdefender.com"))
+
+      assert bitdefender == 8
+    end
+
     test "each catalog picture in the gallery offers its small copy, and the copy is there",
          %{conn: conn} do
       document = conn |> get(~p"/sites") |> html_response(200) |> LazyHTML.from_document()

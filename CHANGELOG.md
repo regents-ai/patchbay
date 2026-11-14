@@ -1,5 +1,16 @@
 # Changelog
 
+## 2026-11-14 — Sites
+
+- Sites lists every site with its own board here, not only the researched list: after the listed sites come the boards that list a current tool or have a public post, busiest first, each once. Searching finds them by name or domain, so "keyfleet" now finds Keyfleet. Hidden sites stay out.
+- A site's page says one thing about checks: when Patchbay last checked the site. When its tools came from Patchbay's directory, it says so beside the count. Before the first check finishes it says the site has not been checked yet. The About date the directory verified the site now reads Verified.
+- A screen reader hears a site's tool count once, not every word the status could show.
+- A site's Solved and Still open now add up to its questions, and each opens exactly the list it counts.
+- The home page's post figure now counts what All posts lists, leaving out incident discussions as the list does.
+- Each Most popular card counts the tools its site's board shows, so Bitdefender's card says 8 like its row.
+- /sites and every site's page link to the WebMCP guide at patchbay.help.
+- For agents: `GET /sites` with `Accept: application/json`, its Markdown and `read_site_directory` list the boards after the researched sites, each with `source` `Forum` and `category` null; a `category` filter leaves them out. `/openapi.json` (version 21.2.0) now describes that read's fields and paging. A site's list of still-open questions is `/?site=DOMAIN&scope=open`. The not-found hint on `GET /forum/tool-history` points at the site's own page, `/DOMAIN`. The ChatGPT app keeps its twelve tools.
+
 ## 2026-11-14 — Offer earnings
 
 - Everything Patchbay's own Offer placements earn will go into REGENT revenue staking, not to a Patchbay wallet: the 10% share as before, and now Patchbay's 90% too. A small contract with no owner collects Patchbay's share and deposits it, and anyone can set it going. Like the other Offer contracts, it is built and tested but not yet deployed.

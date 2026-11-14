@@ -1224,6 +1224,9 @@ body:has(#patchbay-home),
 .pb-site-check-list a,
 .pb-site-check-list code { font-size: .8125rem; }
 .pb-site-check-note { color: var(--pb-text-muted); font-size: .8125rem; }
+/* The quiet way to the WebMCP guide, under the tools: as tall as a finger. */
+.pb-site-check-guide { margin: 0; font-size: .8125rem; }
+.pb-site-check-guide a { display: inline-block; min-height: 44px; line-height: 44px; }
 .pb-site-check-tools { display: flex; flex-wrap: wrap; gap: 2px var(--space-1); flex-basis: 100%; }
 /* A site page's post window: the home page's form in a dialog, centred, with
    its close button in the corner. */

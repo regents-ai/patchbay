@@ -124,6 +124,11 @@ defmodule PatchbayWeb.Forum.BoardMD do
   defp step_part({:a, label, href}), do: "[#{label}](#{href})"
   defp step_part(text), do: text
 
+  @doc "When Patchbay last checked the site, after its tool count; nothing after a failed check."
+  def standing_checked(%DateTime{} = at), do: ", checked " <> stamp(at)
+  def standing_checked(nil), do: ", not checked yet"
+  def standing_checked(:failed), do: ""
+
   @doc "What a site's check found, as markdown, or where the check stands."
   def check_lines(domain, check) do
     case SiteChecks.state(check) do

@@ -1,10 +1,15 @@
 defmodule Patchbay.Forum.SiteDirectory do
-  @moduledoc "Public website listings, with 24-hour observations from the existing site-check jobs."
+  @moduledoc """
+  Public website listings, with 24-hour observations from the existing
+  site-check jobs: the saved listing's sites, then every board outside it with
+  a tool still offered or a public post, busiest first, searched and paged
+  together.
+  """
 
   require Ash.Query
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.{HiddenSites, ListedSitePicture, Origin, Site, SiteCheck}
+  alias Patchbay.Forum.{HiddenSites, ListedSitePicture, Origin, Site, SiteCheck, Tool}
 
   @external_resource "priv/data/site_directory.json"
   @document Jason.decode!(File.read!(@external_resource))
@@ -116,7 +121,8 @@ defmodule Patchbay.Forum.SiteDirectory do
     }
   end
 
-  # Filter and paginate the saved public listing, leaving out the hidden hosts.
+  # Filter the saved public listing, leaving out the hidden hosts, and page it
+  # with the boards outside it that match: the listing's sites, then the boards.
   defp select(params, number, hidden) do
     q = text(params["q"], 100)
     category = text(params["category"], 80)
@@ -131,12 +137,19 @@ defmodule Patchbay.Forum.SiteDirectory do
           Enum.all?(words, &String.contains?(haystack, &1))
       end)
 
-    total = length(entries)
+    boards = board_count(words, category)
+    total = length(entries) + boards
     pages = max(1, ceil(total / @page_size))
     page = min(number, pages)
+    start = (page - 1) * @page_size
+    listed = Enum.slice(entries, start, @page_size)
+    offset = max(start - length(entries), 0)
+    room = min(@page_size - length(listed), boards - offset)
 
     %{
-      sites: Enum.slice(entries, (page - 1) * @page_size, @page_size),
+      sites:
+        Enum.map(listed, &{:seed, &1}) ++
+          Enum.map(boards(words, offset, room), &{:board, &1}),
       total: total,
       page: page,
       pages: pages,
@@ -144,6 +157,30 @@ defmodule Patchbay.Forum.SiteDirectory do
       category: category,
       imported_at: @document["imported_at"]
     }
+  end
+
+  # A board carries no category, so a search by category lists none.
+  defp board_count(_words, category) when category != "", do: 0
+
+  defp board_count(words, _category) do
+    Site
+    |> Ash.Query.for_read(:directory_boards, %{except: @domains, words: words})
+    |> Ash.count!()
+  end
+
+  defp boards(_words, _offset, room) when room <= 0, do: []
+
+  defp boards(words, offset, room) do
+    tools =
+      Tool
+      |> Ash.Query.filter(current?)
+      |> Ash.Query.select([:name, :address])
+      |> Ash.Query.sort(name: :asc)
+
+    Forum.list_directory_boards!(@domains, words,
+      page: [offset: offset, limit: room],
+      load: [:tool_count, tools: tools]
+    ).results
   end
 
   defp decorate(page, checks, available?) do
@@ -159,7 +196,7 @@ defmodule Patchbay.Forum.SiteDirectory do
   defp replace_entry(%{domain: domain} = site, %{domain: domain} = check),
     do:
       Map.merge(
-        entry(site.seed, check),
+        entry(site.listing, check),
         Map.take(site, [:forum_posts, :logo_path, :screenshot_path])
       )
 
@@ -168,22 +205,22 @@ defmodule Patchbay.Forum.SiteDirectory do
   # The listing's own words for a site, with what Patchbay's checks found:
   # the tools on its listed pages once every one of them was read in full,
   # and when the oldest of those reads was.
-  defp entry(seed, check) do
+  defp entry({:seed, seed} = listing, check) do
     snapshot = snapshot(seed, (check && check.findings) || %{})
     observed = snapshot["tools"]
     tools = Enum.uniq_by(observed || seed["tools"], & &1["name"])
 
     %{
-      seed: seed,
+      listing: listing,
       host: seed["host"],
-      domain: domain(seed),
+      domain: domain(listing),
       name: seed["name"],
       category: seed["category"],
       page_url: seed["url"],
       tools: tools,
       tool_count: if(observed, do: length(tools), else: reported_count(seed, tools)),
       forum_posts: nil,
-      logo_path: Map.get(@logos, domain(seed)),
+      logo_path: Map.get(@logos, domain(listing)),
       screenshot_path: nil,
       checked_at: snapshot["checked_at"],
       pending?: pending?(check),
@@ -192,6 +229,37 @@ defmodule Patchbay.Forum.SiteDirectory do
       source: if(observed, do: "Source scan", else: "Research listing")
     }
   end
+
+  # A board's row: the tools it still offers, as its own page counts them, and
+  # when Patchbay last finished a check of the site.
+  defp entry({:board, site} = listing, check) do
+    %{
+      listing: listing,
+      host: site.origin,
+      domain: site.origin,
+      name: site.display_name || site.origin,
+      category: nil,
+      page_url: "https://" <> site.origin <> "/",
+      tools:
+        site.tools
+        |> Enum.uniq_by(& &1.name)
+        |> Enum.map(&%{"name" => &1.name, "address" => &1.address}),
+      tool_count: site.tool_count,
+      forum_posts: nil,
+      logo_path: nil,
+      screenshot_path: nil,
+      checked_at: checked_at(check),
+      pending?: pending?(check),
+      due?: SiteCheck.due?(check),
+      retry_at: retry_at(check),
+      source: "Forum"
+    }
+  end
+
+  defp checked_at(%{checked_at: %DateTime{} = at, findings: %{} = findings}),
+    do: if(findings["failed"] == true, do: nil, else: DateTime.to_iso8601(at))
+
+  defp checked_at(_check), do: nil
 
   defp reported_count(%{"reported_tool_count" => count}, _tools), do: count
   defp reported_count(_seed, []), do: nil
@@ -231,9 +299,8 @@ defmodule Patchbay.Forum.SiteDirectory do
     "/sites?" <> URI.encode_query(%{"q" => page.q, "category" => page.category, "page" => number})
   end
 
-  defp domain(entry) do
-    Map.fetch!(entry, "domain")
-  end
+  defp domain({:seed, seed}), do: Map.fetch!(seed, "domain")
+  defp domain({:board, site}), do: site.origin
 
   defp text(value, limit) when is_binary(value),
     do: value |> String.trim() |> String.slice(0, limit)

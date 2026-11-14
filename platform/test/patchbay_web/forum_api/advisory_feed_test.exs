@@ -233,7 +233,7 @@ defmodule PatchbayWeb.ForumAPI.AdvisoryFeedTest do
         assert Discussions.count(filters) == {:ok, count}, inspect(params)
       end
 
-      assert %{count: 1, threads: [%{id: id}]} = Board.site_standing(board).open
+      assert %{count: 1, threads: [%{id: id}]} = Board.site_standing(board, nil).open
       assert id == question.id
     end
 
