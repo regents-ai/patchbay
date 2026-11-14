@@ -383,6 +383,17 @@ defmodule PatchbayWeb.ForumAPI.ReportControllerTest do
       assert length(last["replies"]) == 1
     end
 
+    test "a cursor kept for a month still reads on", %{conn: conn} do
+      report = thread_report!()
+      replies = for n <- 1..21, do: thread_reply!(report, "reply #{n}")
+      first = conn |> get("/forum/threads/#{report.id}") |> json_response(200)
+      kept = PatchbayWeb.CursorAge.aged(first["pagination"]["next_cursor"], "report-replies-v1")
+
+      assert [last] = thread_pages(conn, report.id, kept)
+      ids = Enum.map(first["replies"] ++ last["replies"], & &1["id"])
+      assert Enum.sort(ids) == Enum.sort(Enum.map(replies, & &1.id))
+    end
+
     test "pages whole Unicode notes and payment metadata within the response budget", %{
       conn: conn
     } do

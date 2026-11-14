@@ -79,7 +79,7 @@ defmodule PatchbayWeb.Forum.BoardJSON do
   def tool_error(%{invalid_cursor?: true}) do
     ApiError.body(
       "invalid_cursor",
-      "This tool history cursor is invalid or expired.",
+      "This tool history cursor is not valid for this tool.",
       "Read the same tool without after."
     )
   end

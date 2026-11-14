@@ -50,6 +50,33 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
            |> json_response(400)
   end
 
+  test "a cursor kept for a month still reads on", %{conn: conn} do
+    site = Forum.register_site!("kept-history.example")
+
+    versions =
+      for n <- 1..2 do
+        Forum.observe_tool!(%{
+          site_id: site.id,
+          address: "https://#{site.origin}/",
+          name: "checkout",
+          contract_sha256: Base.encode16(:crypto.hash(:sha256, "kept-#{n}"), case: :lower)
+        })
+      end
+
+    params = %{"origin" => site.origin, "tool_name" => "checkout", "limit" => "1"}
+    first = conn |> get("/forum/tool-history", params) |> json_response(200)
+    kept = PatchbayWeb.CursorAge.aged(first["pagination"]["next_cursor"], "tool-history-v1")
+
+    second =
+      conn
+      |> get("/forum/tool-history", Map.put(params, "after", kept))
+      |> json_response(200)
+
+    ids = Enum.map(first["versions"] ++ second["versions"], & &1["id"])
+    assert Enum.sort(ids) == Enum.sort(Enum.map(versions, & &1.id))
+    refute second["pagination"]["has_more"]
+  end
+
   test "full schemas are returned without private resource fields", %{conn: conn} do
     site = Forum.register_site!("schema.example")
     schema = %{"description" => String.duplicate("資料🌳", 5000)}
@@ -200,7 +227,7 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
 
     assert conn
            |> get("/page-history.example/tools/checkout?after=bad")
-           |> html_response(400) =~ "expired or is invalid"
+           |> html_response(400) =~ "not valid for this tool"
   end
 
   test "tied first sightings and newly inserted versions keep cursor order", %{conn: conn} do

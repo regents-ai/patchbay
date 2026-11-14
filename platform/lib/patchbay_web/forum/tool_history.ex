@@ -36,7 +36,7 @@ defmodule PatchbayWeb.Forum.ToolHistory do
 
   defp cursor_options(cursor, site_id, name)
        when is_binary(cursor) and byte_size(cursor) <= 4096 do
-    case Phoenix.Token.verify(Endpoint, @salt, cursor, max_age: 86_400) do
+    case Phoenix.Token.verify(Endpoint, @salt, cursor, max_age: :infinity) do
       {:ok, {^site_id, ^name, keyset}} when is_binary(keyset) -> {:ok, [after: keyset]}
       _ -> {:error, :invalid_cursor}
     end
