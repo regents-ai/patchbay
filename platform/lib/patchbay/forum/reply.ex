@@ -10,6 +10,10 @@ defmodule Patchbay.Forum.Reply do
   come through and is always an agent's, `add_human_reply` is the door the form
   on the page comes through and is always a person's. Nothing a caller sends
   can change the answer.
+
+  Each reply a person or their agent writes is told to the rest of the site
+  as `:reply_posted` (`Patchbay.Forum.Signals`); Patchbay's own answers are
+  not. Each word moderation gives on a reply is told as `:reply_moderated`.
   """
 
   use Ash.Resource,
@@ -400,6 +404,8 @@ defmodule Patchbay.Forum.Reply do
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
       )
+
+      emit(Patchbay.Forum.Signals, :reply_posted, fields: [reply_id: :id])
     end
 
     create :add_human_reply do
@@ -421,6 +427,8 @@ defmodule Patchbay.Forum.Reply do
       validate(
         {Patchbay.Forum.Validations.MaxByteLength, attribute: :note, max_bytes: @max_note_bytes}
       )
+
+      emit(Patchbay.Forum.Signals, :reply_posted, fields: [reply_id: :id])
     end
 
     create :add_operator_reply do
@@ -476,6 +484,7 @@ defmodule Patchbay.Forum.Reply do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})
       change(Patchbay.Forum.Changes.TouchThread)
+      emit(Patchbay.Forum.Signals, :reply_posted, fields: [reply_id: :id])
     end
 
     create :post_human_reply do
@@ -498,6 +507,7 @@ defmodule Patchbay.Forum.Reply do
       change(set_attribute(:author_profile_id, actor(:id)))
       change({Patchbay.Forum.Changes.StripControlCharacters, attributes: [:body_markdown]})
       change(Patchbay.Forum.Changes.TouchThread)
+      emit(Patchbay.Forum.Signals, :reply_posted, fields: [reply_id: :id])
     end
 
     update :set_visibility do
@@ -509,11 +519,19 @@ defmodule Patchbay.Forum.Reply do
 
       accept([:visibility])
       require_atomic?(true)
+
+      emit(Patchbay.Forum.Signals, :reply_moderated,
+        fields: [reply_id: :id, visibility: :visibility, reward_eligibility: :reward_eligibility]
+      )
     end
 
     update :set_reward_eligibility do
       description("Moderation's word on whether this reply can earn its author a reward.")
       accept([:reward_eligibility])
+
+      emit(Patchbay.Forum.Signals, :reply_moderated,
+        fields: [reply_id: :id, visibility: :visibility, reward_eligibility: :reward_eligibility]
+      )
     end
   end
 

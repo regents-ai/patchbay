@@ -18,16 +18,42 @@ defmodule PatchbayWeb.PointsLiveTest do
   alias PatchbayWeb.SignedAgent
   alias RegentPoints.{Rules, Store}
 
+  # Account activated is earned where the person's account is kept, never on
+  # Patchbay: this stands in for that site's check, which Points asks again as it
+  # awards, and which accepts the account it is asked about.
+  defmodule AccountSite do
+    def verify(_reference), do: {:ok, %{}}
+  end
+
+  # Base, while earning is open in a test: it gives no answer, so the bonus card
+  # says the NFTs could not be checked and nothing leaves this machine.
+  defmodule NoChain do
+    def rpc(_chain, _method, _params), do: {:error, :unavailable}
+  end
+
   setup do
     SignedAgent.stub_siwa()
 
     # Periods count from the program's start; with no rule approved, earning
     # stays off.
-    starts_at = Application.get_env(:regent_points, :starts_at)
+    previous =
+      Keyword.take(Application.get_all_env(:regent_points), [
+        :starts_at,
+        :approved_rules,
+        :adapters,
+        :chain_client
+      ])
+
     Application.put_env(:regent_points, :starts_at, ~U[2020-01-01 00:00:00Z])
 
+    Application.put_env(
+      :regent_points,
+      :adapters,
+      Map.put(previous[:adapters], "account.activated", AccountSite)
+    )
+
     on_exit(fn ->
-      Application.put_env(:regent_points, :starts_at, starts_at)
+      Enum.each(previous, fn {key, value} -> Application.put_env(:regent_points, key, value) end)
       SharedReading.delete(Board.key())
     end)
 
@@ -87,6 +113,63 @@ defmodule PatchbayWeb.PointsLiveTest do
     refute has_element?(view, "#points-bonus [role=status]", "Checking")
   end
 
+  # Before earning opens nothing on the list carries points, a count left, a
+  # daily limit or today's count, so nothing reads as earning.
+  test "every listed action shows under its site, in order, and what the account has is done",
+       %{conn: conn} do
+    {:ok, view, html} = live(conn, ~p"/points")
+    todo = todo(html)
+
+    assert Enum.map(todo, &elem(&1, 0)) == Enum.map(Rules.groups(), & &1.site)
+
+    for {{_site, items}, %{rules: rules}} <- Enum.zip(todo, Rules.groups()) do
+      assert Enum.sort(Enum.map(items, & &1.label)) ==
+               Enum.sort(Enum.map(rules, &Rules.label(&1["id"])))
+    end
+
+    items = Enum.flat_map(todo, &elem(&1, 1))
+    refute Rules.label("template.first_agent_note") in Enum.map(items, & &1.label)
+
+    # The one award the account has, counted once, is the one action done.
+    assert for(%{done: true} = item <- items, do: item.label) == [
+             Rules.label("account.activated")
+           ]
+
+    assert Enum.all?(items, &(&1.points == "" and &1.note == ""))
+    refute has_element?(view, "#points-todo .rg-points-todo__left")
+    refute has_element?(view, "#points-limit")
+  end
+
+  test "once earning opens, every action this site does not earn says so", %{
+    conn: conn,
+    agent: agent
+  } do
+    Application.put_env(:regent_points, :starts_at, DateTime.add(DateTime.utc_now(), -1, :day))
+
+    Application.put_env(:regent_points, :approved_rules, [
+      "patchbay.report_published",
+      "patchbay.reply_published"
+    ])
+
+    Application.put_env(:regent_points, :chain_client, NoChain)
+
+    {:ok, summary} =
+      RegentPoints.summary(actor: %{role: :human, human_account_id: agent.account.id})
+
+    {:ok, view, html} = live(conn, ~p"/points")
+    items = Enum.flat_map(todo(html), &elem(&1, 1))
+
+    not_here = for {id, %{here: false}} <- summary.done, do: Rules.label(id)
+    assert [_, _] = for({id, %{here: true}} <- summary.done, do: id)
+
+    assert Enum.sort(for %{note: "Not on this site"} = item <- items, do: item.label) ==
+             Enum.sort(not_here)
+
+    assert Enum.all?(items, &(&1.points != ""))
+    assert has_element?(view, "#points-todo .rg-points-todo__left")
+    assert has_element?(view, "#points-limit progress")
+  end
+
   # A person's paired agent reads the same figures the page shows, and its copy
   # of the leaderboard carries a place, a name or wallet and a total for each row.
   test "a paired agent is answered with the page's figures", %{
@@ -136,6 +219,27 @@ defmodule PatchbayWeb.PointsLiveTest do
              |> SignedAgent.sign(agent)
              |> get("/tools/account/points")
              |> json_response(503)
+  end
+
+  # The to-do list as the page draws it: each site's title with its actions, each
+  # with its label, whether it is done, the words under it and its points.
+  defp todo(html) do
+    html
+    |> LazyHTML.from_document()
+    |> LazyHTML.query("#points-todo .rg-points-todo__group")
+    |> Enum.map(fn group ->
+      {group |> LazyHTML.query("h3") |> LazyHTML.text(),
+       group |> LazyHTML.query("li") |> Enum.map(&action/1)}
+    end)
+  end
+
+  defp action(item) do
+    %{
+      label: item |> LazyHTML.query(".rg-points-todo__label > :first-child") |> LazyHTML.text(),
+      done: LazyHTML.attribute(item, "data-done") == ["true"],
+      note: item |> LazyHTML.query(".rg-points-todo__label small") |> LazyHTML.text(),
+      points: item |> LazyHTML.query(".rg-points-todo__points") |> LazyHTML.text()
+    }
   end
 
   # One "Account activated" award, recorded and settled as the library settles

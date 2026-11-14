@@ -18,7 +18,9 @@ config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
 # Regent Points: one account per person, shared by every Regent site, in the
 # `regent_points` schema `bin/migrate-shared` applies. Nothing earns until Sean sets the
-# rules and the start time; until then Patchbay only shows the account.
+# rules and the start time; until then Patchbay only shows the account. `adapters` are
+# this site's checks of what may earn, offered by `Patchbay.Points.Award`; a rule earns
+# only once it is also on `approved_rules`.
 config :regent_points,
   repo: Patchbay.Repo,
   pubsub: Patchbay.PubSub,
@@ -27,7 +29,11 @@ config :regent_points,
   chain_client: Patchbay.ChainClient,
   program_id: "regents-points-v1",
   starts_at: nil,
-  approved_rules: []
+  approved_rules: [],
+  adapters: %{
+    "patchbay.report_published" => Patchbay.Points.PublishedReport,
+    "patchbay.reply_published" => Patchbay.Points.PublishedReply
+  }
 
 # The Privy accounts that run this site: they see the saved errors at
 # /admin/errors and the answer check download (`PatchbayWeb.ErrorsAdmin`), and
@@ -268,7 +274,8 @@ config :patchbay,
     Patchbay.WalletBench,
     Patchbay.Accounts,
     Patchbay.AnswerWatch,
-    Patchbay.Offers
+    Patchbay.Offers,
+    Patchbay.Points
   ]
 
 # Agent offers (`Patchbay.Offers`), on Patchbay's market on Base. With no
