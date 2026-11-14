@@ -162,7 +162,7 @@ a.pb-slot-title:focus-visible { outline: 2px solid var(--pb-accent-deep); outlin
   .pb-paid-offer:has(.pb-paid-link:hover) { border-color: var(--pb-line-strong); }
   .pb-paid-link:hover .pb-paid-name { text-decoration: underline; text-underline-offset: .2em; }
 }
-.pb-home-side > .pb-paid, #patchbay-report > .pb-paid { margin-block: var(--space-3); }
+.pb-home-side > .pb-paid, #patchbay-report > .pb-paid, #patchbay-site > .pb-paid { margin-block: var(--space-3); }
 
 /* /admin/offers: one list per part, each row a campaign, wallet, pool or placement. */
 .pb-oa .pb-sheet-section { display: grid; gap: var(--space-2); min-width: 0; }
@@ -191,8 +191,8 @@ a.pb-oa-name { text-decoration: none; }
 .pb-oa-choose { display: flex; align-items: center; gap: var(--space-1); }
 .pb-oa-choose select { font-size: max(1rem, 16px); }
 .pb-oa-leases { width: 100%; border-collapse: collapse; font-size: var(--pb-fs-sm); }
-.pb-oa-leases th { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; text-align: start; text-transform: uppercase; }
-.pb-oa-leases :is(th, td) { padding: var(--space-1) var(--space-2) var(--space-1) 0; border-bottom: 1px solid var(--pb-line); overflow-wrap: anywhere; }
+.pb-oa-leases th { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; text-align: start; text-transform: uppercase; white-space: nowrap; }
+.pb-oa-leases :is(th, td) { padding: var(--space-1) var(--space-2) var(--space-1) 0; border-bottom: 1px solid var(--pb-line); overflow-wrap: break-word; }
 .pb-oa-leases .pb-oa-num { text-align: end; font-variant-numeric: tabular-nums; }
 .pb-oa-steps { padding: var(--space-2) var(--space-3); border-inline-start: 3px solid var(--pb-bad); background: var(--pb-bad-wash); font-size: var(--pb-fs-sm); }
 .pb-oa-step-list { margin: var(--space-1) 0 0; padding-inline-start: 1.25rem; }
