@@ -283,8 +283,8 @@ defmodule PatchbayWeb.PostFormLiveTest do
       assert attribute(view, "#pb-hero-pictures-add", "aria-disabled") == "true"
 
       view |> element("#pb-hero-pictures-add") |> render_click()
-      assert_push_event(view, "pb:reach", %{to: "pb-hero-pictures-add"})
       refute view |> element("#pb-hero-pictures-errors") |> render() == kept_said
+      refute_push_event(view, "pb:reach", _reach)
 
       view |> element("#pb-hero-picture-item-#{ref_of(view, "two.png")} button") |> render_click()
       assert picture_names(view) == ~w(one.png three.png four.png)
