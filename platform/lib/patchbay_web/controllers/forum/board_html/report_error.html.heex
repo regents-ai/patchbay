@@ -6,7 +6,7 @@
     <:back><a href={site_path(@report.site)}>← {site_name(@report.site)}</a></:back>
   </.board_header>
   <Regent.Primitives.notice role={if @problem == :posted_unread, do: "status", else: "alert"}>
-    <p :if={@problem == :invalid_cursor}>This reply link has expired or is invalid.</p>
+    <p :if={@problem == :invalid_cursor}>This reply link is not valid for this thread.</p>
     <p :if={@problem == :unavailable}>
       The replies to this report could not be loaded right now.
     </p>

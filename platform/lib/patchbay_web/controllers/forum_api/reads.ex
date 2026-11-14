@@ -295,7 +295,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       {:error, :invalid_cursor} ->
         {:error,
          {400, "invalid_cursor",
-          "This cursor is invalid or expired. Restart the same tool history.",
+          "This cursor is not valid for this tool's history. Restart the same tool history.",
           "Read the history again without after, and use the cursor it gives."}}
 
       {:error, :invalid_limit} ->

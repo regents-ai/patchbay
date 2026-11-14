@@ -123,6 +123,30 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       refute html =~ ~s(href="#{PostAddress.path(there)}")
     end
 
+    test "an Older questions link from a month ago still opens its page", %{conn: conn} do
+      tool = "paged.example" |> site!() |> tool!()
+      [oldest | _newer] = for n <- 1..11, do: report!(tool, %{note: "question #{n}"})
+
+      link =
+        conn
+        |> get(~p"/")
+        |> html_response(200)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("nav[aria-label='Question pages'] a")
+        |> LazyHTML.attribute("href")
+        |> List.last()
+
+      kept =
+        link
+        |> URI.parse()
+        |> Map.fetch!(:query)
+        |> URI.decode_query()
+        |> Map.update!("after", &PatchbayWeb.CursorAge.aged(&1, "discussion-pages-v1"))
+
+      older = conn |> get(~p"/?#{kept}") |> html_response(200) |> feed()
+      assert older =~ ~s(href="#{PostAddress.path(oldest)}")
+    end
+
     test "an empty search keeps the query and offers a reset", %{conn: conn} do
       html = conn |> get(~p"/?q=unreported.example.invalid") |> html_response(200)
       document = LazyHTML.from_document(html)
@@ -696,7 +720,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       for bad <- ["", "not-a-cursor", tampered, other_cursor, String.duplicate("a", 2049)] do
         body = conn |> get(PostAddress.path(report), %{"after" => bad}) |> html_response(400)
 
-        assert body =~ "This reply link has expired or is invalid."
+        assert body =~ "This reply link is not valid for this thread."
         assert body =~ ~s(href="#{PostAddress.path(report)}#patchbay-replies")
         refute body =~ "No replies yet"
         refute body =~ "reply-001"
@@ -796,65 +820,45 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       assert redirected_to(posted) == PostAddress.path(report) <> "#patchbay-replies"
     end
 
-    # A continuation minted the way the board mints them, dated in the past:
-    # more than a day ago it has expired, within the day it is still good.
-    defp dated_cursor(report, keyset, seconds_ago) do
-      Phoenix.Token.sign(
-        PatchbayWeb.Endpoint,
-        "report-replies-v1",
-        %{report_id: report.id, keyset: keyset},
-        signed_at: System.system_time(:second) - seconds_ago
-      )
-    end
-
-    defp expired_cursor(report, keyset), do: dated_cursor(report, keyset, 86_401)
-
-    defp keyset_of(report, reply) do
+    # The continuation that follows `reply`, as the board hands it out.
+    defp cursor_after(report, reply) do
       %{results: [placed]} =
         Forum.list_replies_for_report!(report.id,
           page: [limit: 1],
           query: [filter: [id: reply.id]]
         )
 
-      placed.__metadata__.keyset
+      PatchbayWeb.Forum.ReplyCursor.sign(report.id, placed.__metadata__.keyset)
     end
 
-    test "a continuation from more than a day ago has expired", %{conn: conn} do
+    test "a continuation from a month ago still reads on", %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
       [_oldest, _middle, newest] = numbered_replies!(report, 1..3)
-      keyset = keyset_of(report, newest)
+      kept = report |> cursor_after(newest) |> PatchbayWeb.CursorAge.aged("report-replies-v1")
 
-      body =
-        conn
-        |> get(PostAddress.path(report, after: expired_cursor(report, keyset)))
-        |> html_response(400)
-
-      assert body =~ "This reply link has expired or is invalid."
-
-      fresh = dated_cursor(report, keyset, 86_000)
-
-      assert conn |> get(PostAddress.path(report, after: fresh)) |> html_response(200) =~
-               "reply-002"
+      body = conn |> get(PostAddress.path(report, after: kept)) |> html_response(200)
+      assert notes_shown(body) == ["reply-002", "reply-001"]
     end
 
-    test "a reply refused after its page link expired keeps the draft, on a page that leads back",
+    test "a reply refused with another thread's page link keeps the draft, on a page that leads back",
          %{conn: conn} do
       report = "shopify.com" |> site!() |> tool!() |> report!()
-      [first | _rest] = numbered_replies!(report, 1..3)
-      stale = expired_cursor(report, keyset_of(report, first))
+      other = "other.example" |> site!() |> tool!() |> report!()
+      numbered_replies!(report, 1..3)
+      [elsewhere | _rest] = numbered_replies!(other, 1..3)
 
       body =
         conn
         |> signed_in(person!("ccc"))
         |> post(~p"/reports/#{report.id}/replies", %{
-          "after" => stale,
-          "reply" => %{"verdict" => "", "note" => "kept through the expiry"}
+          "after" => cursor_after(other, elsewhere),
+          "reply" => %{"verdict" => "", "note" => "kept through the refusal"}
         })
         |> html_response(400)
 
-      assert body =~ "This reply link has expired or is invalid."
+      assert body =~ "This reply link is not valid for this thread."
       assert body =~ "Say whether the tool worked before you post."
-      assert body =~ "kept through the expiry"
+      assert body =~ "kept through the refusal"
       assert body =~ ~s(action="/reports/#{report.id}/replies")
       refute body =~ ~s(name="after")
       assert body =~ ~s(href="#{PostAddress.path(report)}#patchbay-replies")

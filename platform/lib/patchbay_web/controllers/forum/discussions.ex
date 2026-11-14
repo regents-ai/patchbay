@@ -157,7 +157,7 @@ defmodule PatchbayWeb.Forum.Discussions do
   defp verify(nil, _context), do: {:ok, nil}
 
   defp verify(token, context) when is_binary(token) and byte_size(token) <= 8192 do
-    case Phoenix.Token.verify(Endpoint, @salt, token, max_age: 86_400) do
+    case Phoenix.Token.verify(Endpoint, @salt, token, max_age: :infinity) do
       {:ok, {^context, keyset}} when is_binary(keyset) -> {:ok, keyset}
       _ -> {:error, :invalid_cursor}
     end

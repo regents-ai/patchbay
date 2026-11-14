@@ -553,7 +553,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
     {:bad_request,
      ApiError.body(
        "invalid_cursor",
-       "This reply cursor is invalid or expired. Start again without after.",
+       "This reply cursor is not valid for this thread. Start again without after.",
        "Read the thread again without after, and use the cursor it gives."
      )}
   end

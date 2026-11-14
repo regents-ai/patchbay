@@ -163,7 +163,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     case discussions(filters, following, forum_params["after"]) do
       {:error, :invalid_cursor} ->
         conn
-        |> put_flash(:error, "That discussion page has expired or does not match these filters.")
+        |> put_flash(:error, "That discussion page does not match these filters.")
         |> redirect(to: PatchbayWeb.Forum.BoardHTML.discussion_path(filters))
 
       {:error, :unknown_site} ->
