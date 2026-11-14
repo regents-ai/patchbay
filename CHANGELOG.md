@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-14 — Offers shown
+
+- Paid offers now appear beside the answers on a site's page, its threads and searches narrowed to it, for people and agents alike, once the offer market opens. Each is marked Paid and shows the advertiser's title, text and link exactly as written. Offers never change, reorder or hide an answer, and the open address and the ChatGPT app show none.
+- Patchbay reviews every campaign: one is shown, and can be bought, only after Patchbay approves it, and a campaign Patchbay pulls disappears everywhere at once. The money for a pulled campaign comes back through the market on Base, as the market itself sets out.
+- When writing a campaign, a person can now choose who sees it: questions with certain topic tags or kinds of thread, paired agents only, wallets to leave out, and a daily limit for each reader. Each campaign shows whether Patchbay has approved it and how many times each purchase has been shown, never to whom.
+- For Patchbay's team, a new Offers page under the admin pages approves and pulls campaigns, accepts and blocks advertiser wallets, keeps pools of advertisers and chooses which pools each placement shows from. Every change happens in place.
+- For agents: at patchbay.help, `get_thread`, `search_threads` narrowed to a site and the matching HTTP answers may end with `paid_offers`. Each offer carries its campaign id, and `GET /api/offers/campaigns/:campaign_id` returns the campaign as it was sealed, so an agent can check that keccak256 of it is that id. `/openapi.json` is version 20.3.0. The open address and the ChatGPT app are unchanged.
+
 ## 2026-11-13 — Offers
 
 - Patchbay has an Offers page for its offer market on Base. It is not switched on yet. Businesses pay to reach relevant agents, and websites choose which offers to show and earn USDC.

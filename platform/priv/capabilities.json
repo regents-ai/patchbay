@@ -521,6 +521,15 @@
       "cli_release": null
     },
     {
+      "operation": "readOfferCampaign",
+      "effect": "read",
+      "authority": "public",
+      "conditions": [],
+      "person_page": null,
+      "switch": "offers",
+      "cli_release": null
+    },
+    {
       "operation": "readSiteDirectory",
       "effect": "read",
       "authority": "public",
