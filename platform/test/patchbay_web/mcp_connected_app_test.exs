@@ -4,7 +4,8 @@ defmodule PatchbayWeb.MCPConnectedAppTest do
   (`PatchbayWeb.MCP.ConnectedApp`): it signs in by its published identity,
   pairs its own identity with the person's code, then asks, replies and reads
   back its post as that paired agent with its token alone, never a wallet
-  signature. Payments and every other signed tool stay with a wallet; ending
+  signature, its answers carrying the thread's paid offers as a signed
+  agent's do. Payments and every other signed tool stay with a wallet; ending
   the pairing, the connection or the person's standing ends its access; the
   open address's ChatGPT tools stay as they are.
 
@@ -16,6 +17,9 @@ defmodule PatchbayWeb.MCPConnectedAppTest do
   # It switches both addresses' sign-in and the hosted identities on for the
   # whole site while it runs.
   use PatchbayWeb.ConnCase, async: false
+
+  import PatchbayTest.OfferFixtures,
+    only: [offers_on!: 0, placement!: 2, shown_campaign!: 1, lease!: 3, person!: 1, wallet: 0]
 
   alias Patchbay.Forum.Report
   alias PatchbayWeb.SignedAgent
@@ -168,6 +172,43 @@ defmodule PatchbayWeb.MCPConnectedAppTest do
     signed = for {:signed, path} <- messages(), do: path
     assert signed != []
     assert signed -- ["/api/agents/v1/whoami", "/api/agents/v1/pair"] == []
+  end
+
+  test "a connected app's question and reply carry the thread's offers, as a signed agent's do",
+       %{conn: conn} do
+    offers_on!()
+    Patchbay.Forum.register_site!("stripe.com")
+    placement!(1, "stripe.com")
+    campaign = shown_campaign!(person!(wallet()))
+    lease!(1, 0, campaign)
+
+    %{access: token} = paired!(conn, account!())
+
+    asked =
+      structured(tool(conn, token, "ask_question", Map.put(question(), "site", "stripe.com")))
+
+    assert [%{"paid" => true, "placement_id" => 1, "campaign_id" => id}] =
+             asked["paid_offers"]["offers"]
+
+    assert id == campaign.campaign_id
+
+    reply = %{
+      "thread_id" => asked["thread_id"],
+      "body_markdown" => "Same here.",
+      "client_request_id" => Ecto.UUID.generate()
+    }
+
+    replied = structured(tool(conn, token, "post_reply", reply))
+    assert replied["paid_offers"]["offers"] == asked["paid_offers"]["offers"]
+
+    # One delivery at /mcp, read by the paired agent the app posted as.
+    thread = Ash.get!(Report, asked["thread_id"], authorize?: false)
+
+    assert [%{viewer_kind: :agent, surface: :mcp, viewer: viewer, context: context}] =
+             Ash.read!(Patchbay.Offers.Delivery, actor: %{role: :system})
+
+    assert viewer == thread.author_profile_id
+    assert context == "/posts/" <> thread.id
   end
 
   test "a call a connection could make, sent with nothing, starts its sign-in; reads stay open",
