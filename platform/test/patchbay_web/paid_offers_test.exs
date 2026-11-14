@@ -5,8 +5,10 @@ defmodule PatchbayWeb.PaidOffersTest do
   the site as JSON over HTTP, and in `search_threads` and `get_thread` at
   `/mcp`. Each is marked paid, carries its title, text and link as sealed and
   its campaign id, which hashes the manifest Patchbay serves. The answer
-  beside it is unchanged. The open address, the ChatGPT plugin and a
-  patchbay.help with no market show none.
+  beside it is unchanged. At `/mcp` a read a paired agent signed is also shown
+  the offers made for paired agents; any other read is a visitor's, never
+  refused. The open address, the ChatGPT plugin and a patchbay.help with no
+  market show none.
 
   The moderator list is application-wide, so this file runs alone.
   """
@@ -16,6 +18,7 @@ defmodule PatchbayWeb.PaidOffersTest do
   import PatchbayTest.OfferFixtures
 
   alias Patchbay.{Forum, Offers}
+  alias PatchbayWeb.SignedAgent
 
   setup do
     offers_on!()
@@ -114,12 +117,53 @@ defmodule PatchbayWeb.PaidOffersTest do
        %{conn: conn, advertiser: advertiser, thread: thread} do
     lease!(1, 1, shown_campaign!(advertiser, %{title: "Paired only", requires: [:paired]}))
 
-    for {name, arguments} <- [
-          {"get_thread", %{"thread_id" => thread.id}},
-          {"search_threads", %{"origin" => "stripe.com"}}
-        ] do
+    for {name, arguments} <- reads(thread) do
       assert ["Acme payments"] = titles(tools_call(conn, name, arguments)),
              "#{name} answered without its offer"
+    end
+  end
+
+  test "at /mcp, a read signed by a paired agent also carries the offers made for paired agents, beside the same answer",
+       %{conn: conn, advertiser: advertiser, thread: thread} do
+    SignedAgent.stub_siwa()
+    agent = SignedAgent.pair!()
+    lease!(1, 1, shown_campaign!(advertiser, %{title: "Paired only", requires: [:paired]}))
+
+    for {name, arguments} <- reads(thread) do
+      signed = signed_call(conn, &SignedAgent.sign(&1, agent), name, arguments)
+      unsigned = tools_call(conn, name, arguments)
+
+      assert ["Acme payments", "Paired only"] = titles(signed), "#{name} signed"
+      assert ["Acme payments"] = titles(unsigned), "#{name} unsigned"
+      assert answer(signed) == answer(unsigned)
+    end
+  end
+
+  test "at /mcp, a signature that does not hold, an agent not paired and a spent signed share read as a visitor",
+       %{conn: conn, advertiser: advertiser, thread: thread} do
+    SignedAgent.stub_siwa()
+    agent = SignedAgent.pair!()
+    lease!(1, 1, shown_campaign!(advertiser, %{title: "Paired only", requires: [:paired]}))
+    {name, arguments} = hd(reads(thread))
+    unsigned = tools_call(conn, name, arguments)
+
+    old = Application.fetch_env!(:patchbay, :signed_per_minute)
+    Application.put_env(:patchbay, :signed_per_minute, 1)
+    on_exit(fn -> Application.put_env(:patchbay, :signed_per_minute, old) end)
+
+    # An address nothing else uses, whose one signed read a minute is spent here.
+    address = {0x2001, 0xDB8, :rand.uniform(0xFFFF), :rand.uniform(0xFFFF), 0, 0, 0, 3}
+    from = &(&1 |> Map.put(:remote_ip, address) |> SignedAgent.sign(agent))
+    assert ["Acme payments", "Paired only"] = titles(signed_call(conn, from, name, arguments))
+
+    for {why, sign} <- [
+          {"bad signature", &put_req_header(&1, "x-siwa-signature", "not a signature")},
+          {"not paired", &SignedAgent.sign(&1, %{wallet: wallet()})},
+          {"share spent", from}
+        ] do
+      read = signed_call(conn, sign, name, arguments)
+      assert ["Acme payments"] = titles(read), why
+      assert answer(read) == answer(unsigned), why
     end
   end
 
@@ -157,9 +201,21 @@ defmodule PatchbayWeb.PaidOffersTest do
              conn |> get("/api/offers/campaigns/" <> unknown) |> json_response(404)
   end
 
-  defp tools_call(conn, name, arguments, path \\ "/mcp") do
+  defp reads(thread),
+    do: [
+      {"get_thread", %{"thread_id" => thread.id}},
+      {"search_threads", %{"origin" => "stripe.com"}}
+    ]
+
+  defp tools_call(conn, name, arguments, path \\ "/mcp"),
+    do: conn |> recycle() |> rpc(path, name, arguments)
+
+  # A call `sign` signs, or tries to, after the connection is made anew.
+  defp signed_call(conn, sign, name, arguments),
+    do: conn |> recycle() |> sign.() |> rpc("/mcp", name, arguments)
+
+  defp rpc(conn, path, name, arguments) do
     conn
-    |> recycle()
     |> put_req_header("content-type", "application/json")
     |> post(
       path,
@@ -176,6 +232,8 @@ defmodule PatchbayWeb.PaidOffersTest do
 
   defp titles(%{"structuredContent" => answer}),
     do: Enum.map(answer["paid_offers"]["offers"], & &1["title"])
+
+  defp answer(%{"structuredContent" => answer}), do: steady(Map.delete(answer, "paid_offers"))
 
   # An answer without the moments it was read at.
   defp steady(%{} = map), do: Map.new(Map.delete(map, "as_of"), fn {k, v} -> {k, steady(v)} end)

@@ -32,6 +32,7 @@ defmodule PatchbayWeb.MCPController do
   alias PatchbayWeb.ErrorJSON
   alias PatchbayWeb.MCP.Admission
   alias PatchbayWeb.MCP.Events
+  alias PatchbayWeb.MCP.OfferReader
   alias PatchbayWeb.MCP.PaymentAdmission
   alias PatchbayWeb.MCP.Refusal
   alias PatchbayWeb.MCP.RepairCard
@@ -91,9 +92,11 @@ defmodule PatchbayWeb.MCPController do
   def message(conn, _not_a_request), do: invalid_request(conn)
 
   defp admit(conn, request) do
-    if protected?(request, conn.assigns.mcp_surface),
-      do: authenticate(conn, request),
-      else: conn
+    cond do
+      protected?(request, conn.assigns.mcp_surface) -> authenticate(conn, request)
+      offered?(request, conn.assigns.mcp_surface) -> OfferReader.call(conn)
+      true -> conn
+    end
   end
 
   # A client that names a protocol version in the header must name one this
@@ -197,7 +200,8 @@ defmodule PatchbayWeb.MCPController do
           actor: conn.assigns[:event_actor] || conn.assigns[:agent_actor],
           surface: conn.assigns.mcp_surface,
           principal: conn.assigns[:mcp_agent_principal],
-          visitor: PatchbayWeb.ClientAddress.visitor_key(conn)
+          visitor: PatchbayWeb.ClientAddress.visitor_key(conn),
+          offer_reader: conn.assigns[:offer_reader]
         })
 
       :unknown_session ->
@@ -223,6 +227,13 @@ defmodule PatchbayWeb.MCPController do
   end
 
   defp protected?(_request, _surface), do: false
+
+  # The two reads paid offers follow at /mcp, where a signature may make the
+  # reader a paired agent and never refuses the read (`OfferReader`).
+  defp offered?(%{"method" => "tools/call", "params" => %{"name" => name}}, :native_mcp),
+    do: name in ["get_thread", "search_threads"]
+
+  defp offered?(_request, _surface), do: false
 
   @doc "The address only takes posted messages; it offers no event stream."
   def not_allowed(conn, _params) do

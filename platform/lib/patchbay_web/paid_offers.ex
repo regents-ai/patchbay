@@ -77,11 +77,12 @@ defmodule PatchbayWeb.PaidOffers do
   end
 
   @doc """
-  The reader of a call at `/mcp`: the signed agent, paired with its person's
-  Regent account, else the visitor.
+  The reader of a call at `/mcp`: the agent whose signature held and whose
+  pairing with its person's Regent account is current
+  (`PatchbayWeb.MCP.OfferReader`), else the visitor.
   """
   @spec caller_reader(map()) :: Serving.reader()
-  def caller_reader(%{actor: %Patchbay.Agents.Actor{id: id, wallet_address: wallet}}),
+  def caller_reader(%{offer_reader: %Patchbay.Agents.Actor{id: id, wallet_address: wallet}}),
     do: %{kind: :agent, id: id, wallet: wallet && String.downcase(wallet), evidence: [:paired]}
 
   def caller_reader(%{visitor: visitor}), do: visitor(visitor)
