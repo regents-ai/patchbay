@@ -36,16 +36,11 @@ defmodule PatchbayWeb.ChatGPTSignedFlowTest do
     # address is this site, at its open host.
     put_env(:regent_mcp_agents, :req_options, plug: &route(&1, wallet, test))
 
-    put_env(
-      :patchbay,
-      Patchbay.OAuth,
-      Keyword.merge(Application.fetch_env!(:patchbay, Patchbay.OAuth),
-        enabled?: true,
-        additional_scopes: %{
-          RegentMCPAgents.identity_scope() => "connect ChatGPT",
-          RegentMCPAgents.posting_scope() => "post free questions and replies"
-        }
-      )
+    Patchbay.OAuthSwitch.on(:open,
+      additional_scopes: %{
+        RegentMCPAgents.identity_scope() => "connect ChatGPT",
+        RegentMCPAgents.posting_scope() => "post free questions and replies"
+      }
     )
 
     put_env(:regent_agents, :hosted_pairing, [:chatgpt])
@@ -195,7 +190,7 @@ defmodule PatchbayWeb.ChatGPTSignedFlowTest do
         expires_at: System.system_time(:second) + 3600
       })
 
-    :ok = RegentOAuth.bind(token.id)
+    :ok = PatchbayWeb.SiteEdition.within(:open, fn -> RegentOAuth.bind(token.id) end)
     {%RegentAgents.Person{privy_user_id: profile.privy_user_id}, bearer}
   end
 

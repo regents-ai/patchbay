@@ -18,12 +18,11 @@ defmodule PatchbayWeb.SiteEditionTest do
     /api/agent/payment_intents /api/agent/assists /api/payment_intents /api/assists/:id
     /api/me/usdc_balance /agent-setup /docs /developers /webmcp /start /agents /agents.md
     /claude /claude/agents.md /hermes/troubleshooting /hermes/troubleshooting.md
+    /.well-known/oauth-protected-resource/mcp
   )
 
   @open_only ~w(
-    /.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/chatgpt/mcp
-    /.well-known/oauth-authorization-server /.well-known/openai-apps-challenge
-    /oauth/authorize /oauth/connections
+    /.well-known/oauth-protected-resource/chatgpt/mcp /.well-known/openai-apps-challenge
     /chatgpt/mcp /chatgpt/agent/mcp
   )
 

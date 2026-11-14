@@ -111,6 +111,21 @@ defmodule PatchbayWeb.SiteEdition do
   @spec put(t()) :: t() | nil
   def put(edition) when edition in [:main, :open], do: Process.put(__MODULE__, edition)
 
+  @doc """
+  Runs `fun` as serving `edition`, for work outside a request that belongs to
+  one address, then gives the process back the edition it served before.
+  """
+  @spec within(t(), (-> result)) :: result when result: term()
+  def within(edition, fun) when edition in [:main, :open] do
+    previous = put(edition)
+
+    try do
+      fun.()
+    after
+      if previous, do: put(previous), else: Process.delete(__MODULE__)
+    end
+  end
+
   @impl Plug
   def call(conn, :assign) do
     edition = if conn.host == open_host(), do: :open, else: :main

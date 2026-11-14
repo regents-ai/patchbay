@@ -13,9 +13,7 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
   alias PatchbayWeb.SiteEdition
 
   test "the sign-in names the open address as its issuer and resource", %{conn: conn} do
-    oauth = Application.fetch_env!(:patchbay, Patchbay.OAuth)
-    Application.put_env(:patchbay, Patchbay.OAuth, Keyword.put(oauth, :enabled?, true))
-    on_exit(fn -> Application.put_env(:patchbay, Patchbay.OAuth, oauth) end)
+    Patchbay.OAuthSwitch.on(:open)
 
     resource =
       conn |> on_open() |> get("/.well-known/oauth-protected-resource") |> json_response(200)
@@ -32,9 +30,7 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
   test "the sign-in takes an app's published identity and names only the open address", %{
     conn: conn
   } do
-    oauth = Application.fetch_env!(:patchbay, Patchbay.OAuth)
-    Application.put_env(:patchbay, Patchbay.OAuth, Keyword.put(oauth, :enabled?, true))
-    on_exit(fn -> Application.put_env(:patchbay, Patchbay.OAuth, oauth) end)
+    Patchbay.OAuthSwitch.on(:open)
 
     server =
       conn |> on_open() |> get("/.well-known/oauth-authorization-server") |> json_response(200)
@@ -183,7 +179,9 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
     %{"mcpServers" => %{"patchbay" => server}} = read_json(plugin, "mcp.json")
 
     assert server["url"] == "https://open.patchbay.help/chatgpt/mcp"
-    assert server["extensions"]["com.openai"]["auth"]["resource"] == RegentOAuth.resource()
+
+    assert server["extensions"]["com.openai"]["auth"]["resource"] ==
+             SiteEdition.within(:open, &RegentOAuth.resource/0)
 
     for key <- ~w(websiteURL supportURL privacyPolicyURL termsOfServiceURL) do
       %URI{host: "open.patchbay.help", path: path} = URI.parse(interface[key])

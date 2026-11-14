@@ -2,23 +2,18 @@ defmodule PatchbayWeb.OAuthController do
   @moduledoc """
   Boruta protocol routes and consent under the verified browser session and CSRF.
 
+  Each address answers with its own sign-in (`Patchbay.OAuth`): the open
+  address's for the ChatGPT plugin, patchbay.help's for every other connected
+  app. A route answers a 404 while its address's sign-in is switched off.
+
   The connected-apps page is the shared library's, except for a browser that
   is signed out and asks for a web page: it gets Patchbay's own page saying to
   sign in, with the site's Sign in button. Any other caller signed out keeps
   the library's JSON answer.
-
-  Connected-app sign-in lives only at the open address. At patchbay.help the
-  register, token and revoke addresses answer a 404 in OAuth's error shape
-  (RFC 6749, section 5.2) naming the same address there, and use nothing the
-  request sent: an app that reads threads at patchbay.help's `/mcp` and then
-  asks here for a token learns where to ask.
   """
   use PatchbayWeb, :controller
 
-  alias PatchbayWeb.SiteEdition
-
-  plug :rate_limit when action in [:register, :token, :revoke]
-  plug :open_address_only when action in [:register, :token, :revoke]
+  plug :rate_limit when action in [:register, :token, :revoke, :authorize, :approve]
 
   for action <- [:resource_metadata, :server_metadata, :register, :token, :revoke] do
     def unquote(action)(conn, _params), do: RegentOAuth.Protocol.call(conn, unquote(action))
@@ -45,10 +40,12 @@ defmodule PatchbayWeb.OAuthController do
     conn |> get_req_header("accept") |> Enum.any?(&String.contains?(&1, "text/html"))
   end
 
+  # Opening consent may record a new app from its published identity, as
+  # registering does, so the two share the lower limit.
   defp rate_limit(conn, _opts) do
     {address, _source} = PatchbayWeb.ClientAddress.key(conn)
     action = action_name(conn)
-    limit = if action == :register, do: 30, else: 120
+    limit = if action in [:register, :authorize], do: 30, else: 120
 
     case PatchbayWeb.ReadLimit.admit({:oauth, action, address}, limit, 60) do
       {:ok, _} ->
@@ -60,21 +57,5 @@ defmodule PatchbayWeb.OAuthController do
         |> RegentOAuth.Protocol.json(429, %{error: "rate_limited"})
         |> halt()
     end
-  end
-
-  defp open_address_only(%{assigns: %{site_edition: :open}} = conn, _opts), do: conn
-
-  defp open_address_only(%{assigns: %{site_edition: :main}} = conn, _opts) do
-    there = "#{SiteEdition.url(:open)}/oauth/#{action_name(conn)}"
-
-    conn
-    |> put_status(:not_found)
-    |> put_resp_header("cache-control", "no-store")
-    |> put_resp_header("pragma", "no-cache")
-    |> json(%{
-      error: "invalid_request",
-      error_description: "Connected-app sign-in is not at this address. Use #{there}"
-    })
-    |> halt()
   end
 end

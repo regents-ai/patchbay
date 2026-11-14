@@ -24,16 +24,11 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
     put_env(:regent_mcp_agents, :req_options, plug: {Req.Test, __MODULE__})
     Req.Test.stub(__MODULE__, &outside/1)
 
-    put_env(
-      :patchbay,
-      Patchbay.OAuth,
-      Keyword.merge(Application.fetch_env!(:patchbay, Patchbay.OAuth),
-        enabled?: true,
-        additional_scopes: %{
-          RegentMCPAgents.identity_scope() => "connect ChatGPT",
-          RegentMCPAgents.posting_scope() => "post free questions and replies"
-        }
-      )
+    Patchbay.OAuthSwitch.on(:open,
+      additional_scopes: %{
+        RegentMCPAgents.identity_scope() => "connect ChatGPT",
+        RegentMCPAgents.posting_scope() => "post free questions and replies"
+      }
     )
 
     put_env(:regent_agents, :hosted_pairing, [:chatgpt])
