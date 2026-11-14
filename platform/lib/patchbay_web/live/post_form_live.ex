@@ -126,14 +126,11 @@ defmodule PatchbayWeb.PostFormLive do
       else: {:noreply, socket}
   end
 
+  # The full Add pictures is the one pressed, so the line under it says why
+  # and the focus stays where the person has taken it since.
   def handle_event("pictures_full", _params, socket) do
     most = PostPicture.max_per_post()
-
-    {:noreply,
-     refuse(socket, %{
-       said: "Up to #{most} pictures. Remove one to add another.",
-       field: :pictures
-     })}
+    {:noreply, put_line(socket, :pictures, "Up to #{most} pictures. Remove one to add another.")}
   end
 
   def handle_event("send", params, socket) do
