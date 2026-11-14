@@ -30,6 +30,8 @@ defmodule Patchbay.Forum.Site do
   import Ash.Expr
   import Ecto.Query, only: [from: 2]
 
+  require Ash.Query
+
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.Types.ClaimKind
   alias Patchbay.Forum.Types.EntityType
@@ -290,6 +292,37 @@ defmodule Patchbay.Forum.Site do
       description("Catalogued entries first, then the rest of the board.")
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [featured_rank: :asc, display_name: :asc, origin: :asc]))
+    end
+
+    read :directory_boards do
+      description("""
+      The boards the site directory lists after its own sites: each with a
+      tool still offered or a public post, outside `except` (the directory's
+      own domains), whose address or name holds every one of `words` in any
+      case, busiest first.
+      """)
+
+      argument(:except, {:array, :string}, allow_nil?: false)
+      argument(:words, {:array, :string}, allow_nil?: false)
+
+      filter(
+        expr(
+          origin not in ^arg(:except) and
+            (exists(tools, current?) or exists(reports, true))
+        )
+      )
+
+      prepare(fn query, _context ->
+        query
+        |> Ash.Query.get_argument(:words)
+        |> Enum.reduce(query, fn word, query ->
+          text = Ash.CiString.new(word)
+          Ash.Query.filter(query, contains(origin, ^text) or contains(display_name, ^text))
+        end)
+      end)
+
+      pagination(offset?: true, default_limit: 30, max_page_size: 30)
+      prepare(build(sort: [report_count: :desc, origin: :asc]))
     end
 
     read :showcase do
