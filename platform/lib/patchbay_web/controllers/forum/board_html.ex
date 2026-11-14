@@ -422,8 +422,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     ~H"""
     <a href={~p"/"} aria-current={nav_current(@conn, "/")}>Questions</a>
     <a href={~p"/sites"} aria-current={nav_current(@conn, "/sites")}>Sites</a>
+    <a :if={offers?(@conn)} href={~p"/offers"} aria-current={nav_current(@conn, "/offers")}>Offers</a>
     """
   end
+
+  # Agent offers are patchbay.help's alone, and only while a market is set.
+  defp offers?(conn), do: conn.assigns[:site_edition] == :main and Patchbay.Offers.enabled?()
 
   # The home page's own form starts a question, so its header has no Ask button.
   defp home?(%Plug.Conn{request_path: "/"}), do: true
@@ -437,6 +441,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
       do: "page"
   end
 
+  defp nav_current(%Plug.Conn{request_path: "/offers"}, "/offers"), do: "page"
   defp nav_current(_conn, _path), do: nil
 
   @doc "The banner inner board pages open with. The site header lives in the root layout."

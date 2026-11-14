@@ -3,10 +3,17 @@ defmodule Patchbay.ChainClient do
   JSON-RPC reads at the latest block of a chain, through the site's own node
   for it (`config :patchbay, :chain_nodes`), never the public address a wallet
   adds the chain with. Regent Points reads the NFTs a person holds through
-  `rpc/3`.
+  `rpc/3`; `RegentChain.Outcome` reads a step a page sent through
+  `transaction/2` and `receipt/2`.
   """
 
   @behaviour RegentPoints.ChainClient
+
+  @doc "The transaction sent as `hash`, or `nil` while the chain does not know it."
+  def transaction(chain, hash), do: rpc(chain, "eth_getTransactionByHash", [hash])
+
+  @doc "The receipt for `hash`, or `nil` while it has not landed."
+  def receipt(chain, hash), do: rpc(chain, "eth_getTransactionReceipt", [hash])
 
   @doc """
   One JSON-RPC request to the chain's node; one that gets no answer counts in

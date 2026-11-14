@@ -166,3 +166,73 @@ against real Base USDC on a local fork, then pushes the revenue kept into the re
 ```sh
 forge script script/Sanity.s.sol --rpc-url $BASE_RPC_URL
 ```
+
+# Agent offer markets
+
+`AgentOfferFactory` and `AgentOfferMarket` (interface `IAgentOfferMarket`) are where agent Offers are
+bought on Base. They are built and tested here and **not deployed**: there is no deploy script for
+them, and the factory refuses to deploy anywhere but Base mainnet (chain 8453, with Circle's native
+USDC at `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), so they cannot be tried on Base Sepolia as
+written. The tests set the chain id to 8453 and place a stand-in token at that address.
+
+## The model
+
+- A **publisher** is the operator that shows Offers to agents and is paid for it. Patchbay is
+  admitted from the start; the factory's owner admits others later. Each admitted publisher creates
+  **one market**, a clone of one fixed implementation that the factory deploys itself, at an address
+  `predictMarket(publisher)` gives in advance.
+- A **placement** is one surface a publisher sells: a number of slots (`capacity`), a lease length
+  (`durationSeconds`), a buyout step (`minBumpBps`), a floor price (`floorUSDC`) and an admission
+  policy (`policyHash`). Patchbay's own settings are 3 slots, 72 hours and a 10% step; they are not
+  rules of the market. A placement's terms never change. To change them the publisher terminates it,
+  or lets its leases run out, and creates a new one. The market cannot tell that two placements are
+  the same place on a page, so the publisher must not sell a replacement while the old one is open.
+- A **lease** is one slot bought for one full term. On an empty slot, or one whose lease has run out,
+  it costs at least the floor. While a lease is live, a buyout must pay at least the lease's payment
+  plus the step, rounded up to the next base unit; the buyer gets a fresh full term, and the replaced
+  buyer is credited the unused share of its payment, `paid × seconds left ÷ duration`, rounded down.
+  A purchase at the exact second a lease ends meets a run-out lease: the floor applies and nothing is
+  refunded.
+- Every purchase carries the publisher's **admission**: an EIP-712 signature (or an ERC-1271
+  approval from a contract wallet) over the placement, slot, source, buyer, campaign, policy, amount,
+  the slot's lease nonce and a deadline, in a domain bound to the chain and that one market's
+  address. A slot's nonce counts the leases it has sold and never resets, so two buyers racing for
+  the same slot cannot both land, and an admission is used at most once.
+
+## Money
+
+- Nothing is paid out during a purchase. Settling a lease (bought out, run out, or terminated) only
+  credits: the refund to the buyer, the earned part to the payout wallet less the protocol fee, and
+  the fee to `revenueOwed`. The three always add up to exactly what the lease paid.
+- Every credit leaves only through its owner's `claim(recipient)`; a wallet USDC has frozen can send
+  its credit to another wallet of its own. The fee leaves only through `pushRevenue()`, which anyone
+  may call and which deposits into the REGENT revenue staking contract tagged `agent.offers`, with the
+  market's address as the reference. While staking is paused, only the push waits.
+- The market keeps its books by amounts:
+  `usdc.balanceOf(market) >= totalLeaseDeposits() + totalClaimable() + revenueOwed()` at all times.
+  USDC sent straight to a market is nobody's credit and stays there; there is no sweep.
+- The protocol fee is set once in the factory (1,000 basis points, 10%, for the planned deployment)
+  and can be at most 2,000 (20%), so a publisher always keeps at least 80% of what it earns.
+
+## Who can do what
+
+- **Factory owner:** admits and removes publishers. Removing one stops it creating a market; a market
+  already created keeps running. The owner has no way to touch any market or its money.
+- **Publisher:** creates placements, signs admissions and terminates placements. A termination
+  refunds every live lease from that moment, one slot per `settleTerminated` call (anyone may make
+  it), however late. A stolen publisher key can do no more than this: it cannot redirect earnings or
+  take deposits.
+- **Payout wallet:** fixed when the market is created and never changed. If it is lost, only the
+  publisher's own earnings are stranded; buyers' refunds are credited to buyers. The publisher would
+  then terminate its placements and, with the owner admitting a new publisher address, create a new
+  market with a new payout wallet. A Safe is the better choice for the payout wallet.
+- **Anyone:** buys (with an admission), settles run-out or terminated leases, and pushes the fee.
+
+Lease lengths are capped at 365 days, the step at 10,000 basis points (a buyout never has to pay more
+than double), and every bound is checked when a placement is created.
+
+## Checks
+
+The same commands as above. `test/AgentOfferMarket.t.sol` holds the unit, fuzz, reentrancy and
+invariant suites; `test/AgentOfferFactory.t.sol` the factory's, including a permit for one market
+being refused by another.

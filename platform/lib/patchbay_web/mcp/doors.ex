@@ -26,6 +26,7 @@ defmodule PatchbayWeb.MCP.Doors do
   alias PatchbayWeb.IdentityAPI.NameController
   alias PatchbayWeb.KnownFixController
   alias PatchbayWeb.MessagesController
+  alias PatchbayWeb.OffersController
   alias PatchbayWeb.PaymentLimit
   alias PatchbayWeb.PaymentsAPI.PaymentIntentController
   alias PatchbayWeb.WalletBenchController
@@ -34,7 +35,7 @@ defmodule PatchbayWeb.MCP.Doors do
             like_post unlike_post report_tool_on_another_site reply_to_report
             account_points read_wallet_bench read_wallet_bench_pair read_tool_catalog
             set_my_agent_name read_inbox acknowledge_inbox_item refresh_site messages_leave
-            post_priority_report execute_payment get_payment_status)
+            post_priority_report execute_payment get_payment_status read_offers)
 
   @doc "The hosted tools answered here."
   @spec names() :: [String.t()]
@@ -124,6 +125,8 @@ defmodule PatchbayWeb.MCP.Doors do
 
   defp door("refresh_site", %{"site" => site}, %{actor: actor}),
     do: SiteRefreshController.refresh_site(actor, site)
+
+  defp door("read_offers", _arguments, _caller), do: OffersController.read_offers()
 
   # New terms and reads draw on the paying wallet's share, as at
   # `/api/agent/payment_intents` (`PatchbayWeb.Plugs.PaymentBudget`).
