@@ -183,7 +183,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
 
   # Paid offers follow a whole answer at patchbay.help only (`PatchbayWeb.PaidOffers`).
   defp with_offers(%{assigns: %{site_edition: :main}} = conn, payload, add),
-    do: add.(payload, PaidOffers.reader(conn), :json)
+    do: add.(payload, PaidOffers.visitor_reader(conn), :json)
 
   defp with_offers(_open, payload, _add), do: payload
 

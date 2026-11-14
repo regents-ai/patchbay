@@ -62,19 +62,22 @@ defmodule PatchbayWeb.PaidOffers do
   defp searched_site(_none), do: nil
 
   @doc """
-  The reader of a request: the signed-in person, else the visitor by the
-  keyed hash of their address.
+  The reader of a page: the person its browser signs in
+  (`PatchbayWeb.Plugs.CurrentProfile`), else the visitor by the keyed hash of
+  their address.
   """
   @spec reader(Plug.Conn.t()) :: Serving.reader()
-  def reader(%Plug.Conn{} = conn) do
-    case conn.assigns[:current_profile] do
-      %{id: id, wallet_address: wallet} ->
-        %{kind: :person, id: id, wallet: wallet && String.downcase(wallet), evidence: []}
+  def reader(%Plug.Conn{assigns: %{current_profile: %{id: id, wallet_address: wallet}}}),
+    do: %{kind: :person, id: id, wallet: wallet && String.downcase(wallet), evidence: []}
 
-      _anyone ->
-        visitor(ClientAddress.visitor_key(conn))
-    end
-  end
+  def reader(%Plug.Conn{assigns: %{current_profile: nil}} = conn), do: visitor_reader(conn)
+
+  @doc """
+  The reader of a JSON read over HTTP, which no one signs in to: the visitor
+  by the keyed hash of their address.
+  """
+  @spec visitor_reader(Plug.Conn.t()) :: Serving.reader()
+  def visitor_reader(%Plug.Conn{} = conn), do: visitor(ClientAddress.visitor_key(conn))
 
   @doc """
   The reader of a call at `/mcp`: the agent whose signature held and whose

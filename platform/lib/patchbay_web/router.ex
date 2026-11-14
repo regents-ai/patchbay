@@ -474,7 +474,7 @@ defmodule PatchbayWeb.Router do
         {PatchbayWeb.CurrentProfile, :default},
         PatchbayWeb.Moderators
       ],
-      session: {PatchbayWeb.VisitLog, :session, []} do
+      session: {PatchbayWeb.CurrentProfile, :render_context, []} do
       live "/offers", OffersAdminLive, :index
     end
   end

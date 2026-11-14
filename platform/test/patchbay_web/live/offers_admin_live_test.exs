@@ -18,7 +18,6 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
   import PatchbayTest.OfferFixtures
 
   alias Patchbay.Offers
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   @path "/admin/offers"
 
@@ -33,14 +32,14 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
   test "is not there for a visitor or a signed-in person, at the open address, or with no market",
        %{conn: conn, advertiser: advertiser} do
     assert_error_sent 404, fn -> get(conn, @path) end
-    assert_error_sent 404, fn -> conn |> signed_in(advertiser) |> get(@path) end
+    assert_error_sent 404, fn -> conn |> sign_in(advertiser.id) |> get(@path) end
 
     moderator = moderator()
-    assert conn |> signed_in(moderator) |> get(@path) |> html_response(200) =~ "pb-offers-admin"
-    assert_error_sent 404, fn -> conn |> on_open() |> signed_in(moderator) |> get(@path) end
+    assert conn |> sign_in(moderator.id) |> get(@path) |> html_response(200) =~ "pb-offers-admin"
+    assert_error_sent 404, fn -> conn |> on_open() |> sign_in(moderator.id) |> get(@path) end
 
     offers_on!(market_address: nil)
-    assert_error_sent 404, fn -> conn |> signed_in(moderator) |> get(@path) end
+    assert_error_sent 404, fn -> conn |> sign_in(moderator.id) |> get(@path) end
   end
 
   test "a moderator approves and pulls a campaign in place, and reads the refund steps", %{
@@ -48,7 +47,7 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
     campaign: campaign
   } do
     lease!(1, 2, campaign)
-    {:ok, view, _html} = conn |> signed_in(moderator()) |> live(@path)
+    {:ok, view, _html} = conn |> sign_in(moderator().id) |> live(@path)
     row = "#pb-oa-campaign-#{campaign.id}"
 
     assert has_element?(view, "#{row}[data-review=waiting]")
@@ -69,7 +68,7 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
   end
 
   test "a moderator accepts, blocks and removes advertiser wallets in place", %{conn: conn} do
-    {:ok, view, _html} = conn |> signed_in(moderator()) |> live(@path)
+    {:ok, view, _html} = conn |> sign_in(moderator().id) |> live(@path)
     held = wallet()
 
     view
@@ -97,7 +96,7 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
   } do
     approve!(campaign)
     lease!(1, 0, campaign)
-    {:ok, view, _html} = conn |> signed_in(moderator()) |> live(@path)
+    {:ok, view, _html} = conn |> sign_in(moderator().id) |> live(@path)
     placement = "#pb-oa-placement-1"
 
     assert view |> element("#{placement} .pb-oa-pools-chosen") |> render() =~ "General"
@@ -143,7 +142,7 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
 
     Offers.stop_cursor!(cursor, 12, actor: system)
 
-    {:ok, view, _html} = conn |> signed_in(moderator()) |> live(@path)
+    {:ok, view, _html} = conn |> sign_in(moderator().id) |> live(@path)
     assert has_element?(view, "#pb-oa-reading")
 
     view |> form("#pb-oa-clear", %{"next_block" => "12"}) |> render_submit()
@@ -197,7 +196,7 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
           {"set_rule", %{"wallet" => wallet(), "verdict" => "blocked"}},
           {"create_pool", %{"name" => "Payments", "tags" => ""}}
         ] do
-      {:ok, view, _html} = conn |> signed_in(moderator) |> live(@path)
+      {:ok, view, _html} = conn |> sign_in(moderator.id) |> live(@path)
       listed = Application.get_env(:patchbay, :moderator_wallets)
       Application.put_env(:patchbay, :moderator_wallets, listed -- [moderator.wallet_address])
 
@@ -211,11 +210,4 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
 
   defp rules(wallet),
     do: Offers.advertiser_rules!([wallet], actor: %{role: :system})
-
-  defp signed_in(conn, profile) do
-    conn
-    |> recycle()
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second) - 5)
-  end
 end
