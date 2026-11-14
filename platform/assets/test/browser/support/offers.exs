@@ -28,13 +28,17 @@ profile =
     wallet_address: wallet
   })
 
+signed_at = System.system_time(:second)
+
 {:ok, _account} =
   Accounts.establish(%RegentPrivy.Session{
-    app_id: System.fetch_env!("PRIVY_APP_ID"),
+    app_id: Identity.Privy.app_id(),
     session_id: "browser-walk-advertiser",
     privy_user_id: profile.privy_user_id,
     wallet_address: wallet,
-    wallet_addresses: [wallet]
+    wallet_addresses: [wallet],
+    issued_at: signed_at,
+    expires_at: signed_at + 600
   })
 
 advertiser = Identity.get_profile!(profile.id, load: [:wallet_addresses])
