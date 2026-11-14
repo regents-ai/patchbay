@@ -22,6 +22,8 @@ defmodule Patchbay.Offers do
     * `Patchbay.Offers.Admission`: Patchbay's signature admitting one
       purchase, once the campaign is eligible for the slot
       (`Patchbay.Offers.Eligibility`).
+    * `Patchbay.Offers.Source`: what a placement is for, a listed site,
+      General or CVE incidents, and which go with a page.
     * `Patchbay.Offers.Serving`: the paid offers that go with a page or an
       answer, and `Patchbay.Offers.Delivery`, each one shown.
 
@@ -83,7 +85,7 @@ defmodule Patchbay.Offers do
     resource Patchbay.Offers.Placement do
       define(:record_placement, action: :record)
       define(:open_placements, action: :open, args: [:chain_id, :market])
-      define(:site_placements, action: :open_on_site, args: [:chain_id, :market, :origin])
+      define(:source_placements, action: :open_for, args: [:chain_id, :market, :origins])
       define(:get_placement, action: :read, get_by: [:chain_id, :market, :placement_id])
     end
 
@@ -95,6 +97,13 @@ defmodule Patchbay.Offers do
       define(:record_lease, action: :record)
       define(:live_leases, action: :live, args: [:chain_id, :market])
       define(:placement_leases, action: :live_in, args: [:chain_id, :market, :placement_ids])
+
+      define(:bought_since,
+        action: :bought_since,
+        args: [:chain_id, :market, :placement_ids, :since]
+      )
+
+      define(:latest_purchases, action: :latest_in, args: [:chain_id, :market, :placement_ids])
     end
 
     resource Patchbay.Offers.Delivery do

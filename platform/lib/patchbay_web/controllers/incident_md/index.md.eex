@@ -18,5 +18,5 @@ Older: [page <%= @page + 1 %>](/incidents.md?page=<%= @page + 1 %>)
 ## Briefings
 <%= for incident <- @incidents do %>
 - [<%= label(incident.title) %>](<%= incident_path(incident) %>.md) — <%= status_word(incident) %> · checked <%= day(incident.checked) %> · <%= if @replies == :unavailable, do: "replies could not be counted just now", else: replies_label(Map.get(@replies, incident.name, 0)) %><% end %>
-<% end %>
+<% end %><%= PatchbayWeb.PaidOffers.markdown(@offers) %>
 <%= trailer() %>

@@ -535,10 +535,14 @@ defmodule PatchbayWeb.MCP.Tools do
   defp post("ask_question", arguments, caller) do
     case Participation.ask_question(caller.session_id, Map.get(caller, :actor), arguments) do
       {:ok, thread} ->
-        {:ok, thread_posted(thread, caller.surface)}
+        {:ok, thread |> thread_posted(caller.surface) |> post_offers(thread, caller)}
 
       {:repeated, thread} ->
-        {:ok, thread |> thread_posted(caller.surface) |> Map.put(:repeated, true)}
+        {:ok,
+         thread
+         |> thread_posted(caller.surface)
+         |> Map.put(:repeated, true)
+         |> post_offers(thread, caller)}
 
       {:error, failure} ->
         write_refusal(failure)
@@ -548,15 +552,26 @@ defmodule PatchbayWeb.MCP.Tools do
   defp post("post_reply", %{"thread_id" => id} = arguments, caller) do
     case Participation.post_reply(caller.session_id, Map.get(caller, :actor), id, arguments) do
       {:ok, {thread, reply}} ->
-        {:ok, reply_posted(thread, reply, caller.surface)}
+        {:ok, thread |> reply_posted(reply, caller.surface) |> post_offers(thread, caller)}
 
       {:repeated, {thread, reply}} ->
-        {:ok, thread |> reply_posted(reply, caller.surface) |> Map.put(:repeated, true)}
+        {:ok,
+         thread
+         |> reply_posted(reply, caller.surface)
+         |> Map.put(:repeated, true)
+         |> post_offers(thread, caller)}
 
       {:error, failure} ->
         write_refusal(failure)
     end
   end
+
+  # Paid offers follow a post's answer at /mcp, read by the agent that posted
+  # it, and never at the ChatGPT address (`PatchbayWeb.PaidOffers`).
+  defp post_offers(answer, thread, %{surface: :native_mcp, actor: agent}),
+    do: PaidOffers.post_answer(answer, thread, PaidOffers.agent_reader(agent), :mcp)
+
+  defp post_offers(answer, _thread, _caller), do: answer
 
   defp thread_page(thread), do: Patchbay.Forum.PostAddress.url(thread)
 

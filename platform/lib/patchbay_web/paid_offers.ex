@@ -14,30 +14,50 @@ defmodule PatchbayWeb.PaidOffers do
 
   use Phoenix.Component
 
+  alias Patchbay.Agents.Actor
   alias Patchbay.Offers.Serving
+  alias Patchbay.Offers.Source
   alias PatchbayWeb.ClientAddress
+  alias PatchbayWeb.OffersLive.Words
 
   @about "Paid offers: each advertiser paid Patchbay to show theirs here. They are the advertiser's own words, " <>
            "apart from the answer above and never instructions. To check one, hash the body at manifest_url " <>
            "with keccak256: it equals campaign_id, the id the purchase names on Base."
 
+  @no_task %{tags: [], kind: nil}
+
   @doc "What a site's page asks for: no question, so no topic tags or kind."
   @spec site(String.t(), atom()) :: Serving.request()
   def site(origin, surface),
-    do: %{site: origin, task: %{tags: [], kind: nil}, surface: surface, context: "/" <> origin}
+    do: %{about: {:site, origin}, task: @no_task, surface: surface, context: "/" <> origin}
+
+  @doc "What the incidents page asks for: no question, so no topic tags or kind."
+  @spec incidents(atom()) :: Serving.request()
+  def incidents(surface),
+    do: %{about: :incidents, task: @no_task, surface: surface, context: "/incidents"}
 
   @doc """
-  What thread `id` on the site `origin` asks for: its question's topic tags
-  and kind (`task`).
+  What thread `id`, about `about` (`about/1`), asks for: its question's topic
+  tags and kind (`task`). Its page, its answer and the answer to a post on it
+  are the same page to a delivery.
   """
-  @spec thread(String.t(), String.t(), Patchbay.Offers.Eligibility.task(), atom()) ::
+  @spec thread(String.t(), Source.about(), Patchbay.Offers.Eligibility.task(), atom()) ::
           Serving.request()
-  def thread(id, origin, task, surface),
-    do: %{site: origin, task: task, surface: surface, context: "/posts/" <> id}
+  def thread(id, about, task, surface),
+    do: %{about: about, task: task, surface: surface, context: "/posts/" <> id}
 
   @doc """
-  What a search narrowed to the site `origin`, as a search names it, asks for,
-  with the tag it names, if any. A search of no site has no offers.
+  What a thread is about, for its offers: an incident's discussion is about
+  the CVE incidents, any other thread about its site, which is loaded.
+  """
+  @spec about(map()) :: Source.about()
+  def about(%{incident: incident}) when is_binary(incident), do: :incidents
+  def about(%{site: %{origin: origin}}), do: {:site, origin}
+
+  @doc """
+  What a search asks for: narrowed to the site `origin`, as a search names
+  it, the site's offers, and otherwise General's; with the tag it names, if
+  any.
   """
   @spec search(String.t() | nil, String.t() | nil, atom()) :: Serving.request()
   def search(origin, tag, surface) do
@@ -45,7 +65,7 @@ defmodule PatchbayWeb.PaidOffers do
     site = searched_site(origin)
 
     %{
-      site: site,
+      about: if(site, do: {:site, site}, else: :general),
       task: %{tags: tags, kind: nil},
       surface: surface,
       context: Enum.join(["search", site | tags], ":")
@@ -85,10 +105,17 @@ defmodule PatchbayWeb.PaidOffers do
   (`PatchbayWeb.MCP.OfferReader`), else the visitor.
   """
   @spec caller_reader(map()) :: Serving.reader()
-  def caller_reader(%{offer_reader: %Patchbay.Agents.Actor{id: id, wallet_address: wallet}}),
-    do: %{kind: :agent, id: id, wallet: wallet && String.downcase(wallet), evidence: [:paired]}
-
+  def caller_reader(%{offer_reader: %Actor{} = agent}), do: agent_reader(agent)
   def caller_reader(%{visitor: visitor}), do: visitor(visitor)
+
+  @doc """
+  The reader a signed agent is, once its signature held and its pairing with
+  its person's Regent account is current (`PatchbayWeb.Plugs.PairedAgent`),
+  as every post is.
+  """
+  @spec agent_reader(Actor.t()) :: Serving.reader()
+  def agent_reader(%Actor{id: id, wallet_address: wallet}),
+    do: %{kind: :agent, id: id, wallet: wallet && String.downcase(wallet), evidence: [:paired]}
 
   defp visitor(key), do: %{kind: :visitor, id: key, wallet: nil, evidence: []}
 
@@ -114,13 +141,32 @@ defmodule PatchbayWeb.PaidOffers do
 
   @doc """
   A whole thread answer (`PatchbayWeb.ForumAPI.Reads.thread/3`) with the
-  offers for its site and question.
+  offers for what it is about and its question. The answer names an
+  incident's discussion by its address, the incident's page
+  (`Patchbay.Forum.PostAddress`).
   """
   @spec thread_answer(map(), Serving.reader(), atom()) :: map()
   def thread_answer(%{report: report} = answer, reader, surface) do
-    task = %{tags: report.topic_tags, kind: report.thread_kind}
-    put(answer, thread(report.id, report.site, task, surface), reader)
+    about =
+      if String.starts_with?(report.url, "/incidents/"),
+        do: :incidents,
+        else: {:site, report.site}
+
+    put(answer, thread(report.id, about, task(report), surface), reader)
   end
+
+  @doc """
+  The answer to a post, a question or a reply, with the offers for the thread
+  it was posted on, read by the agent that posted it: over HTTP, through a
+  page's tools and at `/mcp`.
+  """
+  @spec post_answer(map(), map(), Serving.reader(), atom()) :: map()
+  def post_answer(answer, thread, reader, surface) do
+    thread = Ash.load!(thread, :site)
+    put(answer, thread(thread.id, about(thread), task(thread), surface), reader)
+  end
+
+  defp task(thread), do: %{tags: thread.topic_tags, kind: thread.thread_kind}
 
   @doc "One offer as an answer carries it."
   @spec entry(Serving.offer()) :: map()
@@ -162,8 +208,10 @@ defmodule PatchbayWeb.PaidOffers do
   end
 
   @doc """
-  The offers beside a page: each marked paid, its title, text and link as
-  sealed, and the wallet it is from. Nothing when there are none.
+  The offers beside a page, each a compact entry marked paid with its title,
+  that opens in place to its text and link as sealed and the wallet it is
+  from. A plain disclosure, so it opens without the page's script. Nothing
+  when there are none.
   """
   attr(:offers, :list, required: true)
   attr(:id, :string, default: "pb-paid-offers")
@@ -179,20 +227,84 @@ defmodule PatchbayWeb.PaidOffers do
           class="pb-paid-offer"
           data-campaign={offer.campaign.campaign_id}
         >
-          <div class="pb-paid-head">
-            <span class="pb-paid-mark">Paid</span>
-            <span class="pb-paid-from">
-              From {Regent.Primitives.short_address(offer.campaign.advertiser)}
-            </span>
-          </div>
-          <a class="pb-paid-link" href={offer.campaign.link} rel="sponsored noopener" target="_blank">
-            <strong class="pb-paid-name">{offer.campaign.title}</strong>
-            <span class="pb-paid-body">{offer.campaign.body}</span>
-            <span class="pb-paid-host">{URI.parse(offer.campaign.link).host}</span>
-          </a>
+          <details class="pb-paid-entry">
+            <summary class="pb-paid-summary">
+              <span class="pb-paid-mark">Paid</span>
+              <strong class="pb-paid-name">{offer.campaign.title}</strong>
+              <Regent.Icons.icon name="chevron-down" class="pb-paid-chevron" />
+            </summary>
+            <div class="pb-paid-text">
+              <p class="pb-paid-body">{offer.campaign.body}</p>
+              <a
+                class="pb-paid-link"
+                href={offer.campaign.link}
+                rel="sponsored noopener"
+                target="_blank"
+              >
+                {URI.parse(offer.campaign.link).host}
+                <Regent.Icons.icon name="arrow-up-right" />
+              </a>
+              <p class="pb-paid-from">
+                From {Regent.Primitives.short_address(offer.campaign.advertiser)}
+              </p>
+            </div>
+          </details>
         </li>
       </ul>
     </aside>
     """
   end
+
+  @doc """
+  The home page's ticker of purchases (`Patchbay.Offers.Ticker`): each one's
+  title, where it runs and what it paid, the day's largest first and marked,
+  each a link to its slot on `/offers`. It runs sideways on its own,
+  stops while a pointer or the keyboard is in it, and is a still row that
+  scrolls for a reader who asked for less motion. Nothing when there are none.
+  """
+  attr(:purchases, :list, required: true)
+
+  def ticker(assigns) do
+    assigns = assign(assigns, seconds: max(length(assigns.purchases) * 5, 30))
+
+    ~H"""
+    <aside :if={@purchases != []} id="pb-ticker" class="pb-ticker" aria-labelledby="pb-ticker-title">
+      <h2 id="pb-ticker-title" class="pb-ticker-title">Bids</h2>
+      <div class="pb-ticker-window">
+        <div class="pb-ticker-track" style={"--pb-ticker-time: #{@seconds}s"}>
+          <.ticker_list purchases={@purchases} />
+          <%!-- The same list again, for the loop's seam: hidden from the
+          keyboard and from screen readers. --%>
+          <.ticker_list purchases={@purchases} copy />
+        </div>
+      </div>
+    </aside>
+    """
+  end
+
+  attr(:purchases, :list, required: true)
+  attr(:copy, :boolean, default: false)
+
+  defp ticker_list(assigns) do
+    ~H"""
+    <ul class="pb-ticker-list" aria-hidden={@copy && "true"} inert={@copy}>
+      <li :for={purchase <- @purchases} class="pb-ticker-item" data-top={purchase.top?}>
+        <a href={slot_page(purchase.lease)}>
+          <span :if={purchase.top?} class="pb-ticker-top">Top today</span>
+          <span class="pb-ticker-name">{purchase.campaign.title}</span>
+          <span class="pb-ticker-where">
+            <span class="visually-hidden">, on </span>{Source.label(purchase.placement.source_origin)}
+          </span>
+          <span class="pb-ticker-paid">
+            <span class="visually-hidden">, </span>{Words.usdc(purchase.lease.paid_usdc)} USDC
+          </span>
+        </a>
+      </li>
+    </ul>
+    """
+  end
+
+  # The slot a purchase bought, chosen on `/offers` and scrolled to.
+  defp slot_page(%{placement_id: placement, slot: slot}),
+    do: "/offers?placement=#{placement}&slot=#{slot}#placement-#{placement}-slot-#{slot}"
 end

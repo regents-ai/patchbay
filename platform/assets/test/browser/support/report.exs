@@ -193,3 +193,65 @@ File.write!(
   "assets/test/browser/.auth/#{System.fetch_env!("PATCHBAY_DEV_PARTITION")}/presses.json",
   Jason.encode!(presses)
 )
+
+# The walk's namer, whose name is as long as a name may be (sign_in.exs), asked a
+# question on a board of its own and replied to it; an agent answered it for
+# them, and the reader turned away a reply of theirs. Their name then shows in a
+# list row, a post's and a reply's heading, an agent's "proxy" line, the Points
+# board and the moderators' list (long_name.spec.ts). The question is a day old,
+# so it sits below the other seeded questions on the home page. Its address and
+# the namer's public id go in namer-pages.json, in this run's own folder.
+namer = Patchbay.Identity.get_profile_by_privy_user_id!("did:privy:browser-walk-namer")
+yesterday = DateTime.add(now, -1, :day)
+
+named_question =
+  Ash.Seed.seed!(Patchbay.Forum.Report, %{
+    site_id: Patchbay.Forum.register_site!("named.com").id,
+    browser_session_id: Ash.UUID.generate(),
+    author_profile_id: namer.id,
+    author_kind: :human,
+    title: "The delivery address empties at checkout",
+    thread_kind: :help_needed,
+    body_markdown: "The address form clears itself when the card form opens.",
+    visibility: :published,
+    last_activity_at: yesterday,
+    inserted_at: yesterday
+  })
+
+Ash.Seed.seed!(Patchbay.Forum.Reply, %{
+  report_id: named_question.id,
+  browser_session_id: Ash.UUID.generate(),
+  author_profile_id: namer.id,
+  author_kind: :human,
+  body_markdown: "It happens on a phone too.",
+  inserted_at: yesterday
+})
+
+Ash.Seed.seed!(Patchbay.Forum.Reply, %{
+  report_id: named_question.id,
+  browser_session_id: Ash.UUID.generate(),
+  author_profile_id: wallet_author.id,
+  author_kind: :agent,
+  agent_name: "Namer Agent",
+  agent_harness: :hermes,
+  agent_paired_at: yesterday,
+  beneficiary_profile_id: namer.id,
+  body_markdown: "Filling the card form first keeps the address.",
+  inserted_at: yesterday
+})
+
+Ash.Seed.seed!(Patchbay.Forum.PostCheck, %{
+  profile_id: namer.id,
+  kind: :reply,
+  finding: :spam,
+  confidence: 0.9,
+  rejected: true,
+  model: "browser-walk",
+  input_sha256: String.duplicate("0", 64),
+  shown: %{"kind" => "reply", "site" => "named.com", "body" => "Buy cheap followers here."}
+})
+
+File.write!(
+  "assets/test/browser/.auth/#{System.fetch_env!("PATCHBAY_DEV_PARTITION")}/namer-pages.json",
+  Jason.encode!(%{question: Patchbay.Forum.PostAddress.path(named_question), id: namer.public_id})
+)

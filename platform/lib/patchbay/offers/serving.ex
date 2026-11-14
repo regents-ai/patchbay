@@ -1,21 +1,29 @@
 defmodule Patchbay.Offers.Serving do
   @moduledoc """
-  The paid offers that go with one page or answer about a listed site, for one
-  reader. Every door that shows offers asks here and nowhere else: the site's
-  page and its Markdown, a thread about the site, a search narrowed to the
-  site, over HTTP and at `/mcp`.
+  The paid offers that go with one page or answer, for one reader. Every door
+  that shows offers asks here and nowhere else: a site's page and its
+  Markdown, a thread, a search, the incidents, a post's answer, over HTTP and
+  at `/mcp`.
 
-  Offers come in this order, and stop there:
+  What the page is about names the sources tried, in order
+  (`Patchbay.Offers.Source.order/1`): its site's, or CVE incidents', then
+  General's. The first source with an offer for this reader is shown, and the
+  rest are not read further. In a source, offers come in this order, and stop
+  there:
 
-    1. a reservation: each open placement on the site, oldest first, and in
-       it each slot in order, shows the offer its live lease paid for, when
-       the campaign is eligible there and for this reader
+    1. a reservation: each open placement for the source, oldest first, and
+       in it each slot in order, shows the offer its live lease paid for,
+       when the campaign is eligible there and for this reader
        (`Patchbay.Offers.Eligibility`) and the reader has not reached its
        daily limit; so at most each placement's capacity;
     2. a per-delivery offer, paid each time it is shown, would follow the
        reservations here, through the same request and reader; the market
        sells none yet, and a slot shown as reserved is never charged again;
     3. otherwise nothing.
+
+  However many placements there are, a page reads the same handful of
+  queries: its sources' placements, their live leases, their campaigns and
+  Patchbay's terms for them, each once.
 
   Each offer shown is written once as a `Patchbay.Offers.Delivery`, so the
   same page read again by the same reader on the same day is the same
@@ -29,17 +37,18 @@ defmodule Patchbay.Offers.Serving do
 
   alias Patchbay.Offers
   alias Patchbay.Offers.Eligibility
+  alias Patchbay.Offers.Source
 
   @system %{role: :system}
 
   @typedoc """
-  What the offers go with: the listed site, the question's tags and kind of
-  thread (`Eligibility.task/0`), the door (`:page`, `:markdown`, `:json` or
-  `:mcp`), and `context`, the page or answer itself, which makes a delivery
-  the same one when it is read again.
+  What the offers go with: what the page is about (`Source.about/0`), the
+  question's tags and kind of thread (`Eligibility.task/0`), the door
+  (`:page`, `:markdown`, `:json` or `:mcp`), and `context`, the page or
+  answer itself, which makes a delivery the same one when it is read again.
   """
   @type request :: %{
-          site: String.t() | nil,
+          about: Source.about(),
           task: Eligibility.task(),
           surface: :page | :markdown | :json | :mcp,
           context: String.t()
@@ -66,46 +75,39 @@ defmodule Patchbay.Offers.Serving do
 
   @doc "The offers for `request` read by `reader`, in the order to show them."
   @spec serve(request(), reader()) :: [offer()]
-  def serve(%{site: site} = request, reader) when is_binary(site) do
-    if Offers.enabled?(), do: serve_site(request, reader), else: []
+  def serve(request, reader) do
+    if Offers.enabled?(), do: serve_enabled(request, reader), else: []
   end
 
-  def serve(_request, _reader), do: []
-
-  defp serve_site(request, reader) do
+  defp serve_enabled(request, reader) do
     %{chain_id: chain_id} = Offers.chain()
     market = Offers.market()
-    placements = Offers.site_placements!(chain_id, market, request.site, actor: @system)
+    sources = Source.order(request.about)
+    placements = Offers.source_placements!(chain_id, market, sources, actor: @system)
+    capacity = Map.new(placements, &{&1.placement_id, &1.capacity})
 
+    # Each slot's newest live lease, placement by placement, oldest first.
     leases =
       chain_id
-      |> Offers.placement_leases!(market, Enum.map(placements, & &1.placement_id), actor: @system)
+      |> Offers.placement_leases!(market, Map.keys(capacity), actor: @system)
       |> Enum.uniq_by(&{&1.placement_id, &1.slot})
-      |> Map.new(&{{&1.placement_id, &1.slot}, &1})
+      |> Enum.filter(&(&1.slot < capacity[&1.placement_id]))
 
-    campaigns = campaigns(Map.values(leases))
-    terms = Eligibility.terms(placements, Map.values(campaigns))
+    offers =
+      for {lease, campaign, placement} <- Eligibility.runnable(placements, leases),
+          Eligibility.qualifies(campaign, request.task, reader) == :ok,
+          do: {placement.source_origin, {lease, campaign}}
 
-    for placement <- placements,
-        slot <- 0..(placement.capacity - 1),
-        lease <- List.wrap(leases[{placement.placement_id, slot}]),
-        campaign <- List.wrap(campaigns[lease.campaign_id]),
-        Eligibility.check(campaign, placement, terms) == :ok,
-        Eligibility.qualifies(campaign, request.task, reader) == :ok do
-      {lease, campaign}
-    end
-    |> within_limits(request, reader)
-    |> Enum.map(&deliver(&1, request, reader))
+    Enum.find_value(sources, [], &shown(&1, offers, request, reader))
   end
 
-  defp campaigns([]), do: %{}
-
-  defp campaigns(leases) do
-    leases
-    |> Enum.map(& &1.campaign_id)
-    |> Enum.uniq()
-    |> Offers.campaigns_by_ids!(actor: @system, load: [:review])
-    |> Map.new(&{&1.campaign_id, &1})
+  # The offers from `source` this reader may see on this page, each delivered;
+  # nil when there are none, so the next source is tried.
+  defp shown(source, offers, request, reader) do
+    case within_limits(for({^source, offer} <- offers, do: offer), request, reader) do
+      [] -> nil
+      kept -> Enum.map(kept, &deliver(&1, request, reader))
+    end
   end
 
   # A campaign with a daily limit is shown to one reader on at most that many

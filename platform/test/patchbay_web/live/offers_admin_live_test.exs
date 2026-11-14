@@ -98,8 +98,10 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
     lease!(1, 0, campaign)
     {:ok, view, _html} = conn |> sign_in(moderator().id) |> live(@path)
     placement = "#pb-oa-placement-1"
+    # With no pool chosen, the one chip says it shows any accepted campaign.
+    any_accepted = "#{placement} .pb-oa-pools-chosen .pb-oa-chip:not([id])"
 
-    assert view |> element("#{placement} .pb-oa-pools-chosen") |> render() =~ "General"
+    assert has_element?(view, any_accepted)
 
     view
     |> form("#pb-oa-new-pool", %{"name" => "Payments", "tags" => "Payments, auth"})
@@ -118,13 +120,13 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
     view |> form("#pb-oa-choose-1", %{"pool_id" => pool.id}) |> render_submit()
     assert [choice] = Offers.placement_pools!(8453, market(), [1], actor: moderator())
     assert has_element?(view, "#pb-oa-choice-#{choice.id}", "Payments")
-    refute view |> element("#{placement} .pb-oa-pools-chosen") |> render() =~ "General"
+    refute has_element?(view, any_accepted)
 
     # The lease and how often it was shown.
     assert view |> element(placement) |> render() =~ campaign.title
 
     view |> element("#pb-oa-choice-#{choice.id} button") |> render_click()
-    assert view |> element("#{placement} .pb-oa-pools-chosen") |> render() =~ "General"
+    assert has_element?(view, any_accepted)
 
     view |> element("#pb-oa-member-#{member.id} .pb-oa-remove") |> render_click()
     refute has_element?(view, "#pb-oa-member-#{member.id}")

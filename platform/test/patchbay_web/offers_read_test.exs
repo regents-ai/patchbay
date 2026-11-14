@@ -11,6 +11,8 @@ defmodule PatchbayWeb.OffersReadTest do
 
   import PatchbayTest.OfferFixtures
 
+  alias PatchbayWeb.OpenAPIShape
+
   test "with no market set, every door answers not_found and the operation is closed",
        %{conn: conn} do
     over_http = conn |> get("/api/offers") |> json_response(404)
@@ -31,14 +33,21 @@ defmodule PatchbayWeb.OffersReadTest do
     offers_on!()
     campaign = campaign!(person!(wallet()))
     placement!(1, "stripe.com")
+    placement!(9, "general")
     lease!(1, 1, campaign, %{paid_usdc: Decimal.new(12_000_000)})
 
     body = conn |> get("/api/offers") |> json_response(200)
-    assert %{"placements" => [placement], "up_to_date" => up_to_date} = body
+    spec = conn |> recycle() |> get("/openapi.json") |> json_response(200)
+    OpenAPIShape.assert_shape(spec, OpenAPIShape.response_schema(spec, "/api/offers"), body)
+
+    # Patchbay's own placements come first, and name no site.
+    assert %{"placements" => [general, placement], "up_to_date" => up_to_date} = body
+    assert %{"placement_id" => 9, "site" => nil} = general
     assert is_boolean(up_to_date)
 
     assert %{
              "placement_id" => 1,
+             "name" => "stripe.com",
              "site" => "stripe.com",
              "lease_hours" => 72,
              "floor_usdc" => "5.00",

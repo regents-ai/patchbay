@@ -7,13 +7,15 @@ defmodule Patchbay.Offers.Eligibility do
 
     * the placement was created under Patchbay's current admission policy;
     * the campaign runs on the placement's site: every listed site, the sites
-      it names, or the kind of site it names;
+      it names, or the kind of site it names. General and CVE incidents
+      (`Patchbay.Offers.Source`) are no one site, so only a campaign that
+      runs on every listed site runs there;
     * Patchbay accepts its advertiser's wallet and has not blocked it (a
       blocked wallet stays blocked even if it is also accepted, and even in a
       pool that names it);
     * it is in one of the pools Patchbay chose for the placement, or the
-      placement has none chosen and shows from General, every campaign
-      Patchbay accepts (`Patchbay.Offers.Pool`);
+      placement has none chosen and shows any campaign Patchbay accepts
+      (`Patchbay.Offers.Pool`);
     * Patchbay approved it and has not pulled it (`Patchbay.Offers.Review`).
 
   To whom (`qualifies/3`), each time it would be shown, by what the campaign
@@ -32,6 +34,7 @@ defmodule Patchbay.Offers.Eligibility do
   """
 
   alias Patchbay.Offers
+  alias Patchbay.Offers.Source
 
   @system %{role: :system}
 
@@ -84,6 +87,38 @@ defmodule Patchbay.Offers.Eligibility do
       pools: pools,
       site_kinds: site_kinds(placements, campaigns)
     }
+  end
+
+  @doc """
+  Each of `leases` whose campaign may run in its placement now (`check/3`),
+  as `{lease, campaign, placement}`, in the order given. A lease whose
+  placement is not one of `placements`, or whose campaign Patchbay does not
+  hold, is left out. The campaigns and Patchbay's terms are read once each,
+  as the system, however many leases there are.
+  """
+  @spec runnable([map()], [map()]) :: [{map(), map(), map()}]
+  def runnable(_placements, []), do: []
+
+  def runnable(placements, leases) do
+    placements = Map.new(placements, &{&1.placement_id, &1})
+
+    campaigns =
+      leases
+      |> Enum.map(& &1.campaign_id)
+      |> Enum.uniq()
+      |> Offers.campaigns_by_ids!(actor: @system, load: [:review])
+      |> Map.new(&{&1.campaign_id, &1})
+
+    held = MapSet.new(leases, & &1.placement_id)
+
+    terms =
+      terms(for({id, placement} <- placements, id in held, do: placement), Map.values(campaigns))
+
+    for lease <- leases,
+        placement <- List.wrap(placements[lease.placement_id]),
+        campaign <- List.wrap(campaigns[lease.campaign_id]),
+        check(campaign, placement, terms) == :ok,
+        do: {lease, campaign, placement}
   end
 
   @doc """
@@ -160,14 +195,13 @@ defmodule Patchbay.Offers.Eligibility do
   defp reviewed(:pulled), do: {:error, :pulled}
   defp reviewed(:waiting), do: {:error, :not_approved}
 
-  # The kind of site is read only for a campaign that runs on one kind.
+  # The kind of site is read only for a campaign that runs on one kind, in one
+  # read however many placements there are.
   defp site_kinds(placements, campaigns) do
     if Enum.any?(campaigns, &(&1.audience == :group)) do
-      for %{source_origin: origin} when is_binary(origin) <- placements,
-          {:ok, %{entity_type: kind}} <-
-            [Patchbay.Forum.get_site_by_origin(origin, not_found_error?: false)],
-          into: %{},
-          do: {origin, kind}
+      for(%{source_origin: origin} <- placements, Source.site?(origin), do: origin)
+      |> Patchbay.Forum.list_site_kinds!()
+      |> Map.new(&{&1.origin, &1.entity_type})
     else
       %{}
     end

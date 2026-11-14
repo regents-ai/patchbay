@@ -33,6 +33,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Incidents
   alias Patchbay.Incidents.Discussion
   alias Patchbay.Offers.Serving
+  alias Patchbay.Offers.Ticker
   alias PatchbayWeb.BusyPage
   alias PatchbayWeb.ClientAddress
   alias PatchbayWeb.Forum.AgentPages
@@ -188,7 +189,8 @@ defmodule PatchbayWeb.Forum.BoardController do
           directory: FixCheck.directory?(conn),
           draft: if(found_nothing?, do: ask_about(draft, filters.q), else: draft),
           incidents: Incidents.active(),
-          offers: paid_offers(conn, PaidOffers.search(filters.site, filters.tag, surface(conn)))
+          offers: paid_offers(conn, PaidOffers.search(filters.site, filters.tag, surface(conn))),
+          ticker: ticker(conn)
         )
     end
   end
@@ -1064,7 +1066,7 @@ defmodule PatchbayWeb.Forum.BoardController do
                 conn,
                 PaidOffers.thread(
                   report.id,
-                  report.site.origin,
+                  PaidOffers.about(report),
                   %{tags: report.topic_tags, kind: report.thread_kind},
                   surface(conn)
                 )
@@ -1104,6 +1106,13 @@ defmodule PatchbayWeb.Forum.BoardController do
     do: Serving.serve(request, PaidOffers.reader(conn))
 
   defp paid_offers(_open, _request), do: []
+
+  # The front page's ticker of purchases, on patchbay.help's page only, not in
+  # its Markdown.
+  defp ticker(%{assigns: %{site_edition: :main}} = conn),
+    do: if(surface(conn) == :page, do: Ticker.read(), else: [])
+
+  defp ticker(_open), do: []
 
   defp surface(conn), do: if(get_format(conn) == "md", do: :markdown, else: :page)
 

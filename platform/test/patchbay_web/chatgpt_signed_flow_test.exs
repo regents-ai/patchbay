@@ -16,6 +16,7 @@ defmodule PatchbayWeb.ChatGPTSignedFlowTest do
   use PatchbayWeb.ConnCase, async: false
 
   import Plug.Conn
+  import PatchbayTest.OfferFixtures
 
   alias Boruta.Ecto.Token
   alias Patchbay.Forum.Report
@@ -89,6 +90,12 @@ defmodule PatchbayWeb.ChatGPTSignedFlowTest do
     assert structured(call_tool(conn, bearer, "check_in", %{}))["identity_id"] ==
              registered["identity_id"]
 
+    # A live offer in General, which any site's thread would show at /mcp:
+    # the ChatGPT address carries none and records no delivery.
+    offers_on!()
+    placement!(9, "general")
+    lease!(9, 0, shown_campaign!(person!(wallet())))
+
     asked =
       structured(
         call_tool(conn, bearer, "ask_question", %{
@@ -113,6 +120,10 @@ defmodule PatchbayWeb.ChatGPTSignedFlowTest do
 
     assert is_binary(replied["reply_id"])
     assert_received {:hosted_signer_asked, "sign"}
+
+    refute Map.has_key?(asked, "paid_offers")
+    refute Map.has_key?(replied, "paid_offers")
+    assert Ash.read!(Patchbay.Offers.Delivery, actor: %{role: :system}) == []
   end
 
   # The hosted signer registers the account's one wallet and signs each

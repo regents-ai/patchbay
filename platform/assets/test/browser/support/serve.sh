@@ -1,9 +1,10 @@
 #!/bin/sh
 # The browser walk's server, from its database to its end (playwright.config.ts).
 # It makes the run's own database, signs the walk's people in, gives it a small
-# Agent Wallet Bench (bench.exs) and one report (report.exs), builds the pages
-# and serves them. When the server fails to start or stops by itself, it drops
-# the database on its way out; when Playwright stops it, teardown.ts drops it.
+# Agent Wallet Bench (bench.exs), one report (report.exs) and paid offers on a
+# market of its own (offers.exs), builds the pages and serves them. When the
+# server fails to start or stops by itself, it drops the database on its way
+# out; when Playwright stops it, teardown.ts drops it.
 set -eu
 cd "$(dirname "$0")/../../../.."
 
@@ -28,6 +29,11 @@ export OPENROUTER_API_KEY=browser-walk
 export PATCHBAY_CONNECTOR_ENABLED=true
 # The walk's moderator (sign_in.exs), who opens the admin pages.
 export PATCHBAY_MODERATOR_WALLETS=0x9999999999999999999999999999999999999999
+# An offer market on no chain (config/runtime.exs), holding what offers.exs
+# records: its node is a closed port on this machine, so nothing reaches a
+# chain.
+export PATCHBAY_OFFERS_MARKET=0x00000000000000000000000000000000000000aa
+export PATCHBAY_OFFERS_RPC_URL=http://127.0.0.1:9
 walk_auth="assets/test/browser/.auth/${PATCHBAY_DEV_PARTITION}"
 mkdir -p "$walk_auth"
 openssl ecparam -name prime256v1 -genkey -noout -out "$walk_auth/privy-key.pem" 2>/dev/null
@@ -40,5 +46,6 @@ mix ecto.setup > /dev/null
 mix run assets/test/browser/support/sign_in.exs
 mix run assets/test/browser/support/bench.exs
 mix run assets/test/browser/support/report.exs
+mix run assets/test/browser/support/offers.exs
 mix assets.build > /dev/null
 mix phx.server

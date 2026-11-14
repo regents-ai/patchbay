@@ -25,15 +25,40 @@
 .pb-offers-section h2 { font-family: var(--font-family-title); font-size: var(--pb-fs-xl); font-weight: 400; font-synthesis: none; letter-spacing: -.02em; line-height: 1.2; }
 .pb-offers-lead { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); }
 
-/* A placement: its site and terms, then its slots side by side. */
+/* The placements in two groups: Patchbay's own two whole, then one line for
+   each site's that opens to its slots, so a placement for every site still
+   reads as a short list. */
+.pb-placement-group { display: grid; gap: var(--space-2); min-width: 0; }
+.pb-placement-group-title { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }
+.pb-placement-count { margin-inline-start: .25em; color: var(--pb-text-muted); font-variant-numeric: tabular-nums; }
+
+/* A placement: its name and terms, then its slots side by side. */
 .pb-placement { min-width: 0; border: 1px solid var(--pb-line); background: var(--pb-surface); }
 .pb-placement-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-3); padding: var(--space-3); border-bottom: 1px solid var(--pb-line); }
-.pb-placement-head h3 { min-width: 0; font-size: var(--pb-fs-lg); font-weight: 500; overflow-wrap: anywhere; }
-.pb-placement-head h3 a { color: inherit; text-decoration: none; }
-.pb-placement-head h3 a:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-placement-heading { display: grid; gap: 2px; min-width: 0; }
+.pb-placement-head h4 { min-width: 0; font-size: var(--pb-fs-lg); font-weight: 500; overflow-wrap: anywhere; }
+.pb-placement-where { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); }
 .pb-placement-terms { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); font-variant-numeric: tabular-nums; }
+
+/* A site's placement is one line in a shared list: its site, how many slots
+   are taken and the least the next purchase pays, and it opens in place. */
+.pb-placement-rows { min-width: 0; border: 1px solid var(--pb-line); background: var(--pb-surface); }
+.pb-placement-row { border: 0; background: none; }
+.pb-placement-row + .pb-placement-row { border-top: 1px solid var(--pb-line); }
+.pb-placement-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-1) var(--space-3); min-height: 3rem; padding: var(--space-2) var(--space-3); cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+.pb-placement-summary::-webkit-details-marker { display: none; }
+.pb-placement-summary:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
+.pb-placement-name { min-width: 0; overflow-wrap: anywhere; }
+.pb-placement-facts { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); color: var(--pb-text-muted); font-size: var(--pb-fs-xs); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pb-placement-chevron { color: var(--pb-text-muted); font-size: 1.125rem; transition: transform 160ms var(--pb-offers-ease); }
+.pb-placement-row[open] .pb-placement-chevron { transform: rotate(180deg); }
+.pb-placement-line { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-1) var(--space-3); padding: 0 var(--space-3) var(--space-2); }
+.pb-placement-forum { display: inline-flex; align-items: center; min-height: 2.75rem; color: var(--pb-accent-deep); font-size: var(--pb-fs-xs); text-decoration: none; }
+.pb-placement-forum:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-placement-row .pb-slots { border-top: 1px solid var(--pb-line); }
 @media (hover: hover) and (pointer: fine) {
-  .pb-placement-head h3 a:hover { text-decoration: underline; text-underline-offset: .2em; }
+  .pb-placement-summary:hover { background: var(--pb-surface-sunk); }
+  .pb-placement-forum:hover { text-decoration: underline; text-underline-offset: .2em; }
 }
 
 .pb-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -144,25 +169,64 @@ a.pb-slot-title:focus-visible { outline: 2px solid var(--pb-accent-deep); outlin
 .pb-campaign-leases li { display: flex; justify-content: space-between; gap: var(--space-2); }
 .pb-campaign-shown { color: var(--pb-text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
-/* Paid offers beside a site's page, a thread or a site's questions: set apart
-   from the answers, each marked Paid. */
+/* Paid offers beside a page: set apart from the answers, each a compact entry
+   marked Paid with its title, which opens in place to the advertiser's text,
+   link and wallet. */
 .pb-paid { display: grid; gap: var(--space-2); min-width: 0; }
-.pb-paid-title { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; }
-.pb-paid-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
-.pb-paid-offer { display: grid; gap: var(--space-2); min-width: 0; padding: var(--space-3); border: 1px solid var(--pb-line); background: var(--pb-surface); transition: border-color 160ms ease; }
-.pb-paid-head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); font-size: var(--pb-fs-xs); }
-.pb-paid-mark { padding: 0 var(--space-1); border: 1px solid var(--pb-line-strong); color: var(--pb-text); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; line-height: 1.6; text-transform: uppercase; }
-.pb-paid-from { color: var(--pb-text-muted); font-variant-numeric: tabular-nums; }
-.pb-paid-link { display: grid; gap: var(--space-1); color: inherit; text-decoration: none; }
-.pb-paid-link:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 4px; }
-.pb-paid-name { font-weight: 500; overflow-wrap: anywhere; }
+.pb-paid-title { margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }
+.pb-paid-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); align-items: start; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.pb-paid-offer { min-width: 0; border: 1px solid var(--pb-line); background: var(--pb-surface); transition: border-color 160ms ease; }
+.pb-paid-summary { display: flex; align-items: center; gap: var(--space-2); min-height: 2.75rem; padding: var(--space-2) var(--space-3); cursor: pointer; list-style: none; -webkit-tap-highlight-color: transparent; }
+.pb-paid-summary::-webkit-details-marker { display: none; }
+.pb-paid-summary:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
+.pb-paid-mark { flex: none; padding: 0 var(--space-1); border: 1px solid var(--pb-line-strong); color: var(--pb-text); font-size: var(--pb-fs-micro); letter-spacing: .06em; line-height: 1.6; text-transform: uppercase; }
+/* Closed, the title keeps to one line; open, it reads whole. */
+.pb-paid-name { flex: 1; min-width: 0; overflow: hidden; font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.pb-paid-entry[open] .pb-paid-name { overflow: visible; white-space: normal; overflow-wrap: anywhere; }
+.pb-paid-chevron { flex: none; color: var(--pb-text-muted); font-size: 1.125rem; transition: transform 160ms cubic-bezier(.23, 1, .32, 1); }
+.pb-paid-entry[open] .pb-paid-chevron { transform: rotate(180deg); }
+.pb-paid-text { display: grid; gap: var(--space-1); padding: 0 var(--space-3) var(--space-3); }
+.pb-paid-text p { margin: 0; }
 .pb-paid-body { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); overflow-wrap: anywhere; }
-.pb-paid-host { color: var(--pb-accent-deep); font-size: var(--pb-fs-xs); overflow-wrap: anywhere; }
+.pb-paid-link { display: inline-flex; align-items: center; gap: .25em; justify-self: start; min-height: 1.75rem; color: var(--pb-accent-deep); font-size: var(--pb-fs-xs); text-decoration: none; overflow-wrap: anywhere; }
+.pb-paid-link:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-paid-from { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); font-variant-numeric: tabular-nums; }
 @media (hover: hover) and (pointer: fine) {
-  .pb-paid-offer:has(.pb-paid-link:hover) { border-color: var(--pb-line-strong); }
-  .pb-paid-link:hover .pb-paid-name { text-decoration: underline; text-underline-offset: .2em; }
+  .pb-paid-offer:has(.pb-paid-summary:hover) { border-color: var(--pb-line-strong); }
+  .pb-paid-link:hover { text-decoration: underline; text-underline-offset: .2em; }
 }
-.pb-home-side > .pb-paid, #patchbay-report > .pb-paid, #patchbay-site > .pb-paid { margin-block: var(--space-3); }
+.pb-home-side > .pb-paid, #patchbay-report > .pb-paid, #patchbay-site > .pb-paid, #patchbay-incidents > .pb-paid { margin-block: var(--space-3); }
+
+/* The front page's ticker of purchases: under the page, in its flow, so it
+   keeps a room of its own and the page's end is never under it, and held to
+   the foot of the screen while the page scrolls above it. Its label stays
+   put; the purchases run sideways in a loop, two copies end to end, each at
+   least as wide as the window, moved by a transform alone. They stop while a
+   pointer or the keyboard is in them; for a reader who asked for less motion
+   they stand still in a row that scrolls. A link the keyboard reaches is
+   scrolled to above it. The window holds all it shows, the purchases' words
+   for screen readers too, so a still row never widens the page. */
+:root:has(#pb-ticker) { scroll-padding-bottom: 4rem; }
+.pb-ticker { position: sticky; bottom: 0; z-index: var(--rg-layer-panel); display: flex; align-items: center; gap: var(--space-2); min-height: 3rem; padding: 0 1.5rem env(safe-area-inset-bottom, 0px); border-top: 1px solid var(--pb-line); background: var(--pb-surface); }
+.pb-ticker-title { flex: none; margin: 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }
+.pb-ticker-window { position: relative; flex: 1; min-width: 0; overflow: hidden; container-type: inline-size; mask-image: linear-gradient(to right, transparent, #000 1.5rem, #000 calc(100% - 1.5rem), transparent); }
+.pb-ticker-track { display: flex; width: max-content; animation: pb-ticker var(--pb-ticker-time) linear infinite; }
+.pb-ticker-window:is(:hover, :focus-within) .pb-ticker-track { animation-play-state: paused; }
+@keyframes pb-ticker { to { transform: translateX(-50%); } }
+.pb-ticker-list { display: flex; flex: none; min-width: 100cqi; margin: 0; padding: 0; list-style: none; }
+.pb-ticker-item { flex: none; }
+.pb-ticker-item a { display: flex; align-items: center; gap: var(--space-1); min-height: 2.75rem; padding-inline: var(--space-3); border-inline-start: 1px solid var(--pb-line); color: var(--pb-text); font-size: var(--pb-fs-xs); text-decoration: none; white-space: nowrap; }
+.pb-ticker-item a:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -4px; }
+.pb-ticker-top { padding: 0 var(--space-1); border: 1px solid color-mix(in srgb, var(--pb-accent) 45%, var(--pb-line)); background: var(--pb-accent-wash); color: var(--pb-accent-deep); font-size: var(--pb-fs-micro); letter-spacing: .06em; line-height: 1.6; text-transform: uppercase; }
+.pb-ticker-name { max-width: 24ch; overflow: hidden; text-overflow: ellipsis; }
+.pb-ticker-where { color: var(--pb-text-muted); }
+.pb-ticker-paid { font-variant-numeric: tabular-nums; }
+@media (hover: hover) and (pointer: fine) {
+  .pb-ticker-item a:hover .pb-ticker-name { text-decoration: underline; text-underline-offset: .2em; }
+}
+@container pb-page (max-width: 899px) {
+  .pb-ticker { padding-inline: 1rem; }
+}
 
 /* /admin/offers: one list per part, each row a campaign, wallet, pool or placement. */
 .pb-oa .pb-sheet-section { display: grid; gap: var(--space-2); min-width: 0; }
@@ -198,6 +262,17 @@ a.pb-oa-name { text-decoration: none; }
 .pb-oa-step-list { margin: var(--space-1) 0 0; padding-inline-start: 1.25rem; }
 .pb-oa-card { padding: var(--space-3); border: 1px solid var(--pb-bad); background: var(--pb-bad-wash); }
 .pb-oa-pull { flex: 1 1 20rem; }
+/* Placements: Patchbay's own two, then a line for each site's that opens in place. */
+.pb-oa-group { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }
+.pb-oa-fold { padding: 0; }
+.pb-oa-fold > details { display: grid; gap: var(--space-2); min-width: 0; }
+.pb-oa-fold > details[open] { padding-bottom: var(--space-3); }
+.pb-oa-fold > details > :not(summary) { margin-inline: var(--space-3); }
+.pb-oa-fold summary { min-height: 2.75rem; padding: var(--space-2) var(--space-3); cursor: pointer; list-style: none; }
+.pb-oa-fold summary::-webkit-details-marker { display: none; }
+.pb-oa-fold summary:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -2px; }
+.pb-oa-chevron { margin-inline-start: auto; align-self: center; color: var(--pb-text-muted); transition: transform 160ms var(--pb-offers-ease); }
+.pb-oa-fold > details[open] .pb-oa-chevron { transform: rotate(180deg); }
 @media (hover: hover) and (pointer: fine) {
   a.pb-oa-name:hover { text-decoration: underline; text-underline-offset: .2em; }
   .pb-oa-remove:hover, .pb-oa-chip button:hover { color: var(--pb-text); }
@@ -209,6 +284,10 @@ a.pb-oa-name { text-decoration: none; }
   .pb-buy-form { grid-template-columns: minmax(0, 1fr); }
 }
 @container pb-page (max-width: 420px) {
+  /* A site's line: its name over its figures, the chevron beside both. */
+  .pb-placement-summary { grid-template-columns: minmax(0, 1fr) auto; }
+  .pb-placement-facts { grid-area: 2 / 1; }
+  .pb-placement-chevron { grid-area: 1 / 2 / 3; }
   .pb-buy-steps { grid-template-columns: minmax(0, 1fr); }
   .pb-claim-amount { margin-inline-start: 0; }
   .pb-claim .pb-step { flex: 1 1 100%; }
@@ -217,8 +296,13 @@ a.pb-oa-name { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   .pb-buy, .pb-campaign[data-new] { transition: opacity 200ms ease; }
   @starting-style { .pb-buy, .pb-campaign[data-new] { transform: none; } }
-  .pb-slot::after, .pb-step-button .rg-button__label { transition: none; }
+  .pb-slot::after, .pb-step-button .rg-button__label, .pb-paid-chevron, .pb-placement-chevron { transition: none; }
+  .pb-ticker-window { overflow-x: auto; mask-image: none; scrollbar-width: thin; }
+  .pb-ticker-track { animation: none; }
+  .pb-ticker-list { min-width: 0; }
+  .pb-ticker-list[inert] { display: none; }
   .pb-oa-remove { transition: color 160ms ease; }
+  .pb-oa-chevron { transition: none; }
   .pb-oa-remove:active { transform: none; }
 }
 

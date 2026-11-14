@@ -4,6 +4,7 @@ defmodule PatchbayWeb.OffersLive.Words do
   time a lease has left, and why Patchbay will not admit a purchase.
   """
 
+  alias Patchbay.Offers.Source
   alias RegentPayments.USDC
 
   @doc """
@@ -76,8 +77,11 @@ defmodule PatchbayWeb.OffersLive.Words do
   def refusal(:not_your_wallet, campaign, _placement),
     do: [{:address, campaign.advertiser}, " is no longer one of your wallets."]
 
-  def refusal(:not_on_site, _campaign, %{source_origin: origin}),
-    do: ["This campaign doesn't run on #{origin}."]
+  def refusal(:not_on_site, _campaign, %{source_origin: origin}) do
+    if Source.site?(origin),
+      do: ["This campaign doesn't run on #{origin}."],
+      else: ["Only a campaign that runs on all sites can be shown in #{Source.label(origin)}."]
+  end
 
   def refusal(:blocked, campaign, _placement),
     do: ["Patchbay doesn't take offers from ", {:address, campaign.advertiser}, "."]
@@ -95,7 +99,7 @@ defmodule PatchbayWeb.OffersLive.Words do
     do: ["Patchbay took this campaign down, so it can't be bought."]
 
   def refusal(:not_in_pool, _campaign, %{source_origin: origin}),
-    do: ["#{origin} doesn't show this kind of campaign in this placement."]
+    do: ["#{Source.label(origin)} doesn't show this kind of campaign in this placement."]
 
   def refusal(reason, _campaign, _placement)
       when reason in [:unknown_site, :unknown_placement, :unknown_slot, :not_your_campaign],

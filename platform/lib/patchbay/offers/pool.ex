@@ -8,9 +8,8 @@ defmodule Patchbay.Offers.Pool do
   has none).
 
   A placement shows campaigns from the pools Patchbay chose for it
-  (`Patchbay.Offers.PlacementPool`); a placement with none chosen shows from
-  General, every campaign Patchbay accepts. A new pool is a row: no contract
-  changes.
+  (`Patchbay.Offers.PlacementPool`); a placement with none chosen shows any
+  campaign Patchbay accepts. A new pool is a row: no contract changes.
 
   Only a moderator reads, makes or removes pools; Patchbay's own serving
   reads them as the system.
