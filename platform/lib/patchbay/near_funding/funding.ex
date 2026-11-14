@@ -148,9 +148,5 @@ defmodule Patchbay.NearFunding.Funding do
     end
   end
 
-  @doc "Whether a funding has reached Arrived, Refunded or Failed."
-  @spec final?(t()) :: boolean()
-  def final?(%__MODULE__{state: state}), do: state in [:success, :refunded, :failed]
-
   @type t :: %__MODULE__{}
 end

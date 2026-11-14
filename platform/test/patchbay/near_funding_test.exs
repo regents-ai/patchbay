@@ -209,6 +209,39 @@ defmodule Patchbay.NearFundingTest do
              )
 
       assert has_element?(view, "#near-funding-destination-tx")
+
+      # The panel opened again shows the newest funding, and Fund again starts another.
+      {:ok, view, _html} = live(conn, ~p"/account/agents")
+      assert has_element?(view, "#near-funding-status", "Arrived")
+      view |> element("#near-funding-funding button", "Fund again") |> render_click()
+      assert has_element?(view, "#near-funding-form")
+    end
+
+    test "a deposit address that closed with nothing sent reads as expired", %{
+      conn: conn,
+      agent: agent
+    } do
+      Application.put_env(:patchbay, :near_funding_enabled?, true)
+
+      Req.Test.stub(RegentNearIntents, fn conn ->
+        Req.Test.json(
+          conn,
+          put_in(live_quote(), ["quote", "deadline"], "2026-01-01T00:00:00.000Z")
+        )
+      end)
+
+      {:ok, _funding} =
+        NearFunding.start(person(agent), agent.pairing, %{
+          "amount_usdc" => "5",
+          "refund_to" => "alice.near"
+        })
+
+      {:ok, view, _html} = live(sign_in(conn, agent.owner.id), ~p"/account/agents")
+      assert has_element?(view, "#near-funding-status", "Expired")
+
+      # Nothing more is read for it.
+      Req.Test.stub(RegentNearIntents, fn _conn -> flunk("read an expired funding") end)
+      assert %{success: 1, failure: 0} = schedule_and_run_triggers({Funding, :refresh})
     end
 
     test "an empty or wrong refund account is refused on the page, and nothing is asked", %{

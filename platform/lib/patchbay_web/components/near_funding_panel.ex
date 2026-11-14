@@ -20,6 +20,8 @@ defmodule PatchbayWeb.NearFundingPanel do
   alias RegentAgents.Person
   alias RegentPayments.USDC
 
+  @no_price "A price couldn't be found just now. Try again in a moment."
+
   @impl true
   def mount(socket) do
     {:ok,
@@ -85,22 +87,24 @@ defmodule PatchbayWeb.NearFundingPanel do
   def handle_event("again", _params, socket),
     do: {:noreply, assign(socket, funding: nil, errors: %{}, problem: nil)}
 
+  # A wrong amount or refund account is shown under its field; anything else,
+  # such as a quote the service would not give, under the form.
   defp refused(socket, %Ash.Error.Invalid{errors: errors}) do
     fields = Enum.map(errors, &Map.get(&1, :field))
 
+    errors = %{
+      amount:
+        if(:usdc_amount in fields, do: ["Enter an amount from 0.01 to 1000, such as 5.00."]),
+      refund: if(:refund_to in fields, do: ["Enter a NEAR account, such as alice.near."])
+    }
+
     assign(socket,
-      errors: %{
-        amount:
-          if(:usdc_amount in fields, do: ["Enter an amount from 0.01 to 1000, such as 5.00."]),
-        refund: if(:refund_to in fields, do: ["Enter a NEAR account, such as alice.near."])
-      },
-      problem:
-        if(:quote in fields, do: "A price couldn't be found just now. Try again in a moment.")
+      errors: errors,
+      problem: if(errors.amount || errors.refund, do: nil, else: @no_price)
     )
   end
 
-  defp refused(socket, _error),
-    do: assign(socket, errors: %{}, problem: "A price couldn't be found just now. Try again.")
+  defp refused(socket, _error), do: assign(socket, errors: %{}, problem: @no_price)
 
   @impl true
   def render(assigns) do
@@ -171,7 +175,7 @@ defmodule PatchbayWeb.NearFundingPanel do
           <div>
             <dt>Status</dt>
             <dd id={"#{@id}-status"} role="status">
-              <P.status tone={tone(@funding.state)}>{state_words(@funding.state)}</P.status>
+              <P.status tone={tone(state(@funding))}>{state_words(state(@funding))}</P.status>
             </dd>
           </div>
           <div>
@@ -228,13 +232,13 @@ defmodule PatchbayWeb.NearFundingPanel do
             </dd>
           </div>
         </dl>
-        <p class="rg-account__status">
+        <p :if={state(@funding) == :pending_deposit} class="rg-account__status">
           Send {near(@funding.near_amount)} NEAR to the address above before {Calendar.strftime(
             @funding.deadline,
             "%H:%M UTC"
           )}. The USDC goes to your agent's own wallet, shown above, and your agent pays from it as usual.
         </p>
-        <div :if={Funding.final?(@funding)}>
+        <div>
           <P.button type="button" variant="secondary" phx-click="again" phx-target={@myself}>
             Fund again
           </P.button>
@@ -244,7 +248,15 @@ defmodule PatchbayWeb.NearFundingPanel do
     """
   end
 
+  # A deposit address that closed before any NEAR reached it reads as expired.
+  defp state(%{state: :pending_deposit, deadline: deadline}) do
+    if DateTime.after?(DateTime.utc_now(), deadline), do: :expired, else: :pending_deposit
+  end
+
+  defp state(%{state: state}), do: state
+
   defp state_words(:pending_deposit), do: "Waiting"
+  defp state_words(:expired), do: "Expired"
   defp state_words(:processing), do: "Processing"
   defp state_words(:success), do: "Arrived"
   defp state_words(:refunded), do: "Refunded"
@@ -252,7 +264,7 @@ defmodule PatchbayWeb.NearFundingPanel do
 
   defp tone(:success), do: "success"
   defp tone(:failed), do: "error"
-  defp tone(:refunded), do: "warning"
+  defp tone(state) when state in [:refunded, :expired], do: "warning"
   defp tone(_waiting), do: "info"
 
   # The quote's NEAR amount rounded up to six places, as a person types it in
