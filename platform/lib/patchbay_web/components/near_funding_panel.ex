@@ -45,7 +45,7 @@ defmodule PatchbayWeb.NearFundingPanel do
       {:ok, socket}
     else
       funding = NearFunding.latest_funding!(actor: socket.assigns.person)
-      if funding, do: send(self(), {:watch_near_funding, funding.id})
+      if funding && connected?(socket), do: send(self(), {:watch_near_funding, funding.id})
       {:ok, assign(socket, funding: funding)}
     end
   end
