@@ -31,7 +31,7 @@ _The most popular sites could not be read just now. Every site is in the table a
 ## Most popular
 
 <%= for site <- sites do %>
-- [<%= line(site_name(site)) %>](<%= site_path(site) %>) — <%= count_label(site.homepage_tool_count, "Agent Tool", "Agent Tools") %> recorded on its homepage
+- [<%= line(site_name(site)) %>](<%= site_path(site) %>) — <%= count_label(site.tool_count, "Agent Tool", "Agent Tools") %>
 <% end %>
 <% end %>
 

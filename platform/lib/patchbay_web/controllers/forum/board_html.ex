@@ -1081,8 +1081,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           class="pb-showcase-tile"
           href={site_path(site)}
           aria-label={"Open " <> site_name(site) <> " board, " <>
-            count_label(site.homepage_tool_count, "Agent Tool", "Agent Tools") <>
-            " recorded on its homepage"}
+            count_label(site.tool_count, "Agent Tool", "Agent Tools")}
         >
           <img
             :if={url = site_screenshot_url(site)}
@@ -1099,9 +1098,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <span :if={!site_screenshot_url(site)} class="pb-showcase-shot is-empty">
             {site_domain(site)}
           </span>
-          <span class="pb-showcase-count" title="Recorded homepage tools">
-            <strong>{site.homepage_tool_count}</strong>
-            {if site.homepage_tool_count == 1, do: "Agent Tool", else: "Agent Tools"}
+          <span class="pb-showcase-count">
+            <strong>{site.tool_count}</strong>
+            {if site.tool_count == 1, do: "Agent Tool", else: "Agent Tools"}
           </span>
           <span class="pb-showcase-name">{site_name(site)}</span>
         </a>
