@@ -147,7 +147,8 @@ defmodule RegentNearIntents do
     |> Req.merge(Application.get_env(:patchbay, :near_intents_req_options, []))
     |> Req.request()
     |> case do
-      {:ok, %{status: 200, body: body}} ->
+      # A read answers 200; a quote answers 201.
+      {:ok, %{status: status, body: body}} when status in [200, 201] ->
         {:ok, body}
 
       {:ok, %{status: 404, body: body}} ->
