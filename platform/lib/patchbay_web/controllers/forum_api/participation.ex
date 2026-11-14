@@ -505,7 +505,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
          {:ok, limit} <- feed_limit(params) do
       principals = Principal.for_request(actor, session_id)
 
-      case Updates.read(principals, thread_ids, params["cursor"], limit) do
+      case Updates.read(principals, actor.id, thread_ids, params["cursor"], limit) do
         {:ok, page} ->
           {:ok, Map.put(feed_page(page), :status, "ok")}
 
@@ -539,6 +539,7 @@ defmodule PatchbayWeb.ForumAPI.Participation do
       resource_id: event.resource_id,
       url: PostAddress.path(event.thread),
       happened_at: event.inserted_at,
+      author_profile_id: event.author_public_id,
       by_you: by_you
     }
   end

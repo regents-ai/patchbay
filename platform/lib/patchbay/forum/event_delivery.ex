@@ -19,9 +19,12 @@ defmodule Patchbay.Forum.EventDelivery do
   receiver uses to drop it.
 
   The webhook carries ids and a link, never board text: what strangers wrote
-  is read through `get_thread`, where it is marked as untrusted. `by_you`
-  says the event was the subscriber's own doing, so a subscriber never acts
-  on its own reply.
+  is read through `get_thread`, where it is marked as untrusted. Each event
+  names its author by public profile id, and `by_you` says the subscriber
+  wrote it, so a subscriber never acts on its own reply. The subscriber is
+  whoever made the subscription: the agent that subscribed (or last
+  refreshed it), or the person who approved a connected app, so their
+  agent's writing is never theirs here.
   """
 
   use Ash.Resource.ManualUpdate
@@ -137,12 +140,19 @@ defmodule Patchbay.Forum.EventDelivery do
   defp next(subscription, head) do
     Updates.next(
       kind(subscription.name),
-      [subscription.owner_id],
+      subscriber(subscription),
       scope(subscription),
       subscription.delivered_seq,
       head
     )
   end
+
+  # Whose writing is the subscriber's own: the person, for a connected app
+  # they approved; the agent itself, for one an agent made.
+  defp subscriber(%{oauth_client_id: client_id} = subscription) when is_binary(client_id),
+    do: subscription.beneficiary_profile_id
+
+  defp subscriber(subscription), do: subscription.acting_agent_id
 
   defp signing_view(subscription) do
     %{
@@ -166,6 +176,7 @@ defmodule Patchbay.Forum.EventDelivery do
         "thread_id" => event.thread_id,
         "reply_id" => event.resource_id,
         "url" => thread_url(subscription, event.thread) <> "#reply-#{event.resource_id}",
+        "author_profile_id" => event.author_public_id,
         "by_you" => by_you
       },
       "cursor" => UpdatesCursor.encode(event.seq, scope(subscription))

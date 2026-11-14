@@ -62,6 +62,7 @@ defmodule Patchbay.Forum.ForumEvent do
     references do
       reference(:thread, ignore?: true)
       reference(:site, ignore?: true)
+      reference(:author, ignore?: true)
     end
   end
 
@@ -78,6 +79,7 @@ defmodule Patchbay.Forum.ForumEvent do
         :tool_id,
         :resource_id,
         :actor_principal,
+        :author_profile_id,
         :acting_agent_id,
         :beneficiary_profile_id,
         :human_account_id,
@@ -145,6 +147,12 @@ defmodule Patchbay.Forum.ForumEvent do
     # Who did it, so the actor is never told of their own work.
     attribute(:actor_principal, :string, allow_nil?: true, public?: true)
 
+    # Who did what the event announces, as the write verified it: the agent's
+    # own profile when an agent did it, the person's when they did it
+    # themselves, none when nobody signed in did it (a visitor, or Patchbay
+    # itself). Unlike `actor_principal`, an agent is never its person here.
+    attribute(:author_profile_id, :uuid, allow_nil?: true)
+
     # Delivered to every follower; see the moduledoc.
     attribute(:fanned_out_at, :utc_datetime_usec, allow_nil?: true)
     # The fan-out's attempts ran out with nothing delivered.
@@ -166,6 +174,17 @@ defmodule Patchbay.Forum.ForumEvent do
       define_attribute?: false,
       public?: true
     )
+
+    belongs_to(:author, Patchbay.Identity.AgentProfile,
+      source_attribute: :author_profile_id,
+      define_attribute?: false
+    )
+  end
+
+  calculations do
+    # The author's public profile id, the one `get_thread` names them by; nil
+    # when there is no author.
+    calculate(:author_public_id, :string, expr(author.public_id))
   end
 
   identities do

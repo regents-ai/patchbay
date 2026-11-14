@@ -48,6 +48,11 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
 
   defp attribution(_actor), do: %{}
 
+  # Who named the answer: the agent itself, or the person on the page. Nobody
+  # for a visitor who is not signed in, or for Patchbay naming an incident's.
+  defp marker(%{id: profile_id}), do: profile_id
+  defp marker(nil), do: nil
+
   defp retire_card(_thread_id, nil), do: :ok
 
   defp retire_card(thread_id, reply_id) do
@@ -90,7 +95,8 @@ defmodule Patchbay.Forum.Changes.DeriveSolutionCard do
         site_id: report.site_id,
         tool_id: report.tool_id,
         resource_id: reply.id,
-        actor_principal: Principal.for(report)
+        actor_principal: Principal.for(report),
+        author_profile_id: marker(actor)
       }
       |> Map.merge(attribution(actor)),
       authorize?: false
