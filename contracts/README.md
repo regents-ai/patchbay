@@ -236,3 +236,14 @@ than double), and every bound is checked when a placement is created.
 The same commands as above. `test/AgentOfferMarket.t.sol` holds the unit, fuzz, reentrancy and
 invariant suites; `test/AgentOfferFactory.t.sol` the factory's, including a permit for one market
 being refused by another.
+
+`test/AgentOfferForkRehearsal.t.sol` rehearses the whole money path on a local fork of Base mainnet
+pinned to one block, with Circle's real USDC and the live REGENT revenue staking contract: the
+factory, two markets (one paying a Safe-like contract), sales, a buyout, a lease run to its end, a
+placement terminated early, every claim, the fee pushed into staking and every unit accounted for.
+It logs the gas of each step as a transaction of its own. Nothing is broadcast. It is skipped
+unless `BASE_RPC_URL` is set, so `forge test` stays offline:
+
+```sh
+BASE_RPC_URL=https://mainnet.base.org forge test --match-path test/AgentOfferForkRehearsal.t.sol -vv
+```
