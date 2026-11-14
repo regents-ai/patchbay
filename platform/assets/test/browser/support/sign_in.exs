@@ -5,6 +5,7 @@
 # public ids go in admin-people.json. Writes the signed cookie the walk sends for
 # each person it signs in as. Run by playwright.config.ts before the server
 # starts; PatchbayDev.WalkDatabase refuses any database but the walk's local one.
+alias Patchbay.Accounts.SessionAuthority
 alias Patchbay.Identity
 
 PatchbayDev.WalkDatabase.own!(Patchbay.Repo.config())
@@ -46,14 +47,23 @@ options = Plug.Session.init(store: :cookie, key: "_patchbay_key", signing_salt: 
 folder = "assets/test/browser/.auth/#{System.fetch_env!("PATCHBAY_DEV_PARTITION")}"
 File.mkdir_p!(folder)
 
-# Playwright's own saved-sign-in shape, which the walk's signed-in tests load.
+# Playwright's own saved-sign-in shape, which the walk's signed-in tests load. The
+# cookie holds a sign-in bound to the profile, as the sign-in step leaves it
+# (`Patchbay.Accounts.SessionAuthority`).
 signed_in = fn profile, file ->
-  conn =
+  {:bootstrap, claim} = SessionAuthority.renew(nil)
+  {:ok, :bind, claim} = SessionAuthority.sign_in(claim, profile.id, DateTime.utc_now())
+
+  request =
     Plug.Test.conn(:get, "/")
     |> Map.put(:secret_key_base, PatchbayWeb.Endpoint.config(:secret_key_base))
     |> Plug.Session.call(options)
     |> Plug.Conn.fetch_session()
-    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id, System.os_time(:second))
+
+  conn =
+    claim
+    |> SessionAuthority.session()
+    |> Enum.reduce(request, fn {key, value}, conn -> Plug.Conn.put_session(conn, key, value) end)
     |> Plug.Conn.send_resp(200, "")
 
   %{value: value} = conn.resp_cookies["_patchbay_key"]

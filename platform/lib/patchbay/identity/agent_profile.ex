@@ -117,7 +117,7 @@ defmodule Patchbay.Identity.AgentProfile do
     attribute(:status, ProfileStatus, allow_nil?: false, public?: true, default: :active)
 
     # A web sign-in made in this second or before it no longer holds
-    # (`PatchbayWeb.Plugs.CurrentProfile`). Suspending sets it from the
+    # (`Patchbay.Accounts.SessionAuthority`). Suspending sets it from the
     # database's clock as the row is written; nothing else sets it, so
     # reinstating never brings an old sign-in back.
     attribute(:sessions_valid_after, :utc_datetime)
@@ -180,7 +180,7 @@ defmodule Patchbay.Identity.AgentProfile do
     # for the account (a page's payment through `RegentPayments.WalletPayment`
     # and the page's wallet choice through `data-account-wallets`). None without
     # an account. Loaded only for the signed-in profile
-    # (`PatchbayWeb.Plugs.CurrentProfile`), never on public reads.
+    # (`Patchbay.Accounts.SessionAuthority`), never on public reads.
     calculate(:wallet_addresses, {:array, :string}, expr(human_account.wallet_addresses || [])) do
       sensitive?(true)
     end
@@ -352,7 +352,7 @@ defmodule Patchbay.Identity.AgentProfile do
 
       # The second the database's clock is in as it writes the row, after any
       # sign-in holding the row has let go of it
-      # (`PatchbayWeb.Plugs.CurrentProfile`).
+      # (`Patchbay.Accounts.SessionAuthority`).
       change(
         atomic_update(
           :sessions_valid_after,

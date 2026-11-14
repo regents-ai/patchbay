@@ -16,7 +16,6 @@ defmodule PatchbayWeb.PeopleAdminLiveTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   @console %{role: :system}
 
@@ -194,7 +193,6 @@ defmodule PatchbayWeb.PeopleAdminLiveTest do
   defp signed_in(conn, profile) do
     conn
     |> recycle()
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second) - 5)
+    |> sign_in(profile.id, DateTime.add(DateTime.utc_now(), -5))
   end
 end

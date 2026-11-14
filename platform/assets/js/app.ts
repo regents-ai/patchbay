@@ -42,6 +42,8 @@ import {hooks as labHooks} from "./motion_lab.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
 import {signedInProfileId} from "./webmcp/profile.ts"
 import {installAccountControl} from "./privy/account.ts"
+import {browserCsrfToken, holdAdoptionWhileLeaving, holdSocketDuringCookieRotation, retireRefusedSession} from "./privy/session.ts"
+import type {PinnedSocket} from "./privy/session.ts"
 import {installVisitLog} from "./visit_log.ts"
 import {mountSitePost} from "./site_post.ts"
 import {claimWalletBenchHistory, mountWalletBench} from "./wallet_bench.ts"
@@ -58,10 +60,12 @@ import topbar from "../vendor/topbar.js"
 // First, so an error anywhere below is reported too.
 installVisitLog()
 
-const csrfToken = document.querySelector("meta[name='csrf-token']")!.getAttribute("content")!
+// Signing in, signing out and the sign-in token's first fetch each rotate the
+// session's CSRF state, so every connection and reconnection reads the token
+// the page holds now (`privy/session.ts`).
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {_csrf_token: csrfToken},
+  params: () => ({_csrf_token: browserCsrfToken()}),
   hooks: {
     ...colocatedHooks,
     PatchbayRelativeTime,
@@ -109,6 +113,13 @@ window.addEventListener("pageshow", syncTheme)
 // its listener goes in before LiveView's.
 claimWalletBenchHistory(window)
 
+// Installed before the first connect, so even the page's opening attempt waits
+// while the cookie it would connect under is changing, and a page drawn for a
+// refused cookie connects once that cookie is retired.
+holdSocketDuringCookieRotation(liveSocket.getSocket() as unknown as PinnedSocket)
+holdAdoptionWhileLeaving()
+void retireRefusedSession()
+
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 
@@ -124,7 +135,7 @@ installNavMenu()
 // get_agent_profile reads when no profile is named.
 const offerPageWideSurfaces = () => {
   mountMotion(document)
-  installAccountControl({fetch: window.fetch.bind(window), csrfToken})
+  installAccountControl({fetch: window.fetch.bind(window)})
   mountWebMCPStatus()
   mountSitePost()
   mountWalletBench()

@@ -15,7 +15,6 @@ defmodule PatchbayWeb.PointsLiveTest do
 
   alias Patchbay.Points.Board
   alias Patchbay.SharedReading
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
   alias RegentPoints.{Rules, Store}
 
@@ -40,8 +39,7 @@ defmodule PatchbayWeb.PointsLiveTest do
 
     conn =
       build_conn()
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(agent.owner.id, System.os_time(:second))
+      |> sign_in(agent.owner.id)
 
     %{conn: conn, agent: agent, other: other}
   end

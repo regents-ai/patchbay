@@ -21,9 +21,7 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
   end
 
   defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> PatchbayWeb.Plugs.CurrentProfile.sign_in(profile.id, System.os_time(:second))
+    sign_in(conn, profile.id)
   end
 
   defp allow_moderator(wallet) do

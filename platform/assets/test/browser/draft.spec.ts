@@ -1,6 +1,6 @@
-import {readFileSync} from "node:fs"
-import type {BrowserContext, Locator, Page} from "@playwright/test"
-import {expect, formJoined, signInFile, test, watch} from "./support/test"
+import type {Locator, Page} from "@playwright/test"
+import {email, made, privyTokens} from "./support/privy"
+import {expect, formJoined, test, watch} from "./support/test"
 
 // What a person types in the ask form comes back after they sign in, by the
 // header's Sign in or by Publish, on home, an agent page and a site page's post
@@ -9,27 +9,25 @@ import {expect, formJoined, signInFile, test, watch} from "./support/test"
 // and opened Privy under itself, home put the draft back inside a closed "Ask a
 // question", and a draft typed on /hermes turned up in another page's form.
 
-// A Privy sign-in that goes through: the bridge says signed in, the session
-// address answers and the browser now carries the walk person's cookie, and the
-// page reloads as it does after a real sign-in.
-const signedInBridge = `
+// A Privy sign-in that goes through: the bridge hands over Privy's tokens for a
+// new person with the wallet Privy made (support/privy.ts), and the page signs in
+// with them as it always does, through /auth/csrf and the session address of this
+// run's server, then reloads.
+async function signInGoesThrough(page: Page) {
+  const proof = JSON.stringify(privyTokens([email, made]))
+  await page.route(/\/assets\/js\/privy_bridge(-[0-9a-f]+)?\.js$/, route =>
+    route.fulfill({
+      contentType: "text/javascript",
+      body: `
 export async function profile() { return {ok: false, status: null, error: {code: "authentication_required", outcome_unknown: false}} }
-export async function signIn() { return {ok: true, access: "access", identity: "identity"} }
-export async function finishRedirectSignIn() { return {ok: true, access: "access", identity: "identity"} }
+export async function signIn() { return ${proof} }
+export async function finishRedirectSignIn() { return ${proof} }
 export async function signOut() {}
 export async function activeWallet() { return {ok: false, reason: "signed_out"} }
 export async function activeAddress() { return null }
 export async function addFundsByCard() { return {ok: false, reason: "signed_out"} }
-`
-
-async function signInGoesThrough(page: Page, context: BrowserContext) {
-  await page.route(/\/assets\/js\/privy_bridge(-[0-9a-f]+)?\.js$/, route =>
-    route.fulfill({contentType: "text/javascript", body: signedInBridge}))
-  await page.route("**/auth/privy/session", async route => {
-    const saved = JSON.parse(readFileSync(signInFile("person"), "utf8"))
-    await context.addCookies(saved.cookies)
-    await route.fulfill({status: 200, contentType: "application/json", body: "{}"})
-  })
+`,
+    }))
 }
 
 const DRAFT = {
@@ -80,8 +78,8 @@ test.beforeEach(async ({page}, info) => {
 })
 
 for (const path of ["/", "/hermes"]) {
-  test(`a draft on ${path} comes back after the header's Sign in`, async ({page, context}) => {
-    await signInGoesThrough(page, context)
+  test(`a draft on ${path} comes back after the header's Sign in`, async ({page}) => {
+    await signInGoesThrough(page)
     const problems = watch(page)
     await page.goto(path)
     await formJoined(page)
@@ -94,8 +92,8 @@ for (const path of ["/", "/hermes"]) {
     await problems.expect()
   })
 
-  test(`a draft on ${path} comes back after Publish asks for a sign-in`, async ({page, context}) => {
-    await signInGoesThrough(page, context)
+  test(`a draft on ${path} comes back after Publish asks for a sign-in`, async ({page}) => {
+    await signInGoesThrough(page)
     const problems = watch(page)
     await page.goto(path)
     await formJoined(page)
@@ -117,8 +115,8 @@ test.describe("a site page's post window", () => {
     return postWindow
   }
 
-  test("Publish closes the window for the sign-in, and the window opens again with the draft", async ({page, context}) => {
-    await signInGoesThrough(page, context)
+  test("Publish closes the window for the sign-in, and the window opens again with the draft", async ({page}) => {
+    await signInGoesThrough(page)
     const problems = watch(page)
     const postWindow = await openWindow(page)
     await fillDraft(postWindow.locator("#pb-hero-form"))
@@ -128,8 +126,8 @@ test.describe("a site page's post window", () => {
     await problems.expect()
   })
 
-  test("the window's own Sign in is the one in view, and the draft comes back", async ({page, context}) => {
-    await signInGoesThrough(page, context)
+  test("the window's own Sign in is the one in view, and the draft comes back", async ({page}) => {
+    await signInGoesThrough(page)
     const problems = watch(page)
     const postWindow = await openWindow(page)
     await fillDraft(postWindow.locator("#pb-hero-form"))
@@ -152,8 +150,8 @@ test.describe("a site page's post window", () => {
     await problems.expect()
   })
 
-  test("closed, then the header's Sign in, the window opens again with the draft", async ({page, context}) => {
-    await signInGoesThrough(page, context)
+  test("closed, then the header's Sign in, the window opens again with the draft", async ({page}) => {
+    await signInGoesThrough(page)
     const problems = watch(page)
     const postWindow = await openWindow(page)
     await fillDraft(postWindow.locator("#pb-hero-form"))

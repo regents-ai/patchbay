@@ -20,8 +20,8 @@ defmodule PatchbayWeb.PostFormLive do
   refusal. One of another kind, too large or past the post's limit is not
   added, and the line under Add pictures says so.
 
-  Publishing reads the sign-in again from the session the page was opened
-  with, as a page load would, and posts as that person only.
+  Publishing reads the sign-in again from the lease the form connected with,
+  as a page load would, and posts as that person only.
   """
   use PatchbayWeb, :live_view
 
@@ -31,10 +31,10 @@ defmodule PatchbayWeb.PostFormLive do
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostPicture
+  alias PatchbayWeb.CurrentProfile
   alias PatchbayWeb.Forum.Hero
   alias PatchbayWeb.Forum.PostingBudget
   alias PatchbayWeb.Forum.PostPreview
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   @not_posted "That post could not be published. Try again in a moment."
   @site_fix "Use the site's public address, like shop.example.com/cart."
@@ -68,12 +68,11 @@ defmodule PatchbayWeb.PostFormLive do
         directory: session["directory"] == true,
         draft: draft,
         connected: connected?(socket),
-        claim: Map.take(session, ["agent_profile_id", "signed_in_at"]),
         lines: %{},
         problem: nil,
         preview: nil
       )
-      |> assign_new(:current_profile, fn -> CurrentProfile.signed_in_profile(session) end)
+      |> sign_in(session)
       |> assign_new(:forum_session_id, fn -> session["forum_session_id"] end)
       |> allow_upload(:pictures,
         accept: ~w(image/png image/jpeg image/webp),
@@ -177,8 +176,21 @@ defmodule PatchbayWeb.PostFormLive do
     end
   end
 
+  # Drawn with the page, the form takes the page's sign-in; connected, it reads
+  # the sign-in its own socket connected with, and keeps the lease that reads it
+  # again (`PatchbayWeb.CurrentProfile`).
+  defp sign_in(socket, session) do
+    if connected?(socket) do
+      {profile, lease} = CurrentProfile.connect_lease(session)
+      assign(socket, current_profile: profile, session_lease: lease)
+    else
+      socket |> assign_new(:current_profile, fn -> nil end) |> assign(:session_lease, nil)
+    end
+  end
+
+  # The sign-in as it reads now, from the lease the form connected with.
   defp signed_in(socket) do
-    case CurrentProfile.signed_in_profile(socket.assigns.claim) do
+    case CurrentProfile.leased_profile(socket.assigns.session_lease) do
       nil -> {:error, %{said: @signed_out}}
       profile -> {:ok, profile}
     end

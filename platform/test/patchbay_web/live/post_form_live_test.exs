@@ -16,7 +16,6 @@ defmodule PatchbayWeb.PostFormLiveTest do
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.Hero
   alias PatchbayWeb.LivePart
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.PostFormLive
 
   @typed %{"goal" => "Where does a declined card go?", "site_url" => "checkout.example/cart"}
@@ -68,7 +67,7 @@ defmodule PatchbayWeb.PostFormLiveTest do
     test "previews, publishes exactly what was shown with its pictures in order, and opens the post",
          %{conn: conn} do
       asker = person("asker")
-      view = conn |> signed_in(asker) |> open("/")
+      view = conn |> sign_in(asker.id) |> open("/")
 
       typed =
         Map.merge(@typed, %{
@@ -120,7 +119,7 @@ defmodule PatchbayWeb.PostFormLiveTest do
                Enum.with_index(pictures, fn picture, at -> {at, picture.content} end)
 
       [first | _] = thread.pictures
-      page = conn |> signed_in(asker) |> get(path) |> html_response(200)
+      page = conn |> sign_in(asker.id) |> get(path) |> html_response(200)
       assert page =~ ~s(src="/post-pictures/#{first.id}")
 
       shown = build_conn() |> get(~p"/post-pictures/#{first.id}")
@@ -130,7 +129,7 @@ defmodule PatchbayWeb.PostFormLiveTest do
 
     test "a publish the reading turns away keeps the pictures and the words, says why beside the form, and the next press posts them",
          %{conn: conn} do
-      view = conn |> signed_in(person("asker")) |> open("/")
+      view = conn |> sign_in(person("asker").id) |> open("/")
       type(view, @typed)
       pictures = Enum.map(~w(left right), &png/1)
       upload = choose(view, pictures)
@@ -164,7 +163,7 @@ defmodule PatchbayWeb.PostFormLiveTest do
 
     test "a refusal over one field is said under it before the post is read, keeps the pictures, and opens no board",
          %{conn: conn} do
-      view = conn |> signed_in(person("asker")) |> open("/")
+      view = conn |> sign_in(person("asker").id) |> open("/")
       type(view, %{@typed | "site_url" => "not a web address"})
       upload = choose(view, [png("kept")])
       press(view, "data-pb-preview")
@@ -208,7 +207,7 @@ defmodule PatchbayWeb.PostFormLiveTest do
 
     test "a profile signed out after the page opened cannot post", %{conn: conn} do
       asker = person("asker")
-      view = conn |> signed_in(asker) |> open("/")
+      view = conn |> sign_in(asker.id) |> open("/")
       type(view, @typed)
       press(view, "data-pb-preview")
       Identity.suspend_profile!(asker, "Spam", actor: %{role: :system})
@@ -257,7 +256,7 @@ defmodule PatchbayWeb.PostFormLiveTest do
 
   describe "pictures" do
     test "another kind or one too large is not added, and the line says why", %{conn: conn} do
-      view = conn |> signed_in(person("asker")) |> open("/")
+      view = conn |> sign_in(person("asker").id) |> open("/")
 
       choose(view, [
         %{name: "notes.txt", content: "not a picture", type: "text/plain"},
@@ -274,7 +273,7 @@ defmodule PatchbayWeb.PostFormLiveTest do
 
     test "past four, the first four are kept; full, Add pictures says to remove one, and Remove frees a place",
          %{conn: conn} do
-      view = conn |> signed_in(person("asker")) |> open("/")
+      view = conn |> sign_in(person("asker").id) |> open("/")
       choose(view, Enum.map(~w(one two three four five), &png/1))
 
       assert picture_names(view) == ~w(one.png two.png three.png four.png)
@@ -358,12 +357,6 @@ defmodule PatchbayWeb.PostFormLiveTest do
   end
 
   defp input_value(view, selector), do: attribute(view, selector, "value")
-
-  defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
-  end
 
   defp person(name) do
     Identity.upsert_from_privy!(%{

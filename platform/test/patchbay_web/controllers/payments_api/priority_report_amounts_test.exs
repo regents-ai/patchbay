@@ -11,7 +11,6 @@ defmodule PatchbayWeb.PaymentsAPI.PriorityReportAmountsTest do
 
   alias Patchbay.Identity
   alias Patchbay.JevStandIn
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   @min 1_000_000
   @max 100_000_000
@@ -97,9 +96,7 @@ defmodule PatchbayWeb.PaymentsAPI.PriorityReportAmountsTest do
   end
 
   defp signed_in(conn, person) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+    sign_in(conn, person.id)
   end
 
   defp prepare(conn, written) do

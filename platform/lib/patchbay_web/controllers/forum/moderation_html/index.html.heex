@@ -15,6 +15,6 @@
   <%!-- The lists and their decisions, made where the page stands. --%>
   {live_render(@conn, PatchbayWeb.ModerationLive,
     id: "pb-moderation-live",
-    session: PatchbayWeb.VisitLog.session(@conn)
+    session: PatchbayWeb.CurrentProfile.render_context(@conn)
   )}
 </main>

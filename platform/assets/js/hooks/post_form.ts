@@ -79,7 +79,7 @@ export const PostForm: Hook = {
       event.stopPropagation()
       keep()
       form.closest("dialog")?.close()
-      void requestAccountAction("sign-in", doc, {csrfToken: csrfToken(doc)})
+      void requestAccountAction("sign-in", doc)
     })
 
     this.handleEvent("pb:reach", ({to, line}) => reach(form, to, line))
@@ -177,8 +177,4 @@ function restorePicks(form: PageForm, storage: Storage | null, key: string) {
   } catch {
     // Nothing kept, nothing to put back.
   }
-}
-
-function csrfToken(doc: Document) {
-  return doc.querySelector("meta[name='csrf-token']")?.getAttribute("content") ?? undefined
 }

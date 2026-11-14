@@ -6,7 +6,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentOwnershipTest do
 
   alias Patchbay.Identity
   alias Patchbay.Payments.AgentTip
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   setup do
     payer = profile("a")
@@ -64,9 +63,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentIntentOwnershipTest do
   end
 
   defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+    sign_in(conn, profile.id)
   end
 
   defp profile(letter) do

@@ -22,7 +22,6 @@ defmodule PatchbayWeb.ModerationLiveTest do
   alias Patchbay.Identity
   alias PatchbayWeb.LivePart
   alias PatchbayWeb.ModerationLive
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   describe "a record" do
     test "Hold keeps a thread out of every public view, with its reason on record, and the page shows it waiting",
@@ -179,14 +178,26 @@ defmodule PatchbayWeb.ModerationLiveTest do
   describe "anyone not a moderator" do
     test "joining the page's live part with another sign-in is answered as though it is not there",
          %{conn: conn} do
-      page = conn |> signed_in(moderator()) |> get(~p"/moderation")
+      page = conn |> sign_in(moderator().id) |> get(~p"/moderation")
       session = page |> html_response(200) |> LivePart.session(ModerationLive)
 
-      for stranger <- [build_conn(), signed_in(build_conn(), person!("stranger"))] do
-        assert_raise PatchbayWeb.Forum.NotFoundError, fn ->
-          live_isolated(stranger, ModerationLive, session: session)
-        end
-      end
+      # Joined from a browser with no sign-in, the page is loaded again and
+      # answered as an address that is not there.
+      assert {%{reason: "reload", status: 404}, _call} =
+               catch_exit(
+                 page
+                 |> joined_with(%{})
+                 |> live_isolated(ModerationLive, session: session)
+               )
+
+      # Another person's sign-in is not the one the page was drawn for, so the
+      # page is loaded again from its address, which is not there for them.
+      cookie = signed_in_session(person!("stranger").id)
+
+      assert {:error, {:redirect, %{to: "/moderation"}}} =
+               page |> joined_with(cookie) |> live_isolated(ModerationLive, session: session)
+
+      assert (build_conn() |> init_test_session(cookie) |> get(~p"/moderation")).status == 404
     end
 
     test "a moderator taken off the list while the page is open: each press goes to the front page and decides nothing",
@@ -250,10 +261,18 @@ defmodule PatchbayWeb.ModerationLiveTest do
 
   # The moderation page as `profile` opens it, joined to its live part.
   defp open(conn, profile) do
-    page = conn |> signed_in(profile) |> get(~p"/moderation")
+    page = conn |> sign_in(profile.id) |> get(~p"/moderation")
     session = page |> html_response(200) |> LivePart.session(ModerationLive)
     {:ok, view, _html} = live_isolated(LivePart.browser(page), ModerationLive, session: session)
     view
+  end
+
+  # Another browser, holding `cookie`, joining the live part of the page the
+  # moderator was sent: its first render is the page's own.
+  defp joined_with(page, cookie) do
+    build_conn()
+    |> init_test_session(cookie)
+    |> merge_assigns(current_profile: page.assigns.current_profile)
   end
 
   # A decision on a row's record, with the reason typed beside it.
@@ -272,12 +291,6 @@ defmodule PatchbayWeb.ModerationLiveTest do
 
   # Reads the test's own record back.
   defp ruling(check), do: Forum.get_post_check!(check.id, authorize?: false).ruling
-
-  defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
-  end
 
   defp person!(name) do
     Identity.upsert_from_privy!(%{

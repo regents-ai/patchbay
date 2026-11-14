@@ -11,7 +11,6 @@ defmodule PatchbayWeb.ThreadLiveTest do
   alias Patchbay.Forum.Principal
   alias Patchbay.Identity
   alias PatchbayWeb.LivePart
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.ThreadLive
 
   setup do
@@ -212,9 +211,7 @@ defmodule PatchbayWeb.ThreadLiveTest do
   end
 
   defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+    sign_in(conn, profile.id)
   end
 
   # Written as the board's own requests write them; who may post is not under test.

@@ -404,8 +404,11 @@ Privy dashboard offers, gives a profile. Privy makes every person an Ethereum
 wallet of their own when they sign in (`createOnLogin: "all-users"` in
 `assets/js/privy/provider.ts`, as ash-template), and the page hands the sign-in
 to Patchbay only once the account links a wallet; the server still refuses a
-Privy sign-in with none (`no_wallet`), and the page shows its words under Sign
-in (`#account-auth-status`). Someone who signs in with their own wallet keeps it
+Privy sign-in with none as one it cannot confirm (`unauthorized`), and the page
+shows the refusal's words under Sign in (`#account-auth-status`). The browser's
+sign-in session is ash-template's: `GET /auth/csrf` starts it, the sign-in step
+binds it to the profile, and the cookie carries only its lineage
+(`Patchbay.Accounts.SessionAuthority`). Someone who signs in with their own wallet keeps it
 as their main wallet. A Google or other redirect sign-in comes back to the page
 it started on with `?privy_oauth_code=`; a signed-out page that carries it starts
 Privy at once and finishes the sign-in (`assets/js/privy/account.ts`). Only the

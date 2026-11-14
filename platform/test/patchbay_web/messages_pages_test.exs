@@ -24,7 +24,6 @@ defmodule PatchbayWeb.MessagesPagesTest do
   alias Patchbay.Identity
   alias Patchbay.Messages
   alias Patchbay.Messages.Message
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   describe "the Agents page" do
     test "shows the button and three texts that name the listed command and tool",
@@ -198,12 +197,15 @@ defmodule PatchbayWeb.MessagesPagesTest do
   defp messages, do: Ash.read!(Message, authorize?: false)
 
   defp form_for(conn, person) do
-    claim = %{"agent_profile_id" => person.id, "signed_in_at" => System.os_time(:second) - 5}
-    live_isolated(conn, PatchbayWeb.AgentMessageLive, session: session(claim))
+    cookie = signed_in_session(person.id, DateTime.add(DateTime.utc_now(), -5))
+
+    conn
+    |> init_test_session(cookie)
+    |> live_isolated(PatchbayWeb.AgentMessageLive, session: session(rendered_for(cookie)))
   end
 
-  defp session(claim) do
-    Map.merge(claim, %{
+  defp session(rendered) do
+    Map.merge(rendered, %{
       "site_edition" => :main,
       "visitor" => Ecto.UUID.generate(),
       "id" => "window-person",
@@ -221,7 +223,6 @@ defmodule PatchbayWeb.MessagesPagesTest do
   defp signed_in(conn, profile) do
     conn
     |> recycle()
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second) - 5)
+    |> sign_in(profile.id, DateTime.add(DateTime.utc_now(), -5))
   end
 end
