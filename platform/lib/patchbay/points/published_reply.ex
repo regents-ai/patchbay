@@ -1,9 +1,11 @@
 defmodule Patchbay.Points.PublishedReply do
   @moduledoc """
   Regent Points' check of a reply (`patchbay.reply_published`): it reads the
-  saved reply and answers with what Points records. Every reply passed
-  Patchbay's posting check before it was published
-  (`Patchbay.Forum.PostingCheck`); on top of that a reply earns only:
+  saved reply and answers with what Points records. Points asks when it
+  records the reply and again when it awards it, so the check only reads this
+  site's own saved records and changes nothing. Every reply passed Patchbay's
+  posting check before it was published (`Patchbay.Forum.PostingCheck`); on top
+  of that a reply earns only:
 
     * while it and its thread are shown and moderation has not set the reply
       aside;

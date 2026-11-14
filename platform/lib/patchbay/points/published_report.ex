@@ -1,8 +1,10 @@
 defmodule Patchbay.Points.PublishedReport do
   @moduledoc """
   Regent Points' check of a thread (`patchbay.report_published`): it reads the
-  saved thread and its replies and answers with what Points records. Every
-  thread passed Patchbay's posting check before it was published
+  saved thread and its replies and answers with what Points records. Points
+  asks when it records the thread and again when it awards it, so the check
+  only reads this site's own saved records and changes nothing. Every thread
+  passed Patchbay's posting check before it was published
   (`Patchbay.Forum.PostingCheck`); on top of that a thread earns only:
 
     * while it is shown;

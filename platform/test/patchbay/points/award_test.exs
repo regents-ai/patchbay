@@ -186,6 +186,58 @@ defmodule Patchbay.Points.AwardTest do
                 }}
     end
 
+    test "a reply hidden after Points recorded it, before the award, earns nothing" do
+      thread_id = ask!(SignedAgent.pair!())
+      answer = reply!(SignedAgent.pair!(), thread_id)
+
+      # Points has recorded the reply and its thread, and not yet awarded them.
+      assert %{success: 2} = Oban.drain_queue(queue: :points)
+      assert [:pending, :pending] = Enum.map(events(), & &1.processing_status)
+
+      moderate!(Ash.get!(Reply, answer), :quarantine)
+
+      # Asked again as it awards, the site refuses both: the reply is hidden,
+      # and the thread is left with no shown reply from another person.
+      {earned, refused} = points()
+
+      assert %{status: :rejected, reason_code: "award_refused", points: 0, taken_back: 0} =
+               earned[{"patchbay.reply_published", answer}]
+
+      assert %{status: :rejected, reason_code: "award_refused", points: 0} =
+               earned[{"patchbay.report_published", thread_id}]
+
+      assert refused == %{
+               {"patchbay.reply_published", answer} => "reply_not_shown",
+               {"patchbay.report_published", thread_id} => "no_reply_from_another_person"
+             }
+
+      assert RegentPoints.read_entries!(actor: Store.system()) == []
+    end
+
+    # As when the award asked about the reply just before moderation hid it.
+    test "a take-back waits for an award Points is still deciding, then takes it back" do
+      thread_id = ask!(SignedAgent.pair!())
+      helper = SignedAgent.pair!()
+      answer = reply!(helper, thread_id)
+      assert %{success: 2} = Oban.drain_queue(queue: :points)
+
+      take_back = %{
+        rule_id: "patchbay.reply_published",
+        source_kind: "reply",
+        source_event_key: answer
+      }
+
+      assert {:error, :award_not_decided} = perform_job(TakeBack, take_back)
+
+      {earned, _refused} = points()
+      assert %{points: 5, taken_back: 0} = earned[{"patchbay.reply_published", answer}]
+
+      assert :ok = perform_job(TakeBack, take_back)
+      {earned, _refused} = points()
+      assert %{points: 0, taken_back: 1} = earned[{"patchbay.reply_published", answer}]
+      assert balance(helper) == 0
+    end
+
     test "a thread no person started earns nothing, and nor do the replies on it" do
       {:ok, site} = Forum.register_site("shop.example.com")
 
@@ -376,7 +428,7 @@ defmodule Patchbay.Points.AwardTest do
     entries = Enum.group_by(RegentPoints.read_entries!(actor: Store.system()), & &1.event_id)
 
     earned =
-      Map.new(RegentPoints.read_events!(actor: Store.system()), fn event ->
+      Map.new(events(), fn event ->
         rows = Map.get(entries, event.id, [])
 
         {{event.rule_id, event.source_event_key},
@@ -387,6 +439,7 @@ defmodule Patchbay.Points.AwardTest do
            points: div(Enum.sum_by(rows, & &1.points_micro_delta), Rules.unit()),
            taken_back: Enum.count(rows, &(&1.reversal_of_entry_id != nil)),
            status: event.processing_status,
+           reason_code: event.reason_code,
            source_action_at: event.source_action_at,
            qualified_at: event.qualified_at,
            evidence: event.evidence
@@ -401,6 +454,8 @@ defmodule Patchbay.Points.AwardTest do
 
     {earned, refused}
   end
+
+  defp events, do: RegentPoints.read_events!(actor: Store.system())
 
   defp balance(%{account: account}) do
     query = Ash.Query.filter(RegentPoints.Account, id == ^account.id)

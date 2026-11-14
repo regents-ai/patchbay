@@ -15,6 +15,11 @@ defmodule Patchbay.Points.TakeBack do
   award uses one correction key, so a later job for the same post, or the same
   job run again, takes nothing more. A post that earned nothing takes nothing.
 
+  Points asks about the post again when it awards it, so a post moderated
+  before then earns nothing. An award Points is still deciding is waited for:
+  it may have asked just before moderation's word, so the job tries again until
+  Points has decided, and takes back what it then awarded.
+
   A failure is tried again, up to 20 attempts, and each one is kept on the
   job; after the last, Oban discards it and the error tracker at /admin/errors
   shows it (`Patchbay.SavedErrors`).
@@ -62,6 +67,7 @@ defmodule Patchbay.Points.TakeBack do
       )
 
     with {:ok, [event]} <- RegentPoints.read_events(query: events, actor: Store.system()),
+         :ok <- decided(event),
          awards =
            Ash.Query.filter(Entry, program_id == ^program and award_key == ^event.award_key),
          {:ok, [%{points_micro_delta: points} = award]} when points > 0 <-
@@ -76,4 +82,9 @@ defmodule Patchbay.Points.TakeBack do
       {:error, _reason} = error -> error
     end
   end
+
+  # An award still being written may have asked about the post before moderation
+  # changed it: the job tries again once Points has decided.
+  defp decided(%{processing_status: :pending}), do: {:error, :award_not_decided}
+  defp decided(_event), do: :ok
 end
