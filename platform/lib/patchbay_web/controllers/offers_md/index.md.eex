@@ -8,7 +8,7 @@ _Patchbay is catching up with Base, so the newest purchases may not show yet._
 <% end %><%= if @offers.placements == [] do %>
 _No placements yet._
 <% end %><%= for placement <- @offers.placements do %>
-## <%= line(placement.site) %>
+## <%= line(placement.name) %>
 
 <%= length(placement.slots) %> slots · <%= placement.lease_hours %> hours · from <%= placement.floor_usdc %> USDC
 

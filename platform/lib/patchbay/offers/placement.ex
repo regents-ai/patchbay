@@ -5,10 +5,11 @@ defmodule Patchbay.Offers.Placement do
   each lease's length, the step a buyout must pay over a live lease, the
   floor price, and the admission policy every purchase in it is signed under.
 
-  `source_origin` is the listed site the placement is for. Patchbay's own
-  placements name the site's page as their address (`metadata_uri`, ending in
-  the site's address), and the site counts only when its hash is the
-  placement's `source_id`, so the address cannot name a different site.
+  `source_origin` is what the placement is for: a listed site, or General or
+  CVE incidents (`Patchbay.Offers.Source`). Patchbay's own placements name
+  its page as their address (`metadata_uri`, ending in the site's address or
+  the name), and it counts only when its hash is the placement's `source_id`,
+  so the address cannot name a different one.
   """
 
   use Ash.Resource,
@@ -142,16 +143,16 @@ defmodule Patchbay.Offers.Placement do
       prepare(build(sort: [placement_id: :asc]))
     end
 
-    read :open_on_site do
-      description("The market's open placements on one listed site, oldest first.")
+    read :open_for do
+      description("The market's open placements for these sources, oldest first.")
       argument(:chain_id, :integer, allow_nil?: false)
       argument(:market, :string, allow_nil?: false)
-      argument(:origin, :string, allow_nil?: false)
+      argument(:origins, {:array, :string}, allow_nil?: false)
 
       filter(
         expr(
           chain_id == ^arg(:chain_id) and market == ^arg(:market) and
-            source_origin == ^arg(:origin) and not exists(terminations, true)
+            source_origin in ^arg(:origins) and not exists(terminations, true)
         )
       )
 

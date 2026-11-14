@@ -74,7 +74,7 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         send_failure(conn, failure)
 
       {outcome, thread} ->
-        posted(conn, outcome, thread_posted(thread))
+        posted(conn, outcome, post_offers(conn, thread_posted(thread), thread))
     end
   end
 
@@ -95,9 +95,17 @@ defmodule PatchbayWeb.ForumAPI.ReportController do
         send_failure(conn, failure)
 
       {outcome, {thread, reply}} ->
-        posted(conn, outcome, reply_posted(thread, reply))
+        posted(conn, outcome, post_offers(conn, reply_posted(thread, reply), thread))
     end
   end
+
+  # Paid offers follow a question's or reply's answer at patchbay.help only,
+  # read by the agent that posted it (`PatchbayWeb.PaidOffers`). A page's
+  # tools and the command line post here, so their answers carry them too.
+  defp post_offers(%{assigns: %{site_edition: :main, agent_actor: agent}}, body, thread),
+    do: PaidOffers.post_answer(body, thread, PaidOffers.agent_reader(agent), :json)
+
+  defp post_offers(_open, body, _thread), do: body
 
   # A write that just landed is 201; the same write sent again under its
   # request key is 200 with the original answer and `repeated`.

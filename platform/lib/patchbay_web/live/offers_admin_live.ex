@@ -3,8 +3,9 @@ defmodule PatchbayWeb.OffersAdminLive do
   Patchbay's own side of agent offers, at `/admin/offers`: approve or pull
   campaigns, accept or block advertiser wallets, keep pools and their
   members, choose the pools each placement shows from, and see each
-  placement's live leases with how often each was shown. A stopped reading
-  of the market is cleared here too.
+  placement's live leases with how often each was shown: General and CVE
+  incidents first (`Patchbay.Offers.Source`), then each site's placement as a
+  line that opens. A stopped reading of the market is cleared here too.
 
   Every press acts in place, as the signed-in moderator: each action's own
   policy decides (`Patchbay.Checks.Moderator`), never this page. Pulling a
@@ -22,7 +23,9 @@ defmodule PatchbayWeb.OffersAdminLive do
   import PatchbayWeb.Forum.BoardHTML, only: [board_header: 1, moment: 1]
 
   alias Patchbay.Offers
+  alias Patchbay.Offers.Source
   alias PatchbayWeb.Read
+  alias Phoenix.LiveView.JS
   alias Regent.Primitives
 
   @impl true
@@ -149,7 +152,7 @@ defmodule PatchbayWeb.OffersAdminLive do
          titles: Map.new(campaigns, &{&1.campaign_id, &1.title}),
          rules: Enum.sort_by(rules, & &1.wallet),
          pools: Enum.sort_by(pools, & &1.name),
-         placements: placements,
+         placements: Enum.sort_by(placements, &Source.rank(&1.source_origin)),
          leases: Enum.group_by(leases, & &1.placement_id),
          chosen: Enum.group_by(chosen, & &1.placement_id),
          cursor: cursor
@@ -385,7 +388,7 @@ defmodule PatchbayWeb.OffersAdminLive do
         </p>
         <ol class="pb-oa-step-list">
           <li :for={%{placement: placement, slots: slots} <- @held}>
-            End placement {placement.placement_id} on {placement.source_origin} (terminatePlacement), then settle {slot_words(
+            End placement {placement.placement_id}, {Source.label(placement.source_origin)} (terminatePlacement), then settle {slot_words(
               slots
             )} (settleTerminated); anyone may
             settle. Every lease in that placement is refunded for the time it had left, not only
@@ -459,7 +462,7 @@ defmodule PatchbayWeb.OffersAdminLive do
     <section id="pb-oa-pools" class="pb-sheet-section" aria-labelledby="pb-oa-pools-title">
       <h2 id="pb-oa-pools-title">Pools</h2>
       <p class="patchbay-muted">
-        A pool keeps campaigns about its tags, from its members. With no tags it keeps any campaign; with no members, any accepted wallet. A placement with no pools chosen shows from General: every accepted campaign.
+        A pool keeps campaigns about its tags, from its members. With no tags it keeps any campaign; with no members, any accepted wallet. A placement with no pools chosen shows any accepted campaign.
       </p>
 
       <form id="pb-oa-new-pool" phx-submit="create_pool" class="pb-offmod-actions">
@@ -539,6 +542,9 @@ defmodule PatchbayWeb.OffersAdminLive do
   attr :admin, :map, required: true
 
   defp placements(assigns) do
+    {own, sites} = Enum.split_with(assigns.admin.placements, &Source.own?(&1.source_origin))
+    assigns = assign(assigns, own: own, sites: sites)
+
     ~H"""
     <section
       id="pb-oa-placements"
@@ -558,84 +564,118 @@ defmodule PatchbayWeb.OffersAdminLive do
         Placements appear here once the publisher's wallet creates them on Base.
       </Primitives.empty_state>
 
-      <ul :if={@admin.placements != []} class="pb-oa-list">
+      <%!-- Patchbay's own two whole, then each site's as a line that opens, so
+      a placement for every site still reads as a short list. --%>
+      <h3 :if={@own != []} class="pb-oa-group">Patchbay</h3>
+      <ul :if={@own != []} class="pb-oa-list" id="pb-oa-own">
         <li
-          :for={placement <- @admin.placements}
+          :for={placement <- @own}
+          :key={placement.placement_id}
           id={"pb-oa-placement-#{placement.placement_id}"}
           class="pb-oa-row"
         >
           <div class="pb-oa-row-head">
-            <strong class="pb-oa-name">
-              {placement.source_origin || "Unlisted site"}
-            </strong>
-            <span class="pb-oa-meta">
-              Placement {placement.placement_id} · {placement.capacity} slots · {div(
-                placement.duration_seconds,
-                3600
-              )}h leases
-            </span>
+            <strong class="pb-oa-name">{Source.label(placement.source_origin)}</strong>
+            <span class="pb-oa-meta">{facts(placement, @admin.leases)}</span>
           </div>
+          <.placement_body placement={placement} admin={@admin} />
+        </li>
+      </ul>
 
-          <div class="pb-oa-pools-chosen">
-            <span class="pb-oa-label">Shows from</span>
-            <span :if={Map.get(@admin.chosen, placement.placement_id, []) == []} class="pb-oa-chip">
-              General
-            </span>
-            <span
-              :for={choice <- Map.get(@admin.chosen, placement.placement_id, [])}
-              id={"pb-oa-choice-#{choice.id}"}
-              class="pb-oa-chip"
-            >
-              {choice.pool.name}
-              <button
-                type="button"
-                phx-click="drop_pool"
-                phx-value-id={choice.id}
-                aria-label={"Stop showing from #{choice.pool.name}"}
-              >
-                <Regent.Icons.icon name="x" />
-              </button>
-            </span>
-            <form
-              :if={@admin.pools != []}
-              id={"pb-oa-choose-#{placement.placement_id}"}
-              phx-submit="choose_pool"
-              class="pb-oa-choose"
-            >
-              <input type="hidden" name="placement_id" value={placement.placement_id} />
-              <label class="visually-hidden" for={"pb-oa-pool-for-#{placement.placement_id}"}>
-                Pool
-              </label>
-              <select id={"pb-oa-pool-for-#{placement.placement_id}"} name="pool_id">
-                <option :for={pool <- @admin.pools} value={pool.id}>{pool.name}</option>
-              </select>
-              <Primitives.button type="submit" variant="secondary">Add</Primitives.button>
-            </form>
-          </div>
-
-          <table class="pb-oa-leases">
-            <thead>
-              <tr>
-                <th scope="col">Slot</th>
-                <th scope="col">Campaign</th>
-                <th scope="col">Ends</th>
-                <th scope="col" class="pb-oa-num">Shown</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr :for={{slot, lease} <- slots(placement, @admin.leases)}>
-                <td>{slot + 1}</td>
-                <td :if={!lease} colspan="3" class="patchbay-muted">Open</td>
-                <td :if={lease}>{Map.get(@admin.titles, lease.campaign_id, "Unknown campaign")}</td>
-                <td :if={lease}>{moment(lease.ends_at)}</td>
-                <td :if={lease} class="pb-oa-num">{lease.delivery_count}</td>
-              </tr>
-            </tbody>
-          </table>
+      <h3 :if={@sites != []} class="pb-oa-group">
+        Sites <span class="pb-oa-meta">{length(@sites)}</span>
+      </h3>
+      <ul :if={@sites != []} class="pb-oa-list" id="pb-oa-sites">
+        <li
+          :for={placement <- @sites}
+          :key={placement.placement_id}
+          id={"pb-oa-placement-#{placement.placement_id}"}
+          class="pb-oa-row pb-oa-fold"
+        >
+          <details phx-mounted={JS.ignore_attributes(["open"])}>
+            <summary class="pb-oa-row-head">
+              <strong class="pb-oa-name">{Source.label(placement.source_origin)}</strong>
+              <span class="pb-oa-meta">{facts(placement, @admin.leases)}</span>
+              <Regent.Icons.icon name="chevron-down" class="pb-oa-chevron" />
+            </summary>
+            <.placement_body placement={placement} admin={@admin} />
+          </details>
         </li>
       </ul>
     </section>
     """
+  end
+
+  attr :placement, :map, required: true
+  attr :admin, :map, required: true
+
+  # The pools a placement shows from, and each of its slots with its lease.
+  defp placement_body(assigns) do
+    ~H"""
+    <div class="pb-oa-pools-chosen">
+      <span class="pb-oa-label">Shows from</span>
+      <span :if={Map.get(@admin.chosen, @placement.placement_id, []) == []} class="pb-oa-chip">
+        Any accepted
+      </span>
+      <span
+        :for={choice <- Map.get(@admin.chosen, @placement.placement_id, [])}
+        id={"pb-oa-choice-#{choice.id}"}
+        class="pb-oa-chip"
+      >
+        {choice.pool.name}
+        <button
+          type="button"
+          phx-click="drop_pool"
+          phx-value-id={choice.id}
+          aria-label={"Stop showing from #{choice.pool.name}"}
+        >
+          <Regent.Icons.icon name="x" />
+        </button>
+      </span>
+      <form
+        :if={@admin.pools != []}
+        id={"pb-oa-choose-#{@placement.placement_id}"}
+        phx-submit="choose_pool"
+        class="pb-oa-choose"
+      >
+        <input type="hidden" name="placement_id" value={@placement.placement_id} />
+        <label class="visually-hidden" for={"pb-oa-pool-for-#{@placement.placement_id}"}>
+          Pool
+        </label>
+        <select id={"pb-oa-pool-for-#{@placement.placement_id}"} name="pool_id">
+          <option :for={pool <- @admin.pools} value={pool.id}>{pool.name}</option>
+        </select>
+        <Primitives.button type="submit" variant="secondary">Add</Primitives.button>
+      </form>
+    </div>
+
+    <table class="pb-oa-leases">
+      <thead>
+        <tr>
+          <th scope="col">Slot</th>
+          <th scope="col">Campaign</th>
+          <th scope="col">Ends</th>
+          <th scope="col" class="pb-oa-num">Shown</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr :for={{slot, lease} <- slots(@placement, @admin.leases)}>
+          <td>{slot + 1}</td>
+          <td :if={!lease} colspan="3" class="patchbay-muted">Open</td>
+          <td :if={lease}>{Map.get(@admin.titles, lease.campaign_id, "Unknown campaign")}</td>
+          <td :if={lease}>{moment(lease.ends_at)}</td>
+          <td :if={lease} class="pb-oa-num">{lease.delivery_count}</td>
+        </tr>
+      </tbody>
+    </table>
+    """
+  end
+
+  defp facts(placement, leases) do
+    taken = length(Map.get(leases, placement.placement_id, []))
+
+    "Placement #{placement.placement_id} · #{taken} of #{placement.capacity} slots taken · " <>
+      "#{div(placement.duration_seconds, 3600)}h leases"
   end
 
   # Each slot of a placement with the lease it shows now, if any.

@@ -3,9 +3,12 @@ defmodule PatchbayWeb.OffersLive do
   Agent offers at `/offers`: businesses pay to reach relevant agents, and
   websites choose which offers to show and earn USDC.
 
-  The page shows every open placement and, for each of its slots, the offer
-  it shows now, what that lease paid, the time it has left and the least the
-  next purchase must pay, all from Patchbay's record of the market
+  The page shows every open placement, Patchbay's own two (General and CVE
+  incidents, `Patchbay.Offers.Source`) whole and then each site's as a line
+  that opens to its slots, so the list stays short with a placement for every
+  site. For each slot it shows the offer it shows now, what that lease paid,
+  the time it has left and the least the next purchase must pay, all from
+  Patchbay's record of the market
   (`Patchbay.Offers.Board`), which it follows as the market's reader writes
   it. A signed-in person writes campaigns, buys a slot or buys it out
   (`PatchbayWeb.OffersLive.Buy`) and claims what the market owes their wallets
@@ -21,7 +24,7 @@ defmodule PatchbayWeb.OffersLive do
 
   alias AshPhoenix.Form
   alias Patchbay.Offers
-  alias Patchbay.Offers.{Board, Campaign, Publisher}
+  alias Patchbay.Offers.{Board, Campaign, Publisher, Source}
   alias PatchbayWeb.OffersLive.{Buy, Claim, Words}
   alias Phoenix.LiveView.JS
   alias Regent.Primitives
@@ -106,8 +109,11 @@ defmodule PatchbayWeb.OffersLive do
   end
 
   defp read_board(socket) do
+    board = Board.read()
+    {own, sites} = Enum.split_with(board.placements, &Source.own?(&1.placement.source_origin))
+
     socket
-    |> assign(board: Board.read(), now: DateTime.utc_now())
+    |> assign(board: board, own: own, sites: sites, now: DateTime.utc_now())
     |> then(fn socket -> if socket.assigns.chosen, do: choose_again(socket), else: socket end)
   end
 
@@ -210,95 +216,92 @@ defmodule PatchbayWeb.OffersLive do
           Sites that show offers to agents appear here.
         </Primitives.empty_state>
 
-        <article
-          :for={%{placement: placement, slots: slots} <- @board.placements}
-          id={"placement-#{placement.placement_id}"}
-          class="pb-placement"
+        <%!-- Patchbay's own two whole, then a line for each site's that opens
+        to its slots, so the list stays short however many sites have one. --%>
+        <section
+          :if={@own != []}
+          id="offers-own"
+          class="pb-placement-group"
+          aria-labelledby="offers-own-title"
         >
-          <header class="pb-placement-head">
-            <h3>
-              <a :if={placement.source_origin} href={"/" <> placement.source_origin}>{placement.source_origin}</a>
-              <span :if={!placement.source_origin}>Unlisted site</span>
-            </h3>
-            <p class="pb-placement-terms">
-              {placement.capacity} slots · {div(placement.duration_seconds, 3600)} hours · from {Words.usdc(
-                placement.floor_usdc
-              )} USDC
-            </p>
-          </header>
+          <h3 id="offers-own-title" class="pb-placement-group-title">Patchbay</h3>
+          <article
+            :for={%{placement: placement, slots: slots} <- @own}
+            :key={placement.placement_id}
+            id={"placement-#{placement.placement_id}"}
+            class="pb-placement"
+          >
+            <header class="pb-placement-head">
+              <div class="pb-placement-heading">
+                <h4>{Source.label(placement.source_origin)}</h4>
+                <p class="pb-placement-where">{where(placement.source_origin)}</p>
+              </div>
+              <p class="pb-placement-terms">{terms(placement)}</p>
+            </header>
+            <.placement_slots
+              placement={placement}
+              slots={slots}
+              chosen={@chosen}
+              open?={@open?}
+              profile={@current_profile}
+              now={@now}
+              lease={@session_lease}
+              campaigns={@campaigns}
+            />
+          </article>
+        </section>
 
-          <ol class="pb-slots">
-            <li
-              :for={slot <- slots}
-              id={"placement-#{placement.placement_id}-slot-#{slot.slot}"}
-              class="pb-slot"
-              data-chosen={@chosen == {placement.placement_id, slot.slot}}
-              data-open={is_nil(slot.lease)}
+        <section
+          :if={@sites != []}
+          id="offers-sites"
+          class="pb-placement-group"
+          aria-labelledby="offers-sites-title"
+        >
+          <h3 id="offers-sites-title" class="pb-placement-group-title">
+            Sites <span class="pb-placement-count">{length(@sites)}</span>
+          </h3>
+          <div class="pb-placement-rows">
+            <details
+              :for={%{placement: placement, slots: slots} <- @sites}
+              :key={placement.placement_id}
+              id={"placement-#{placement.placement_id}"}
+              class="pb-placement pb-placement-row"
+              open={chosen_in?(@chosen, placement)}
+              phx-mounted={JS.ignore_attributes(["open"])}
             >
-              <span class="pb-slot-index">Slot {slot.slot + 1}</span>
-              <div class="pb-slot-offer">
-                <%= cond do %>
-                  <% slot.offer -> %>
-                    <a
-                      class="pb-slot-title"
-                      href={slot.offer.link}
-                      target="_blank"
-                      rel="noopener noreferrer nofollow"
-                    >
-                      {slot.offer.title}
-                    </a>
-                    <p class="pb-slot-body">{slot.offer.body}</p>
-                  <% slot.lease -> %>
-                    <p class="pb-slot-title">An offer Patchbay doesn't hold</p>
-                  <% true -> %>
-                    <p class="pb-slot-title pb-slot-open">Open</p>
-                <% end %>
-              </div>
-              <dl class="pb-slot-figures">
-                <div :if={slot.lease}>
-                  <dt>Paid</dt>
-                  <dd>{Words.usdc(slot.lease.paid_usdc)} USDC</dd>
-                </div>
-                <div :if={slot.lease}>
-                  <dt>Left</dt>
-                  <dd>{Words.time_left(slot.lease.ends_at, @now)}</dd>
-                </div>
-                <div>
-                  <dt>Minimum</dt>
-                  <dd>{Words.usdc(slot.minimum_usdc)} USDC</dd>
-                </div>
-              </dl>
-              <div :if={@open?} class="pb-slot-action">
-                <.link
-                  :if={@current_profile}
-                  patch={~p"/offers?#{[placement: placement.placement_id, slot: slot.slot]}"}
-                  class="rg-button rg-button--secondary"
-                  aria-current={@chosen == {placement.placement_id, slot.slot} && "true"}
+              <summary class="pb-placement-summary">
+                <span class="pb-placement-name">{Source.label(placement.source_origin)}</span>
+                <span class="pb-placement-facts">
+                  <span>{Enum.count(slots, & &1.lease)} of {placement.capacity} taken</span>
+                  <span>
+                    from {Words.usdc(Enum.min_by(slots, & &1.minimum_usdc).minimum_usdc)} USDC
+                  </span>
+                </span>
+                <Regent.Icons.icon name="chevron-down" class="pb-placement-chevron" />
+              </summary>
+              <div class="pb-placement-line">
+                <p class="pb-placement-terms">{terms(placement)}</p>
+                <a
+                  :if={placement.source_origin}
+                  class="pb-placement-forum"
+                  href={"/" <> placement.source_origin}
                 >
-                  <span class="rg-button__label">{if slot.lease, do: "Buy out", else: "Buy"}</span>
-                </.link>
-                <Primitives.button
-                  :if={!@current_profile}
-                  variant="secondary"
-                  data-account-target="sign-in"
-                >
-                  {if slot.lease, do: "Buy out", else: "Buy"}
-                </Primitives.button>
+                  View Forum
+                </a>
               </div>
-            </li>
-          </ol>
-
-          <.live_component
-            :if={@open? && @current_profile && @chosen && elem(@chosen, 0) == placement.placement_id}
-            module={Buy}
-            id="offers-buy"
-            lease={@session_lease}
-            profile={@current_profile}
-            placement={placement}
-            slot={Enum.find(slots, &(&1.slot == elem(@chosen, 1)))}
-            campaigns={@campaigns}
-          />
-        </article>
+              <.placement_slots
+                placement={placement}
+                slots={slots}
+                chosen={@chosen}
+                open?={@open?}
+                profile={@current_profile}
+                now={@now}
+                lease={@session_lease}
+                campaigns={@campaigns}
+              />
+            </details>
+          </div>
+        </section>
       </section>
 
       <section
@@ -414,6 +417,104 @@ defmodule PatchbayWeb.OffersLive do
       </section>
     </main>
     """
+  end
+
+  attr :placement, :map, required: true
+  attr :slots, :list, required: true
+  attr :chosen, :any, required: true
+  attr :open?, :boolean, required: true
+  attr :profile, :any, required: true
+  attr :now, DateTime, required: true
+  attr :lease, :any, required: true
+  attr :campaigns, :list, required: true
+
+  # A placement's slots side by side, and the Buy panel under them when one of
+  # them is chosen.
+  defp placement_slots(assigns) do
+    ~H"""
+    <ol class="pb-slots">
+      <li
+        :for={slot <- @slots}
+        id={"placement-#{@placement.placement_id}-slot-#{slot.slot}"}
+        class="pb-slot"
+        data-chosen={@chosen == {@placement.placement_id, slot.slot}}
+        data-open={is_nil(slot.lease)}
+      >
+        <span class="pb-slot-index">Slot {slot.slot + 1}</span>
+        <div class="pb-slot-offer">
+          <%= cond do %>
+            <% slot.offer -> %>
+              <a
+                class="pb-slot-title"
+                href={slot.offer.link}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+              >
+                {slot.offer.title}
+              </a>
+              <p class="pb-slot-body">{slot.offer.body}</p>
+            <% slot.lease -> %>
+              <p class="pb-slot-title">An offer Patchbay doesn't hold</p>
+            <% true -> %>
+              <p class="pb-slot-title pb-slot-open">Open</p>
+          <% end %>
+        </div>
+        <dl class="pb-slot-figures">
+          <div :if={slot.lease}>
+            <dt>Paid</dt>
+            <dd>{Words.usdc(slot.lease.paid_usdc)} USDC</dd>
+          </div>
+          <div :if={slot.lease}>
+            <dt>Left</dt>
+            <dd>{Words.time_left(slot.lease.ends_at, @now)}</dd>
+          </div>
+          <div>
+            <dt>Minimum</dt>
+            <dd>{Words.usdc(slot.minimum_usdc)} USDC</dd>
+          </div>
+        </dl>
+        <div :if={@open?} class="pb-slot-action">
+          <.link
+            :if={@profile}
+            patch={~p"/offers?#{[placement: @placement.placement_id, slot: slot.slot]}"}
+            class="rg-button rg-button--secondary"
+            aria-current={@chosen == {@placement.placement_id, slot.slot} && "true"}
+          >
+            <span class="rg-button__label">{if slot.lease, do: "Buy out", else: "Buy"}</span>
+          </.link>
+          <Primitives.button :if={!@profile} variant="secondary" data-account-target="sign-in">
+            {if slot.lease, do: "Buy out", else: "Buy"}
+          </Primitives.button>
+        </div>
+      </li>
+    </ol>
+
+    <.live_component
+      :if={@open? && @profile && chosen_in?(@chosen, @placement)}
+      module={Buy}
+      id="offers-buy"
+      lease={@lease}
+      profile={@profile}
+      placement={@placement}
+      slot={Enum.find(@slots, &(&1.slot == elem(@chosen, 1)))}
+      campaigns={@campaigns}
+    />
+    """
+  end
+
+  defp chosen_in?({placement_id, _slot}, %{placement_id: placement_id}), do: true
+  defp chosen_in?(_chosen, _placement), do: false
+
+  defp terms(placement) do
+    "#{placement.capacity} slots · #{div(placement.duration_seconds, 3600)} hours · " <>
+      "from #{Words.usdc(placement.floor_usdc)} USDC"
+  end
+
+  # Where Patchbay's own two are shown (`Patchbay.Offers.Source`).
+  defp where(origin) do
+    if origin == Source.general(),
+      do: "Shown wherever a page has no offer of its own.",
+      else: "Shown with CVE incidents."
   end
 
   attr :form, Phoenix.HTML.Form, required: true

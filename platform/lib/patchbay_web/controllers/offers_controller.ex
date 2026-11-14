@@ -13,7 +13,7 @@ defmodule PatchbayWeb.OffersController do
   use PatchbayWeb, :controller
 
   alias Patchbay.Offers
-  alias Patchbay.Offers.{Board, Campaign}
+  alias Patchbay.Offers.{Board, Campaign, Source}
   alias PatchbayWeb.ErrorJSON
   alias PatchbayWeb.Forum.NotFoundError
   alias RegentPayments.USDC
@@ -84,7 +84,8 @@ defmodule PatchbayWeb.OffersController do
   defp placement(%{placement: placement, slots: slots}) do
     %{
       placement_id: placement.placement_id,
-      site: placement.source_origin,
+      name: Source.label(placement.source_origin),
+      site: if(Source.site?(placement.source_origin), do: placement.source_origin),
       lease_hours: div(placement.duration_seconds, 3600),
       floor_usdc: usdc(placement.floor_usdc),
       buyout_step_bps: placement.min_bump_bps,
