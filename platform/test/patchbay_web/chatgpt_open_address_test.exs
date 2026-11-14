@@ -29,6 +29,24 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
     assert server["authorization_endpoint"] == "https://open.patchbay.help/oauth/authorize"
   end
 
+  test "the sign-in takes an app's published identity and names only the open address", %{
+    conn: conn
+  } do
+    oauth = Application.fetch_env!(:patchbay, Patchbay.OAuth)
+    Application.put_env(:patchbay, Patchbay.OAuth, Keyword.put(oauth, :enabled?, true))
+    on_exit(fn -> Application.put_env(:patchbay, Patchbay.OAuth, oauth) end)
+
+    server =
+      conn |> on_open() |> get("/.well-known/oauth-authorization-server") |> json_response(200)
+
+    assert server["client_id_metadata_document_supported"] == true
+    assert server["registration_endpoint"] == "https://open.patchbay.help/oauth/register"
+
+    metadata = Jason.encode!(server)
+    refute metadata =~ ~r{//patchbay\.help}
+    refute metadata =~ ~r/payment|wallet|bounty/i
+  end
+
   test "the plugin's instructions and help send a person to the open address", %{conn: conn} do
     open = SiteEdition.url(:open)
 

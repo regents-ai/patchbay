@@ -50,6 +50,7 @@ defmodule PatchbayWeb.SignedAgent do
   def pair!(owner \\ nil, wallet \\ nil) do
     owner = owner || person!()
     wallet = wallet || wallet()
+    now = System.system_time(:second)
 
     {:ok, account} =
       Patchbay.Accounts.establish(%RegentPrivy.Session{
@@ -57,7 +58,9 @@ defmodule PatchbayWeb.SignedAgent do
         session_id: "test-session",
         privy_user_id: owner.privy_user_id,
         wallet_address: owner.wallet_address,
-        wallet_addresses: [owner.wallet_address]
+        wallet_addresses: [owner.wallet_address],
+        issued_at: now,
+        expires_at: now + 600
       })
 
     person = %RegentAgents.Person{privy_user_id: owner.privy_user_id}

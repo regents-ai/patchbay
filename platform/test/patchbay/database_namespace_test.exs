@@ -80,9 +80,10 @@ defmodule Patchbay.DatabaseNamespaceTest do
 
     assert {:ok, profile} = RegentIdentity.sync(actor)
 
-    assert {:ok, %{id: id}} = RegentIdentity.get_my_profile(actor: actor)
+    owner = RegentIdentity.Owner.of(actor)
+    assert {:ok, %{id: id}} = RegentIdentity.get_my_profile(actor: owner)
     assert id == profile.id
-    assert {:ok, nil} = RegentIdentity.get_my_profile(actor: %{actor | privy_user_id: "other"})
+    assert {:ok, nil} = RegentIdentity.get_my_profile(actor: %{owner | privy_user_id: "other"})
 
     assert [[profile.id]] ==
              Repo.query!("SELECT id::text FROM regent_identity.profiles WHERE id=$1", [

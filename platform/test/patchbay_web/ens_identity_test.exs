@@ -159,12 +159,16 @@ defmodule PatchbayWeb.EnsIdentityTest do
   end
 
   defp session(person) do
+    now = System.system_time(:second)
+
     %RegentPrivy.Session{
       app_id: "test-app",
       session_id: "test-session",
       privy_user_id: person.privy_user_id,
       wallet_address: person.wallet_address,
-      wallet_addresses: [person.wallet_address]
+      wallet_addresses: [person.wallet_address],
+      issued_at: now,
+      expires_at: now + 600
     }
   end
 end

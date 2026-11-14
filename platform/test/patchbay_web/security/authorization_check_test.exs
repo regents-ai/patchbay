@@ -173,7 +173,8 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
       Patchbay.Accounts.by_privy(profile.privy_user_id, actor: %{role: :system})
 
     now = DateTime.utc_now()
-    Ash.Seed.seed!(RegentPoints.Account, %{id: account_id})
+    # The account's stored total, as an award keeps it with its ledger line.
+    Ash.Seed.seed!(RegentPoints.Account, %{id: account_id, balance_micro: points * 1_000_000})
 
     # A test's own ledger line, written straight into the shared tables.
     event =

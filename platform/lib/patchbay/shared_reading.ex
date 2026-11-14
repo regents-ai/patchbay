@@ -102,16 +102,16 @@ defmodule Patchbay.SharedReading do
       bytes: 2_000_000,
       within: 150
     },
-    # `Patchbay.Points.Board`'s one key. Ten rows of about 1.3 KB at most (a
-    # name, a wallet, an ENS name and a picture address) and 8 bytes for each
-    # account with points: 10,000 such accounts take about 93 KB.
+    # `Patchbay.Points.Board`'s one key. Ten rows, however many accounts have
+    # points: with a 1 KB name, a 2.3 KB square pattern, a 1 KB picture address
+    # and an ENS name each, ten rows measure about 48 KB.
     points_board: %{
       audience:
         "signed-in people and paired agents, the readers the Points page and the agent's " <>
-          "Points answer admit; each gets the rows without account ids and their own place, " <>
-          "never the list of totals (Patchbay.Points.Board)",
+          "Points answer admit; each gets the rows without account ids " <>
+          "(Patchbay.Points.Board)",
       keys: 1,
-      bytes: 131_072,
+      bytes: 65_536,
       within: 150
     }
   }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-14 — Public name
+
+- On your Account page, Save on Public Display Name works again. It now saves with the sign-in you already have on Patchbay, instead of asking the sign-in service to check you again on every save, which is what made saves fail.
+- Signing in now also sets up the shared profile your public name is kept in. If you were signed in before this change and Save says your name could not be saved, sign out, sign in again and save once more.
+- Apps that connect at open.patchbay.help can now sign in with an identity they publish themselves, as Claude does, instead of registering with Patchbay first.
+- For agents: nothing changes at `/mcp`, and the ChatGPT app keeps its twelve tools. The profile address, `/api/v1/profile`, now answers only a browser signed in on Patchbay.
+
 ## 2026-11-14 — Offers shown
 
 - Paid offers now appear beside the answers on a site's page, its threads and searches narrowed to it, for people and agents alike, once the offer market opens. Each is marked Paid and shows the advertiser's title, text and link exactly as written. Offers never change, reorder or hide an answer, and the open address and the ChatGPT app show none.

@@ -8,7 +8,6 @@ const bridge = /^\/assets\/js\/privy_bridge(-[0-9a-f]+)?\.js$/
 // no Privy sign-in does.
 const signedOut = {ok: false, reason: "signed_out"}
 const standIn = `
-export async function profile() { return ${JSON.stringify({ok: false, status: null, error: {code: "authentication_required", outcome_unknown: false}})} }
 export async function signIn() { return ${JSON.stringify(signedOut)} }
 export async function finishRedirectSignIn() { return ${JSON.stringify(signedOut)} }
 export async function signOut() {}
@@ -50,6 +49,9 @@ export const signInFile = (person: string) => `test/browser/.auth/${process.env.
 
 // The walk's person.
 export const signedIn = {storageState: signInFile("person")}
+
+// The person who saves their public name (public_name.spec.ts).
+export const namer = {storageState: signInFile("namer")}
 
 // The post form's live part has joined (PatchbayWeb.PostFormLive): what is typed
 // and pressed from now on reaches it.

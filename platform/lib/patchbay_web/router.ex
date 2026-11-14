@@ -586,9 +586,16 @@ defmodule PatchbayWeb.Router do
     post "/messages/:topic", MessagesController, :leave
   end
 
+  # The profile API's owner: the person signed in on this browser, with the
+  # forms token on a change (PatchbayWeb.Plugs.ProfileOwner).
+  pipeline :profile_owner do
+    plug PatchbayWeb.Plugs.ProfileOwner
+  end
+
+  # The person's own shared profile (RegentIdentity.HTTP), for its owner.
   scope "/api/v1" do
-    pipe_through :api
-    forward "/profile", RegentIdentity.HTTP, otp_app: :patchbay
+    pipe_through [:api, :profile_owner]
+    forward "/profile", RegentIdentity.HTTP
   end
 
   # The known fixes, for anyone with no sign-in: Patchbay's own notes and how

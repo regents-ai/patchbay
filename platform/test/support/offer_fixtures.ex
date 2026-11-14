@@ -40,13 +40,17 @@ defmodule PatchbayTest.OfferFixtures do
         wallet_address: wallet
       })
 
+    now = System.system_time(:second)
+
     {:ok, _account} =
       Accounts.establish(%RegentPrivy.Session{
         app_id: "test-app",
         session_id: "test-session",
         privy_user_id: profile.privy_user_id,
         wallet_address: wallet,
-        wallet_addresses: [wallet]
+        wallet_addresses: [wallet],
+        issued_at: now,
+        expires_at: now + 600
       })
 
     Identity.get_profile!(profile.id, load: [:wallet_addresses])

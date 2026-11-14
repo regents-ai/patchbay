@@ -19,7 +19,9 @@ defmodule PatchbayWeb.PrivySessionController do
   person to sign in on it starts with nothing of the last one's: not the
   threads they asked, the sites they followed, or the Jev answers they got.
   The person is recorded in their shared Regent account, as on every Regent
-  site, so their Points and paired agents follow them here. A suspended person
+  site, so their Points and paired agents follow them here, and given their
+  shared profile when they have none, whose public name the Account page saves
+  (`PatchbayWeb.Plugs.ProfileOwner`). A suspended person
   is refused (`Patchbay.Identity.AgentProfile.may_act?/1`) and the browser
   stays signed out.
   """
