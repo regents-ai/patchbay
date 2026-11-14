@@ -1,6 +1,6 @@
 import type {Browser, Locator, Page} from "@playwright/test"
 import {expect, inlineStyle, movesOf, test, toRest} from "./support/motion"
-import {keepOnThisMachine, signInFile, signedIn, watch} from "./support/test"
+import {formJoined, keepOnThisMachine, signInFile, signedIn, watch} from "./support/test"
 
 // What others publish reaches a page that is open, without a reload: a new
 // post at the top of the home page's list, a reply at the end of a post's
@@ -33,6 +33,7 @@ async function openPoster(browser: Browser, baseURL: string) {
     // site pages they check stay as the walk drew them.
     async ask(title: string) {
       await page.goto("/hermes")
+      await formJoined(page)
       await page.locator("#pb-fix-goal").fill(title)
       await page.locator("#pb-fix-site").fill("example.com")
       const details = page.locator("#pb-hero-details")

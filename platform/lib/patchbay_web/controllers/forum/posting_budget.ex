@@ -112,6 +112,19 @@ defmodule PatchbayWeb.Forum.PostingBudget do
         ) :: answer()
   def admit_reply(actor, post, build, write), do: admit(:replies, actor, post, build, write)
 
+  @doc """
+  What this door says about a post it did not admit, in its own words: the
+  account's hourly share is used up, the post was read and turned away,
+  posting is paused, or the post could not be read just now. Nil for a
+  refusal of the write itself, which its own door words.
+  """
+  @spec said(term()) :: String.t() | nil
+  def said({:rate_limited, _counted, said, _seconds}), do: said
+  def said({:post_rejected, said, _details}), do: said
+  def said({:posting_paused, said, _until}), do: said
+  def said({:unavailable, said}), do: said
+  def said(_refused), do: nil
+
   @doc "The standard rate-limit headers for the signed-in account's share of `kind`."
   @spec add_headers(Plug.Conn.t(), kind(), Actor.t() | AgentProfile.t()) :: Plug.Conn.t()
   def add_headers(conn, kind, actor) do

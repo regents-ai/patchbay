@@ -681,11 +681,8 @@ defmodule PatchbayWeb.Router do
 
     # Search words (`q`) stay out of the logs, as on /forum/search.
     get "/", BoardController, :home, log: false
-    post "/threads", BoardController, :create_thread
-    post "/threads/preview", BoardController, :preview_thread
     post "/threads/:id/replies", BoardController, :reply_thread
     get "/moderation", ModerationController, :index
-    post "/moderation", ModerationController, :decide
     post "/reports/:id/replies", BoardController, :create_reply
     post "/posts/:id/replies", BoardController, :create_reply
     get "/sites", BoardController, :sites, private: %{public_catalog_json: true}, log: false
@@ -707,10 +704,8 @@ defmodule PatchbayWeb.Router do
     get "/agent-setup", BoardController, :agent_setup
 
     # Each agent's own page: its quickstart, the same form and the newest posts.
-    # A turned-down post comes back to that page.
     for agent <- @agent_pages do
       get "/#{agent}", BoardController, :home, private: %{home_page: agent}, log: false
-      post "/#{agent}/threads", BoardController, :create_thread, private: %{home_page: agent}
     end
 
     # Each agent program's troubleshooting page, by its harness id.
@@ -738,9 +733,6 @@ defmodule PatchbayWeb.Router do
     pipe_through [:site_address, :browser]
 
     get "/:host", BoardController, :site
-    # A site page's post window sends here, so a post turned down comes back to
-    # that site's page with the window open.
-    post "/:host/threads", BoardController, :create_thread, private: %{site_page: true}
     get "/:host/tools/:name", BoardController, :tool, private: %{public_catalog_json: true}
   end
 

@@ -1,14 +1,14 @@
 defmodule PatchbayWeb.Forum.ModerationControllerTest do
   @moduledoc """
-  The moderation door: who may open it, what a decision does to the public
-  record, and that every decision is written down.
+  The moderation door: who may open it, and that a decision is a moderator's
+  alone however it is asked for. The page's own presses, and what they do to
+  the public record, are `PatchbayWeb.ModerationLiveTest`'s.
   """
 
   use PatchbayWeb.ConnCase, async: false
 
   alias Patchbay.Forum
   alias Patchbay.Forum.ModerationAction
-  alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.Report
 
   @wallet "0x" <> String.duplicate("a", 40)
@@ -75,92 +75,6 @@ defmodule PatchbayWeb.Forum.ModerationControllerTest do
     setup do
       allow_moderator(@wallet)
       :ok
-    end
-
-    test "holds a thread out of every public view, with its reason on record",
-         %{conn: conn} do
-      thread = thread!()
-      moderator = moderator!()
-
-      conn =
-        conn
-        |> signed_in(moderator)
-        |> post(~p"/moderation", %{
-          "subject" => %{
-            "kind" => "thread",
-            "id" => thread.id,
-            "action" => "quarantine",
-            "reason" => "Read like an advertisement, not a question."
-          }
-        })
-
-      assert redirected_to(conn) == ~p"/moderation"
-      assert Ash.get!(Report, thread.id).visibility == :quarantined
-
-      # The page itself lists what waits, and what it decided.
-      board =
-        conn
-        |> recycle()
-        |> signed_in(moderator)
-        |> get(~p"/moderation")
-        |> html_response(200)
-
-      assert board =~ "Waiting for a decision"
-      assert board =~ "Read like an advertisement, not a question."
-      assert board =~ "Decisions on record"
-
-      # Publicly the thread answers like one that does not exist, everywhere.
-      assert_error_sent(404, fn ->
-        conn |> recycle() |> get(PostAddress.path(thread))
-      end)
-
-      refute conn |> recycle() |> get(~p"/") |> html_response(200) =~ thread.title
-
-      refute conn |> recycle() |> get(~p"/shop.example") |> html_response(200) =~
-               thread.title
-
-      assert json_response(
-               conn |> recycle() |> get("/forum/search", %{"q" => "declined cards"}),
-               200
-             )["results"] == []
-
-      assert json_response(
-               conn |> recycle() |> get("/forum/threads/#{thread.id}"),
-               404
-             )["error"]["code"] == "not_found"
-
-      assert [%{action: :quarantine, subject_id: id, actor_profile_id: actor, reason: reason}] =
-               Ash.read!(ModerationAction, authorize?: false)
-
-      assert id == thread.id
-      assert actor == moderator.id
-      assert reason == "Read like an advertisement, not a question."
-    end
-
-    test "puts a held thread back in public view", %{conn: conn} do
-      thread = thread!()
-      conn = signed_in(conn, moderator!())
-
-      for action <- ["quarantine", "publish"] do
-        post(conn, ~p"/moderation", %{
-          "subject" => %{
-            "kind" => "thread",
-            "id" => thread.id,
-            "action" => action,
-            "reason" => "Decided twice, on purpose."
-          }
-        })
-      end
-
-      assert Ash.get!(Report, thread.id).visibility == :published
-
-      assert conn |> recycle() |> get(PostAddress.path(thread)) |> html_response(200) =~
-               thread.title
-
-      assert Ash.read!(ModerationAction, authorize?: false)
-             |> Enum.map(& &1.action)
-             |> Enum.sort() ==
-               [:publish, :quarantine]
     end
 
     test "is a moderator's alone, even when it skips the door" do

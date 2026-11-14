@@ -9,7 +9,6 @@ defmodule PatchbayWeb.Forum.Hero do
   """
 
   alias Patchbay.Forum.Origin
-  alias Patchbay.Forum.PostPicture
 
   @max_title 160
 
@@ -86,40 +85,9 @@ defmodule PatchbayWeb.Forum.Hero do
     end
   end
 
-  @doc """
-  The pictures sent with a post, read from the uploads: at most four, each
-  up to 3 MB. An empty picture field sends nothing.
-  """
-  @spec pictures(term()) :: {:ok, [binary()]} | {:error, problem()}
-  # The paths are the upload files Plug wrote for this request, never a name
-  # the sender chose.
-  # sobelow_skip ["Traversal.FileModule"]
-  def pictures(uploads) when is_list(uploads) do
-    chosen = Enum.filter(uploads, &match?(%Plug.Upload{filename: name} when name != "", &1))
-
-    cond do
-      length(chosen) > PostPicture.max_per_post() ->
-        {:error, %{said: "Add up to #{PostPicture.max_per_post()} pictures.", field: :pictures}}
-
-      Enum.any?(chosen, &(File.stat!(&1.path).size > PostPicture.max_bytes())) ->
-        {:error, %{said: "Each picture can be up to 3 MB.", field: :pictures}}
-
-      true ->
-        {:ok, Enum.map(chosen, &File.read!(&1.path))}
-    end
-  end
-
-  def pictures(_none), do: {:ok, []}
-
-  @doc """
-  Whether the optional details are shown: any of them already holds something,
-  or the post was turned down over one of them.
-  """
-  @spec details?(draft(), problem() | nil) :: boolean()
-  def details?(draft, problem),
-    do:
-      Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] != "")) or
-        (problem != nil and problem[:field] in [:details, :pictures, :tags])
+  @doc "Whether the optional details open with the form: any of them already holds something."
+  @spec details?(draft()) :: boolean()
+  def details?(draft), do: Enum.any?(~w(details thread_kind topic_tags), &(draft[&1] != ""))
 
   # Tags arrive as one comma-separated line and are split here, where the
   # form ends.
