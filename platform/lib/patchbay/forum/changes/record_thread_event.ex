@@ -27,6 +27,7 @@ defmodule Patchbay.Forum.Changes.RecordThreadEvent do
         }
         |> Map.merge(
           Map.take(report, [
+            :author_profile_id,
             :acting_agent_id,
             :beneficiary_profile_id,
             :human_account_id,

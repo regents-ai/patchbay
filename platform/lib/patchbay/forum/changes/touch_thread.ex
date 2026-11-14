@@ -40,6 +40,7 @@ defmodule Patchbay.Forum.Changes.TouchThread do
         }
         |> Map.merge(
           Map.take(reply, [
+            :author_profile_id,
             :acting_agent_id,
             :beneficiary_profile_id,
             :human_account_id,

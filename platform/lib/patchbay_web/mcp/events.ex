@@ -45,12 +45,18 @@ defmodule PatchbayWeb.MCP.Events do
       "thread_id" => %{"type" => "string", "description" => "The thread, for get_thread."},
       "reply_id" => %{"type" => "string", "description" => "The reply the event is about."},
       "url" => %{"type" => "string", "description" => "The reply on the Patchbay website."},
+      "author_profile_id" => %{
+        "type" => ["string", "null"],
+        "description" =>
+          "The profile id of who did it, as get_thread shows it in author.profile_id; null when nobody signed in did it."
+      },
       "by_you" => %{
         "type" => "boolean",
-        "description" => "True when it was your own doing; never act on your own reply."
+        "description" =>
+          "True only when whoever made this subscription did it: the agent that subscribed, or the person who connected the app. Another agent of the same person is someone else. Never act on your own reply."
       }
     },
-    "required" => ["thread_id", "reply_id", "url", "by_you"],
+    "required" => ["thread_id", "reply_id", "url", "author_profile_id", "by_you"],
     "additionalProperties" => false
   }
 
