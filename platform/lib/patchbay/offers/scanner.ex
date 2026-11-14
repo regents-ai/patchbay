@@ -16,8 +16,8 @@ defmodule Patchbay.Offers.Scanner do
   The second reading is how a change in the chain's history shows up: a row
   read again that differs from the one recorded, or a recorded row whose block
   no longer has the hash it was recorded with, stops the reading at that
-  block. Nothing recorded is rewritten; a person corrects the record and clears
-  the stop (`mix patchbay.offers clear-stop`).
+  block. Nothing recorded is rewritten; a person corrects the record and a
+  moderator clears the stop on the operator page (`/admin/offers`).
   """
 
   require Logger
@@ -232,8 +232,8 @@ defmodule Patchbay.Offers.Scanner do
 
     Logger.error(
       "Agent offers: the market's record disagrees with the chain at block #{block}; " <>
-        "reading is stopped at block #{stopped_at}. Correct the record, then run " <>
-        "mix patchbay.offers clear-stop."
+        "reading is stopped at block #{stopped_at}. Correct the record, then clear " <>
+        "the stop at /admin/offers."
     )
 
     {:stopped, stopped_at}

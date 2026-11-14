@@ -4,9 +4,9 @@ defmodule Patchbay.Offers.AdvertiserRule do
   wallet Patchbay has not accepted is not admitted to buy, and a blocked
   wallet never is, even if it is also accepted.
 
-  Only Patchbay sets or removes a rule (`mix patchbay.offers`, as the system
-  actor). A signed-in person reads the rules on their own wallets, which is
-  how their purchase is checked.
+  Only a moderator sets or removes a rule, on the operator page
+  (`PatchbayWeb.OffersAdminLive`), and reads them all; Patchbay reads them as
+  the system when it admits a purchase or shows an offer.
   """
 
   use Ash.Resource,
@@ -62,11 +62,11 @@ defmodule Patchbay.Offers.AdvertiserRule do
   policies do
     policy action_type(:read) do
       authorize_if(actor_attribute_equals(:role, :system))
-      authorize_if(expr(wallet in ^actor(:wallet_addresses)))
+      authorize_if(Patchbay.Checks.Moderator)
     end
 
     policy action_type([:create, :destroy]) do
-      authorize_if(actor_attribute_equals(:role, :system))
+      authorize_if(Patchbay.Checks.Moderator)
     end
   end
 end

@@ -4,8 +4,8 @@ defmodule Patchbay.Offers.Cursor do
   block: the first block not read yet, and the head last seen and when.
 
   A reading that disagrees with the record sets `rescan_from` and stops the
-  reading until a person corrects the record and clears it (`:clear`, from
-  `mix patchbay.offers clear-stop`).
+  reading until a person corrects the record and a moderator clears it
+  (`:clear`, from the operator page, `PatchbayWeb.OffersAdminLive`).
   """
 
   use Ash.Resource,
@@ -110,8 +110,12 @@ defmodule Patchbay.Offers.Cursor do
       authorize_if(always())
     end
 
-    policy action([:open, :advance, :stop, :clear]) do
+    policy action([:open, :advance, :stop]) do
       authorize_if(actor_attribute_equals(:role, :system))
+    end
+
+    policy action(:clear) do
+      authorize_if(Patchbay.Checks.Moderator)
     end
   end
 end

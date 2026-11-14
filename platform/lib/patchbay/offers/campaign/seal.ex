@@ -1,19 +1,25 @@
 defmodule Patchbay.Offers.Campaign.Seal do
   @moduledoc """
   Settles a campaign as it will be kept: its sites as site addresses, only the
-  audience it names, and its id from the manifest that results.
+  audience it names, who it is shown to sorted and once each, and its id from
+  the manifest that results.
   """
 
   use Ash.Resource.Change
 
   alias Ash.Changeset
-  alias Patchbay.Forum.Origin
+  alias Patchbay.Forum.{Origin, TopicTag}
   alias Patchbay.Offers.Campaign
+
+  @address ~r/\A0x[0-9a-f]{40}\z/
 
   @impl true
   def change(changeset, _opts, _context) do
     changeset
     |> audience()
+    |> tags()
+    |> excluded_wallets()
+    |> settle([:kinds, :requires])
     |> Changeset.before_action(&seal/1)
   end
 
@@ -45,6 +51,37 @@ defmodule Patchbay.Offers.Campaign.Seal do
     if Changeset.get_attribute(changeset, :group),
       do: changeset,
       else: Changeset.add_error(changeset, field: :group, message: "choose a kind of site")
+  end
+
+  # Tags as threads carry them: lowercase, hyphens inside.
+  defp tags(changeset) do
+    tags = Enum.map(Changeset.get_attribute(changeset, :tags) || [], &String.downcase/1)
+
+    if Enum.all?(tags, &TopicTag.valid?/1),
+      do: Changeset.force_change_attribute(changeset, :tags, tags |> Enum.uniq() |> Enum.sort()),
+      else: Changeset.add_error(changeset, field: :tags, message: "use topic tags")
+  end
+
+  defp excluded_wallets(changeset) do
+    wallets =
+      Enum.map(Changeset.get_attribute(changeset, :excluded_wallets) || [], &String.downcase/1)
+
+    if Enum.all?(wallets, &Regex.match?(@address, &1)),
+      do:
+        Changeset.force_change_attribute(
+          changeset,
+          :excluded_wallets,
+          wallets |> Enum.uniq() |> Enum.sort()
+        ),
+      else:
+        Changeset.add_error(changeset, field: :excluded_wallets, message: "use wallet addresses")
+  end
+
+  defp settle(changeset, fields) do
+    Enum.reduce(fields, changeset, fn field, changeset ->
+      values = Changeset.get_attribute(changeset, field) || []
+      Changeset.force_change_attribute(changeset, field, values |> Enum.uniq() |> Enum.sort())
+    end)
   end
 
   defp seal(changeset) do

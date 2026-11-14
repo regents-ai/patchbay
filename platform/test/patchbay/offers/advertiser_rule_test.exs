@@ -1,48 +1,53 @@
 defmodule Patchbay.Offers.AdvertiserRuleTest do
   @moduledoc """
   Patchbay's word on advertiser wallets (`Patchbay.Offers.AdvertiserRule`):
-  only Patchbay sets or removes a rule, and a signed-in person reads only the
-  rules on their own wallets.
+  only a moderator sets or removes a rule; Patchbay's own jobs and its
+  moderators read them, and nobody else.
+
+  The moderator list is application-wide, so this file runs alone.
   """
 
-  use Patchbay.DataCase, async: true
+  use Patchbay.DataCase, async: false
 
+  import Patchbay.ModeratorFixtures, only: [moderator: 0]
   import PatchbayTest.OfferFixtures, only: [person!: 1, wallet: 0]
 
   alias Patchbay.Offers
 
   @system %{role: :system}
 
-  test "only Patchbay sets or removes a rule, and setting one twice keeps one" do
+  test "only a moderator sets or removes a rule, and setting one twice keeps one" do
     person = person!(wallet())
+    moderator = moderator()
 
-    assert {:error, %Ash.Error.Forbidden{}} =
-             Offers.set_advertiser_rule(person.wallet_address, :accepted, actor: person)
+    for actor <- [person, @system, nil] do
+      assert {:error, %Ash.Error.Forbidden{}} =
+               Offers.set_advertiser_rule(person.wallet_address, :accepted, actor: actor)
+    end
 
-    assert {:error, %Ash.Error.Forbidden{}} =
-             Offers.set_advertiser_rule(person.wallet_address, :accepted)
-
-    rule = Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: @system)
-    Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: @system)
-    assert [%{id: id}] = Offers.list_advertiser_rules!(actor: @system)
+    rule = Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: moderator)
+    Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: moderator)
+    assert [%{id: id}] = Offers.list_advertiser_rules!(actor: moderator)
     assert id == rule.id
 
-    assert {:error, %Ash.Error.Forbidden{}} = Offers.remove_advertiser_rule(rule, actor: person)
-    assert :ok = Offers.remove_advertiser_rule(rule, actor: @system)
+    for actor <- [person, @system] do
+      assert {:error, %Ash.Error.Forbidden{}} = Offers.remove_advertiser_rule(rule, actor: actor)
+    end
+
+    assert :ok = Offers.remove_advertiser_rule(rule, actor: moderator)
     assert Offers.list_advertiser_rules!(actor: @system) == []
   end
 
-  test "a person reads the rules on their own wallets, and no one else's; signed out, none" do
+  test "the rules are read by Patchbay's jobs and moderators only, a wallet's own holder included" do
     person = person!(wallet())
-    other = wallet()
+    Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: moderator())
+    wallets = [person.wallet_address]
 
-    Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: @system)
-    Offers.set_advertiser_rule!(other, :blocked, actor: @system)
-    wallets = [person.wallet_address, other]
+    assert [%{verdict: :accepted}] = Offers.advertiser_rules!(wallets, actor: @system)
+    assert [%{verdict: :accepted}] = Offers.advertiser_rules!(wallets, actor: moderator())
 
-    assert [%{wallet: own, verdict: :accepted}] = Offers.advertiser_rules!(wallets, actor: person)
-    assert own == person.wallet_address
-    assert length(Offers.advertiser_rules!(wallets, actor: @system)) == 2
-    assert {:error, %Ash.Error.Forbidden{}} = Offers.advertiser_rules(wallets)
+    for actor <- [person, nil] do
+      assert {:error, %Ash.Error.Forbidden{}} = Offers.advertiser_rules(wallets, actor: actor)
+    end
   end
 end

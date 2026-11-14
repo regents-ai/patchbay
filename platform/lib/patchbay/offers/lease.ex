@@ -4,6 +4,10 @@ defmodule Patchbay.Offers.Lease do
   it, never rewritten: a slot bought for one full term, by whom, for which
   campaign and for how much. A slot's lease with the highest nonce whose term
   has not run out is the one it shows, unless its placement was terminated.
+
+  `delivery_count` counts the times Patchbay showed it
+  (`Patchbay.Offers.Delivery`): all of them for a moderator, and for an
+  advertiser only on their own campaigns' leases.
   """
 
   use Ash.Resource,
@@ -62,6 +66,14 @@ defmodule Patchbay.Offers.Lease do
     create_timestamp(:inserted_at)
   end
 
+  relationships do
+    has_many :deliveries, Patchbay.Offers.Delivery
+  end
+
+  aggregates do
+    count(:delivery_count, :deliveries, public?: true)
+  end
+
   identities do
     identity(:unique_chain_event, [:chain_id, :transaction_hash, :log_index])
   end
@@ -101,6 +113,22 @@ defmodule Patchbay.Offers.Lease do
       argument(:market, :string, allow_nil?: false)
 
       filter(expr(chain_id == ^arg(:chain_id) and market == ^arg(:market) and ends_at > now()))
+
+      prepare(build(sort: [placement_id: :asc, slot: :asc, nonce: :desc]))
+    end
+
+    read :live_in do
+      description("The live leases of these placements, newest first in each slot.")
+      argument(:chain_id, :integer, allow_nil?: false)
+      argument(:market, :string, allow_nil?: false)
+      argument(:placement_ids, {:array, :integer}, allow_nil?: false)
+
+      filter(
+        expr(
+          chain_id == ^arg(:chain_id) and market == ^arg(:market) and
+            placement_id in ^arg(:placement_ids) and ends_at > now()
+        )
+      )
 
       prepare(build(sort: [placement_id: :asc, slot: :asc, nonce: :desc]))
     end

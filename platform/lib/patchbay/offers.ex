@@ -9,18 +9,25 @@ defmodule Patchbay.Offers do
 
     * `Patchbay.Offers.Campaign`: an advertiser's offer, written once and
       named on the chain by its content hash.
+    * `Patchbay.Offers.Review`: Patchbay's approval of a campaign, or its
+      pull.
     * `Patchbay.Offers.AdvertiserRule`: the advertisers Patchbay accepts and
       the ones it blocks.
+    * `Patchbay.Offers.Pool`, `PoolMember` and `PlacementPool`: Patchbay's
+      saved choices of campaigns, and the ones each placement shows from.
     * `Patchbay.Offers.Placement`, `Termination`, `Lease` and `Settlement`:
       the market's own events, each written once as the chain gave it
       (`Patchbay.Offers.Scanner`), and `Patchbay.Offers.Cursor`, how far
       they have been read.
     * `Patchbay.Offers.Admission`: Patchbay's signature admitting one
-      purchase, once the campaign is eligible for the slot.
+      purchase, once the campaign is eligible for the slot
+      (`Patchbay.Offers.Eligibility`).
+    * `Patchbay.Offers.Serving`: the paid offers that go with a page or an
+      answer, and `Patchbay.Offers.Delivery`, each one shown.
 
   The whole feature is off while no market address is set
   (`config :patchbay, Patchbay.Offers, market_address: nil`, as in
-  production): no page, no navigation, no reading job.
+  production): no page, no navigation, no reading job, no offer shown.
   """
 
   use Ash.Domain, otp_app: :patchbay
@@ -31,6 +38,13 @@ defmodule Patchbay.Offers do
       define(:my_campaigns, action: :mine)
       define(:get_campaign, action: :read, get_by: [:id])
       define(:campaigns_by_ids, action: :by_campaign_ids, args: [:campaign_ids])
+      define(:campaign_catalog, action: :catalog)
+    end
+
+    resource Patchbay.Offers.Review do
+      define(:approve_campaign, action: :approve, args: [:campaign_id])
+      define(:pull_campaign, action: :pull, args: [:campaign_id])
+      define(:list_reviews, action: :read)
     end
 
     resource Patchbay.Offers.AdvertiserRule do
@@ -38,11 +52,38 @@ defmodule Patchbay.Offers do
       define(:remove_advertiser_rule, action: :destroy)
       define(:advertiser_rules, action: :for_wallets, args: [:wallets])
       define(:list_advertiser_rules, action: :read)
+      define(:get_advertiser_rule, action: :read, get_by: [:id])
+    end
+
+    resource Patchbay.Offers.Pool do
+      define(:create_pool, action: :create)
+      define(:delete_pool, action: :destroy)
+      define(:list_pools, action: :read)
+      define(:get_pool, action: :read, get_by: [:id])
+    end
+
+    resource Patchbay.Offers.PoolMember do
+      define(:add_pool_member, action: :add, args: [:pool_id, :wallet])
+      define(:remove_pool_member, action: :destroy)
+      define(:get_pool_member, action: :read, get_by: [:id])
+    end
+
+    resource Patchbay.Offers.PlacementPool do
+      define(:choose_pool, action: :choose)
+      define(:drop_pool, action: :destroy)
+
+      define(:placement_pools,
+        action: :for_placements,
+        args: [:chain_id, :market, :placement_ids]
+      )
+
+      define(:get_placement_pool, action: :read, get_by: [:id])
     end
 
     resource Patchbay.Offers.Placement do
       define(:record_placement, action: :record)
       define(:open_placements, action: :open, args: [:chain_id, :market])
+      define(:site_placements, action: :open_on_site, args: [:chain_id, :market, :origin])
       define(:get_placement, action: :read, get_by: [:chain_id, :market, :placement_id])
     end
 
@@ -53,6 +94,12 @@ defmodule Patchbay.Offers do
     resource Patchbay.Offers.Lease do
       define(:record_lease, action: :record)
       define(:live_leases, action: :live, args: [:chain_id, :market])
+      define(:placement_leases, action: :live_in, args: [:chain_id, :market, :placement_ids])
+    end
+
+    resource Patchbay.Offers.Delivery do
+      define(:record_delivery, action: :record)
+      define(:deliveries_today, action: :today, args: [:viewer_kind, :viewer, :campaign_ids])
     end
 
     resource Patchbay.Offers.Settlement do

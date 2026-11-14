@@ -108,6 +108,63 @@ defmodule Patchbay.Offers.CampaignTest do
     end
   end
 
+  test "targeting is sealed into the id only when set, so a campaign without it keeps its id", %{
+    owner: owner
+  } do
+    plain = campaign!(owner)
+
+    # Exactly the manifest a campaign had before campaigns could target.
+    assert Campaign.manifest(plain) ==
+             ~s({"version":1,"advertiser":"#{owner.wallet_address}","title":"Acme payments",) <>
+               ~s("body":"Take card payments in one line of code.","link":"https://acme.example/agents",) <>
+               ~s("audience":"all","sites":[],"group":null,"notes":""})
+
+    left_out = wallet()
+    "0x" <> hex = left_out
+
+    targeted =
+      campaign!(owner, %{
+        tags: ["Payments", "auth", "payments"],
+        kinds: [:help_needed],
+        requires: [:paired],
+        excluded_wallets: ["0x" <> String.upcase(hex)],
+        daily_limit: 3
+      })
+
+    assert targeted.campaign_id == Offers.hash(Campaign.manifest(targeted))
+    refute targeted.campaign_id == plain.campaign_id
+
+    assert %{
+             "targeting" => %{
+               "tags" => ["auth", "payments"],
+               "kinds" => ["help_needed"],
+               "requires" => ["paired"],
+               "excluded_wallets" => [^left_out],
+               "daily_limit" => 3
+             }
+           } = Jason.decode!(Campaign.manifest(targeted))
+
+    # Only the parts it sets.
+    limited = campaign!(owner, %{daily_limit: 2})
+
+    assert %{"targeting" => %{"daily_limit" => 2} = only} =
+             Jason.decode!(Campaign.manifest(limited))
+
+    assert map_size(only) == 1
+  end
+
+  test "targeting names topic tags, wallet addresses and a limit from 1 to 100", %{owner: owner} do
+    for {attrs, field} <- [
+          {%{tags: ["not a tag!"]}, :tags},
+          {%{excluded_wallets: ["stripe.com"]}, :excluded_wallets},
+          {%{daily_limit: 0}, :daily_limit},
+          {%{daily_limit: 101}, :daily_limit}
+        ] do
+      assert {:error, %Ash.Error.Invalid{errors: [%{field: ^field} | _]}} =
+               write(owner, Map.put(attrs, :advertiser, owner.wallet_address))
+    end
+  end
+
   defp write(actor, attrs), do: Offers.write_campaign(Map.merge(@offer, attrs), actor: actor)
   defp mine(actor), do: Enum.map(Offers.my_campaigns!(actor: actor), & &1.id)
 end

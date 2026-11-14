@@ -3,28 +3,32 @@ defmodule Patchbay.Offers.AdmissionTest do
   Patchbay's admission of a purchase (`Patchbay.Offers.Admission`): closed
   while no publisher key is set; otherwise only for a signed-in person's own
   campaign, paid from its own wallet, in a slot the market has, when the
-  campaign is eligible there. An admission is the publisher's signature over
+  campaign is eligible there, approved by Patchbay and not pulled. An admission is the publisher's signature over
   exactly the purchase. The market's own check of that signature is proven on
   anvil (`Patchbay.Offers.MarketLabTest`).
+
+  The moderator list is application-wide, so this file runs alone.
   """
 
   use Patchbay.DataCase, async: false
 
+  import Patchbay.ModeratorFixtures, only: [moderator: 0]
   import PatchbayTest.OfferFixtures
 
   alias Patchbay.{Forum, Offers}
   alias Patchbay.Offers.Admission
   alias PatchbayDev.OffersLab
 
-  @system %{role: :system}
-
   setup do
     offers_on!(publisher_private_key: OffersLab.publisher_key())
 
     person = person!(wallet())
-    Offers.set_advertiser_rule!(person.wallet_address, :accepted, actor: @system)
 
-    %{person: person, campaign: campaign!(person), placement: placement!(1, "stripe.com")}
+    %{
+      person: person,
+      campaign: shown_campaign!(person),
+      placement: placement!(1, "stripe.com")
+    }
   end
 
   test "buying is closed while no publisher key is set", %{person: person, campaign: campaign} do
@@ -75,12 +79,27 @@ defmodule Patchbay.Offers.AdmissionTest do
 
   test "Patchbay admits only an accepted wallet that is not blocked", %{person: person} do
     unaccepted = person!(wallet())
-    assert {:error, :not_accepted} = Admission.check(unaccepted, campaign!(unaccepted), 1, 0)
+    approved = campaign!(unaccepted)
+    approve!(approved)
+    assert {:error, :not_accepted} = Admission.check(unaccepted, approved, 1, 0)
 
-    Offers.set_advertiser_rule!(person.wallet_address, :blocked, actor: @system)
+    rule!(person.wallet_address, :blocked)
 
     assert {:error, :blocked} =
              Admission.check(person, campaign!(person, %{title: "Again"}), 1, 0)
+  end
+
+  test "Patchbay admits only a campaign it approved, and never one it pulled", %{
+    person: person,
+    campaign: campaign
+  } do
+    waiting = campaign!(person, %{title: "Acme payouts"})
+    assert {:error, :not_approved} = Admission.check(person, waiting, 1, 0)
+
+    assert :ok = Admission.check(person, campaign, 1, 0)
+    Offers.pull_campaign!(campaign.campaign_id, %{reason: "Misleading"}, actor: moderator())
+    assert {:error, :pulled} = Admission.check(person, campaign, 1, 0)
+    assert {:error, :pulled} = Admission.admit(person, campaign, 1, 0, 5_000_000, 0)
   end
 
   test "a campaign for one kind of site is admitted where the site is listed as that kind", %{
@@ -88,6 +107,7 @@ defmodule Patchbay.Offers.AdmissionTest do
   } do
     websites = campaign!(person, %{audience: :group, group: :website})
     companies = campaign!(person, %{audience: :group, group: :company})
+    Enum.each([websites, companies], &approve!/1)
 
     # Not yet listed, the site is of no known kind.
     assert {:error, :not_on_site} = Admission.check(person, websites, 1, 0)

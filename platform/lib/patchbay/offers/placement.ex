@@ -142,6 +142,22 @@ defmodule Patchbay.Offers.Placement do
       prepare(build(sort: [placement_id: :asc]))
     end
 
+    read :open_on_site do
+      description("The market's open placements on one listed site, oldest first.")
+      argument(:chain_id, :integer, allow_nil?: false)
+      argument(:market, :string, allow_nil?: false)
+      argument(:origin, :string, allow_nil?: false)
+
+      filter(
+        expr(
+          chain_id == ^arg(:chain_id) and market == ^arg(:market) and
+            source_origin == ^arg(:origin) and not exists(terminations, true)
+        )
+      )
+
+      prepare(build(sort: [placement_id: :asc]))
+    end
+
     read :in_blocks do
       argument(:chain_id, :integer, allow_nil?: false)
       argument(:market, :string, allow_nil?: false)

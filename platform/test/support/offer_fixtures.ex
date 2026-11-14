@@ -1,11 +1,11 @@
 defmodule PatchbayTest.OfferFixtures do
   @moduledoc """
   Agent offers in tests: a market switched on for one test, people who sign
-  in with their own wallets, and placement and lease rows as the market's
-  reader writes them.
+  in with their own wallets, Patchbay's word on wallets and campaigns, and
+  placement and lease rows as the market's reader writes them.
   """
 
-  alias Patchbay.{Accounts, Identity, Offers}
+  alias Patchbay.{Accounts, Identity, ModeratorFixtures, Offers}
 
   @system %{role: :system}
   @market "0x00000000000000000000000000000000000000aa"
@@ -70,6 +70,28 @@ defmodule PatchbayTest.OfferFixtures do
       ),
       actor: person
     )
+  end
+
+  @doc """
+  Patchbay's word on `wallet`, given by a moderator. The moderator list is
+  shared by every test, so only a test that runs alone may call it.
+  """
+  def rule!(wallet, verdict \\ :accepted),
+    do: Offers.set_advertiser_rule!(wallet, verdict, actor: ModeratorFixtures.moderator())
+
+  @doc "Patchbay approves `campaign`, by a moderator; as `rule!/2`, only in a test that runs alone."
+  def approve!(campaign),
+    do: Offers.approve_campaign!(campaign.campaign_id, actor: ModeratorFixtures.moderator())
+
+  @doc """
+  A campaign by `person` that Patchbay shows: its wallet accepted and the
+  campaign approved. As `rule!/2`, only in a test that runs alone.
+  """
+  def shown_campaign!(person, attrs \\ %{}) do
+    rule!(person.wallet_address)
+    campaign = campaign!(person, attrs)
+    approve!(campaign)
+    campaign
   end
 
   @doc "A `PlacementCreated` row for the listed site `origin`, as the reader writes it."

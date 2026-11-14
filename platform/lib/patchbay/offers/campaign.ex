@@ -15,8 +15,21 @@ defmodule Patchbay.Offers.Campaign do
   wrote it, and to one of that account's wallets (`advertiser`), the wallet
   that pays for it and that Patchbay accepts or blocks.
 
-  The account reads its own campaigns. Anyone reads a campaign a lease has
-  shown.
+  Who it is shown to is sealed with it too, and each part is optional: the
+  topic tags (`tags`) and thread kinds (`kinds`) of the question an answer is
+  about, what an agent must prove (`requires`, `:paired` for a signed agent
+  paired with a Regent account), wallets never shown it (`excluded_wallets`,
+  such as the advertiser's customers) and how often one agent sees it in a
+  day (`daily_limit`). A part left empty narrows nothing and is left out of
+  the manifest, so a campaign that uses none of them has the manifest and id
+  it always had.
+
+  Patchbay approves a campaign before any of its leases is shown and before
+  it admits a purchase of it, and may pull it at any moment
+  (`Patchbay.Offers.Review`); `review` says where it stands.
+
+  The account reads its own campaigns, and a moderator reads them all. Anyone
+  reads a campaign a lease has shown.
   """
 
   use Ash.Resource,
@@ -25,7 +38,7 @@ defmodule Patchbay.Offers.Campaign do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer]
 
-  alias Patchbay.Forum.Types.EntityType
+  alias Patchbay.Forum.Types.{EntityType, ThreadKind}
 
   @address ~r/\A0x[0-9a-f]{40}\z/
   @hash ~r/\A0x[0-9a-f]{64}\z/
@@ -90,6 +103,39 @@ defmodule Patchbay.Offers.Campaign do
       constraints: [max_length: 500, allow_empty?: true]
     )
 
+    attribute(:tags, {:array, :string},
+      allow_nil?: false,
+      default: [],
+      public?: true,
+      constraints: [max_length: 10]
+    )
+
+    attribute(:kinds, {:array, ThreadKind},
+      allow_nil?: false,
+      default: [],
+      public?: true
+    )
+
+    attribute(:requires, {:array, :atom},
+      allow_nil?: false,
+      default: [],
+      public?: true,
+      constraints: [items: [one_of: [:paired]]]
+    )
+
+    attribute(:excluded_wallets, {:array, :string},
+      allow_nil?: false,
+      default: [],
+      public?: true,
+      constraints: [max_length: 100]
+    )
+
+    attribute(:daily_limit, :integer,
+      allow_nil?: true,
+      public?: true,
+      constraints: [min: 1, max: 100]
+    )
+
     create_timestamp(:inserted_at)
   end
 
@@ -104,6 +150,29 @@ defmodule Patchbay.Offers.Campaign do
       validate_destination_attribute?(false)
       filter(expr(campaign_id == parent(campaign_id)))
     end
+
+    has_many :reviews, Patchbay.Offers.Review do
+      source_attribute(:campaign_id)
+      destination_attribute(:campaign_id)
+      validate_destination_attribute?(false)
+    end
+  end
+
+  calculations do
+    # Pulled is final: a pulled campaign is never shown again, approved or not.
+    calculate(
+      :review,
+      :atom,
+      expr(
+        cond do
+          exists(reviews, decision == :pulled) -> :pulled
+          exists(reviews, decision == :approved) -> :approved
+          true -> :waiting
+        end
+      ),
+      constraints: [one_of: [:waiting, :approved, :pulled]],
+      public?: true
+    )
   end
 
   identities do
@@ -115,7 +184,23 @@ defmodule Patchbay.Offers.Campaign do
 
     create :write do
       description("Writes a campaign for one of the signed-in account's own wallets.")
-      accept([:advertiser, :title, :body, :link, :audience, :sites, :group, :notes])
+
+      accept([
+        :advertiser,
+        :title,
+        :body,
+        :link,
+        :audience,
+        :sites,
+        :group,
+        :notes,
+        :tags,
+        :kinds,
+        :requires,
+        :excluded_wallets,
+        :daily_limit
+      ])
+
       change(relate_actor(:agent_profile))
       change(Patchbay.Offers.Campaign.Seal)
     end
@@ -130,6 +215,11 @@ defmodule Patchbay.Offers.Campaign do
       argument(:campaign_ids, {:array, :string}, allow_nil?: false)
       filter(expr(campaign_id in ^arg(:campaign_ids)))
     end
+
+    read :catalog do
+      description("Every campaign, newest first, for Patchbay's review.")
+      prepare(build(sort: [inserted_at: :desc]))
+    end
   end
 
   policies do
@@ -137,7 +227,12 @@ defmodule Patchbay.Offers.Campaign do
       authorize_if(Patchbay.Offers.Campaign.OwnWallet)
     end
 
+    policy action(:catalog) do
+      authorize_if(Patchbay.Checks.Moderator)
+    end
+
     policy action_type(:read) do
+      authorize_if(Patchbay.Checks.Moderator)
       authorize_if(expr(agent_profile_id == ^actor(:id)))
       authorize_if(expr(exists(leases, true)))
     end
@@ -145,11 +240,20 @@ defmodule Patchbay.Offers.Campaign do
 
   @doc "The fields a campaign's manifest holds."
   @spec manifest_fields() :: [atom()]
-  def manifest_fields, do: [:advertiser, :title, :body, :link, :audience, :sites, :group, :notes]
+  def manifest_fields,
+    do:
+      [:advertiser, :title, :body, :link, :audience, :sites, :group, :notes] ++
+        targeting_fields()
+
+  @doc "The optional fields that narrow who a campaign is shown to."
+  @spec targeting_fields() :: [atom()]
+  def targeting_fields, do: [:tags, :kinds, :requires, :excluded_wallets, :daily_limit]
 
   @doc """
   The manifest a campaign's id is the hash of: JSON with its fields in this
-  fixed order, and no spaces.
+  fixed order, and no spaces. Who it is shown to follows as `targeting`, with
+  only the parts it sets, in the same fixed order; a campaign that sets none
+  has no `targeting`.
   """
   @spec manifest(map()) :: String.t()
   def manifest(campaign) do
@@ -164,7 +268,20 @@ defmodule Patchbay.Offers.Campaign do
       {"group", campaign.group && to_string(campaign.group)},
       {"notes", campaign.notes}
     ]
+    |> Kernel.++(targeting(campaign))
     |> Jason.OrderedObject.new()
     |> Jason.encode!()
   end
+
+  defp targeting(campaign) do
+    parts =
+      for field <- targeting_fields(),
+          Map.get(campaign, field) not in [nil, []],
+          do: {Atom.to_string(field), sealed(Map.fetch!(campaign, field))}
+
+    if parts == [], do: [], else: [{"targeting", Jason.OrderedObject.new(parts)}]
+  end
+
+  defp sealed(values) when is_list(values), do: Enum.map(values, &to_string/1)
+  defp sealed(limit) when is_integer(limit), do: limit
 end

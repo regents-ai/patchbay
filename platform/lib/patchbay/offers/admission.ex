@@ -7,8 +7,11 @@ defmodule Patchbay.Offers.Admission do
 
   Patchbay admits a purchase only for a signed-in person, for a campaign their
   account wrote, paid from that campaign's own wallet, when the campaign is
-  eligible for the placement (`Patchbay.Offers.Eligibility`). The admission
-  lasts ten minutes. While no publisher key is set, buying is closed.
+  eligible for the placement (`Patchbay.Offers.Eligibility`): approved by
+  Patchbay and never pulled, from an advertiser it accepts, in a pool the
+  placement shows from. Patchbay's side of that is read as the system. The
+  admission lasts ten minutes. While no publisher key is set, buying is
+  closed.
 
   The key is read from `config :patchbay, Patchbay.Offers` and nowhere else,
   and nothing here writes it anywhere: not into a log, an error or a result.
@@ -160,18 +163,9 @@ defmodule Patchbay.Offers.Admission do
     end
   end
 
+  # Where the campaign stands is read again, so a pull made a moment ago counts.
   defp eligible(actor, campaign, placement) do
-    rules = Offers.advertiser_rules!([campaign.advertiser], actor: actor)
-    Eligibility.check(campaign, placement, rules, site_kind(campaign, placement))
+    campaign = Ash.load!(campaign, [:review], actor: actor)
+    Eligibility.check(campaign, placement, Eligibility.terms([placement], [campaign]))
   end
-
-  # The kind of site is needed only for a campaign that runs on one kind.
-  defp site_kind(%{audience: :group}, %{source_origin: origin}) when is_binary(origin) do
-    case Patchbay.Forum.get_site_by_origin(origin, not_found_error?: false) do
-      {:ok, %{entity_type: kind}} -> kind
-      {:ok, nil} -> nil
-    end
-  end
-
-  defp site_kind(_campaign, _placement), do: nil
 end
