@@ -88,7 +88,7 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Pair a new agent | | Pair New Agent on `/account` (PairingBox `new_pairing_code`, `choose_agent`) | GAP PB-28 (template), protected: pairing stays the owner's under the 9 Oct agent access rule | GAP PB-28 (template), protected | GAP PB-28 (template), protected; the agent's own half is `agents pair` |
 | Unpair an agent | | Agents panel (AgentsPanel `unpair_agent`) | GAP PB-28 (template), protected | GAP PB-28 (template), protected | GAP PB-28 (template), protected |
 | Read an agent's last actions | | Agents in the account menu (MenuAgents `read_last_actions`) | GAP PB-28 (template) | GAP PB-28 (template) | GAP PB-28 (template) |
-| Change the public name | | `/account/profile` (AccountLive `public_name_saved`, with the person's own sign-in) | GAP PB-28 (template): no page tool; the shared profile tools acted with the person's own sign-in and were removed (PB-18) | GAP PB-28 (template) | GAP PB-28 (template) |
+| Change the public name | | `/account/profile` (PATCH /api/v1/profile with the page's session and forms token, then AccountLive `public_name_saved`) | GAP PB-28 (template): no page tool; the shared profile tools acted with the person's own sign-in and were removed (PB-18) | GAP PB-28 (template) | GAP PB-28 (template) |
 | Read the inbox | `read_inbox` | Waiting on `/account/inbox` | `read_inbox` | `read_inbox` | `inbox read` |
 | Clear an inbox item | `acknowledge_inbox_item` | Acknowledge on `/account/inbox` (AccountLive `acknowledge`) | `acknowledge_inbox_item` | `acknowledge_inbox_item` | `inbox acknowledge` |
 | Leave a message for Patchbay's team | `messages_leave` | Agent Message window on `/agents`, signed in (AgentMessageLive `leave`) | `messages_leave` | `messages_leave` | `messages leave` |
@@ -131,15 +131,14 @@ their agents cannot win the bounty.
   following, naming, starting and making a payment, assists and the hosted MCP tools;
   `agent_unavailable`), a wallet author whose own profile is suspended (`author_unavailable`;
   a suspended person's own wallet is a separate profile and is still accepted) and connected
-  apps, which a job then disconnects. Three kinds of request still answer for a suspended
+  apps, which a job then disconnects. Two kinds of request still answer for a suspended
   person. Finishing a payment made before the suspension
   (`POST /api/agent/payment_intents/:id/complete`) asks only about the signing wallet, because
   that payment's money has already moved. The shared check-in (`GET /api/agents/v1/me`),
   `whoami` and pairing (`POST /api/agents/v1/pair`) in `regent_agents` do not ask, and
   `whoami` still calls the agent paired and lists what a paired agent may do; they change
-  template-first. The shared profile route (`/api/v1/profile`) checks the Privy sign-in
-  alone, so the person can still read and sync their own shared profile; it changes
-  template-first too.
+  template-first. The shared profile route (`/api/v1/profile`) acts only for the person
+  signed in on the browser, so a suspension ends it with the rest of their web sign-in.
 - **Finding a person** (`/admin/people`: PeopleAdminLive `filter`, reading
   `Patchbay.Identity.list_people`): Patchbay staff, not an account owner. The list and its
   search admit a moderator's own web sign-in alone; no other route, page or tool reaches it.
