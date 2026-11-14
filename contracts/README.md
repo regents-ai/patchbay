@@ -170,7 +170,8 @@ forge script script/Sanity.s.sol --rpc-url $BASE_RPC_URL
 # Agent offer markets
 
 `AgentOfferFactory` and `AgentOfferMarket` (interface `IAgentOfferMarket`) are where agent Offers are
-bought on Base. They are built and tested here and **not deployed**: there is no deploy script for
+bought on Base; `AgentOfferStakingPayout` is the payout address of Patchbay's own market. They are
+built and tested here and **not deployed**: there is no deploy script for
 them, and the factory refuses to deploy anywhere but Base mainnet (chain 8453, with Circle's native
 USDC at `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), so they cannot be tried on Base Sepolia as
 written. The tests set the chain id to 8453 and place a stand-in token at that address.
@@ -225,22 +226,64 @@ written. The tests set the chain id to 8453 and place a stand-in token at that a
 - **Payout wallet:** fixed when the market is created and never changed. If it is lost, only the
   publisher's own earnings are stranded; buyers' refunds are credited to buyers. The publisher would
   then terminate its placements and, with the owner admitting a new publisher address, create a new
-  market with a new payout wallet. A Safe is the better choice for the payout wallet.
+  market with a new payout wallet. A Safe is the better choice for the payout wallet. Patchbay's is
+  the staking payout contract below, which nobody controls.
 - **Anyone:** buys (with an admission), settles run-out or terminated leases, and pushes the fee.
 
 Lease lengths are capped at 365 days, the step at 10,000 basis points (a buyout never has to pay more
 than double), and every bound is checked when a placement is created.
 
+## Patchbay's earnings into staking
+
+Patchbay keeps none of what its own market earns: its share goes into the REGENT revenue staking
+contract, like the protocol fee. A market credits only its fixed payout address and only that
+address can claim, so naming the staking contract as payout would strand the money (staking never
+claims), and a plain transfer to staking is not recorded as revenue. Patchbay's payout address is
+therefore `AgentOfferStakingPayout`, a contract that does one thing:
+
+- `pushEarnings()` claims everything the market owes it and, in the same call, deposits it into the
+  staking contract with `depositUSDC`, tagged `agent.offers.payout` with the market's address as the
+  reference. The fee keeps its own tag, `agent.offers`, so the staking books tell the two apart.
+  Anyone may call it; it returns the amount deposited.
+- Every push deposits the contract's whole USDC balance, so nothing can be stranded in it: USDC
+  anyone sends it goes into staking with the next push. `EarningsPushed(caller, claimedUSDC,
+  depositedUSDC)` shows how much of a push came from the market. The market is asked only when it
+  owes something; with nothing owed and nothing held, the push reverts with `NothingToPush()`.
+- While staking is paused the deposit reverts, and the whole push with it: the earnings stay owed in
+  the market for a later push.
+- It has no owner, no settings and no way to send money anywhere but the staking contract. Its
+  market, USDC and staking contract are read from the factory, at deployment, for the publisher it
+  is given, so it can only serve the market that factory creates for that publisher, with the token
+  and staking contract that market itself uses.
+
+Deploy order, one transaction each (there is no script):
+
+1. Deploy `AgentOfferFactory`, admitting Patchbay's publisher address.
+2. Read `factory.predictMarket(publisher)`: the address Patchbay's market will have.
+3. Deploy `AgentOfferStakingPayout(factory, publisher)` from any address, and check that its
+   `market()` is that predicted address and its `staking()` is the factory's.
+4. From the publisher address, call `factory.createMarket(<the payout contract>)`.
+5. Check that `factory.marketOf(publisher)` is the payout contract's `market()` and that the
+   market's `payout()` is the payout contract. Step 4 must come from that publisher on that factory:
+   a market created by any other address, or by another factory, would credit the payout contract
+   earnings it never claims.
+
+The publisher's signing key only creates and terminates placements and signs admissions; it never
+holds or receives money. Anyone, Patchbay's server included, may call `pushRevenue` and
+`pushEarnings` at any time, and neither can send money anywhere but staking.
+
 ## Checks
 
 The same commands as above. `test/AgentOfferMarket.t.sol` holds the unit, fuzz, reentrancy and
 invariant suites; `test/AgentOfferFactory.t.sol` the factory's, including a permit for one market
-being refused by another.
+being refused by another; `test/AgentOfferStakingPayout.t.sol` the staking payout's, including a
+staking contract that calls back mid-deposit.
 
 `test/AgentOfferForkRehearsal.t.sol` rehearses the whole money path on a local fork of Base mainnet
 pinned to one block, with Circle's real USDC and the live REGENT revenue staking contract: the
-factory, two markets (one paying a Safe-like contract), sales, a buyout, a lease run to its end, a
-placement terminated early, every claim, the fee pushed into staking and every unit accounted for.
+factory, Patchbay's market paying its staking payout contract and a second market paying a plain
+wallet, sales, a buyout, a lease run to its end, a placement terminated early, every claim, the fees
+and Patchbay's earnings pushed into staking, and every unit accounted for.
 It logs the gas of each step as a transaction of its own. Nothing is broadcast. It is skipped
 unless `BASE_RPC_URL` is set, so `forge test` stays offline:
 

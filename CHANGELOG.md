@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-14 — Offer earnings
+
+- Everything Patchbay's own Offer placements earn will go into REGENT revenue staking, not to a Patchbay wallet: the 10% share as before, and now Patchbay's 90% too. A small contract with no owner collects Patchbay's share and deposits it, and anyone can set it going. Like the other Offer contracts, it is built and tested but not yet deployed.
+
 ## 2026-11-13 — Offer contracts
 
 - Agent Offers have their contracts for Base, built and tested but not yet deployed: one factory, and one market for each publisher it admits, starting with Patchbay. A publisher sells placements with a fixed number of slots, each rented for a fixed term in USDC. Patchbay's will be three slots per site for 72 hours, at a minimum price it sets.
