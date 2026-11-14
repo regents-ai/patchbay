@@ -2,7 +2,7 @@
 
 Hold keeps a record out of every public view until you decide, put back returns it, and remove keeps it out for good. Decisions are made with the form on the HTML page.
 
-## Waiting for a decision
+## Waiting
 
 <%= if @quarantined == [], do: "_Nothing waiting._" %>
 <%= for {kind, record} <- @quarantined do %>

@@ -1,0 +1,238 @@
+<section class="pb-sheet-section" aria-labelledby="pb-mod-queue">
+  <h2 id="pb-mod-queue">Waiting</h2>
+
+  <ul class="pb-mod-list">
+    <%!-- A held row's ids are its own, so a thread moving between lists starts with an empty reason. --%>
+    <li
+      :for={{kind, record} <- @quarantined}
+      id={"pb-mod-held-#{row(kind, record)}"}
+      class="pb-mod-item"
+    >
+      <header class="pb-mod-item-head">
+        <span>{subject_label(kind)} · {record.inserted_at}</span>
+        <a href={subject_path(kind, record)}>view</a>
+      </header>
+      <div class="pb-mod-item-body">{subject_text(record)}</div>
+      <form
+        id={"pb-mod-held-#{row(kind, record)}-decide"}
+        phx-submit="moderate"
+        class="pb-mod-actions"
+      >
+        <input type="hidden" name="subject[kind]" value={subject_label(kind)} />
+        <input type="hidden" name="subject[id]" value={record.id} />
+        <%!-- What is typed stays while the lists change around it. --%>
+        <input
+          id={"pb-mod-held-#{row(kind, record)}-reason"}
+          type="text"
+          name="subject[reason]"
+          required
+          maxlength="500"
+          aria-label="Reason"
+          placeholder="Reason, recorded with the decision"
+          phx-update="ignore"
+        />
+        <button type="submit" name="subject[action]" value="publish">Put back</button>
+        <button type="submit" name="subject[action]" value="redact">Remove</button>
+      </form>
+      <.press_refused
+        id={"pb-mod-held-#{row(kind, record)}-refused"}
+        words={@refused[row(kind, record)]}
+      />
+    </li>
+  </ul>
+
+  <p :if={@quarantined == []} class="patchbay-muted">Nothing is waiting.</p>
+</section>
+
+<section class="pb-sheet-section" aria-labelledby="pb-mod-turned-away">
+  <h2 id="pb-mod-turned-away">Turned away</h2>
+  <p class="patchbay-muted">
+    Posts the reader refused. They were never published. Ruling one wrong stops it
+    counting toward that person's pause.
+  </p>
+
+  <ul class="pb-mod-list">
+    <li :for={entry <- @turned_away} id={"pb-mod-post-#{entry.check.id}"} class="pb-mod-item">
+      <header class="pb-mod-item-head">
+        <span>
+          {turned_away_kind(entry.check.kind)} · {finding(entry.check.finding)} · {sure(
+            entry.check.confidence
+          )} · {entry.check.inserted_at}
+        </span>
+        <span>
+          <PatchbayWeb.Forum.Nameplate.profile_name
+            :if={entry.person}
+            id={"pb-mod-#{entry.check.id}-person"}
+            profile={entry.person}
+          /><span :if={!entry.person}>{person_name(nil)}</span><span :if={
+            entry.check.acting_agent_id
+          }> · sent by their agent</span>
+        </span>
+      </header>
+
+      <dl :if={entry.check.shown} class="pb-mod-words">
+        <div :for={{part, text} <- words(entry.check.shown)}>
+          <dt>{part}</dt>
+          <dd>{text}</dd>
+        </div>
+      </dl>
+      <p :if={!entry.check.shown} class="patchbay-muted">Its words are no longer kept.</p>
+
+      <p :if={entry.check.ruling} class="pb-mod-state">
+        Ruled {entry.check.ruling} to block.
+      </p>
+      <p :if={entry.check.lifted_at} class="pb-mod-state">No longer counts: pause lifted.</p>
+
+      <div class="pb-mod-actions">
+        <button
+          type="button"
+          phx-click="review"
+          phx-value-kind="post"
+          phx-value-id={entry.check.id}
+          phx-value-action="right"
+        >
+          Right
+        </button>
+        <button
+          type="button"
+          phx-click="review"
+          phx-value-kind="post"
+          phx-value-id={entry.check.id}
+          phx-value-action="wrong"
+        >
+          Wrong
+        </button>
+        <button
+          :if={entry.check.ruling}
+          type="button"
+          phx-click="review"
+          phx-value-kind="post"
+          phx-value-id={entry.check.id}
+          phx-value-action="none"
+        >
+          Clear ruling
+        </button>
+      </div>
+
+      <div :if={entry.check.example} class="pb-mod-example">
+        <p>The reader is shown this with every post, as an example:</p>
+        <pre class="pb-mod-words">{entry.check.example}</pre>
+        <div class="pb-mod-actions">
+          <button
+            type="button"
+            phx-click="review"
+            phx-value-kind="post"
+            phx-value-id={entry.check.id}
+            phx-value-action="no_example"
+          >
+            Drop example
+          </button>
+        </div>
+      </div>
+
+      <div
+        :if={entry.check.ruling && entry.check.shown && !entry.check.example}
+        class="pb-mod-example"
+      >
+        <p>
+          Use as an example and the reader will be shown exactly this with every post it
+          checks:
+        </p>
+        <pre class="pb-mod-words">{example_cut(entry.check.shown)}</pre>
+        <div class="pb-mod-actions">
+          <button
+            type="button"
+            phx-click="review"
+            phx-value-kind="post"
+            phx-value-id={entry.check.id}
+            phx-value-action="example"
+          >
+            Use example
+          </button>
+        </div>
+      </div>
+
+      <.press_refused
+        id={"pb-mod-post-#{entry.check.id}-refused"}
+        words={@refused["post-#{entry.check.id}"]}
+      />
+
+      <div :if={entry.paused_until} class="pb-mod-actions">
+        <span>Paused until {until(entry.paused_until)}.</span>
+        <button
+          type="button"
+          phx-click="review"
+          phx-value-kind="person"
+          phx-value-id={entry.check.profile_id}
+          phx-value-action="lift"
+        >
+          Lift pause
+        </button>
+      </div>
+      <%!-- A person's pause shows on each of their rows, and so does why it was not lifted. --%>
+      <.press_refused
+        id={"pb-mod-post-#{entry.check.id}-lift-refused"}
+        words={@refused["person-#{entry.check.profile_id}"]}
+      />
+    </li>
+  </ul>
+
+  <p :if={@turned_away == []} class="patchbay-muted">Nothing has been turned away.</p>
+</section>
+
+<section class="pb-sheet-section" aria-labelledby="pb-mod-latest">
+  <h2 id="pb-mod-latest">Newest published</h2>
+
+  <ul class="pb-mod-list">
+    <li :for={thread <- @latest} id={"pb-mod-thread-#{thread.id}"} class="pb-mod-item">
+      <header class="pb-mod-item-head">
+        <span>thread · {thread.inserted_at}</span>
+        <a href={subject_path(:thread, thread)}>view</a>
+      </header>
+      <div class="pb-mod-item-body">{thread.title || thread.note}</div>
+      <form
+        id={"pb-mod-thread-#{thread.id}-decide"}
+        phx-submit="moderate"
+        class="pb-mod-actions"
+      >
+        <input type="hidden" name="subject[kind]" value="thread" />
+        <input type="hidden" name="subject[id]" value={thread.id} />
+        <input
+          id={"pb-mod-thread-#{thread.id}-reason"}
+          type="text"
+          name="subject[reason]"
+          required
+          maxlength="500"
+          aria-label="Reason"
+          placeholder="Reason, recorded with the decision"
+          phx-update="ignore"
+        />
+        <button type="submit" name="subject[action]" value="quarantine">Hold</button>
+        <button type="submit" name="subject[action]" value="redact">Remove</button>
+      </form>
+      <.press_refused
+        id={"pb-mod-thread-#{thread.id}-refused"}
+        words={@refused["thread-#{thread.id}"]}
+      />
+    </li>
+  </ul>
+
+  <p :if={@latest == []} class="patchbay-muted">Nothing is published yet.</p>
+</section>
+
+<section class="pb-sheet-section" aria-labelledby="pb-mod-record">
+  <h2 id="pb-mod-record">Decisions</h2>
+
+  <ul id="pb-mod-decisions" class="pb-mod-list">
+    <li :for={decision <- @decisions} class="pb-mod-item">
+      <header class="pb-mod-item-head">
+        <span>
+          {decision.action} {decision.subject_kind} · {decision.inserted_at}
+        </span>
+      </header>
+      <div class="pb-mod-item-body">{decision.reason}</div>
+    </li>
+  </ul>
+
+  <p :if={@decisions == []} class="patchbay-muted">No decisions yet.</p>
+</section>

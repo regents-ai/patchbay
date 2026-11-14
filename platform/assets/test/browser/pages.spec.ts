@@ -89,6 +89,31 @@ test("the open ask form leaves no gap in the home page's side column", async ({p
   await problems.expect()
 })
 
+// A site's For agents section opened in the first moment, before the page is
+// connected, does not close again when it connects. The page's live answers
+// wait until it has been opened.
+test("a site's For agents section opened before the page connects stays open once it does", async ({page}) => {
+  await page.route(/\/fix-check\?/, route =>
+    route.fulfill({contentType: "application/json", body: JSON.stringify({status: "none", said: "", tools: [], directory: false})}))
+  const problems = watch(page)
+  let release!: () => void
+  const held = new Promise<void>(resolve => (release = resolve))
+  await page.routeWebSocket(/\/live\/websocket/, socket => {
+    const server = socket.connectToServer()
+    socket.onMessage(message => server.send(message))
+    server.onMessage(message => void held.then(() => socket.send(message)))
+  })
+  await page.goto("/keyfleet.ai")
+  const section = page.locator("#pb-site-agent-details")
+  await section.locator("> summary").click()
+  await expect(section).toHaveJSProperty("open", true)
+
+  release()
+  await page.locator("[data-phx-session].phx-connected:has(#pb-site-agent-details)").waitFor({state: "attached"})
+  await expect(section).toHaveJSProperty("open", true)
+  await problems.expect()
+})
+
 test("the Wallet Bench's open Filter panel sits above the board on a phone", async ({page}, info) => {
   test.skip(info.project.name !== "phone", "checked at 390 wide")
   const problems = watch(page)

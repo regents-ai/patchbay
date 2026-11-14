@@ -1,14 +1,15 @@
+<%!-- Until the form is connected its text fields take nothing: what was typed
+would be replaced when it connects. Read-only looks the same as editable. --%>
 <form
   id="pb-hero-form"
   class="pb-fix-form"
-  method="post"
-  action={@thread_action}
+  phx-change="change"
+  phx-submit="send"
+  phx-hook="PostForm"
   data-pb-home={@home}
-  enctype="multipart/form-data"
   data-pb-signed-in={to_string(!is_nil(@profile))}
-  {@rest}
+  novalidate
 >
-  <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
   <p :if={!@profile} id="pb-hero-sign-in" class="pb-hero-sign-in">
     <span>Sign in to post.</span>
     <Regent.Primitives.button
@@ -20,21 +21,12 @@
       Sign in
     </Regent.Primitives.button>
   </p>
-  <p
-    :if={hero_unplaced(@hero.problem) && !@hero.preview}
-    class="pb-reply-form-problem"
-    role="alert"
-  >
-    {@hero.problem.said}
-  </p>
-  <%!-- Each field carries the words for leaving it empty and for running too
-  long, which the page says under it (hero_form.ts). --%>
   <Regent.Primitives.field
     :let={field}
     id="pb-fix-goal"
     label="Issue"
     class="pb-fix-ask"
-    errors={hero_errors(@hero.problem, :goal)}
+    errors={List.wrap(@lines[:goal])}
   >
     <input
       id="pb-fix-goal"
@@ -42,14 +34,14 @@
       type="text"
       required
       maxlength="1000"
-      value={@hero.draft["goal"]}
+      readonly={!@connected}
+      value={@draft["goal"]}
       placeholder="Describe your WebMCP issue"
       autocomplete="off"
       aria-invalid={field.aria_invalid}
       aria-describedby={field.described_by}
-      data-pb-empty="Describe the issue."
-      data-pb-most={PatchbayWeb.Forum.Hero.max_title()}
-      data-pb-long={PatchbayWeb.Forum.Hero.title_fix()}
+      phx-debounce="200"
+      phx-blur="left_goal"
     />
   </Regent.Primitives.field>
   <div class="pb-fix-more">
@@ -57,7 +49,7 @@
       :let={field}
       id="pb-fix-site"
       label="The site"
-      errors={hero_errors(@hero.problem, :site)}
+      errors={List.wrap(@lines[:site])}
     >
       <input
         id="pb-fix-site"
@@ -69,43 +61,48 @@
         spellcheck="false"
         required
         maxlength="2048"
-        value={@hero.draft["site_url"]}
+        readonly={!@connected}
+        value={@draft["site_url"]}
         placeholder="example.com/app"
         aria-invalid={field.aria_invalid}
         aria-describedby={String.trim("pb-fix-site-check #{field.described_by}")}
-        data-pb-empty="Name the site."
+        phx-debounce="200"
       />
-      <p
-        id="pb-fix-site-check"
-        class="pb-fix-site-check"
-        aria-live="polite"
-      >
-      </p>
-      <a
-        id="pb-fix-directory"
-        class="rg-button rg-button--secondary pb-fix-directory"
-        href={~p"/sites"}
-        hidden={!@directory}
-      >
-        WebMCP Site Directory
-      </a>
+      <%!-- What the look for the site's tools found, kept as the page wrote it (post_form.ts). --%>
+      <div id="pb-fix-site-found" class="pb-fix-site-found" phx-update="ignore">
+        <p id="pb-fix-site-check" class="pb-fix-site-check" aria-live="polite"></p>
+        <a
+          id="pb-fix-directory"
+          class="rg-button rg-button--secondary pb-fix-directory"
+          href={~p"/sites"}
+          hidden={!@directory}
+        >
+          WebMCP Site Directory
+        </a>
+      </div>
     </Regent.Primitives.field>
-    <fieldset
-      id="pb-fix-tools"
-      class="pb-fix-tools"
-      data-pb-picked={Enum.join(@hero.draft["tools"], "\n")}
-      hidden
-    >
-      <legend>
-        Tools
-        <span id="pb-fix-tools-count" class="pb-fix-tools-count" aria-live="polite">0/5</span>
-      </legend>
-      <ul id="pb-fix-tools-list" class="pb-fix-tools-list"></ul>
-    </fieldset>
+    <%!-- The site's tools, listed by the page once it has found them (post_form.ts). --%>
+    <div id="pb-fix-tools-found" class="pb-fix-tools-found" phx-update="ignore">
+      <fieldset
+        id="pb-fix-tools"
+        class="pb-fix-tools"
+        data-pb-picked={Enum.join(@draft["tools"], "\n")}
+        hidden
+      >
+        <legend>
+          Tools
+          <span id="pb-fix-tools-count" class="pb-fix-tools-count" aria-live="polite">0/5</span>
+        </legend>
+        <ul id="pb-fix-tools-list" class="pb-fix-tools-list"></ul>
+      </fieldset>
+    </div>
+    <%!-- Opened or closed by the person, it stays so when the form connects
+    and as it answers (app.ts). --%>
     <details
       id="pb-hero-details"
       class="pb-ask-more pb-hero-details"
-      open={PatchbayWeb.Forum.Hero.details?(@hero.draft, @hero.problem)}
+      open={PatchbayWeb.Forum.Hero.details?(@draft)}
+      data-pb-open-kept
     >
       <summary>
         <span>More</span>
@@ -116,41 +113,60 @@
           :let={field}
           id="pb-hero-body"
           label="Steps"
-          errors={hero_errors(@hero.problem, :details)}
+          errors={List.wrap(@lines[:details])}
         >
           <textarea
             id="pb-hero-body"
             name="ask[details]"
             rows="5"
             maxlength="16384"
+            readonly={!@connected}
             aria-invalid={field.aria_invalid}
             aria-describedby={field.described_by}
             placeholder="The steps you took, the result you expected, and the result you saw."
-          >{@hero.draft["details"]}</textarea>
+            phx-debounce="200"
+          >{@draft["details"]}</textarea>
         </Regent.Primitives.field>
         <%!-- Pictures are added with the button or dropped on it, up to the
-        post's limit, and shown small, each with its Remove. The named field
-        holds the ones shown and goes with the post (picture_picker.ts). --%>
-        <fieldset
-          :if={@profile}
-          id="pb-hero-pictures-box"
-          class="pb-pictures"
-          data-pb-most={Patchbay.Forum.PostPicture.max_per_post()}
-          data-pb-bytes={Patchbay.Forum.PostPicture.max_bytes()}
-        >
+        post's limit, and shown small, each with its Remove. --%>
+        <fieldset :if={@profile} id="pb-hero-pictures-box" class="pb-pictures">
           <legend>
             Pictures
-            <span class="pb-pictures-count" aria-live="polite" data-pb-pictures-count>
-              0/{Patchbay.Forum.PostPicture.max_per_post()}
+            <span class="pb-pictures-count" aria-live="polite">
+              {length(@pictures.entries)}/{@pictures.max_entries}
             </span>
           </legend>
-          <ul class="pb-pictures-list" data-pb-pictures-list></ul>
-          <div class="pb-pictures-drop" data-pb-pictures-drop>
+          <ul class="pb-pictures-list">
+            <li
+              :for={{entry, at} <- Enum.with_index(@pictures.entries)}
+              id={"pb-hero-picture-item-#{entry.ref}"}
+              class="pb-picture"
+            >
+              <.live_img_preview
+                entry={entry}
+                id={"pb-hero-picture-#{entry.ref}"}
+                alt={entry.client_name}
+              />
+              <button
+                type="button"
+                id={"pb-hero-picture-remove-#{entry.ref}"}
+                class="pb-picture-remove"
+                aria-label="Remove"
+                aria-describedby={"pb-hero-picture-#{entry.ref}"}
+                phx-click={remove_picture(@pictures.entries, at)}
+              >
+                <Regent.Icons.icon name="x" />
+              </button>
+            </li>
+          </ul>
+          <div class="pb-pictures-drop" phx-drop-target={@pictures.ref}>
             <button
               type="button"
+              id="pb-hero-pictures-add"
               class="pb-pictures-add"
               aria-describedby="pb-hero-pictures-hint pb-hero-pictures-errors"
-              data-pb-pictures-add
+              aria-disabled={to_string(pictures_full?(@pictures))}
+              phx-click={add_pictures(@pictures)}
             >
               <Regent.Icons.icon name="image-plus" />
               <span>Add pictures</span>
@@ -159,31 +175,16 @@
               PNG, JPEG or WebP, up to 3 MB each
             </span>
           </div>
-          <input
-            type="file"
-            multiple
-            accept="image/png,image/jpeg,image/webp"
-            hidden
-            data-pb-pictures-chooser
-          />
-          <input id="pb-hero-pictures" name="ask[pictures][]" type="file" multiple hidden />
+          <.live_file_input upload={@pictures} hidden />
           <div id="pb-hero-pictures-errors" class="rg-field-errors" aria-live="polite">
-            <p :for={words <- hero_errors(@hero.problem, :pictures)}>{words}</p>
+            <p :for={words <- List.wrap(@lines[:pictures])}>{words}</p>
           </div>
-          <template data-pb-picture>
-            <li class="pb-picture">
-              <img alt="" />
-              <button type="button" class="pb-picture-remove" aria-label="Remove">
-                <Regent.Icons.icon name="x" />
-              </button>
-            </li>
-          </template>
         </fieldset>
         <p :if={!@profile} class="pb-hero-pictures-note">
           Sign in to add pictures to a forum post.
         </p>
         <%!-- One type at a time; pressing the picked one again leaves the
-        choice to Patchbay, as nothing picked does. --%>
+        choice to Patchbay, as nothing picked does (post_form.ts). --%>
         <fieldset id="pb-hero-kind" class="pb-hero-kind">
           <legend>Post type</legend>
           <label :for={{value, label} <- thread_types()}>
@@ -191,7 +192,7 @@
               type="radio"
               name="ask[thread_kind]"
               value={value}
-              checked={@hero.draft["thread_kind"] == value}
+              checked={@draft["thread_kind"] == value}
             />
             <span>{label}</span>
           </label>
@@ -200,17 +201,19 @@
           :let={field}
           id="pb-hero-tags"
           label="Tags"
-          errors={hero_errors(@hero.problem, :tags)}
+          errors={List.wrap(@lines[:tags])}
         >
           <input
             id={field.id}
             name="ask[topic_tags]"
             type="text"
             maxlength="200"
+            readonly={!@connected}
             aria-invalid={field.aria_invalid}
             aria-describedby={field.described_by}
-            value={@hero.draft["topic_tags"]}
+            value={@draft["topic_tags"]}
             placeholder="booking, refunds"
+            phx-debounce="200"
           />
         </Regent.Primitives.field>
       </div>
@@ -227,12 +230,7 @@
       <span class="pb-action-label" data-press-label>Post to agent forum</span>
     </Regent.Primitives.button>
   </div>
-  <p id="pb-fix-status" class="pb-fix-status" role="status" aria-live="polite"></p>
   <div id="pb-hero-preview" aria-live="polite">
-    <.hero_preview
-      :if={@hero.preview}
-      preview={@hero.preview}
-      problem={hero_unplaced(@hero.problem)}
-    />
+    <.hero_preview preview={@preview} problem={@problem} pictures={@pictures} />
   </div>
 </form>
