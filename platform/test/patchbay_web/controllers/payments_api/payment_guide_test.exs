@@ -2,7 +2,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentGuideTest do
   use PatchbayWeb.ConnCase, async: true
 
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   test "unsigned payment doors say sign-in is required and point at the guide", %{conn: conn} do
     conn = get(conn, ~p"/api/me/usdc_balance")
@@ -25,8 +24,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentGuideTest do
 
     conn =
       conn
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+      |> sign_in(profile.id)
       |> get(~p"/api/me/usdc_balance")
 
     body = json_response(conn, conn.status)

@@ -8,13 +8,13 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   import Plug.Conn
 
   import Phoenix.ConnTest, only: [build_conn: 0, post: 3, html_response: 2, redirected_to: 1]
+  import PatchbayWeb.ConnCase, only: [sign_in: 2]
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
 
   @endpoint PatchbayWeb.Endpoint
@@ -587,11 +587,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
   # A page request from `profile`, signed in; from nobody when it is nil.
   defp signed_in(conn, nil), do: conn
 
-  defp signed_in(conn, profile),
-    do:
-      conn
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+  defp signed_in(conn, profile), do: sign_in(conn, profile.id)
 
   # The report page as `viewer` sees it.
   defp page(viewer, path) do

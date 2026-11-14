@@ -19,7 +19,6 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.RefundRelayRecord
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   @contract String.duplicate("e", 64)
   @arguments String.duplicate("f", 64)
@@ -61,9 +60,7 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
   end
 
   defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+    sign_in(conn, profile.id)
   end
 
   defp paid_report(tool, asker) do

@@ -9,7 +9,6 @@ defmodule PatchbayWeb.PaymentLimitTest do
   import Plug.Conn
 
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   setup do
     old = Application.fetch_env!(:patchbay, :payments_per_minute)
@@ -28,8 +27,7 @@ defmodule PatchbayWeb.PaymentLimitTest do
     signed_in = fn ->
       conn
       |> recycle()
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+      |> sign_in(profile.id)
     end
 
     create = fn -> signed_in.() |> post("/api/payment_intents", %{"kind" => "nothing"}) end

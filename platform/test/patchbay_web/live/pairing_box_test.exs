@@ -12,7 +12,6 @@ defmodule PatchbayWeb.PairingBoxTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   test "Pair New Agent sent with no agent chosen changes nothing", %{conn: conn} do
     view = conn |> signed_in("did:privy:pair-empty", "e") |> pair_page()
@@ -111,9 +110,7 @@ defmodule PatchbayWeb.PairingBoxTest do
         wallet_address: "0x" <> String.duplicate(hex, 40)
       })
 
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
+    sign_in(conn, person.id)
   end
 
   defp at(conn, :main), do: conn

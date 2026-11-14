@@ -6,7 +6,6 @@ defmodule PatchbayWeb.PrivateDoorsTest do
   # The admin list is application-wide, so this file runs alone.
   use PatchbayWeb.ConnCase, async: false
 
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
 
   test "the saved errors and the answer check are not found for anyone but an admin",
@@ -31,8 +30,6 @@ defmodule PatchbayWeb.PrivateDoorsTest do
   end
 
   defp signed_in(conn, profile) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+    sign_in(conn, profile.id)
   end
 end

@@ -2,7 +2,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
   use PatchbayWeb.ConnCase, async: false
   alias Patchbay.Identity
   alias Patchbay.Payments.AgentTip
-  alias PatchbayWeb.Plugs.{CurrentProfile, WalletAuthor}
+  alias PatchbayWeb.Plugs.WalletAuthor
 
   @address "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
@@ -21,10 +21,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
     assert wallet.privy_user_id == nil
     assert wallet.wallet_chain_id == 8453
 
-    assert CurrentProfile.signed_in_profile(%{
-             "agent_profile_id" => wallet.id,
-             "signed_in_at" => System.os_time(:second)
-           }) == nil
+    assert get(sign_in(build_conn(), wallet.id), "/about").assigns.current_profile == nil
 
     assert {:error, _} = Identity.rename_agent(wallet, %{agent_name: "pretending"}, actor: wallet)
 
@@ -75,10 +72,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletAuthorTest do
         wallet_address: @address
       })
 
-    cookie_conn =
-      build_conn()
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(human.id, System.os_time(:second))
+    cookie_conn = sign_in(build_conn(), human.id)
 
     assert post(cookie_conn, "/api/agent/payment_intents", %{kind: "special_post", args: %{}}).status in [
              401,

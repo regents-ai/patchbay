@@ -21,7 +21,6 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
   alias Patchbay.Identity.AgentProfile
   alias Patchbay.Identity.DisconnectApps
   alias Patchbay.Identity.StatusChange
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   @console %{role: :system}
 
@@ -71,7 +70,7 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
                Identity.get_profile!(person.id)
 
       assert_enqueued(worker: DisconnectApps, args: %{profile_id: person.id})
-      assert CurrentProfile.signed_in_profile(get_session(theirs)) == nil
+      assert get(theirs, "/account").assigns.current_profile == nil
       send(their_page.pid, :agents_changed)
       assert has_element?(their_page, "#account-signed-out")
 
@@ -80,7 +79,7 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
       assert has_element?(view, "#pb-person-status[data-status=active]")
       assert has_element?(view, "#pb-person-suspend")
       assert Identity.get_profile!(person.id).status == :active
-      assert CurrentProfile.signed_in_profile(get_session(theirs)) == nil
+      assert get(theirs, "/account").assigns.current_profile == nil
 
       moderator_id = moderator.id
 
@@ -285,7 +284,6 @@ defmodule PatchbayWeb.PersonAdminLiveTest do
   defp signed_in(conn, profile) do
     conn
     |> recycle()
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(profile.id, System.os_time(:second) - 5)
+    |> sign_in(profile.id, DateTime.add(DateTime.utc_now(), -5))
   end
 end

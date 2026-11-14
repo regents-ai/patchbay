@@ -9,7 +9,6 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
   alias Patchbay.Payments.AgentTip
   alias Patchbay.Payments.SpecialPost
   alias Patchbay.Repo
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.WalletSigner
   alias RegentPayments.Purchase
 
@@ -330,8 +329,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
   defp signed_in(profile),
     do:
       build_conn()
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+      |> sign_in(profile.id)
 
   defp profile(address),
     do:

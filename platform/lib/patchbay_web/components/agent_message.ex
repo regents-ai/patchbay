@@ -135,7 +135,7 @@ defmodule PatchbayWeb.AgentMessage do
       {live_render(@conn, PatchbayWeb.AgentMessageLive,
         id: "#{@id}-live",
         session:
-          Map.merge(PatchbayWeb.VisitLog.session(@conn), %{
+          Map.merge(PatchbayWeb.CurrentProfile.render_context(@conn), %{
             "id" => "#{@id}-person",
             "topic" => @topic
           })

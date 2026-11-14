@@ -1,7 +1,8 @@
 defmodule Patchbay.Accounts do
   @moduledoc """
   The canonical Regent account, keyed only by server-verified Privy subject,
-  and the ENS name and picture of its wallet.
+  the ENS name and picture of its wallet, and each browser's sign-in
+  (`Patchbay.Accounts.SessionAuthority`).
   """
   use Ash.Domain
 
@@ -22,6 +23,9 @@ defmodule Patchbay.Accounts do
         args: [:human_account_id, :wallet_address]
       )
     end
+
+    # A browser's sign-in, read and changed only through its own functions.
+    resource(Patchbay.Accounts.SessionAuthority)
   end
 
   @actor %{role: :system}

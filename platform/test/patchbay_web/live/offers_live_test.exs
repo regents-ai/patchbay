@@ -19,7 +19,6 @@ defmodule PatchbayWeb.OffersLiveTest do
   alias Patchbay.Offers.Contract
   alias PatchbayDev.OffersLab
   alias PatchbayTest.OfferChain, as: Chain
-  alias PatchbayWeb.Plugs.CurrentProfile
 
   @moduletag :capture_log
 
@@ -79,7 +78,7 @@ defmodule PatchbayWeb.OffersLiveTest do
     conn: conn
   } do
     person = person!(wallet())
-    {:ok, view, _html} = conn |> signed_in(person) |> live(~p"/offers")
+    {:ok, view, _html} = conn |> sign_in(person.id) |> live(~p"/offers")
     form = "#offers-new-campaign"
 
     view |> element(form) |> render_change(%{"campaign" => %{"audience" => "sites"}})
@@ -105,7 +104,7 @@ defmodule PatchbayWeb.OffersLiveTest do
   test "a person seals who a campaign is shown to from the form", %{conn: conn} do
     person = person!(wallet())
     left_out = wallet()
-    {:ok, view, _html} = conn |> signed_in(person) |> live(~p"/offers")
+    {:ok, view, _html} = conn |> sign_in(person.id) |> live(~p"/offers")
 
     view
     |> form("#offers-new-campaign", %{
@@ -154,7 +153,7 @@ defmodule PatchbayWeb.OffersLiveTest do
       )
     end
 
-    {:ok, view, html} = conn |> signed_in(person) |> live(~p"/offers")
+    {:ok, view, html} = conn |> sign_in(person.id) |> live(~p"/offers")
 
     assert has_element?(view, "#campaign-#{campaign.id} [data-review=approved]")
     assert view |> element("#campaign-lease-#{lease.id}") |> render() =~ "Shown 2 times"
@@ -175,7 +174,7 @@ defmodule PatchbayWeb.OffersLiveTest do
       person = person!(wallet())
       campaign = campaign!(person)
       approve!(campaign)
-      %{person: person, campaign: campaign, conn: signed_in(conn, person)}
+      %{person: person, campaign: campaign, conn: sign_in(conn, person.id)}
     end
 
     test "a campaign Patchbay will not admit shows why in place of the buttons", %{conn: conn} do
@@ -242,7 +241,7 @@ defmodule PatchbayWeb.OffersLiveTest do
   describe "Claim" do
     setup %{conn: conn} do
       person = person!(wallet())
-      %{person: person, conn: signed_in(conn, person)}
+      %{person: person, conn: sign_in(conn, person.id)}
     end
 
     test "is disabled only when the chain says there is nothing to claim", %{
@@ -278,12 +277,6 @@ defmodule PatchbayWeb.OffersLiveTest do
                "#offers-claim-#{person.wallet_address} [data-onchain-step=claim][disabled]"
              )
     end
-  end
-
-  defp signed_in(conn, person) do
-    conn
-    |> Plug.Test.init_test_session(%{})
-    |> CurrentProfile.sign_in(person.id, System.os_time(:second))
   end
 
   # A slot with no lease, in an open placement, at `minimum`, as the market

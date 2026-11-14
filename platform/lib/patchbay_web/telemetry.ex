@@ -410,6 +410,23 @@ defmodule PatchbayWeb.Telemetry do
         event_name: [:patchbay, :post_readings, :words_not_kept],
         description: "Posts turned away past the day's count of kept words"
       ),
+      # The browser sign-in sessions (`PatchbayWeb.PrivySessionController`), as
+      # ash-template counts them.
+      counter("patchbay.privy.browser_failure.total",
+        tags: [:reason],
+        description: "Sign-in failures browsers reported"
+      ),
+      counter("patchbay.privy.session_refused.total",
+        tags: [:stage, :reason],
+        description: "Sign-ins refused, or not judged because a setting is wrong"
+      ),
+      counter("patchbay.session_bootstrap.rate_limited.total",
+        tags: [:source],
+        description: "New browser sign-in sessions refused for their address's limit"
+      ),
+      counter("patchbay.session_authority.absent_row.total",
+        description: "Sign-in claims past their first step whose session row was missing"
+      ),
       last_value("vm.memory.total.bytes", event_name: [:vm, :memory], measurement: :total),
       last_value("vm.memory.processes.bytes",
         event_name: [:vm, :memory],

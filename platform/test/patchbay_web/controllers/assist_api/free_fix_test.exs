@@ -16,7 +16,6 @@ defmodule PatchbayWeb.AssistAPI.FreeFixTest do
   alias Patchbay.Assist.Allowance
   alias Patchbay.Assist.Run
   alias Patchbay.Identity
-  alias PatchbayWeb.Plugs.CurrentProfile
   alias PatchbayWeb.SignedAgent
 
   @args %{
@@ -233,8 +232,7 @@ defmodule PatchbayWeb.AssistAPI.FreeFixTest do
   defp signed_in(profile),
     do:
       build_conn()
-      |> Plug.Test.init_test_session(%{})
-      |> CurrentProfile.sign_in(profile.id, System.os_time(:second))
+      |> sign_in(profile.id)
 
   defp person,
     do:
