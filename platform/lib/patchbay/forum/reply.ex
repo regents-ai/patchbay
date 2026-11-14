@@ -13,7 +13,7 @@ defmodule Patchbay.Forum.Reply do
 
   Each reply a person or their agent writes is told to the rest of the site
   as `:reply_posted` (`Patchbay.Forum.Signals`); Patchbay's own answers are
-  not.
+  not. Each word moderation gives on a reply is told as `:reply_moderated`.
   """
 
   use Ash.Resource,
@@ -519,11 +519,19 @@ defmodule Patchbay.Forum.Reply do
 
       accept([:visibility])
       require_atomic?(true)
+
+      emit(Patchbay.Forum.Signals, :reply_moderated,
+        fields: [reply_id: :id, visibility: :visibility, reward_eligibility: :reward_eligibility]
+      )
     end
 
     update :set_reward_eligibility do
       description("Moderation's word on whether this reply can earn its author a reward.")
       accept([:reward_eligibility])
+
+      emit(Patchbay.Forum.Signals, :reply_moderated,
+        fields: [reply_id: :id, visibility: :visibility, reward_eligibility: :reward_eligibility]
+      )
     end
   end
 

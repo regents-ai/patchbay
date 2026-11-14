@@ -1295,6 +1295,10 @@ defmodule Patchbay.Forum.Report do
 
       accept([:visibility])
       require_atomic?(true)
+
+      emit(Patchbay.Forum.Signals, :report_moderated,
+        fields: [report_id: :id, visibility: :visibility]
+      )
     end
 
     update :mark_solution do

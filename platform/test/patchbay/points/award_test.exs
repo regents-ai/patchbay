@@ -1,20 +1,26 @@
 defmodule Patchbay.Points.AwardTest do
   @moduledoc """
-  What Patchbay offers Regent Points as people post (`Patchbay.Points.Award`)
-  and what this site's checks let earn (`Patchbay.Points.PublishedReply`,
-  `Patchbay.Points.PublishedReport`). As Patchbay ships, nothing earns: no rule
-  is approved and no start is set, so a reply offers nothing and Points writes
+  What Patchbay offers Regent Points as people post (`Patchbay.Points.Award`),
+  what this site's checks let earn (`Patchbay.Points.PublishedReply`,
+  `Patchbay.Points.PublishedReport`), and what moderation takes back. As
+  Patchbay ships, nothing earns: no rule is approved and no start is set, so a
+  reply offers nothing, moderation takes nothing back, and Points writes
   nothing. With the two rules approved and a start set, as Sean would set them,
-  each earns as the catalog prices it, for the person behind the post, and each
-  of the refusals below holds. Writers post through the board's own doors: a
-  paired agent through the API, a person through the form's action.
+  each earns as the catalog prices it, for the person behind the post, each of
+  the refusals below holds, and a post moderation hides or sets aside after it
+  earned loses its points. Writers post through the board's own doors: a paired
+  agent through the API, a person through the form's action; moderators
+  moderate through the moderation door.
   """
 
   use PatchbayWeb.ConnCase, async: false
   use Oban.Testing, repo: Patchbay.Repo
 
+  require Ash.Query
+
   alias Patchbay.Forum
   alias Patchbay.Forum.Reply
+  alias Patchbay.ModeratorFixtures
   alias Patchbay.Points.PublishedReply
   alias Patchbay.Points.PublishedReport
   alias PatchbayWeb.SignedAgent
@@ -28,7 +34,7 @@ defmodule Patchbay.Points.AwardTest do
   end
 
   describe "as Patchbay ships" do
-    test "the checks are installed, nothing earns, and a reply offers nothing" do
+    test "the checks are installed, nothing earns, a reply offers nothing and moderation takes nothing" do
       assert Rules.adapter("patchbay.report_published") == PublishedReport
       assert Rules.adapter("patchbay.reply_published") == PublishedReply
       assert Rules.tracked() == []
@@ -36,11 +42,15 @@ defmodule Patchbay.Points.AwardTest do
       asker = SignedAgent.pair!()
       helper = SignedAgent.pair!()
       thread_id = ask!(asker)
-      reply!(helper, thread_id)
+      answer = reply!(helper, thread_id)
       human_reply!(SignedAgent.pair!().owner, thread_id)
+
+      moderate!(Ash.get!(Reply, answer), :quarantine)
+      moderate!(Ash.get!(Forum.Report, thread_id), :redact)
 
       refute_enqueued(worker: RegentPoints.IntakeWorker)
       assert points() == {%{}, %{}}
+      assert RegentPoints.read_entries!(actor: Store.system()) == []
     end
   end
 
@@ -146,7 +156,7 @@ defmodule Patchbay.Points.AwardTest do
       thread_id = ask!(asker)
 
       hidden = reply!(SignedAgent.pair!(), thread_id)
-      set_visibility!(Ash.get!(Reply, hidden), :quarantined)
+      moderate!(Ash.get!(Reply, hidden), :quarantine)
 
       spam = reply!(SignedAgent.pair!(), thread_id)
       Forum.set_reward_eligibility!(Ash.get!(Reply, spam), :ineligible_spam, authorize?: false)
@@ -164,7 +174,7 @@ defmodule Patchbay.Points.AwardTest do
       asker = SignedAgent.pair!()
       thread_id = ask!(asker)
       answer = reply!(SignedAgent.pair!(), thread_id)
-      set_visibility!(Ash.get!(Forum.Report, thread_id), :quarantined)
+      moderate!(Ash.get!(Forum.Report, thread_id), :quarantine)
 
       assert points() ==
                {%{},
@@ -195,6 +205,115 @@ defmodule Patchbay.Points.AwardTest do
                   {"patchbay.report_published", thread.id} => "not_by_a_person"
                 }}
     end
+
+    test "a reply that earned loses its points once it is hidden, and showing it again earns nothing back" do
+      thread_id = ask!(SignedAgent.pair!())
+      helper = SignedAgent.pair!()
+      answer = reply!(helper, thread_id)
+
+      {earned, _refused} = points()
+      assert %{points: 5, taken_back: 0} = earned[{"patchbay.reply_published", answer}]
+
+      moderate!(Ash.get!(Reply, answer), :quarantine)
+      {earned, _refused} = points()
+      assert %{points: 0, taken_back: 1} = earned[{"patchbay.reply_published", answer}]
+      assert balance(helper) == 0
+
+      # Shown again and offered again, Points keeps the one award it made.
+      moderate!(Ash.get!(Reply, answer), :publish)
+      offer!("patchbay.reply_published", "reply", answer)
+      {earned, refused} = points()
+      assert %{points: 0, taken_back: 1} = earned[{"patchbay.reply_published", answer}]
+      assert refused == %{}
+      assert balance(helper) == 0
+    end
+
+    test "a reply that earned loses its points once it is set aside as spam, and only once" do
+      thread_id = ask!(SignedAgent.pair!())
+      helper = SignedAgent.pair!()
+      answer = reply!(helper, thread_id)
+      {_earned, _refused} = points()
+
+      # A word that leaves it able to earn takes nothing.
+      Forum.set_reward_eligibility!(Ash.get!(Reply, answer), :eligible, authorize?: false)
+      {earned, _refused} = points()
+      assert %{points: 5, taken_back: 0} = earned[{"patchbay.reply_published", answer}]
+
+      Forum.set_reward_eligibility!(Ash.get!(Reply, answer), :ineligible_spam, authorize?: false)
+      moderate!(Ash.get!(Reply, answer), :redact)
+
+      {earned, _refused} = points()
+      assert %{points: 0, taken_back: 1} = earned[{"patchbay.reply_published", answer}]
+      assert balance(helper) == 0
+    end
+
+    test "a thread that earned loses its points once it is hidden, and showing it again earns nothing back" do
+      asker = SignedAgent.pair!()
+      thread_id = ask!(asker)
+      answer = reply!(SignedAgent.pair!(), thread_id)
+
+      {earned, _refused} = points()
+      assert %{points: 10, taken_back: 0} = earned[{"patchbay.report_published", thread_id}]
+
+      moderate!(Ash.get!(Forum.Report, thread_id), :quarantine)
+      {earned, _refused} = points()
+      assert %{points: 0, taken_back: 1} = earned[{"patchbay.report_published", thread_id}]
+      assert balance(asker) == 0
+
+      # The reply on it keeps what it earned; only the thread was hidden.
+      assert %{points: 5, taken_back: 0} = earned[{"patchbay.reply_published", answer}]
+
+      # Shown again, the next reply offers the thread again and Points keeps
+      # the one award it made.
+      moderate!(Ash.get!(Forum.Report, thread_id), :publish)
+      later = reply!(SignedAgent.pair!(), thread_id)
+      {earned, refused} = points()
+      assert %{points: 0, taken_back: 1} = earned[{"patchbay.report_published", thread_id}]
+      assert %{points: 5} = earned[{"patchbay.reply_published", later}]
+      assert refused == %{}
+      assert balance(asker) == 0
+    end
+
+    test "a post Points cannot find earns nothing" do
+      reply_id = Ecto.UUID.generate()
+      report_id = Ecto.UUID.generate()
+      offer!("patchbay.reply_published", "reply", reply_id)
+      offer!("patchbay.report_published", "report", report_id)
+
+      assert points() ==
+               {%{},
+                %{
+                  {"patchbay.reply_published", reply_id} => "reply_not_found",
+                  {"patchbay.report_published", report_id} => "report_not_found"
+                }}
+    end
+
+    # Pairing writes its history row in the pairing's own transaction, so no
+    # door posts for a pairing without one; the reply is saved as it would
+    # stand if the history were not there yet.
+    test "an agent's reply whose pairing history is not there yet is tried again later, not refused" do
+      thread_id = ask!(SignedAgent.pair!())
+      helper = SignedAgent.pair!()
+
+      reply =
+        Ash.Seed.seed!(Reply, %{
+          report_id: thread_id,
+          browser_session_id: Ecto.UUID.generate(),
+          body_markdown: "POST /cart/restore does it.",
+          author_kind: :agent,
+          privy_user_id: helper.owner.privy_user_id,
+          pairing_id: Ecto.UUID.generate()
+        })
+
+      offer!("patchbay.reply_published", "reply", reply.id)
+      assert %{failure: 1, discard: 0} = Oban.drain_queue(queue: :points)
+
+      assert %Oban.Job{state: "retryable", errors: [%{"error" => error}]} =
+               Patchbay.Repo.get_by!(Oban.Job, worker: "RegentPoints.IntakeWorker")
+
+      assert error =~ "pairing_history_missing"
+      assert points() == {%{}, %{}}
+    end
   end
 
   defp earning_on do
@@ -210,21 +329,25 @@ defmodule Patchbay.Points.AwardTest do
   end
 
   # Runs every Points job, then reads what Points made of each source offered:
-  # what it awarded, with the account, points and evidence, and what it
-  # refused, with the reason.
+  # what it awarded, with the account, the points it stands at after any
+  # correction, how many corrections took points back, and the evidence; and
+  # what it refused, with the reason.
   defp points do
     assert %{failure: 0, discard: 0} = Oban.drain_queue(queue: :points, with_recursion: true)
 
-    entries = Map.new(RegentPoints.read_entries!(actor: Store.system()), &{&1.event_id, &1})
+    entries = Enum.group_by(RegentPoints.read_entries!(actor: Store.system()), & &1.event_id)
 
     earned =
       Map.new(RegentPoints.read_events!(actor: Store.system()), fn event ->
+        rows = Map.get(entries, event.id, [])
+
         {{event.rule_id, event.source_event_key},
          %{
            account_id: event.account_id,
            actor_kind: event.actor_kind,
            actor_id: event.actor_id,
-           points: div(entries[event.id].points_micro_delta, Rules.unit()),
+           points: div(Enum.sum_by(rows, & &1.points_micro_delta), Rules.unit()),
+           taken_back: Enum.count(rows, &(&1.reversal_of_entry_id != nil)),
            status: event.processing_status,
            source_action_at: event.source_action_at,
            qualified_at: event.qualified_at,
@@ -239,6 +362,21 @@ defmodule Patchbay.Points.AwardTest do
       end)
 
     {earned, refused}
+  end
+
+  defp balance(%{account: account}) do
+    query = Ash.Query.filter(RegentPoints.Account, id == ^account.id)
+    [points] = RegentPoints.read_accounts!(query: query, actor: Store.system())
+    div(points.balance_micro, Rules.unit())
+  end
+
+  # Offers a source to Points through its own intake, as the site's listener does.
+  defp offer!(rule, kind, id) do
+    {:ok, _queued} =
+      RegentPoints.record_event(
+        %{rule_id: rule, source_app: "patchbay", source_kind: kind, source_event_key: id},
+        actor: Store.system()
+      )
   end
 
   defp post_json(agent, path, params),
@@ -277,10 +415,11 @@ defmodule Patchbay.Points.AwardTest do
     ).id
   end
 
-  # Moderation's word, given by its own action rather than the moderation door.
-  defp set_visibility!(record, visibility) do
-    record
-    |> Ash.Changeset.for_update(:set_visibility, %{visibility: visibility}, authorize?: false)
-    |> Ash.update!(authorize?: false)
+  # A moderator's word, through the moderation door.
+  defp moderate!(record, action) do
+    {:ok, moderated} =
+      Forum.moderate(record, action, "Moderation's reason.", ModeratorFixtures.moderator())
+
+    moderated
   end
 end
