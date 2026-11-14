@@ -849,6 +849,12 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:directory, :boolean, required: true, doc: "whether the WebMCP Site Directory is offered")
   attr(:draft, :map, required: true, doc: "the form's words, `t:PatchbayWeb.Forum.Hero.draft/0`")
 
+  attr(:connected, :boolean,
+    required: true,
+    doc:
+      "whether the form is connected; until it is, its text fields take nothing, since what was typed would be replaced when it connects"
+  )
+
   attr(:lines, :map,
     required: true,
     doc: "what is said under each field that has something wrong"

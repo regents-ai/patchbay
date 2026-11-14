@@ -67,6 +67,7 @@ defmodule PatchbayWeb.PostFormLive do
         window: session["window"] == true,
         directory: session["directory"] == true,
         draft: draft,
+        connected: connected?(socket),
         claim: Map.take(session, ["agent_profile_id", "signed_in_at"]),
         lines: %{},
         problem: nil,
@@ -92,6 +93,7 @@ defmodule PatchbayWeb.PostFormLive do
       directory={@directory}
       window={@window}
       draft={@draft}
+      connected={@connected}
       lines={@lines}
       problem={@problem}
       preview={@preview}

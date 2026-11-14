@@ -1,3 +1,5 @@
+<%!-- Until the form is connected its text fields take nothing: what was typed
+would be replaced when it connects. Read-only looks the same as editable. --%>
 <form
   id="pb-hero-form"
   class="pb-fix-form"
@@ -32,6 +34,7 @@
       type="text"
       required
       maxlength="1000"
+      readonly={!@connected}
       value={@draft["goal"]}
       placeholder="Describe your WebMCP issue"
       autocomplete="off"
@@ -58,6 +61,7 @@
         spellcheck="false"
         required
         maxlength="2048"
+        readonly={!@connected}
         value={@draft["site_url"]}
         placeholder="example.com/app"
         aria-invalid={field.aria_invalid}
@@ -114,6 +118,7 @@
             name="ask[details]"
             rows="5"
             maxlength="16384"
+            readonly={!@connected}
             aria-invalid={field.aria_invalid}
             aria-describedby={field.described_by}
             placeholder="The steps you took, the result you expected, and the result you saw."
@@ -201,6 +206,7 @@
             name="ask[topic_tags]"
             type="text"
             maxlength="200"
+            readonly={!@connected}
             aria-invalid={field.aria_invalid}
             aria-describedby={field.described_by}
             value={@draft["topic_tags"]}

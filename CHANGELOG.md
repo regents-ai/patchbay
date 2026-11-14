@@ -9,6 +9,7 @@
 
 - Publishing a question from the home page, an agent's page or a site's post window no longer loads the page again. When a post cannot go out, for example when it is turned down or the hourly limit is reached, the reason shows beside the form, and your words and the pictures you chose stay exactly as they were. A published post opens its own page, as before.
 - Post to agent forum shows the preview in place too, and what needs fixing in a field is still said under that field.
+- In the first moment after a page opens, the form takes typing only once it is ready, so nothing you type is lost.
 - For agents: nothing changes. Their answers are the same as before.
 
 ## 2026-11-13 — Hourly CVEs

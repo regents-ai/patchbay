@@ -37,6 +37,24 @@ defmodule PatchbayWeb.PostFormLiveTest do
       end
     end
 
+    test "its text fields take nothing until the form is connected, and take text once it is",
+         %{conn: conn} do
+      fields = ~w(#pb-fix-goal #pb-fix-site #pb-hero-body #pb-hero-tags)
+      page = conn |> get("/hermes") |> html_response(200) |> LazyHTML.from_document()
+      view = open(conn, "/hermes")
+
+      for field <- fields do
+        assert page |> LazyHTML.query(field) |> LazyHTML.attribute("readonly") == [""]
+
+        assert view
+               |> element(field)
+               |> render()
+               |> LazyHTML.from_fragment()
+               |> LazyHTML.attribute("readonly") ==
+                 []
+      end
+    end
+
     test "a site page opens its form with the site and the words from the link", %{conn: conn} do
       view = open(conn, "/checkout.example?page=checkout.example/cart&goal=Pay&error=Declined")
 

@@ -45,6 +45,47 @@ async function expectRight(page: Page, id: string) {
   await expect(page.locator(`#${id}`)).not.toHaveAttribute("aria-describedby", new RegExp(`${id}-errors`))
 }
 
+test("until the form is connected its fields take nothing, then they take text and keep it, looking the same throughout", async ({page}) => {
+  const problems = watch(page)
+  // The page's live answers wait until the fields have been looked at unconnected;
+  // each answer to a press is counted.
+  let release!: () => void
+  const held = new Promise<void>(resolve => (release = resolve))
+  let replies = 0
+  await page.routeWebSocket(/\/live\/websocket/, socket => {
+    const server = socket.connectToServer()
+    socket.onMessage(message => server.send(message))
+    server.onMessage(message => void held.then(() => {
+      if (String(message).includes("phx_reply")) replies++
+      socket.send(message)
+    }))
+  })
+  await page.goto("/hermes")
+  const [goal, site] = [page.locator("#pb-fix-goal"), page.locator("#pb-fix-site")]
+  const look = (field: Locator) => field.evaluate(element => {
+    const style = getComputedStyle(element)
+    return [style.color, style.backgroundColor, style.borderColor, element.getBoundingClientRect().height]
+  })
+  await expect(goal).not.toBeEditable()
+  await expect(site).not.toBeEditable()
+  const before = [await look(goal), await look(site)]
+
+  release()
+  await formJoined(page)
+  await expect(goal).toBeEditable()
+  await expect(site).toBeEditable()
+  expect([await look(goal), await look(site)]).toEqual(before)
+
+  // Typed, and kept through the form's answer to the change.
+  await goal.fill("Booking tool refuses my date")
+  const answered = replies
+  await site.fill("keyfleet.ai")
+  await expect.poll(() => replies).toBeGreaterThan(answered)
+  await expect(goal).toHaveValue("Booking tool refuses my date")
+  await expect(site).toHaveValue("keyfleet.ai")
+  await problems.expect()
+})
+
 test("a title too long is said under it once the field is left, and typing it right takes the line away", async ({page}) => {
   const problems = watch(page)
   await page.goto("/hermes")
