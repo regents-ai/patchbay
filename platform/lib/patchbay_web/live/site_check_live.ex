@@ -182,10 +182,12 @@ defmodule PatchbayWeb.SiteCheckLive do
           Copy for your agent
         </Regent.Primitives.copy_button>
       </div>
+      <%!-- Opened or closed by the person, it stays so when the page
+      connects and as it answers (app.ts). --%>
       <details
         id="pb-site-agent-details"
         open={@cursor != nil}
-        phx-mounted={JS.ignore_attributes(["open"])}
+        data-pb-open-kept
       >
         <summary>
           <span class="pb-site-agent-heading">
