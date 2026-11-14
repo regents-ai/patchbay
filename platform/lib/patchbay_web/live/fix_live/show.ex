@@ -10,6 +10,7 @@ defmodule PatchbayWeb.FixLive.Show do
   use PatchbayWeb, :live_view
 
   alias Patchbay.Assist
+  alias Patchbay.Assist.Receipt
   alias Patchbay.Assist.Run
   alias PatchbayWeb.FixLive.Panel
   alias PatchbayWeb.KnownFixAnswer
@@ -88,8 +89,60 @@ defmodule PatchbayWeb.FixLive.Show do
       lines: Panel.lines(run),
       known_fix: known_fix,
       answer: Panel.answer(run, known_fix, url(~p"/fixes/#{run.id}")),
+      receipt: Receipt.for_run(run),
       host: host
     )
+  end
+
+  # The receipt's lines, in the page's words.
+  defp payment_line(%{paid: false}), do: "Free"
+
+  defp payment_line(%{paid: true} = paid) do
+    [
+      paid.amount_usdc && "#{paid.amount_usdc} USDC",
+      paid.wallet && "from #{paid.wallet}",
+      paid.transaction && "transaction #{paid.transaction}"
+    ]
+    |> joined("Paid")
+  end
+
+  defp model_line(nil), do: "No draft"
+
+  defp model_line(draft) do
+    [
+      provider_name(draft.provider),
+      draft.model,
+      draft.prompt_tokens && "#{draft.prompt_tokens} tokens in, #{draft.completion_tokens} out",
+      draft.response_id && "answer #{draft.response_id}",
+      draft.request_id && "request #{draft.request_id}",
+      draft.outcome == :failed && "no answer"
+    ]
+    |> joined("")
+  end
+
+  defp provider_name("near_ai"), do: "NEAR AI"
+  defp provider_name("openrouter"), do: "OpenRouter"
+  defp provider_name(nil), do: nil
+
+  defp suggested_line(%{known_fix: title, call: call}) do
+    [title && "Known fix: #{title}", call && call_words(call)]
+    |> joined("None")
+  end
+
+  defp call_words(call) do
+    "#{call.tool} #{Jason.encode!(call.arguments || %{})}, " <>
+      if(call.called_by_patchbay, do: "called by Patchbay", else: "not called")
+  end
+
+  defp result_line("passed"), do: "Passed, as the agent reported"
+  defp result_line("failed"), do: "Failed, as the agent reported"
+  defp result_line("not_reported"), do: "Not reported"
+
+  defp joined(parts, empty) do
+    case Enum.filter(parts, &is_binary/1) do
+      [] -> empty
+      kept -> Enum.join(kept, " · ")
+    end
   end
 
   # The browser's own run, by the identity in its signed cookie; or the
