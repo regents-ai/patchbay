@@ -71,7 +71,6 @@ defmodule Patchbay.Repo.Migrations.AgentOfferMarket do
             column: :id,
             name: "agent_offer_campaigns_agent_profile_id_fkey",
             type: :uuid,
-            prefix: "public",
             on_delete: :delete_all
           ),
           null: false
