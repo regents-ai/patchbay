@@ -18,9 +18,13 @@ defmodule PatchbayWeb.LivePart do
   @doc """
   The browser that was just sent `page`, as its live parts join: with the
   session cookie the page left it, which names its forum identity and any
-  sign-in.
+  sign-in. A live part's first render belongs to the page, so it takes the
+  sign-in the page was drawn with (`PatchbayWeb.CurrentProfile`).
   """
   @spec browser(Plug.Conn.t()) :: Plug.Conn.t()
-  def browser(%Plug.Conn{} = page),
-    do: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), Plug.Conn.get_session(page))
+  def browser(%Plug.Conn{} = page) do
+    Phoenix.ConnTest.build_conn()
+    |> Plug.Test.init_test_session(Plug.Conn.get_session(page))
+    |> Plug.Conn.merge_assigns(Map.take(page.assigns, [:current_profile, :signed_out_reason]))
+  end
 end

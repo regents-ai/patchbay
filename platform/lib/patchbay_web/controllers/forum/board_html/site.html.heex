@@ -141,13 +141,12 @@
     id: "pb-site-check-live",
     session: Map.merge(PatchbayWeb.VisitLog.session(@conn), @check_session)
   )}
-  <%!-- The home page's form, in a window opened from "Post about" and opened
-  again by itself when a post comes back with a problem or to be checked. --%>
+  <%!-- The home page's form, in a window opened from "Post about", and by
+  itself when a draft comes back after a sign-in. --%>
   <Regent.Structure.dialog
     id="pb-site-post"
     class="pb-site-post-dialog"
     aria-labelledby="pb-site-post-title"
-    data-pb-open-on-load={to_string(!is_nil(@hero.problem) or !is_nil(@hero.preview))}
   >
     <form method="dialog" class="pb-site-post-close">
       <button type="submit" aria-label="Close">
@@ -155,13 +154,6 @@
       </button>
     </form>
     <h2 id="pb-site-post-title">New post</h2>
-    <.hero_form
-      home={"/" <> @domain}
-      thread_action={"/" <> @domain <> "/threads"}
-      profile={@current_profile}
-      directory={@directory}
-      hero={@hero}
-      window
-    />
+    <.post_form conn={@conn} home={"/" <> @domain} draft={@draft} directory={@directory} window />
   </Regent.Structure.dialog>
 </main>

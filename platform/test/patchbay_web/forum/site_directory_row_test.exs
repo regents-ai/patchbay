@@ -15,7 +15,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.SiteDirectory
+  alias Patchbay.Forum.{ListedSitePicture, SiteDirectory}
   alias PatchbayWeb.{LivePart, SiteDirectoryLive}
 
   @domain "openai.com"
@@ -152,6 +152,51 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
     assert texts(opened, "li") == ["search_openai"]
   end
 
+  test "a listed site with no board shows the picture Patchbay took of its home page",
+       %{conn: conn} do
+    host = "target.com"
+    picture = "RIFF" <> <<4::little-32>> <> "WEBP" <> "VP8 "
+    old = Application.get_env(:patchbay, :shots_req_options)
+    on_exit(fn -> Application.put_env(:patchbay, :shots_req_options, old) end)
+
+    Application.put_env(:patchbay, :shots_req_options,
+      plug: &Plug.Conn.send_resp(&1, 200, picture)
+    )
+
+    assert :ok =
+             Oban.Testing.perform_job(ListedSitePicture.Workers.Take, %{domain: host},
+               repo: Patchbay.Repo
+             )
+
+    opened = conn |> directory(host) |> opened(host)
+
+    assert tags(opened) == ["img", "ul"]
+    assert [path] = opened |> LazyHTML.query("img") |> LazyHTML.attribute("src")
+    assert path =~ "/listed-site-pictures/target.com?at="
+
+    served = get(build_conn(), path)
+    assert response(served, 200) == picture
+    assert response_content_type(served, :webp) =~ "image/webp"
+  end
+
+  test "a listed site whose picture failed shows only its tools", %{conn: conn} do
+    host = "target.com"
+    old = Application.get_env(:patchbay, :shots_req_options)
+    on_exit(fn -> Application.put_env(:patchbay, :shots_req_options, old) end)
+
+    Application.put_env(:patchbay, :shots_req_options,
+      plug: &Plug.Conn.send_resp(&1, 422, Jason.encode!(%{page_status: 403}))
+    )
+
+    assert :ok =
+             Oban.Testing.perform_job(ListedSitePicture.Workers.Take, %{domain: host},
+               repo: Patchbay.Repo
+             )
+
+    assert conn |> directory(host) |> opened(host) |> tags() == ["ul"]
+    assert build_conn() |> get("/listed-site-pictures/target.com") |> response(404)
+  end
+
   test "an opened row without a picture holds only the tools, and one without tools says so",
        %{conn: conn} do
     assert conn |> directory() |> opened() |> tags() == ["ul"]
@@ -183,7 +228,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
        %{conn: conn} do
     panel = fn ->
       page = conn |> get("/" <> @domain) |> html_response(200) |> LazyHTML.from_document()
-      {texts(page, ".pb-site-agent-count"), texts(page, ".pb-site-check-status")}
+      {texts(page, ".pb-site-agent-count [data-on]"), texts(page, ".pb-site-check-status")}
     end
 
     {count, [status]} = panel.()

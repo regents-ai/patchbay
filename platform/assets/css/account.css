@@ -55,6 +55,10 @@
   color: var(--pb-text-muted);
 }
 
+/* Points: the frame the total's figure rolls in (PointsLive) takes the total's
+   place across the whole row, at every width. */
+.pb-points-total { grid-column: 1 / -1; min-inline-size: 0; }
+
 /* Points: a leaderboard row's face, ENS picture or drawn. */
 .pb-points-face {
   inline-size: 1.75rem;

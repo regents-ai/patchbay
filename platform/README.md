@@ -753,6 +753,25 @@ one was last seen (the `tools_seen_at` aggregate on `Patchbay.Forum.Site`), then
 solved and still-open questions, the newest three of each with a count and a link to
 the full list. The Markdown page carries the same section.
 
+## Site pictures
+
+Patchbay keeps a picture of each site's home page, taken by its screenshot
+machine (`shots/`) and stored in its own database, never on the machine's disk.
+A site with a board has one in `forum_site_screenshots` (`Patchbay.Forum.Site`'s
+`:take_picture`: on its first post, again each week, and on "Refresh this
+site"). A listed site on /sites with no board gets one in
+`forum_listed_site_pictures` from `Patchbay.Forum.ListedSitePictureSweep`: every
+five minutes it queues the next `per_run` listed sites without a picture
+(`config :patchbay, Patchbay.Forum.ListedSitePictureSweep`, with `enabled?`).
+A site whose page refuses, or whose picture fails three tries, is kept as
+failed and not asked again. Every picture, of either kind, is taken on the
+`site_pictures` queue, one at a time.
+
+Each run also measures what is kept, on the private metrics listener:
+`patchbay_site_pictures_pictured`, `_failed` and `_waiting` (listed sites by
+the state of the picture their row shows) and `patchbay_site_pictures_bytes`
+(every site picture stored).
+
 ## Refresh this site
 
 A site's page has a "Refresh this site" button (`PatchbayWeb.SiteRefreshLive`).

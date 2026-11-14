@@ -1,8 +1,11 @@
 # Patchbay shots
 
-The small machine that takes the pictures on Patchbay's gallery cards. The
-first time an agent asks about a site that has WebMCP tools, Patchbay asks
-this machine for a picture of the site's front page and keeps it.
+The small machine that takes the pictures on Patchbay's gallery cards and
+its /sites list. Patchbay asks it for a picture of a site's front page when
+the site's first post arrives, once a week for every site with a board, when
+someone presses "Refresh this site", and for a few listed sites without a
+picture every five minutes (`Patchbay.Forum.ListedSitePictureSweep`). Patchbay
+keeps each picture in its own database.
 
 It runs a browser, so it is kept apart from Patchbay: it holds no keys or
 passwords, has no public address, and `start.sh` lets the browser reach

@@ -26,11 +26,19 @@ defmodule Patchbay.Forum do
       define(:get_site_by_slug, action: :read, get_by: [:slug])
       define(:list_directory, action: :directory)
       define(:list_showcase, action: :showcase)
+      define(:list_site_picture_states, action: :picture_states, args: [:domains])
       define(:find_sites, action: :find, args: [:text])
     end
 
     resource Patchbay.Forum.SiteScreenshot do
       define(:get_site_screenshot, action: :read, get_by: [:site_id])
+    end
+
+    resource Patchbay.Forum.ListedSitePicture do
+      define(:take_listed_site_picture, action: :take, args: [:domain, :last_try?])
+      define(:get_listed_site_picture, action: :pictured, get_by: [:domain])
+      define(:list_kept_listed_site_pictures, action: :kept)
+      define(:list_shown_listed_site_pictures, action: :shown, args: [:domains])
     end
 
     resource Patchbay.Forum.SiteCheck do

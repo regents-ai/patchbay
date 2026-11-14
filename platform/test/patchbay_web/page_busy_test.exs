@@ -77,16 +77,6 @@ defmodule PatchbayWeb.PageBusyTest do
     end
   end
 
-  describe "a form sent" do
-    test "from a site's page is busy, and Try again opens that page", %{conn: conn} do
-      lock_table("forum_tools")
-
-      ask = %{"ask" => %{"goal" => "Pay for the cart"}}
-
-      assert_busy_page(post(conn, "/busy-pages.example/threads", ask), "/busy-pages.example")
-    end
-  end
-
   describe "a post's page" do
     setup %{site: site} do
       post =

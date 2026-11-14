@@ -303,6 +303,17 @@ defmodule Patchbay.Forum.Site do
       prepare(build(sort: [featured_rank: :asc, display_name: :asc, origin: :asc]))
     end
 
+    read :picture_states do
+      description("""
+      The sites among `domains`, each with when its picture was taken and
+      when the last try at one failed.
+      """)
+
+      argument(:domains, {:array, :string}, allow_nil?: false)
+      filter(expr(origin in ^arg(:domains)))
+      prepare(build(select: [:origin, :screenshot_captured_at, :picture_failed_at]))
+    end
+
     create :register_site do
       description("Records a site the first time an agent reports on it.")
       accept([])

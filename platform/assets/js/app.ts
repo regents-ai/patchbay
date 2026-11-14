@@ -32,6 +32,7 @@ import {MotionArrivals, MotionCount, MotionList, MotionRefusal, MotionThread} fr
 import {SearchDialog} from "./hooks/search_dialog.ts"
 import {MenuAgents} from "./hooks/menu_agents.ts"
 import {PublicName} from "./hooks/public_name.ts"
+import {PostForm} from "./hooks/post_form.ts"
 import {ThemeSwitch} from "./hooks/theme_switch.ts"
 import {ValueCard} from "./hooks/value_card.ts"
 import {ActivityPulse} from "./hooks/activity_pulse.ts"
@@ -43,7 +44,6 @@ import {installAccountControl} from "./privy/account.ts"
 import {browserCsrfToken, holdAdoptionWhileLeaving, holdSocketDuringCookieRotation, retireRefusedSession} from "./privy/session.ts"
 import type {PinnedSocket} from "./privy/session.ts"
 import {installVisitLog} from "./visit_log.ts"
-import {mountHeroForm} from "./hero_form.ts"
 import {mountSitePost} from "./site_post.ts"
 import {claimWalletBenchHistory, mountWalletBench} from "./wallet_bench.ts"
 import {mountCardTopUp} from "./card_topup.ts"
@@ -76,6 +76,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     SearchDialog,
     MenuAgents,
     PublicName,
+    PostForm,
     ThemeSwitch,
     ValueCard,
     ActivityPulse,
@@ -125,7 +126,6 @@ const offerPageWideSurfaces = () => {
   mountMotion(document)
   installAccountControl({fetch: window.fetch.bind(window)})
   mountWebMCPStatus()
-  mountHeroForm({fetch: window.fetch.bind(window)})
   mountSitePost()
   mountWalletBench()
   mountAgentFunding()

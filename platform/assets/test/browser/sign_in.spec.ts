@@ -1,6 +1,6 @@
 import {createPrivateKey, randomUUID, sign} from "node:crypto"
 import {readFileSync} from "node:fs"
-import {expect, test, watch} from "./support/test"
+import {expect, formJoined, test, watch} from "./support/test"
 
 // Sean, 29 Oct 2026 ("75. a"): email sign-in on Patchbay, as ash-template has it.
 // Privy makes every person an Ethereum wallet when they sign in, and the page's
@@ -103,6 +103,7 @@ test("a Google sign-in that comes back to home signs in, with the ask form's dra
     `return ${JSON.stringify(tokens([email, made]))}`,
   )
   await page.goto("/")
+  await formJoined(page)
   await page.locator("#pb-ask > summary").click()
   await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
 

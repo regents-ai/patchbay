@@ -2,12 +2,12 @@ import {readFileSync, writeFileSync} from "node:fs"
 import {basename} from "node:path"
 import {crc32, deflateSync} from "node:zlib"
 import type {Locator, Page} from "@playwright/test"
-import {expect, signedIn, test, watch} from "./support/test"
+import {expect, formJoined, signedIn, test, watch} from "./support/test"
 
 // Pictures on the post form: added with Add pictures, shown small and named by
 // their files, each taken away with its own Remove, four at most, kept through
-// a press that is turned down, and posted with the post as shown. At 1280 and
-// 390; the 320 phone draws the same form.
+// a press that is turned down without the page loading again, and posted with
+// the post as shown. At 1280 and 390; the 320 phone draws the same form.
 
 test.use(signedIn)
 
@@ -61,15 +61,15 @@ async function drop(zone: Locator, path: string) {
     transfer.items.add(new File([Uint8Array.from(atob(bytes), character => character.charCodeAt(0))], name, {type: "image/png"}))
     return transfer
   }, [readFileSync(path).toString("base64"), basename(path)])
-  await zone.dispatchEvent("dragover", {dataTransfer: transfer})
-  await expect(zone).toHaveAttribute("data-pb-dragging", "")
+  await zone.dispatchEvent("dragenter", {dataTransfer: transfer})
+  await expect(zone).toHaveClass(/(^| )phx-drop-target-active( |$)/)
   await zone.dispatchEvent("drop", {dataTransfer: transfer})
-  await expect(zone).not.toHaveAttribute("data-pb-dragging")
+  await expect(zone).not.toHaveClass(/(^| )phx-drop-target-active( |$)/)
 }
 
-// The names of the files the form will send with the post.
+// The names of the pictures the form holds for the post, in their order.
 const sending = (page: Page) =>
-  page.locator("#pb-hero-pictures").evaluate(field => Array.from((field as HTMLInputElement).files!, file => file.name))
+  page.locator("#pb-hero-pictures-box .pb-picture img").evaluateAll(images => images.map(image => (image as HTMLImageElement).alt))
 
 // Each picture shown is drawn from its file, not a broken image.
 const drawn = (pictures: Locator) =>
@@ -87,11 +87,12 @@ test("pictures are added, shown, taken away and posted with the post, four at mo
   writeFileSync(large, Buffer.alloc(3 * 1024 * 1024 + 1))
 
   await page.goto("/hermes")
+  await formJoined(page)
   await page.locator("#pb-hero-details > summary").click()
   const box = page.locator("#pb-hero-pictures-box")
   const add = box.getByRole("button", {name: "Add pictures"})
   const shown = box.locator(".pb-picture img")
-  const count = box.locator("[data-pb-pictures-count]")
+  const count = box.locator(".pb-pictures-count")
   const said = page.locator("#pb-hero-pictures-errors > p")
   const removeOf = (name: string) => box.locator(".pb-picture", {has: page.locator(`img[alt="${name}"]`)}).getByRole("button", {name: "Remove"})
   await expect(count).toHaveText("0/4")
@@ -103,7 +104,7 @@ test("pictures are added, shown, taken away and posted with the post, four at mo
   await expect(shown.nth(0)).toHaveAccessibleName("red.png")
   await expect(shown.nth(1)).toHaveAccessibleName("green.png")
   await expect.poll(() => drawn(shown)).toBe(true)
-  expect(await sending(page)).toEqual(["red.png", "green.png"])
+  await expect.poll(() => sending(page)).toEqual(["red.png", "green.png"])
   await expect(count).toHaveText("2/4")
   await expect(said).toHaveCount(0)
 
@@ -118,7 +119,7 @@ test("pictures are added, shown, taken away and posted with the post, four at mo
   }).toBeGreaterThanOrEqual(44)
   await remove.click()
   await expect(shown).toHaveCount(1)
-  expect(await sending(page)).toEqual(["green.png"])
+  await expect.poll(() => sending(page)).toEqual(["green.png"])
   await expect(count).toHaveText("1/4")
   await expect(removeOf("green.png")).toBeFocused()
 
@@ -132,7 +133,7 @@ test("pictures are added, shown, taken away and posted with the post, four at mo
   // the button shows the form is full.
   await choose(add, [blue, gold, plum, teal])
   await expect(shown).toHaveCount(4)
-  expect(await sending(page)).toEqual(["green.png", "blue.png", "gold.png", "plum.png"])
+  await expect.poll(() => sending(page)).toEqual(["green.png", "blue.png", "gold.png", "plum.png"])
   await expect(count).toHaveText("4/4")
   await expect(said).toHaveCount(1)
   await expect(add).toHaveAttribute("aria-disabled", "true")
@@ -153,21 +154,24 @@ test("pictures are added, shown, taken away and posted with the post, four at mo
   await page.keyboard.press("Enter")
   await expect(shown).toHaveCount(3)
   await expect(add).toHaveAttribute("aria-disabled", "false")
-  await drop(box.locator("[data-pb-pictures-drop]"), teal)
-  expect(await sending(page)).toEqual(["green.png", "blue.png", "plum.png", "teal.png"])
+  await drop(box.locator(".pb-pictures-drop"), teal)
+  await expect.poll(() => sending(page)).toEqual(["green.png", "blue.png", "plum.png", "teal.png"])
 
-  // A press turned down, here over an empty title, keeps the pictures.
+  // A press turned down, here over an empty title, keeps the pictures, and
+  // the page stays where it is.
+  await page.evaluate(() => { (window as unknown as {pbStayed: boolean}).pbStayed = true })
   await page.locator("[data-pb-preview]").click()
   await expect(page.locator("#pb-fix-goal-errors > p")).toHaveCount(1)
   await expect(shown).toHaveCount(4)
   expect(await sending(page)).toHaveLength(4)
+  expect(await page.evaluate(() => (window as unknown as {pbStayed?: boolean}).pbStayed)).toBe(true)
 
   // Posted, the four go with the post.
   await page.locator("#pb-fix-goal").fill(`Booking tool shows the wrong dates ${Math.random().toString(36).slice(2, 8)}`)
   await page.locator("#pb-fix-site").fill("example.com")
   await page.locator("#pb-hero-body").fill("Tried it twice in a fresh session, and once more after signing in again.")
   await page.locator("[data-pb-preview]").click()
-  await expect(page.locator("#pb-hero-preview [data-pb-preview-pictures] img")).toHaveCount(4)
+  await expect(page.locator("#pb-hero-post .pb-post-pictures img")).toHaveCount(4)
   await Promise.all([page.waitForURL(/\/posts\//), page.locator("[data-pb-post]").click()])
   const posted = page.locator(".pb-post-pictures img")
   await expect(posted).toHaveCount(4)

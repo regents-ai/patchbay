@@ -17,7 +17,7 @@ defmodule PatchbayWeb.SiteEditionTest do
     /forum/reports/:id/accept /forum/reports/:id/refund /reports/:id/refund /posts/:id/refund
     /api/agent/payment_intents /api/agent/assists /api/payment_intents /api/assists/:id
     /api/me/usdc_balance /agent-setup /docs /developers /webmcp /start /agents /agents.md
-    /claude /claude/threads /claude/agents.md /hermes/troubleshooting /hermes/troubleshooting.md
+    /claude /claude/agents.md /hermes/troubleshooting /hermes/troubleshooting.md
   )
 
   @open_only ~w(

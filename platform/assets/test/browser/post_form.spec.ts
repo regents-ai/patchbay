@@ -1,9 +1,10 @@
 import type {Locator, Page} from "@playwright/test"
-import {expect, signedIn, test, watch} from "./support/test"
+import {expect, formJoined, signedIn, test, watch} from "./support/test"
 
 // The post form says what is wrong with a field under that field: never while
 // it is typed, once the field is left, and when a post is turned down. Typing
-// takes the line away once the field is right. At 1280, 390 and 320.
+// takes the line away once the field is right. A press is answered where the
+// form stands: the page does not load again. At 1280, 390 and 320.
 
 const LONG = "The booking tool refuses every date I give it ".repeat(4)
 
@@ -28,15 +29,67 @@ async function expectWrong(page: Page, id: string) {
   await expect(page.locator(`#${id}`)).toHaveAttribute("aria-describedby", new RegExp(`(^| )${id}-errors( |$)`))
 }
 
+// Marks the page as it stands, for `expectStayed` to find after a press: a
+// page loaded again has lost the mark.
+async function markPage(page: Page) {
+  await page.evaluate(() => { (window as unknown as {pbStayed: boolean}).pbStayed = true })
+}
+
+async function expectStayed(page: Page) {
+  expect(await page.evaluate(() => (window as unknown as {pbStayed?: boolean}).pbStayed)).toBe(true)
+}
+
 async function expectRight(page: Page, id: string) {
   await expect(page.locator(`#${id}-errors > p`)).toHaveCount(0)
   await expect(page.locator(`#${id}`)).not.toHaveAttribute("aria-invalid", "true")
   await expect(page.locator(`#${id}`)).not.toHaveAttribute("aria-describedby", new RegExp(`${id}-errors`))
 }
 
+test("until the form is connected its fields take nothing, then they take text and keep it, looking the same throughout", async ({page}) => {
+  const problems = watch(page)
+  // The page's live answers wait until the fields have been looked at unconnected;
+  // each answer to a press is counted.
+  let release!: () => void
+  const held = new Promise<void>(resolve => (release = resolve))
+  let replies = 0
+  await page.routeWebSocket(/\/live\/websocket/, socket => {
+    const server = socket.connectToServer()
+    socket.onMessage(message => server.send(message))
+    server.onMessage(message => void held.then(() => {
+      if (String(message).includes("phx_reply")) replies++
+      socket.send(message)
+    }))
+  })
+  await page.goto("/hermes")
+  const [goal, site] = [page.locator("#pb-fix-goal"), page.locator("#pb-fix-site")]
+  const look = (field: Locator) => field.evaluate(element => {
+    const style = getComputedStyle(element)
+    return [style.color, style.backgroundColor, style.borderColor, element.getBoundingClientRect().height]
+  })
+  await expect(goal).not.toBeEditable()
+  await expect(site).not.toBeEditable()
+  const before = [await look(goal), await look(site)]
+
+  release()
+  await formJoined(page)
+  await expect(goal).toBeEditable()
+  await expect(site).toBeEditable()
+  expect([await look(goal), await look(site)]).toEqual(before)
+
+  // Typed, and kept through the form's answer to the change.
+  await goal.fill("Booking tool refuses my date")
+  const answered = replies
+  await site.fill("keyfleet.ai")
+  await expect.poll(() => replies).toBeGreaterThan(answered)
+  await expect(goal).toHaveValue("Booking tool refuses my date")
+  await expect(site).toHaveValue("keyfleet.ai")
+  await problems.expect()
+})
+
 test("a title too long is said under it once the field is left, and typing it right takes the line away", async ({page}) => {
   const problems = watch(page)
   await page.goto("/hermes")
+  await formJoined(page)
   const goal = page.locator("#pb-fix-goal")
 
   // Typed, not yet left: nothing is said.
@@ -55,20 +108,18 @@ test("a title too long is said under it once the field is left, and typing it ri
   await problems.expect()
 })
 
-test("a press with fields left empty says so under each, and asks Patchbay for nothing", async ({page}) => {
+test("a press with fields left empty says so under each, where the form stands", async ({page}) => {
   const problems = watch(page)
-  const asked: string[] = []
-  page.on("request", request => {
-    if (request.method() === "POST") asked.push(new URL(request.url()).pathname)
-  })
   await page.goto("/hermes")
+  await formJoined(page)
+  await markPage(page)
   await page.locator("[data-pb-preview]").click()
   await expectWrong(page, "pb-fix-goal")
   await expect(page.locator("#pb-fix-site-errors > p")).toHaveCount(1)
   await expect(page.locator("#pb-fix-site")).toHaveAttribute("aria-invalid", "true")
   await expect(page.locator("#pb-fix-goal")).toBeFocused()
-  await expect(page.locator("#pb-fix-status")).toBeEmpty()
-  expect(asked.filter(path => path.endsWith("/threads") || path === "/threads/preview")).toEqual([])
+  await expect(page.locator("#pb-hero-refused")).toHaveCount(0)
+  await expectStayed(page)
 
   // Typing the field right takes its line away; the other keeps its own.
   await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
@@ -80,15 +131,13 @@ test("a press with fields left empty says so under each, and asks Patchbay for n
 test("a preview Patchbay turns down over the title is said under the title", async ({page}) => {
   const problems = watch(page)
   await page.goto("/hermes")
+  await formJoined(page)
   await page.locator("#pb-fix-goal").fill(LONG)
   await page.locator("#pb-fix-site").fill("keyfleet.ai")
-  const answered = page.waitForResponse(response => new URL(response.url()).pathname === "/threads/preview")
   await page.locator("[data-pb-preview]").click()
-  await answered
   await expectWrong(page, "pb-fix-goal")
   await expect(page.locator("#pb-fix-goal")).toBeFocused()
   await expect(page.locator("#pb-hero-preview > *")).toHaveCount(0)
-  await expect(page.locator("#pb-fix-status")).toBeEmpty()
   await problems.expect()
 })
 
@@ -128,6 +177,7 @@ for (const scheme of ["light", "dark"] as const) {
     const problems = watch(page)
     await page.emulateMedia({colorScheme: scheme})
     await page.goto("/")
+    await formJoined(page)
     await page.locator("#pb-ask > summary").click()
     const goal = page.locator("#pb-fix-goal")
     await goal.focus()
@@ -149,14 +199,17 @@ test.describe("signed in", () => {
   test("a post Patchbay refuses over the site is said under the site, and changing it takes the line away", async ({page}) => {
     const problems = watch(page)
     await page.goto("/hermes")
+    await formJoined(page)
     await page.locator("#pb-fix-goal").fill("Booking tool refuses my date")
     await page.locator("#pb-fix-site").fill("not a web address")
     await page.locator("[data-pb-preview]").click()
     const publish = page.locator("[data-pb-post]")
     await expect(publish).toBeVisible()
-    await Promise.all([page.waitForEvent("load"), publish.click()])
+    await markPage(page)
+    await publish.click()
 
     await expectWrong(page, "pb-fix-site")
+    await expectStayed(page)
     await expectRight(page, "pb-fix-goal")
     await expect(page.locator("#pb-hero-form .pb-reply-form-problem")).toHaveCount(0)
     await expect(page.locator("#pb-fix-goal")).toHaveValue("Booking tool refuses my date")
