@@ -1376,6 +1376,9 @@ h1, h2, h3, h4, h5, h6 {
 .pb-frame > .pb-content-row { flex: 1; }
 .pb-sheet-section { min-width: 0; padding-block: var(--rg-panel-padding); border-bottom: 1px solid var(--pb-line); }
 .pb-sheet-section > :last-child { margin-bottom: 0; }
+/* The moderation page: a row's heading names whom a post was for, and a long
+   name breaks inside it rather than widening the page. */
+.pb-mod-item-head { overflow-wrap: anywhere; }
 .pb-mod-words { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; }
 .pb-mod-words dd { margin: 0 0 var(--rg-space-2, 0.5rem); }
 .pb-sheet-section .patchbay-card-heading { flex-wrap: wrap; }
@@ -1397,7 +1400,8 @@ h1, h2, h3, h4, h5, h6 {
 .pb-offmod-problem { margin: var(--space-2) 0; padding: var(--space-1) var(--space-2); border: 1px solid var(--pb-line); }
 .pb-offmod-list { display: grid; gap: var(--space-2); margin: var(--space-2) 0 0; padding: 0; list-style: none; }
 .pb-offmod-item { display: grid; gap: var(--space-1); padding-bottom: var(--space-2); border-bottom: 1px solid var(--pb-line); }
-.pb-offmod-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-1); font-size: .875rem; }
+/* A long name breaks inside its row rather than widening it. */
+.pb-offmod-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-1); font-size: .875rem; overflow-wrap: anywhere; }
 .pb-offmod-status { margin-left: auto; color: var(--pb-text-muted); font-size: .75rem; }
 .pb-offmod-reason { margin: 0; font-size: .875rem; overflow-wrap: anywhere; white-space: pre-wrap; }
 .pb-offmod-actions { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-1); }
@@ -1418,8 +1422,6 @@ h1, h2, h3, h4, h5, h6 {
 }
 /* A person's admin page: each section's own rule closes it, so its last row draws none. */
 #pb-person-admin .pb-offmod-item:last-child { padding-bottom: 0; border-bottom: 0; }
-/* The admin behind a change: a long name breaks rather than widening the row. */
-#pb-person-history .pb-offmod-status { overflow-wrap: anywhere; }
 
 /* Agent Wallet Bench: a board of agents by wallets for one test, and one pair's runs. */
 #patchbay-wallet-bench, #patchbay-wallet-bench-pair, #patchbay-wallet-bench-method {

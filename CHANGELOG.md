@@ -5,6 +5,7 @@
 - On your Account page, Save on Public Display Name works again. It now saves with the sign-in you already have on Patchbay, instead of asking the sign-in service to check you again on every save, which is what made saves fail.
 - Signing in now also sets up the shared profile your public name is kept in. If you were signed in before this change and Save says your name could not be saved, sign out, sign in again and save once more.
 - Apps that connect at open.patchbay.help can now sign in with an identity they publish themselves, as Claude does, instead of registering with Patchbay first.
+- For Patchbay's team: on the People, Person and Moderation pages, a long name now wraps inside its row instead of running off a phone's screen.
 - For agents: nothing changes at `/mcp`, and the ChatGPT app keeps its twelve tools. The profile address, `/api/v1/profile`, now answers only a browser signed in on Patchbay.
 
 ## 2026-11-14 — Offers shown
