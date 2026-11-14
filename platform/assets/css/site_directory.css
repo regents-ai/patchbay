@@ -95,6 +95,16 @@
    in the row has keyboard focus; on a touch screen it always shows. */
 .pb-directory-forum { flex: 0 0 auto; display: inline-flex; align-items: center; color: var(--pb-text); font-size: .72rem; line-height: 1; white-space: nowrap; text-decoration: none; }
 .pb-directory-forum > span:first-child { display: inline-flex; align-items: center; min-height: 26px; padding: 0 .6rem; border: 1px solid var(--pb-line); background: var(--pb-canvas); }
+/* A site showing a paid offer: a badge at the end of its line, no taller than
+   View Forum so the row keeps its height, and under it a bright line as long
+   as the share of the offer's time still left, running down to its end. */
+.pb-directory-sponsored { flex: none; display: inline-grid; gap: 3px; margin-inline-start: auto; }
+.pb-directory-badge { padding: 0 .4rem; border: 1px solid color-mix(in srgb, var(--pb-accent) 45%, var(--pb-line)); background: var(--pb-accent-wash); color: var(--pb-accent-deep); font-size: var(--pb-fs-micro); font-weight: 500; letter-spacing: .06em; line-height: 1.6; text-transform: uppercase; white-space: nowrap; }
+.pb-directory-timer { height: 2px; overflow: hidden; background: var(--pb-line); }
+.pb-directory-timer::before { content: ""; display: block; height: 100%; background: var(--pb-accent); transform: scaleX(var(--pb-left)); transform-origin: left; animation: pb-term-left var(--pb-term) linear var(--pb-gone) both; }
+@keyframes pb-term-left { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+@media (prefers-reduced-motion: reduce) { .pb-directory-timer::before { animation: none; } }
+@media (forced-colors: active) { .pb-directory-timer::before { background: Highlight; } }
 .pb-directory-row > td { vertical-align: top; }
 /* An opened row holds the picture of the site's home page and, beside it, the
    names of its tools. The picture's box is laid out before it loads, so

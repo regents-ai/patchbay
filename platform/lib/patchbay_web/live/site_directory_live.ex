@@ -3,10 +3,16 @@ defmodule PatchbayWeb.SiteDirectoryLive do
   The public site directory. A row opens on the picture Patchbay took of the
   site's home page and its WebMCP tools, and changes as Patchbay's checks of
   its sites finish.
+
+  At patchbay.help a site showing a paid offer carries a badge, with a line
+  under it as long as the share of its soonest-ending offer's time still left
+  (`Patchbay.Offers.Board.sponsored/0`, read once for the whole list).
   """
   use PatchbayWeb, :live_view
 
   alias Patchbay.Forum.SiteDirectory
+  alias Patchbay.Offers.Board
+  alias PatchbayWeb.OffersLive.Words
 
   def mount(_params, session, socket) do
     # The page asked for was checked before this page was rendered.
@@ -15,6 +21,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
     socket =
       socket
       |> assign(page: page, expanded: MapSet.new(), subscribed: MapSet.new())
+      |> assign(sponsored: sponsored_sites(socket.assigns.site_edition), now: DateTime.utc_now())
       |> stream_configure(:sites, dom_id: &"directory-#{&1.host}")
       |> stream(:sites, page.sites)
       |> subscribe_sites(page.sites)
@@ -158,6 +165,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   <a class="pb-directory-forum" href={"/" <> site.domain}>
                     <span>View Forum</span><span class="visually-hidden"> for {site.name}</span>
                   </a>
+                  <.sponsored term={@sponsored[site.domain]} now={@now} />
                 </div>
                 <div
                   id={"tools-" <> site.host}
@@ -252,6 +260,37 @@ defmodule PatchbayWeb.SiteDirectoryLive do
     </section>
     """
   end
+
+  # The badge, and the line under it: as long as the share of the offer's term
+  # still left when the page was read, running down to none at its end.
+  attr :term, :map, default: nil
+  attr :now, DateTime, required: true
+
+  defp sponsored(%{term: nil} = assigns), do: ~H""
+
+  defp sponsored(%{term: %{starts_at: starts_at, ends_at: ends_at}, now: now} = assigns) do
+    term = max(DateTime.diff(ends_at, starts_at), 1)
+    gone = now |> DateTime.diff(starts_at) |> max(0) |> min(term)
+
+    assigns =
+      assign(assigns,
+        left: Words.time_left(ends_at, now),
+        style:
+          "--pb-term: #{term}s; --pb-gone: -#{gone}s; " <>
+            "--pb-left: #{Float.round((term - gone) / term, 4)}"
+      )
+
+    ~H"""
+    <span class="pb-directory-sponsored" style={@style}>
+      <span class="pb-directory-badge">Sponsored</span>
+      <span class="pb-directory-timer" aria-hidden="true"></span>
+      <span class="visually-hidden">, {@left} left</span>
+    </span>
+    """
+  end
+
+  defp sponsored_sites(:main), do: Board.sponsored()
+  defp sponsored_sites(_open), do: %{}
 
   defp subscribe_sites(socket, sites) do
     domains = MapSet.new(sites, & &1.domain)

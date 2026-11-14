@@ -12,6 +12,9 @@ defmodule PatchbayWeb.IncidentController do
   is `/incidents` itself and each older one is `?page=N`, N written in plain
   digits from 2; any other value, or a page past the last, names no page.
   The incidents are listed on the first page only.
+
+  At patchbay.help, the paid offers for the CVE incidents go beside them,
+  General's while those have none (`Patchbay.Offers.Source`).
   """
 
   use PatchbayWeb, :controller
@@ -21,6 +24,8 @@ defmodule PatchbayWeb.IncidentController do
   alias Patchbay.Forum
   alias Patchbay.Incidents
   alias Patchbay.Incidents.Discussion
+  alias Patchbay.Offers.Serving
+  alias PatchbayWeb.PaidOffers
 
   @per_page 25
 
@@ -33,9 +38,19 @@ defmodule PatchbayWeb.IncidentController do
       incidents: Incidents.all(),
       replies: replies(),
       page: number,
-      cves: cves!(number)
+      cves: cves!(number),
+      offers: offers(conn)
     )
   end
+
+  # Paid offers go beside the incidents at patchbay.help only
+  # (`PatchbayWeb.PaidOffers`).
+  defp offers(%{assigns: %{site_edition: :main}} = conn) do
+    surface = if get_format(conn) == "md", do: :markdown, else: :page
+    Serving.serve(PaidOffers.incidents(surface), PaidOffers.reader(conn))
+  end
+
+  defp offers(_open), do: []
 
   @doc "The incidents as Markdown, at their own address ending in .md."
   def index_md(conn, params) do
