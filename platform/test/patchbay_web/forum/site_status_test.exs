@@ -82,6 +82,29 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
              [at]
   end
 
+  test "the directory and a board each lead once to the WebMCP guide, at patchbay.help only" do
+    assert build_conn() |> get("/webmcp") |> html_response(200)
+
+    for path <- ["/sites", "/" <> @domain] do
+      html = build_conn() |> get(path) |> html_response(200) |> LazyHTML.from_document()
+      assert html |> LazyHTML.query("a[href='/webmcp']") |> Enum.count() == 1, path
+
+      markdown =
+        build_conn() |> put_req_header("accept", "text/markdown") |> get(path) |> response(200)
+
+      assert markdown =~ "](/webmcp)", path
+
+      refute build_conn() |> on_open() |> get(path) |> html_response(200) =~ "/webmcp", path
+
+      refute build_conn()
+             |> on_open()
+             |> put_req_header("accept", "text/markdown")
+             |> get(path)
+             |> response(200) =~ "/webmcp",
+             path
+    end
+  end
+
   test "before the first check finishes, the status says so, with no time", %{conn: conn} do
     html = page(conn)
     standing = LazyHTML.query(html, "#pb-site-standing")

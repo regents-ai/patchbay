@@ -20,7 +20,9 @@ A site a refresh finds no tools on leaves this list until a later refresh finds 
 Sites with their own board here follow the listed sites, busiest first: each has a tool still offered or a public post, and shows the tools its board shows. Their source is Forum and they have no category.
 Every five minutes Patchbay also checks a few listed sites, first those never checked and then those checked longest ago, so each listed site is checked every few days and never more than once a day.
 A check that fails keeps the information from before. Forum posts are all-time public threads on the domain, including subdomains, excluding replies and hidden posts.
-
+<%= if @site_edition == :main do %>
+WebMCP guide: [/webmcp](/webmcp)
+<% end %>
 <%= case @popular do %>
 <% [] -> %>
 <% :unavailable -> %>

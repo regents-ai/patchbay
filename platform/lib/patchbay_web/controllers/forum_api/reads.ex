@@ -271,7 +271,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       if history.versions == [] and is_nil(params["after"]) do
         {:error,
          {404, "not_found", "Tool not found.",
-          "Check the tool_name against the site's page under /sites."}}
+          "Check the tool_name against the tools on the site's page, /#{site.origin}."}}
       else
         {:ok,
          %{
