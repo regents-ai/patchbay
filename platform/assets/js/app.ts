@@ -36,6 +36,7 @@ import {PostForm} from "./hooks/post_form.ts"
 import {ThemeSwitch} from "./hooks/theme_switch.ts"
 import {ValueCard} from "./hooks/value_card.ts"
 import {ActivityPulse} from "./hooks/activity_pulse.ts"
+import {OnchainSteps} from "./hooks/onchain_steps.ts"
 import {mountMotion} from "./motion.ts"
 import {hooks as labHooks} from "./motion_lab.ts"
 import {mountForumTools} from "./webmcp/forum_lifecycle.ts"
@@ -80,8 +81,18 @@ const liveSocket = new LiveSocket("/live", Socket, {
     ThemeSwitch,
     ValueCard,
     ActivityPulse,
+    // The wallet buttons on /offers (PatchbayWeb.OnchainSteps).
+    OnchainSteps,
     // The motion lab's own presses and moments, used only on /animations.
     ...labHooks,
+  },
+  dom: {
+    // A section marked `data-pb-open-kept` stays open or closed as the person
+    // left it whenever the page is patched, its first connection included.
+    // `JS.ignore_attributes` cannot do that: it starts only once connected.
+    onBeforeElUpdated(from, to) {
+      if (from instanceof HTMLDetailsElement && from.hasAttribute("data-pb-open-kept")) to.toggleAttribute("open", from.open)
+    },
   },
 })
 

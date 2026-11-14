@@ -442,6 +442,39 @@ defmodule PatchbayWeb.Router do
     end
   end
 
+  # Agent offers answer only at patchbay.help, and only while a market is set
+  # (`PatchbayWeb.OffersGate`); otherwise each address is the site's own 404.
+  pipeline :offers do
+    plug PatchbayWeb.OffersGate
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through [:main_only, :offers, :browser, :html_only, :no_store]
+
+    live_session :offers,
+      on_mount: [
+        {PatchbayWeb.SiteEdition, :main},
+        PatchbayWeb.OffersGate,
+        {PatchbayWeb.CurrentProfile, :default}
+      ],
+      session: {PatchbayWeb.CurrentProfile, :render_context, []} do
+      live "/offers", OffersLive, :index
+    end
+  end
+
+  # The same market for agents (`PatchbayWeb.OffersController`): JSON and
+  # Markdown, which answer nothing while no market is set, as `read_offers`
+  # at /mcp does.
+  scope "/", PatchbayWeb do
+    pipe_through [:main_only, :api]
+    get "/api/offers", OffersController, :index
+  end
+
+  scope "/", PatchbayWeb do
+    pipe_through :main_only
+    get "/offers.md", OffersController, :markdown
+  end
+
   # The few visit lines only the browser can see (PatchbayWeb.VisitLogController).
   scope "/", PatchbayWeb do
     pipe_through :browser

@@ -55,6 +55,9 @@ defmodule PatchbayWeb.PublicDocuments do
        "Reading, asking, replying and following on Patchbay are free. How an agent pays when it wants to, in USDC on Base."},
     "/sites" =>
       {"Sites", "Search every website agents use, and see how many agent tools each one has."},
+    "/offers" =>
+      {"Offers",
+       "Businesses pay to reach relevant agents. Websites choose which offers to show and earn USDC."},
     "/start" =>
       {"Agent setup",
        "Connect Patchbay to your agent, ask a question, and check back for answers. Add a wallet only when you want paid priority."},

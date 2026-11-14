@@ -1,0 +1,156 @@
+/* /offers: the placements and their slots, the Buy panel under a chosen slot,
+   the person's campaigns with the form for a new one, and refunds. */
+
+.pb-offers {
+  --pb-offers-ease: cubic-bezier(.23, 1, .32, 1);
+  display: grid;
+  gap: var(--space-5);
+  width: min(100%, 64rem);
+  margin-inline: auto;
+  padding-block: var(--space-4) var(--space-6);
+  min-width: 0;
+}
+/* Each one-column grid keeps its column inside the screen, whatever it holds. */
+.pb-offers, .pb-offers-section, .pb-slot, .pb-slot-offer, .pb-buy, .pb-step, .pb-sent, .pb-campaigns,
+.pb-campaign, .pb-campaign-main, .pb-campaign-form, .pb-campaign-where, .pb-claims, .pb-claim { grid-template-columns: minmax(0, 1fr); }
+.pb-offers :where(h1, h2, h3, h4, p, dl, dd, ol, ul) { margin: 0; }
+.pb-offers :where(ol, ul) { padding: 0; list-style: none; }
+
+.pb-offers-head { display: grid; gap: var(--space-2); }
+.pb-offers-head h1 { font-family: var(--font-family-title); font-size: clamp(1.65rem, 3vw, 2.4rem); font-weight: 400; font-synthesis: none; letter-spacing: -.02em; line-height: 1.2; }
+.pb-offers-head h1:focus { outline: none; }
+.pb-offers-head p { max-width: 40rem; color: var(--pb-text-muted); text-wrap: pretty; }
+
+.pb-offers-section { display: grid; gap: var(--space-3); min-width: 0; }
+.pb-offers-section h2 { font-family: var(--font-family-title); font-size: var(--pb-fs-xl); font-weight: 400; font-synthesis: none; letter-spacing: -.02em; line-height: 1.2; }
+.pb-offers-lead { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); }
+
+/* A placement: its site and terms, then its slots side by side. */
+.pb-placement { min-width: 0; border: 1px solid var(--pb-line); background: var(--pb-surface); }
+.pb-placement-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-3); padding: var(--space-3); border-bottom: 1px solid var(--pb-line); }
+.pb-placement-head h3 { min-width: 0; font-size: var(--pb-fs-lg); font-weight: 500; overflow-wrap: anywhere; }
+.pb-placement-head h3 a { color: inherit; text-decoration: none; }
+.pb-placement-head h3 a:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-placement-terms { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); font-variant-numeric: tabular-nums; }
+@media (hover: hover) and (pointer: fine) {
+  .pb-placement-head h3 a:hover { text-decoration: underline; text-underline-offset: .2em; }
+}
+
+.pb-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pb-slot { position: relative; display: grid; grid-template-rows: auto 1fr auto auto; gap: var(--space-2); min-width: 0; padding: var(--space-3); }
+.pb-slot + .pb-slot { border-left: 1px solid var(--pb-line); }
+/* The chosen slot carries an accent edge that its panel below continues. */
+.pb-slot::after { content: ""; position: absolute; inset: auto 0 0; height: 2px; background: var(--pb-accent); opacity: 0; transition: opacity 160ms ease-out; pointer-events: none; }
+.pb-slot[data-chosen]::after { opacity: 1; }
+.pb-slot-index { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); letter-spacing: .06em; text-transform: uppercase; }
+.pb-slot-offer { display: grid; align-content: start; gap: var(--space-1); min-width: 0; }
+.pb-slot-title { color: var(--pb-text); font-weight: 500; text-decoration: none; overflow-wrap: anywhere; }
+a.pb-slot-title:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-slot-open { color: var(--pb-text-muted); font-weight: 400; }
+.pb-slot-body { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); overflow-wrap: anywhere; }
+@media (hover: hover) and (pointer: fine) {
+  a.pb-slot-title:hover { text-decoration: underline; text-underline-offset: .2em; }
+}
+
+/* Figures: a small label over each value, in equal-width digits. */
+.pb-slot-figures, .pb-buy-figures, .pb-campaign-facts { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
+.pb-slot-figures dt, .pb-buy-figures dt, .pb-campaign-facts dt { color: var(--pb-text-muted); font-size: var(--pb-fs-micro); letter-spacing: .06em; text-transform: uppercase; }
+.pb-slot-figures dd, .pb-buy-figures dd, .pb-campaign-facts dd { font-size: var(--pb-fs-sm); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pb-slot-action { display: flex; }
+.pb-slot-action .rg-button { flex: 1; }
+
+/* The Buy panel opens under its placement's slots. */
+.pb-buy { display: grid; gap: var(--space-3); min-width: 0; padding: var(--space-3); border-top: 1px solid var(--pb-line); background: var(--pb-card-sunk); transition: opacity 200ms var(--pb-offers-ease), transform 200ms var(--pb-offers-ease); }
+@starting-style { .pb-buy { opacity: 0; transform: translateY(-4px); } }
+.pb-buy-head { display: flex; align-items: center; gap: var(--space-2); }
+.pb-buy-head h4 { font-size: var(--pb-fs-lg); font-weight: 500; }
+.pb-buy-where { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); }
+.pb-buy-close { display: grid; place-items: center; inline-size: 2.75rem; block-size: 2.75rem; margin: -.5rem -.5rem -.5rem auto; color: var(--pb-text-muted); }
+.pb-buy-close:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: -4px; }
+@media (hover: hover) and (pointer: fine) { .pb-buy-close:hover { color: var(--pb-text); } }
+.pb-buy-empty { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); color: var(--pb-text-muted); }
+.pb-buy-form { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: var(--space-3); align-items: start; }
+.pb-buy-form :is(input, select) { width: 100%; font-size: max(1rem, 16px); }
+.pb-amount { position: relative; }
+.pb-amount input { padding-right: 4rem; font-variant-numeric: tabular-nums; }
+.pb-amount-unit { position: absolute; top: 50%; right: .75rem; transform: translateY(-50%); color: var(--pb-text-muted); font-size: var(--pb-fs-sm); pointer-events: none; }
+.pb-buy-refusal:not([hidden]) { padding: var(--space-2) var(--space-3); border-inline-start: 3px solid var(--pb-bad); background: var(--pb-bad-wash); font-size: var(--pb-fs-sm); }
+.pb-buy-unread { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+
+/* Approve and the button it unlocks are the same size, side by side. */
+.pb-buy-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.pb-step { display: grid; align-content: start; gap: var(--space-1); min-width: 0; }
+.pb-step-button { width: 100%; }
+/* The tick sits in the label's line, so a long label still ends in an ellipsis. */
+.pb-step-button .rg-tick { inline-size: 1.125rem; block-size: 1.125rem; margin-inline-end: var(--space-1); vertical-align: -.3em; }
+/* An approval on the chain looks done, and still takes a press. */
+.pb-step-button[data-done]::before { background: var(--pb-surface-sunk); border-color: var(--pb-good); }
+/* While the wallet has a press, the label rests a little lighter; the button still takes presses. */
+.pb-step-button .rg-button__label { transition: opacity 160ms ease-out; }
+.pb-step-button[data-awaiting-wallet] { cursor: progress; }
+.pb-step-button[data-awaiting-wallet] .rg-button__label { opacity: .6; }
+.pb-step-why { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+
+.pb-press-note { font-size: var(--pb-fs-sm); overflow-wrap: anywhere; }
+.pb-press-note[hidden] { display: none; }
+
+.pb-sent { display: grid; gap: var(--space-1); border-top: 1px solid var(--pb-line); padding-top: var(--space-2); }
+.pb-sent-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--pb-fs-sm); }
+.pb-sent-name { font-weight: 500; }
+.pb-sent-words { color: var(--pb-text-muted); }
+.pb-sent-row[data-state="confirmed"] .pb-sent-words { color: var(--pb-good); }
+.pb-sent-row[data-state="reverted"] .pb-sent-words { color: var(--pb-bad); }
+
+/* Campaigns: the person's own, then the form for a new one. */
+.pb-campaigns { display: grid; gap: var(--space-4); min-width: 0; }
+.pb-campaign-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 19rem), 1fr)); gap: var(--space-2); }
+.pb-campaign { display: grid; align-content: space-between; gap: var(--space-3); min-width: 0; padding: var(--space-3); border: 1px solid var(--pb-line); background: var(--pb-surface); transition: border-color 600ms ease; }
+/* The campaign just saved arrives with an accent edge. */
+.pb-campaign[data-new] { border-color: var(--pb-accent); transition: opacity 200ms var(--pb-offers-ease), transform 200ms var(--pb-offers-ease), border-color 600ms ease; }
+@starting-style { .pb-campaign[data-new] { opacity: 0; transform: translateY(4px); } }
+.pb-campaign-main { display: grid; gap: var(--space-1); min-width: 0; }
+.pb-campaign-title { color: var(--pb-text); font-weight: 500; text-decoration: none; overflow-wrap: anywhere; }
+.pb-campaign-title:focus-visible { outline: 2px solid var(--pb-accent-deep); outline-offset: 2px; }
+.pb-campaign-body { color: var(--pb-text-muted); font-size: var(--pb-fs-sm); overflow-wrap: anywhere; }
+.pb-campaign-facts dd { white-space: normal; overflow-wrap: anywhere; }
+@media (hover: hover) and (pointer: fine) {
+  .pb-campaign-title:hover { text-decoration: underline; text-underline-offset: .2em; }
+}
+
+.pb-campaign-form { display: grid; gap: var(--space-3); width: min(100%, 36rem); padding: var(--space-3); border: 1px solid var(--pb-line); background: var(--pb-surface); }
+.pb-campaign-form h3 { font-size: var(--pb-fs-lg); font-weight: 500; }
+.pb-campaign-form :is(input, select, textarea) { width: 100%; font-size: max(1rem, 16px); }
+.pb-campaign-form textarea { resize: vertical; }
+.pb-campaign-where { display: grid; gap: var(--space-1); }
+.pb-campaign-where-label { font-size: var(--pb-fs-sm); }
+.pb-campaign-error { color: var(--pb-bad); font-size: var(--pb-fs-sm); }
+.pb-campaign-save { display: flex; align-items: center; gap: var(--space-2); }
+
+/* Refunds: one row per wallet. */
+.pb-claims { display: grid; gap: var(--space-2); }
+.pb-claim { display: grid; gap: var(--space-2); padding: var(--space-3); border: 1px solid var(--pb-line); background: var(--pb-surface); }
+.pb-claim-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2) var(--space-3); }
+.pb-claim-amount { margin-inline-start: auto; font-size: var(--pb-fs-lg); font-variant-numeric: tabular-nums; }
+.pb-claim .pb-step { min-width: 9rem; }
+
+@container pb-page (max-width: 760px) {
+  .pb-slots { grid-template-columns: minmax(0, 1fr); }
+  .pb-slot + .pb-slot { border-left: 0; border-top: 1px solid var(--pb-line); }
+  .pb-buy-form { grid-template-columns: minmax(0, 1fr); }
+}
+@container pb-page (max-width: 420px) {
+  .pb-buy-steps { grid-template-columns: minmax(0, 1fr); }
+  .pb-claim-amount { margin-inline-start: 0; }
+  .pb-claim .pb-step { flex: 1 1 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pb-buy, .pb-campaign[data-new] { transition: opacity 200ms ease; }
+  @starting-style { .pb-buy, .pb-campaign[data-new] { transform: none; } }
+  .pb-slot::after, .pb-step-button .rg-button__label { transition: none; }
+}
+
+@media (forced-colors: active) {
+  .pb-slot[data-chosen]::after { background: Highlight; }
+  .pb-step-button[data-done]::before { border-color: Highlight; }
+}

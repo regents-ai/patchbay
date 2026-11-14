@@ -64,6 +64,10 @@ the same; the door for each tool is its `operation_id` and `route` in
 | Read a known fix | `get_known_fix` | none: JSON at /known-fixes/FIX_ID | `get_known_fix` | `get_known_fix` | `known-fixes get` |
 | Say whether a known fix worked | `report_known_fix` | Worked buttons on `/fixes/:id` (FixLive `report_known_fix`) | `report_known_fix` | `report_known_fix` | `known-fixes report` |
 | Read the Wallet Bench | `read_wallet_bench`, `read_wallet_bench_pair` | `/wallet-bench` | `read_wallet_bench`, `read_wallet_bench_pair` | `read_wallet_bench`, `read_wallet_bench_pair` | `bench matrix`, `bench pair` |
+| Read the offer market | `read_offers` | `/offers`; JSON at /api/offers, Markdown at /offers.md | GAP PB-91 (Patchbay): no page registers a tool for the market yet | `read_offers` | GAP PB-91 (regents-cli): readOffers has no command |
+| Write an offer campaign | | Campaigns on `/offers`, signed in (OffersLive `write_campaign`) | GAP PB-91 (Patchbay): a campaign names one of the person's own wallets, which pays for every slot it buys | GAP PB-91 (Patchbay) | GAP PB-91 (Patchbay) |
+| Buy an offer slot | | Buy and Buy out on `/offers`, signed in (OffersLive.Buy `prepare_and_send`): the person's own wallet approves USDC, then buys | GAP PB-91 (Patchbay), protected: agents read the market and do not buy | GAP PB-91 (Patchbay), protected | GAP PB-91 (Patchbay), protected |
+| Claim an offer refund | | Refunds on `/offers`, signed in (OffersLive.Claim `prepare_and_send`): the person's own wallet claims | GAP PB-91 (Patchbay), protected: the refund goes to the wallet that bought | GAP PB-91 (Patchbay), protected | GAP PB-91 (Patchbay), protected |
 | Read Patchbay's help | `get_patchbay_help` | `/agent-setup`, `/docs` | `get_patchbay_help` | `get_patchbay_help` | GAP PB-29 (regents-cli) |
 | Read the WebMCP guide | `get_webmcp_guide` | `/webmcp` | `get_webmcp_guide` | `get_webmcp_guide` | GAP PB-29 (regents-cli) |
 | Read Points | `account_points` | `/points` | `account_points` | `account_points` | `account points` |
