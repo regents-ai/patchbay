@@ -10,7 +10,7 @@
 
 ## About
 
-<%= if @current_tool.description || @current_tool.title, do: line(@current_tool.description || @current_tool.title) %>
+<%= if @current_tool.description || @current_tool.title, do: paragraph(@current_tool.description || @current_tool.title) %>
 
 <%= if @current_tool.protocol_version, do: "- Protocol: " <> line(@current_tool.protocol_version) <> "\n" %>
 - Contract fingerprint: `<%= @current_tool.contract_sha256 %>`
