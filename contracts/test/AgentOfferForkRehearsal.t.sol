@@ -3,44 +3,33 @@ pragma solidity 0.8.24;
 
 import {Vm} from "forge-std/Vm.sol";
 import {console2} from "forge-std/console2.sol";
-import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {AgentOfferFactory} from "../src/AgentOfferFactory.sol";
 import {AgentOfferMarket} from "../src/AgentOfferMarket.sol";
+import {AgentOfferStakingPayout} from "../src/AgentOfferStakingPayout.sol";
 import {IAgentOfferMarket} from "../src/IAgentOfferMarket.sol";
 import {IRegentRevenueStaking} from "../src/PatchbayEscrow.sol";
 import {AgentOfferBase, FreezableUSDC} from "./AgentOfferTestKit.sol";
 
-/// @notice The books of the live REGENT revenue staking contract that a deposit moves.
+/// @notice The books of the live REGENT revenue staking contract that a deposit moves, and the two
+///         figures its split between stakers and treasury follows.
 interface IRegentStakingBooks {
     function paused() external view returns (bool);
     function totalUsdcReceived() external view returns (uint256);
     function directDepositUsdc() external view returns (uint256);
     function totalUsdcCreditedToStakers() external view returns (uint256);
     function treasuryResidualUsdc() external view returns (uint256);
-}
-
-/// @notice A minimal stand-in for a Safe: it makes whatever call its owner has approved, as a Safe
-///         does once its signers have signed a transaction.
-contract PayoutSafe {
-    address public immutable owner;
-
-    constructor(address owner_) {
-        owner = owner_;
-    }
-
-    function execute(address target, bytes calldata data) external returns (bytes memory) {
-        require(msg.sender == owner, "NOT_OWNER");
-        return Address.functionCall(target, data);
-    }
+    function totalStaked() external view returns (uint256);
+    function revenueShareSupplyDenominator() external view returns (uint256);
 }
 
 /// @title AgentOfferForkRehearsalTest
 /// @notice Rehearses the offer contracts' whole money path on a private fork of Base mainnet, with
 ///         Circle's real USDC and the live REGENT revenue staking contract: the factory as it would
-///         be deployed, Patchbay's market paying a Safe, a second publisher's market paying a plain
-///         wallet, a sale, a buyout, a lease run to its end, a placement terminated early, every
-///         claim, the fee pushed into staking, and every unit of USDC accounted for at the end.
+///         be deployed, Patchbay's market paying its staking payout contract, a second publisher's
+///         market paying a plain wallet, a sale, a buyout, a lease run to its end, a placement
+///         terminated early, every claim, the fees and Patchbay's earnings pushed into staking, and
+///         every unit of USDC accounted for at the end.
 /// @dev Needs BASE_RPC_URL (Base's public endpoint is enough); without it the suite is skipped, so
 ///      `forge test` stays offline. The fork is pinned to `FORK_BLOCK`, so every run meets the same
 ///      chain. Nothing is broadcast. Timeline from the fork's own time T0: four sales at T0, the
@@ -65,8 +54,7 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         uint256 split;
     }
 
-    PayoutSafe internal safe;
-    address internal safeOwner = makeAddr("rehearsal.safe-owner");
+    AgentOfferStakingPayout internal earnings;
     address internal stranger = makeAddr("rehearsal.stranger");
 
     AgentOfferMarket internal siteMarket;
@@ -85,7 +73,7 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
     address internal a4 = makeAddr("rehearsal.advertiser-4");
     address internal a5 = makeAddr("rehearsal.advertiser-5");
 
-    uint256 internal stakingAtStart;
+    StakingBooks internal stakingAtStart;
     mapping(address market => uint256 amountUSDC) internal paidIn;
     mapping(address market => uint256 amountUSDC) internal claimedOut;
     mapping(address market => uint256 amountUSDC) internal pushedOut;
@@ -100,36 +88,45 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         (publisher, publisherKey) = makeAddrAndKey("rehearsal.publisher");
         (siteOperator, siteKey) = makeAddrAndKey("rehearsal.site-operator");
         (a1, a1Key) = makeAddrAndKey("rehearsal.advertiser-1");
-        safe = new PayoutSafe(safeOwner);
-        payout = address(safe);
-        stakingAtStart = usdc.balanceOf(REGENT_STAKING);
+        stakingAtStart = _stakingBooks();
     }
 
     function test_rehearsal_wholeMoneyPathOnBaseFork() public {
         assertEq(block.chainid, 8453);
-        assertFalse(IRegentStakingBooks(REGENT_STAKING).paused(), "staking paused at the fork block");
+        IRegentStakingBooks books = IRegentStakingBooks(REGENT_STAKING);
+        assertFalse(books.paused(), "staking paused at the fork block");
         console2.log("fork block", block.number, "time T0", block.timestamp);
-        console2.log("staking", REGENT_STAKING, "USDC held at T0", stakingAtStart);
+        console2.log("staking", REGENT_STAKING, "USDC held at T0", stakingAtStart.balance);
+        console2.log("staked", books.totalStaked(), "of", books.revenueShareSupplyDenominator());
 
         _deployFactoryAndMarkets();
         _createPlacements();
         _firstSales();
         _terminateCveEarly();
         _buyoutAndNaturalEnds();
-        _payoutsClaim();
-        _pushRevenue();
+        _siteWalletClaims();
+        _pushIntoStaking();
         _assertConserved();
     }
 
     // ---------------------------------------------------------------- steps
 
     /// @dev Step 1, with the step 8 refusals of a market for a non-admitted address and a second
-    ///      market for one publisher.
+    ///      market for one publisher. Patchbay's market is created in the README's order: predict its
+    ///      address, deploy its staking payout contract, then create the market naming that contract.
     function _deployFactoryAndMarkets() internal {
         factory = new AgentOfferFactory(admin, publisher, IRegentRevenueStaking(REGENT_STAKING), FEE_BPS);
         _logGas("factory deploy", _txGas());
 
         address predicted = factory.predictMarket(publisher);
+        assertEq(predicted.code.length, 0, "no market before createMarket");
+        earnings = new AgentOfferStakingPayout(factory, publisher);
+        _logGas("staking payout deploy", _txGas());
+        assertEq(address(earnings.market()), predicted);
+        assertEq(address(earnings.usdc()), BASE_USDC);
+        assertEq(address(earnings.staking()), REGENT_STAKING);
+        payout = address(earnings);
+
         vm.prank(publisher);
         market = AgentOfferMarket(factory.createMarket(payout));
         _logGas("createMarket", _txGas());
@@ -137,7 +134,7 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         assertEq(factory.marketOf(publisher), predicted);
         assertEq(address(market.usdc()), BASE_USDC);
         assertEq(address(market.staking()), REGENT_STAKING);
-        assertEq(market.payout(), address(safe));
+        assertEq(market.payout(), address(earnings));
         assertEq(market.feeBps(), FEE_BPS);
         assertEq(usdc.balanceOf(address(market)), 0);
 
@@ -155,7 +152,7 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         siteMarket = AgentOfferMarket(factory.createMarket(sitePayout));
         assertEq(address(siteMarket), factory.predictMarket(siteOperator));
         console2.log("factory", address(factory));
-        console2.log("patchbay market", address(market), "payout safe", address(safe));
+        console2.log("patchbay market", address(market), "staking payout", address(earnings));
         console2.log("site market", address(siteMarket), "payout wallet", sitePayout);
     }
 
@@ -262,45 +259,54 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         _assertBooks(siteMarket);
     }
 
-    /// @dev Step 5: Patchbay's Safe claims through a Safe transaction; the site's wallet directly.
-    function _payoutsClaim() internal {
-        uint256 before = usdc.balanceOf(address(safe));
-        vm.prank(safeOwner);
-        safe.execute(address(market), abi.encodeCall(IAgentOfferMarket.claim, (address(safe))));
-        _logGas("claim (payout Safe, whole Safe call)", _txGas());
-        assertEq(usdc.balanceOf(address(safe)) - before, 14_355_001);
-        assertEq(market.claimable(address(safe)), 0);
-        claimedOut[address(market)] += 14_355_001;
-
+    /// @dev Step 5: the site's payout wallet claims its earnings itself.
+    function _siteWalletClaims() internal {
         _claimAs(siteMarket, sitePayout, 900_000);
-        console2.log("payouts claimed: Patchbay Safe", uint256(14_355_001), "site wallet", uint256(900_000));
+        console2.log("site wallet claimed", uint256(900_000));
     }
 
-    /// @dev Step 6: anyone pushes each market's fee into the live staking contract.
-    function _pushRevenue() internal {
-        _logGas("pushRevenue (Patchbay market)", _push(market, 1_595_000));
-        _push(siteMarket, 100_000);
+    /// @dev Step 6: anyone pushes each market's fee, and Patchbay's earnings through its staking
+    ///      payout contract, into the live staking contract.
+    function _pushIntoStaking() internal {
+        _logGas("pushRevenue (Patchbay market)", _pushFee(market, 1_595_000));
+        _logGas("pushEarnings (Patchbay staking payout)", _pushEarnings(14_355_001));
+        _pushFee(siteMarket, 100_000);
         console2.log("fees in staking: Patchbay", uint256(1_595_000), "site", uint256(100_000));
+        console2.log("Patchbay earnings in staking", uint256(14_355_001));
     }
 
-    /// @dev Step 7: every unit is accounted for. A3's refund is the one credit left unclaimed.
+    /// @dev Step 7: every unit is accounted for. A3's refund is the one credit left unclaimed, and
+    ///      everything Patchbay's market earned, its fee and its own share alike, is in staking.
     function _assertConserved() internal view {
         uint256 outstanding = market.claimable(a1) + market.claimable(a2) + market.claimable(a3) + market.claimable(a4)
-            + market.claimable(address(safe));
+            + market.claimable(address(earnings));
         assertEq(outstanding, 5_400_000);
         _assertMarketConserved(market, outstanding);
         _assertMarketConserved(siteMarket, siteMarket.claimable(a5) + siteMarket.claimable(sitePayout));
 
+        // Claimed out of Patchbay's market: A1's 6 and A4's 3.75 refunds, and the staking payout's
+        // 14.355001.
         assertEq(paidIn[address(market)], 31_100_001);
         assertEq(claimedOut[address(market)], 24_105_001);
         assertEq(pushedOut[address(market)], 1_595_000);
         assertEq(paidIn[address(siteMarket)], 1_000_000);
-        assertEq(usdc.balanceOf(REGENT_STAKING) - stakingAtStart, 1_695_000, "staking received exactly the fees");
+        assertEq(usdc.balanceOf(address(earnings)), 0, "nothing left in the staking payout");
+
+        // 31.100001 paid in, less 15.15 refunded (A1 6, A4 3.75, A3 5.4), is 15.950001 earned: the
+        // 1.595 fee and Patchbay's 14.355001. The site adds its 0.1 fee.
+        assertEq(paidIn[address(market)] - (6_000_000 + 3_750_000 + 5_400_000), 1_595_000 + 14_355_001);
+        uint256 intoStaking = 1_595_000 + 14_355_001 + 100_000;
+        StakingBooks memory end = _stakingBooks();
+        assertEq(end.balance - stakingAtStart.balance, intoStaking, "staking USDC balance");
+        assertEq(end.received - stakingAtStart.received, intoStaking, "staking totalUsdcReceived");
+        assertEq(end.direct - stakingAtStart.direct, intoStaking, "staking directDepositUsdc");
+        assertEq(end.split - stakingAtStart.split, intoStaking, "staking stakers + treasury");
 
         console2.log("patchbay: in", paidIn[address(market)], "claimed", claimedOut[address(market)]);
         console2.log("patchbay: pushed", pushedOut[address(market)], "still claimable", outstanding);
         console2.log("site: in", paidIn[address(siteMarket)], "claimed", claimedOut[address(siteMarket)]);
         console2.log("site: pushed", pushedOut[address(siteMarket)], "still claimable", uint256(0));
+        console2.log("staking: USDC in since T0", end.balance - stakingAtStart.balance);
     }
 
     // ---------------------------------------------------------------- helpers
@@ -337,27 +343,36 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         claimedOut[address(m)] += expected;
     }
 
-    /// @dev A stranger pushes `m`'s fee. The staking contract must take exactly the fee, record it as
-    ///      a direct deposit split between stakers and its treasury, tagged `agent.offers` with the
-    ///      market as both depositor and reference, and leave no allowance behind.
-    function _push(AgentOfferMarket m, uint256 fee) internal returns (uint256 gasUsed) {
+    /// @dev A stranger pushes `m`'s fee: tagged `agent.offers`, with the market as both depositor
+    ///      and reference, and no allowance left behind.
+    function _pushFee(AgentOfferMarket m, uint256 fee) internal returns (uint256 gasUsed) {
         StakingBooks memory before = _stakingBooks();
         vm.recordLogs();
         vm.prank(stranger);
         uint256 pushed = m.pushRevenue();
         gasUsed = _txGas();
-        Vm.Log[] memory logs = vm.getRecordedLogs();
-
-        StakingBooks memory afterPush = _stakingBooks();
+        _assertDeposited(before, address(m), address(m), "agent.offers", fee);
         assertEq(pushed, fee);
         assertEq(m.revenueOwed(), 0);
         assertEq(usdc.allowance(address(m), REGENT_STAKING), 0);
-        assertEq(afterPush.balance - before.balance, fee, "staking USDC balance");
-        assertEq(afterPush.received - before.received, fee, "staking totalUsdcReceived");
-        assertEq(afterPush.direct - before.direct, fee, "staking directDepositUsdc");
-        assertEq(afterPush.split - before.split, fee, "staking stakers + treasury");
-        _assertDepositRecorded(logs, address(m), fee);
         pushedOut[address(m)] += fee;
+    }
+
+    /// @dev A stranger pushes Patchbay's earnings: the staking payout contract claims them from the
+    ///      market and deposits them in the same call, tagged `agent.offers.payout`, with itself as
+    ///      depositor and the market as reference, keeping nothing and leaving no allowance.
+    function _pushEarnings(uint256 owed) internal returns (uint256 gasUsed) {
+        StakingBooks memory before = _stakingBooks();
+        vm.recordLogs();
+        vm.prank(stranger);
+        uint256 pushed = earnings.pushEarnings();
+        gasUsed = _txGas();
+        _assertDeposited(before, address(earnings), address(market), "agent.offers.payout", owed);
+        assertEq(pushed, owed);
+        assertEq(market.claimable(address(earnings)), 0);
+        assertEq(usdc.balanceOf(address(earnings)), 0);
+        assertEq(usdc.allowance(address(earnings), REGENT_STAKING), 0);
+        claimedOut[address(market)] += owed;
     }
 
     function _stakingBooks() internal view returns (StakingBooks memory books) {
@@ -368,20 +383,34 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         books.split = staking_.totalUsdcCreditedToStakers() + staking_.treasuryResidualUsdc();
     }
 
-    function _assertDepositRecorded(Vm.Log[] memory logs, address m, uint256 fee) internal pure {
-        bytes32 asTopic = bytes32(uint256(uint160(m)));
+    /// @dev Since `before`, the staking contract took exactly `amount` and recorded it as one direct
+    ///      deposit from `depositor`, tagged `tag` with `ref` as reference, split between stakers and
+    ///      its treasury. Logs the split.
+    function _assertDeposited(StakingBooks memory before, address depositor, address ref, bytes32 tag, uint256 amount)
+        internal
+        view
+    {
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        StakingBooks memory afterPush = _stakingBooks();
+        assertEq(afterPush.balance - before.balance, amount, "staking USDC balance");
+        assertEq(afterPush.received - before.received, amount, "staking totalUsdcReceived");
+        assertEq(afterPush.direct - before.direct, amount, "staking directDepositUsdc");
+        assertEq(afterPush.split - before.split, amount, "staking stakers + treasury");
+
         uint256 found;
         for (uint256 i; i < logs.length; ++i) {
             if (logs[i].emitter != REGENT_STAKING || logs[i].topics[0] != REVENUE_DEPOSITED) continue;
             ++found;
             assertEq(logs[i].topics[1], bytes32(0), "sourceKind DirectDeposit");
-            assertEq(logs[i].topics[2], asTopic, "depositor is the market");
-            assertEq(logs[i].topics[3], asTopic, "sourceRef is the market");
-            (uint256 received, uint256 credited, uint256 treasury, bytes32 tag) =
+            assertEq(logs[i].topics[2], bytes32(uint256(uint160(depositor))), "depositor");
+            assertEq(logs[i].topics[3], bytes32(uint256(uint160(ref))), "sourceRef is the market");
+            (uint256 received, uint256 credited, uint256 treasury, bytes32 loggedTag) =
                 abi.decode(logs[i].data, (uint256, uint256, uint256, bytes32));
-            assertEq(received, fee);
-            assertEq(credited + treasury, fee);
-            assertEq(tag, bytes32("agent.offers"));
+            assertEq(received, amount);
+            assertEq(credited + treasury, amount);
+            assertEq(loggedTag, tag);
+            console2.log("  deposit", received, "to stakers", credited);
+            console2.log("  to treasury", treasury);
         }
         assertEq(found, 1, "one deposit recorded");
     }
