@@ -4,8 +4,6 @@ import {createRoot} from "react-dom/client"
 import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
 import type {ConnectedWallet, PrivyErrorCode} from "@privy-io/react-auth"
 import type {Root} from "react-dom/client"
-import {createProfileClient} from "../vendor/regent_identity/profile_client.mjs"
-import type {ProfileAction} from "../vendor/regent_identity/profile_client.mjs"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
 import {providerConfig, signInChoices} from "./privy/provider.ts"
 import {handOver, stateWaiters} from "./privy/sign_in.ts"
@@ -42,15 +40,8 @@ type LoginOutcome = {ok: true} | {ok: false, code: PrivyErrorCode}
 let mounted: {container: HTMLDivElement, root: Root} | null = null
 const published = stateWaiters<BridgeState>()
 let settleLogin: ((outcome: LoginOutcome) => void) | null = null
-let identityGeneration = 0
 let mountedAppId: string | null = null
 const waitFor = published.waitFor
-
-function publish(next: BridgeState) {
-  const current = published.current()
-  if (current?.user?.id !== next.user?.id || current?.authenticated !== next.authenticated) identityGeneration += 1
-  published.publish(next)
-}
 
 function finishLogin(outcome: LoginOutcome) {
   const settle = settleLogin
@@ -71,7 +62,7 @@ function Bridge() {
   })
 
   useEffect(() => {
-    publish({
+    published.publish({
       ready: privy.ready,
       authenticated: privy.authenticated,
       user: privy.user,
@@ -86,45 +77,6 @@ function Bridge() {
   })
 
   return null
-}
-
-type ProfileProof = {accessToken: string; identityToken: string; subject: string; isCurrent: () => boolean}
-
-// One change to the shared profile belongs to the person signed in when it was
-// opened, at the press of Save: a proof for anyone else is never handed on, so a
-// switch of account before or part way through it sends nothing. As in ash-template.
-export function oneSignIn(
-  subject: string | null,
-  acquireProof: () => Promise<ProfileProof | null>,
-): () => Promise<ProfileProof | null> {
-  return async () => {
-    const proof = await acquireProof()
-    return proof && proof.subject === subject ? proof : null
-  }
-}
-
-// One change to the shared profile, read and saved with this sign-in's own proof,
-// which is never handed to the page. It opens once Privy is ready and belongs to
-// whoever is signed in then, so all of its calls belong to one person. It returns
-// profile data, never credentials, and never opens login or a product session.
-export async function openProfile(appId: string): Promise<ProfileAction> {
-  start(appId)
-  const opened = await waitFor(one => one.ready, 10_000)
-  return createProfileClient({
-    acquireProof: oneSignIn(opened.authenticated ? opened.user?.id ?? null : null, async () => {
-      const signedIn = published.current()
-      if (!signedIn?.ready || !signedIn.authenticated || !signedIn.user?.id) return null
-      const generation = identityGeneration
-      const subject = signedIn.user.id
-      const identityToken = await getIdentityToken()
-      const accessToken = await signedIn.getAccessToken()
-      const isCurrent = () => {
-        const now = published.current()
-        return (now?.authenticated && now.user?.id === subject && identityGeneration === generation) as boolean
-      }
-      return {accessToken: accessToken as string, identityToken: identityToken as string, subject, isCurrent}
-    }),
-  })
 }
 
 function start(appId: string) {

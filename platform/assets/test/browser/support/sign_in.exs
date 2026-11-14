@@ -1,6 +1,6 @@
 # The browser walk's people, on the walk's own local database: the person the walk
 # signs in as, with four paired agents, a second person whose agent already goes by
-# "taken-name", a moderator (serve.sh puts their wallet on the moderator list), and
+# "taken-name", a person who saves their public name, a moderator (serve.sh puts their wallet on the moderator list), and
 # one person per screen width for the moderator to suspend and reinstate, whose
 # public ids go in admin-people.json. Writes the signed cookie the walk sends for
 # each person it signs in as. Run by playwright.config.ts before the server
@@ -89,6 +89,30 @@ signed_in = fn profile, file ->
 end
 
 signed_in.(person, "person")
+
+# A person who saves their Public Display Name (public_name.spec.ts), with the
+# shared profile their sign-in gives them (`Patchbay.Accounts.establish/1`). The
+# name is theirs alone, so it shows on no other check's pages.
+namer =
+  Identity.upsert_from_privy!(%{
+    privy_user_id: "did:privy:browser-walk-namer",
+    wallet_address: "0x" <> String.duplicate("d", 40)
+  })
+
+now = System.system_time(:second)
+
+{:ok, _profile} =
+  RegentIdentity.ensure(%RegentPrivy.Session{
+    app_id: Patchbay.Identity.Privy.app_id(),
+    session_id: "browser-walk-namer",
+    privy_user_id: namer.privy_user_id,
+    wallet_address: namer.wallet_address,
+    wallet_addresses: [namer.wallet_address],
+    issued_at: now,
+    expires_at: now + 600
+  })
+
+signed_in.(namer, "namer")
 
 # The moderator's admin page for a person (person_admin.spec.ts).
 Identity.upsert_from_privy!(%{
