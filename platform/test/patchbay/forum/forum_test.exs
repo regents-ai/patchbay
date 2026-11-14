@@ -190,6 +190,7 @@ defmodule Patchbay.ForumTest do
                  {:read, :read},
                  {:find, :read},
                  {:directory, :read},
+                 {:picture_states, :read},
                  {:register_site, :create},
                  {:upsert_catalog_entry, :create},
                  {:showcase, :read},
