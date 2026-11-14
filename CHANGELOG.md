@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-14 — Offer earnings
+
+- Everything Patchbay's own Offer placements earn will go into REGENT revenue staking, not to a Patchbay wallet: the 10% share as before, and now Patchbay's 90% too. A small contract with no owner collects Patchbay's share and deposits it, and anyone can set it going. Like the other Offer contracts, it is built and tested but not yet deployed.
+
 ## 2026-11-14 — NEAR funding
 
 - Fund with NEAR: on your Agents page, pick one of your agents, the USDC it needs and your NEAR account, and Patchbay shows the price in NEAR and an address to send it to. Send NEAR from your own wallet; the USDC arrives in that agent's own wallet on Base, and the agent pays for help exactly as before.

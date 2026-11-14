@@ -1094,6 +1094,33 @@ contract MarketHandler is Test {
         _buy(buyerSeed % buyers.length + 1, id, slot, extra);
     }
 
+    /// @dev Makes sure a slot of an open placement is held, lets its lease run out (to its last
+    ///      second, or up to a day past it), then settles it or buys the slot again. Random waits
+    ///      alone leave a run-out lease unsettled too rarely, so this keeps both in every run.
+    function runOut(
+        uint256 buyerSeed,
+        uint256 placementSeed,
+        uint256 slotSeed,
+        uint256 late,
+        uint256 extra,
+        bool settle
+    ) external {
+        uint256 id = _openPlacement(placementSeed);
+        uint16 slot = uint16(slotSeed % market.getPlacement(id).terms.capacity);
+        if (market.getLease(id, slot).paidUSDC == 0) _buy(buyerSeed, id, slot, extra);
+        uint256 endsAt = market.getLease(id, slot).endsAt;
+        // No purchase happened if every buyer is frozen.
+        if (endsAt == 0) return;
+        if (vm.getBlockTimestamp() < endsAt) skip(endsAt - vm.getBlockTimestamp() + bound(late, 0, 1 days));
+
+        if (settle) {
+            market.settleExpired(id, slot);
+            reached["settle expired"] += 1;
+        } else {
+            _buy(buyerSeed % buyers.length + 1, id, slot, extra);
+        }
+    }
+
     function _buy(uint256 buyerSeed, uint256 id, uint16 slot, uint256 extra) internal {
         address buyer = _unfrozenBuyer(buyerSeed);
         if (buyer == address(0)) return;
@@ -1168,6 +1195,16 @@ contract MarketHandler is Test {
         uint256 id = placementIds[placementSeed % placementIds.length];
         IAgentOfferMarket.Placement memory placement = market.getPlacement(id);
         if (placement.terminatedAt != 0) market.settleTerminated(id, uint16(slotSeed % placement.terms.capacity));
+    }
+
+    /// @dev The first open placement from a random one on. `terminate` opens a replacement for every
+    ///      placement it closes, so three are always open.
+    function _openPlacement(uint256 seed) internal view returns (uint256) {
+        uint256 i = seed % placementIds.length;
+        while (market.getPlacement(placementIds[i]).terminatedAt != 0) {
+            i = (i + 1) % placementIds.length;
+        }
+        return placementIds[i];
     }
 
     /// @dev The first slot of a placement holding an unsettled lease, or the largest uint if none.
