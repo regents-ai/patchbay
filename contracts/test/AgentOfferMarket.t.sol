@@ -1040,7 +1040,8 @@ contract MarketHandler is Test {
     /// @notice How many leases each slot has sold, counted here independently of the market.
     mapping(uint256 placementId => mapping(uint16 slot => uint64 sold)) public sold;
 
-    /// @notice How often each path took effect in this run, so the suite can show every path ran.
+    /// @notice How often each way money moves took effect, so the suite can show its opening reached
+    ///         every one.
     mapping(string path => uint256 count) public reached;
 
     constructor(
@@ -1076,8 +1077,8 @@ contract MarketHandler is Test {
     }
 
     /// @dev Makes sure a slot is held, then buys it out partway through its term. Random waits
-    ///      alone let most leases run out before the next purchase, so this keeps buyouts in every
-    ///      run.
+    ///      alone let most leases run out before the next purchase, so this keeps buyouts common
+    ///      among the random calls.
     function buyout(uint256 buyerSeed, uint256 placementSeed, uint256 slotSeed, uint256 elapsed, uint256 extra)
         external
     {
@@ -1253,6 +1254,10 @@ contract AgentOfferMarketInvariantTest is AgentOfferBase {
     MarketHandler internal handler;
     address[] internal accounts;
 
+    /// @dev Before the random calls, walks one fixed opening through every way money moves, with the
+    ///      handler's own calls so its ledgers count it, and checks each one took effect. Every run
+    ///      starts from the state this leaves, so no run depends on luck to reach them, and a saved
+    ///      failing sequence is replayed from here too.
     function setUp() public {
         _deploy(new FreezableUSDC());
 
@@ -1274,6 +1279,37 @@ contract AgentOfferMarketInvariantTest is AgentOfferBase {
         recipients[1] = buyers[0];
 
         handler = new MarketHandler(market, usdc, staking, publisherKey, buyers, recipients, ids);
+
+        handler.buy(0, 0, 0, 0); // an empty slot
+        handler.buyout(1, 0, 0, 1 hours, 0); // bought out an hour in
+        handler.buy(0, 0, 1, 0); // a second empty slot
+        handler.wait(4 days); // both leases run out
+        handler.buy(0, 0, 0, 0); // the run-out first slot is bought again
+        handler.settleExpired(0, 1); // the run-out second slot is settled
+        handler.wait(1 hours);
+        handler.terminate(0); // the placement ends an hour into its live lease
+        handler.settleTerminated(0, 0); // and that lease is settled
+        handler.claim(buyers.length, 0, true); // the payout wallet claims its share
+        handler.freeze(0, true);
+        handler.claim(0, 0, true); // frozen buyer-0 cannot take its refunds itself, so they go elsewhere
+        handler.freeze(0, false);
+        handler.pushRevenue(); // the fee goes to staking
+
+        string[9] memory paths = [
+            "empty slot",
+            "buyout",
+            "run-out slot",
+            "settle expired",
+            "terminate",
+            "settle terminated",
+            "claim",
+            "claim elsewhere",
+            "push"
+        ];
+        for (uint256 i; i < paths.length; ++i) {
+            assertGt(handler.reached(paths[i]), 0, paths[i]);
+        }
+
         targetContract(address(handler));
     }
 
@@ -1321,18 +1357,5 @@ contract AgentOfferMarketInvariantTest is AgentOfferBase {
             }
         }
         assertEq(market.totalLeaseDeposits(), deposits);
-    }
-
-    /// @dev Proves each run reached every way money moves, not only refused or skipped calls. A
-    ///      claim refused by a frozen recipient and then sent elsewhere ("claim elsewhere") needs a
-    ///      frozen account with credit to claim to itself, which a random run does not always
-    ///      produce, so it is counted, not required; a unit test covers it directly.
-    function afterInvariant() external view {
-        string[8] memory paths = [
-            "empty slot", "buyout", "run-out slot", "settle expired", "terminate", "settle terminated", "claim", "push"
-        ];
-        for (uint256 i; i < paths.length; ++i) {
-            assertGt(handler.reached(paths[i]), 0, paths[i]);
-        }
     }
 }
