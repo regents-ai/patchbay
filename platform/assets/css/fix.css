@@ -55,7 +55,7 @@
 .pb-pictures legend { display: flex; justify-content: space-between; width: 100%; padding: 0; margin-bottom: .25rem; font-size: .75rem; color: var(--pb-text-muted); }
 .pb-pictures-count { font-variant-numeric: tabular-nums; color: var(--pb-text); }
 .pb-pictures-list { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0; padding: 0; list-style: none; }
-.pb-pictures-list:empty { display: none; }
+.pb-pictures-list:not(:has(li)) { display: none; }
 .pb-picture {
   position: relative; inline-size: 5rem; block-size: 5rem;
   transition: opacity 180ms var(--ease-out), transform 180ms var(--ease-out);
@@ -82,7 +82,7 @@
   display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .75rem;
   padding: .5rem; border: 1px dashed var(--pb-text);
 }
-.pb-pictures-drop[data-pb-dragging] { border-style: solid; background: var(--pb-accent-wash); }
+.pb-pictures-drop.phx-drop-target-active { border-style: solid; background: var(--pb-accent-wash); }
 .pb-pictures-add {
   display: inline-flex; align-items: center; gap: .5rem; min-block-size: max(2.75rem, 44px); padding: 0 .875rem;
   border: 1px solid var(--pb-text); background: var(--pb-surface); color: var(--pb-text);
@@ -134,9 +134,7 @@
   .pb-hero-kind input { opacity: 1; position: static; }
 }
 .pb-hero-actions .rg-button { white-space: nowrap; }
-#pb-hero-preview:empty { display: none; }
-.pb-fix-status { margin: 0; min-height: 1.2em; font-size: .8125rem; }
-.pb-fix-status:empty { display: none; }
+#pb-hero-preview:not(:has(*)) { display: none; }
 /* The quiet look for WebMCP tools, written under the site's address. It keeps
    room for what it says before it says it, one line or two on a phone, so the
    buttons below stay under the finger that is about to press them. */
@@ -144,7 +142,9 @@
 .pb-fix-site-check[data-pb-check="found"] { color: var(--pb-good); }
 .pb-fix-site-check[data-pb-check="none"], .pb-fix-site-check[data-pb-check="limited"] { color: var(--pb-text); }
 .pb-fix-directory { width: fit-content; margin-top: .5rem; }
-/* What to fix about the address sits right under it, above what was found there. */
+/* What to fix about the address sits right under it, above what was found there.
+   What was found is the page's own, kept apart from the form's answers. */
+.pb-fix-site-found, .pb-fix-tools-found { display: contents; }
 .pb-fix-site-check, .pb-fix-directory { order: 1; }
 .pb-fix-directory[hidden] { display: none; }
 @media (prefers-reduced-motion: no-preference) {

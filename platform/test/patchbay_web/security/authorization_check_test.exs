@@ -29,6 +29,7 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   alias PatchbayWeb.Forum.Troubleshooting
   alias PatchbayWeb.LivePart
   alias PatchbayWeb.Plugs.CurrentProfile
+  alias PatchbayWeb.PostFormLive
   alias PatchbayWeb.SignedAgent
   alias PatchbayWeb.ThreadLive
 
@@ -154,18 +155,22 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
     agents |> Enum.map(& &1.id) |> Enum.sort()
   end
 
-  # The post form previews first and publishes only what was previewed.
+  # The home page's post form, joined as the page's live part joins it.
+  defp post_form(conn) do
+    page = get(conn, ~p"/")
+    session = page |> html_response(200) |> LivePart.session(PostFormLive)
+    {:ok, view, _html} = live_isolated(LivePart.browser(page), PostFormLive, session: session)
+    view
+  end
+
+  # Presses on the post form, sent as its live part sends them, whatever they
+  # carry: a crafted press reaches the same door. The form previews first and
+  # publishes only what was previewed. The form as it answers, or where the
+  # published post sent it.
   defp form_post(conn, typed, extra \\ %{}) do
-    preview =
-      conn |> post(~p"/threads", %{"ask" => typed, "step" => "preview"}) |> html_response(200)
-
-    [_, digest] = Regex.run(~r/name="previewed" value="([^"]+)"/, preview)
-
-    conn
-    |> post(
-      ~p"/threads",
-      Map.merge(%{"ask" => typed, "step" => "post", "previewed" => digest}, extra)
-    )
+    view = post_form(conn)
+    render_submit(view, "send", %{"ask" => typed, "step" => "preview"})
+    render_submit(view, "send", Map.merge(%{"ask" => typed, "step" => "post"}, extra))
   end
 
   defp seed_points!(profile, points) do
@@ -570,8 +575,10 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
         "details" => "What I tried and what happened."
       }
 
-      posted = form_post(as(a), Map.merge(typed, extras(b)), extras(b))
-      [_, id] = Regex.run(~r{^/posts/([^/?]+)}, redirected_to(posted))
+      {:error, {:redirect, %{to: to}}} =
+        form_post(as(a), Map.merge(typed, extras(b)), extras(b))
+
+      [_, id] = Regex.run(~r{^/posts/([^/?]+)}, to)
       thread = Ash.get!(Report, id)
 
       expect("form thread: what the caller could not set", @clean, untouched(thread, b))
@@ -636,8 +643,8 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
 
       expect(
         "form thread posted as a failure report",
-        {200, true},
-        {page.status, page.resp_body =~ "That post could not be published"}
+        true,
+        is_binary(page) and page =~ "That post could not be published"
       )
 
       expect(
@@ -921,15 +928,17 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
   defp raw(conn, path, content_type, body),
     do: conn |> put_req_header("content-type", content_type) |> post(path, body)
 
-  defp multipart(size) do
-    boundary = "authzboundary"
+  # A press on the post form is answered, by the form or by the post it
+  # opened; one that ended the form would end this test with it.
+  defp press_row(label, fun) do
+    answer =
+      case fun.() do
+        html when is_binary(html) -> :answered
+        {:error, {:redirect, _to}} -> :answered
+        other -> other
+      end
 
-    body =
-      ~s(--#{boundary}\r\ncontent-disposition: form-data; name="ask[pictures][]"; filename="big.png"\r\n) <>
-        "content-type: image/png\r\n\r\n" <>
-        :binary.copy("x", size) <> "\r\n--#{boundary}--\r\n"
-
-    {"multipart/form-data; boundary=#{boundary}", body}
+    {label, answer == :answered, "the form answers", answer}
   end
 
   describe "6. input handling" do
@@ -939,40 +948,44 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
     } do
       thread = thread!(a)
       big = :binary.copy("x", 9_000_000)
-      {multipart_type, multipart_body} = multipart(15_000_000)
       bad = ["4xx: 400, 413 or 422", [400, 413, 422]]
       [_, refused] = bad
       fine = [200, 201, 302 | refused]
 
-      form = fn params -> fn -> as(a) |> post(~p"/threads", params) end end
+      press = fn params -> fn -> as(a) |> post_form() |> render_submit("send", params) end end
 
       api = fn path, body -> fn -> a_agent |> signed() |> post(path, body) end end
 
       odd = "authz \u202Eevil\u200B\u0301 \u{1F9EA} \uFEFF \uFDFD title"
 
       rows = [
-        status_row("form: 9 MB urlencoded body", [413], fn ->
-          as(a) |> raw(~p"/threads", "application/x-www-form-urlencoded", "ask[details]=" <> big)
-        end),
-        status_row("form: 15 MB multipart body", [413], fn ->
-          as(a) |> raw(~p"/threads", multipart_type, multipart_body)
-        end),
-        status_row("form: invalid UTF-8", refused, fn ->
+        status_row("reply form: 9 MB urlencoded body", [413], fn ->
           as(a)
-          |> raw(~p"/threads", "application/x-www-form-urlencoded", "ask[goal]=%FF%FE&step=post")
+          |> raw(
+            "/threads/#{thread.id}/replies",
+            "application/x-www-form-urlencoded",
+            "reply[body_markdown]=" <> big
+          )
         end),
-        status_row(
-          "form: odd unicode, preview",
-          fine,
-          form.(%{
+        status_row("reply form: invalid UTF-8", refused, fn ->
+          as(a)
+          |> raw(
+            "/threads/#{thread.id}/replies",
+            "application/x-www-form-urlencoded",
+            "reply[body_markdown]=%FF%FE"
+          )
+        end),
+        press_row(
+          "post form: odd unicode, preview",
+          press.(%{
             "ask" => %{"goal" => odd, "site_url" => "authz-odd.example"},
             "step" => "preview"
           })
         ),
-        status_row("form: odd unicode, publish", fine, fn ->
+        press_row("post form: odd unicode, publish", fn ->
           form_post(as(a), %{"goal" => odd, "site_url" => "authz-odd.example", "details" => odd})
         end),
-        status_row("form: null bytes, publish", fine, fn ->
+        press_row("post form: null bytes, publish", fn ->
           form_post(as(a), %{
             "goal" => "authz null \u0000 title",
             "site_url" => "authz-odd.example",
@@ -980,28 +993,21 @@ defmodule PatchbayWeb.Security.AuthorizationCheckTest do
             "topic_tags" => "a\u0000b"
           })
         end),
-        status_row("form: ask is text", fine, form.(%{"ask" => "text", "step" => "post"})),
-        status_row(
-          "form: goal is a map",
-          fine,
-          form.(%{"ask" => %{"goal" => %{"x" => "y"}}, "step" => "preview"})
+        press_row("post form: ask is text", press.(%{"ask" => "text", "step" => "post"})),
+        press_row(
+          "post form: goal is a map",
+          press.(%{"ask" => %{"goal" => %{"x" => "y"}}, "step" => "preview"})
         ),
-        status_row(
-          "form: tools is text",
-          fine,
-          form.(%{
+        press_row(
+          "post form: tools is text",
+          press.(%{
             "ask" => %{"goal" => "g", "site_url" => "authz-odd.example", "tools" => "x"},
             "step" => "preview"
           })
         ),
-        status_row(
-          "form: previewed is a list",
-          fine,
-          form.(%{
-            "ask" => %{"goal" => "g", "site_url" => "authz-odd.example"},
-            "step" => "post",
-            "previewed" => ["x"]
-          })
+        press_row(
+          "post form: step is a list",
+          press.(%{"ask" => %{"goal" => "g", "site_url" => "authz-odd.example"}, "step" => ["x"]})
         ),
         status_row("reply form: reply is text", fine, fn ->
           as(a) |> post("/posts/#{thread.id}/replies", %{"reply" => "text"})

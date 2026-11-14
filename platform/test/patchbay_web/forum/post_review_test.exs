@@ -4,6 +4,7 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
   use PatchbayWeb.ConnCase, async: false
 
   import Ecto.Query, only: [from: 2]
+  import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
   alias Patchbay.Forum.ModerationAction
@@ -11,6 +12,8 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
   alias Patchbay.Forum.PostCheckPruner
   alias Patchbay.JevStandIn
   alias Patchbay.Repo
+  alias PatchbayWeb.LivePart
+  alias PatchbayWeb.ModerationLive
   alias PatchbayWeb.SignedAgent
 
   @wallet "0x" <> String.duplicate("c", 40)
@@ -62,8 +65,7 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
 
     [_first, _second, third] = checks()
 
-    assert conn |> decide(moderator, "post", third.id, "wrong") |> redirected_to() ==
-             ~p"/moderation"
+    decide(conn, moderator, "post", third.id, "wrong")
 
     assert conn |> ask(agent, "Does export work?") |> json_response(201)
     assert page(conn, moderator) =~ "Ruled wrong to block."
@@ -82,8 +84,7 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
     assert by == moderator.id
 
     # A press that names something that was not turned away changes nothing.
-    assert conn |> decide(moderator, "post", Ash.UUID.generate(), "right") |> redirected_to() ==
-             ~p"/moderation"
+    decide(conn, moderator, "post", Ash.UUID.generate(), "right")
 
     assert length(decisions()) == 1
   end
@@ -94,7 +95,7 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
     for title <- ~w(one two three), do: assert(conn |> ask(agent, title) |> json_response(422))
 
     assert page(conn, moderator) =~ "Lift pause"
-    assert conn |> decide(moderator, "person", agent.owner.id, "lift") |> redirected_to()
+    decide(conn, moderator, "person", agent.owner.id, "lift")
 
     # The next post turned away is the first of three again.
     refused = conn |> ask(agent, "four") |> json_response(422)
@@ -115,29 +116,29 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
     other = SignedAgent.pair!()
     JevStandIn.accept_posts()
 
-    assert conn |> decide(moderator, "post", check.id, "right") |> redirected_to()
+    decide(conn, moderator, "post", check.id, "right")
     assert conn |> ask(other, "Does export work?") |> json_response(201)
     refute Map.has_key?(last_shown(), "examples")
 
     cut = String.slice("Buy followers today\n" <> String.trim(long), 0, 400)
     assert String.length(cut) == 400
-    assert page(conn, moderator) =~ "Use as an example"
+    assert page(conn, moderator) =~ ~s(phx-value-action="example")
     assert page(conn, moderator) =~ String.slice(cut, 20, 100)
 
-    assert conn |> decide(moderator, "post", check.id, "example") |> redirected_to()
+    decide(conn, moderator, "post", check.id, "example")
     assert conn |> ask(other, "Does import work?") |> json_response(201)
     assert %{"examples" => [%{"finding" => "spam", "words" => ^cut}]} = last_shown()
 
     # A ruling that changes takes its example out with it.
-    assert conn |> decide(moderator, "post", check.id, "wrong") |> redirected_to()
+    decide(conn, moderator, "post", check.id, "wrong")
     assert conn |> ask(other, "Does print work?") |> json_response(201)
     refute Map.has_key?(last_shown(), "examples")
 
     # And a moderator can take one out by itself.
-    assert conn |> decide(moderator, "post", check.id, "example") |> redirected_to()
+    decide(conn, moderator, "post", check.id, "example")
     assert conn |> ask(other, "Does search work?") |> json_response(201)
     assert %{"examples" => [%{"finding" => "acceptable", "words" => ^cut}]} = last_shown()
-    assert conn |> decide(moderator, "post", check.id, "no_example") |> redirected_to()
+    decide(conn, moderator, "post", check.id, "no_example")
     assert conn |> ask(other, "Does sort work?") |> json_response(201)
     refute Map.has_key?(last_shown(), "examples")
 
@@ -198,8 +199,8 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
     assert conn |> ask(agent, "Buy more followers today") |> json_response(422)
     [old, recent] = checks()
 
-    assert conn |> decide(moderator, "post", old.id, "right") |> redirected_to()
-    assert conn |> decide(moderator, "post", old.id, "example") |> redirected_to()
+    decide(conn, moderator, "post", old.id, "right")
+    decide(conn, moderator, "post", old.id, "example")
 
     month_ago = DateTime.add(DateTime.utc_now(), -(PostCheckPruner.kept_days() + 1), :day)
 
@@ -243,10 +244,13 @@ defmodule PatchbayWeb.Forum.PostReviewTest do
   defp page(conn, moderator),
     do: conn |> signed_in(moderator) |> get(~p"/moderation") |> html_response(200)
 
+  # A press on the moderation page as the moderator opens it; the page stays where it is.
   defp decide(conn, moderator, kind, id, action) do
-    conn
-    |> signed_in(moderator)
-    |> post(~p"/moderation", %{"subject" => %{"kind" => kind, "id" => id, "action" => action}})
+    page = conn |> signed_in(moderator) |> get(~p"/moderation")
+    session = page |> html_response(200) |> LivePart.session(ModerationLive)
+    {:ok, view, _html} = live_isolated(LivePart.browser(page), ModerationLive, session: session)
+    values = %{"kind" => kind, "id" => id, "action" => action}
+    assert view |> render_click("review", values) |> is_binary()
   end
 
   # What Jev was shown for the newest post, with the earlier ones set aside.

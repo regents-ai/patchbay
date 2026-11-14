@@ -821,27 +821,89 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     """
   end
 
-  attr(:home, :string, required: true, doc: "the page the form is on, to come back to")
-  attr(:thread_action, :string, required: true)
-  attr(:profile, :any, required: true)
+  attr(:conn, Plug.Conn, required: true)
+  attr(:home, :string, required: true, doc: "the page the form is on, whose draft it keeps")
+  attr(:draft, :map, required: true, doc: "the form's words as the page opens it")
   attr(:directory, :boolean, required: true, doc: "whether the WebMCP Site Directory is offered")
-  attr(:hero, :map, required: true)
+  attr(:window, :boolean, default: false, doc: "true in a site page's post window")
 
-  attr(:window, :boolean,
-    default: false,
-    doc: "true in a site page's post window, which covers the header's Sign in and so has its own"
+  attr(:container, :list,
+    default: [],
+    doc: "such as the home page's `data-panel`, how the form opens under Ask a question"
   )
 
-  attr(:rest, :global,
-    doc: "such as the home page's `data-panel`, how the form opens under Ask a question"
+  @doc "The post form (`PatchbayWeb.PostFormLive`), drawn into a page."
+  def post_form(assigns) do
+    ~H"""
+    {live_render(@conn, PatchbayWeb.PostFormLive,
+      id: "pb-post-form-live",
+      container: {:div, @container},
+      session:
+        Map.merge(PatchbayWeb.VisitLog.session(@conn), %{
+          "home" => @home,
+          "draft" => @draft,
+          "directory" => @directory,
+          "window" => @window
+        })
+    )}
+    """
+  end
+
+  attr(:home, :string, required: true, doc: "the page the form is on, whose draft it keeps")
+  attr(:profile, :any, required: true)
+  attr(:directory, :boolean, required: true, doc: "whether the WebMCP Site Directory is offered")
+  attr(:draft, :map, required: true, doc: "the form's words, `t:PatchbayWeb.Forum.Hero.draft/0`")
+
+  attr(:connected, :boolean,
+    required: true,
+    doc:
+      "whether the form is connected; until it is, its text fields take nothing, since what was typed would be replaced when it connects"
+  )
+
+  attr(:lines, :map,
+    required: true,
+    doc: "what is said under each field that has something wrong"
+  )
+
+  attr(:problem, :map,
+    required: true,
+    doc: "a refusal about no one field, said beside Publish post"
+  )
+
+  attr(:preview, :map, required: true, doc: "the post as it will be published, once shown")
+  attr(:pictures, Phoenix.LiveView.UploadConfig, required: true)
+
+  attr(:window, :boolean,
+    required: true,
+    doc: "true in a site page's post window, which covers the header's Sign in and so has its own"
   )
 
   @doc """
   The form that makes a problem a forum post, on the home page, each site's
-  page and each agent page. A post turned down comes back to the page it came
-  from.
+  page and each agent page (`PatchbayWeb.PostFormLive`).
   """
   def hero_form(assigns)
+
+  # Add pictures opens the device's chooser, or says the post is full.
+  defp add_pictures(pictures) do
+    if pictures_full?(pictures),
+      do: JS.push("pictures_full"),
+      else: JS.dispatch("click", to: "#" <> pictures.ref)
+  end
+
+  defp pictures_full?(pictures), do: length(pictures.entries) >= pictures.max_entries
+
+  # Taking a picture away frees its place; the focus goes to the next Remove,
+  # or the one before, or Add pictures when none is left.
+  defp remove_picture(entries, at) do
+    entry = Enum.at(entries, at)
+    next = Enum.at(entries, at + 1) || (at > 0 && Enum.at(entries, at - 1))
+    to = if next, do: "#pb-hero-picture-remove-#{next.ref}", else: "#pb-hero-pictures-add"
+
+    "remove_picture"
+    |> JS.push(value: %{ref: entry.ref})
+    |> JS.focus(to: to)
+  end
 
   attr(:figure, :any, required: true, doc: "one figure of an agent page's crowd, and its spot")
 
@@ -914,24 +976,18 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   defp agent_part(assigns), do: ~H"{@part}"
 
-  attr(:preview, :map, default: nil)
-  attr(:problem, :map, default: nil)
+  attr(:preview, :map, required: true)
+  attr(:problem, :map, required: true)
+  attr(:pictures, Phoenix.LiveView.UploadConfig, required: true)
 
   @doc """
-  A forum post exactly as it will be published, with anything in it that
-  looks private, and the button that publishes it. The pictures chosen on
-  the page are shown in it by the page itself.
+  A forum post exactly as it will be published, its pictures as chosen, with
+  anything in it that looks private, and the button that publishes it. A
+  refusal about no one field is said above it.
   """
   def hero_preview(assigns) do
     ~H"""
-    <p
-      :if={@problem}
-      class="pb-reply-form-problem"
-      role="alert"
-      data-pb-field={hero_field_id(@problem)}
-    >
-      {@problem.said}
-    </p>
+    <.press_refused id="pb-hero-refused" words={@problem && @problem.said} />
     <section
       :if={@preview}
       id="pb-hero-post"
@@ -961,7 +1017,14 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <div :if={@preview.thread["body_markdown"]} class="pb-thread-prose pb-markdown">
           {markdown(@preview.thread["body_markdown"])}
         </div>
-        <div class="pb-post-pictures" data-pb-preview-pictures></div>
+        <div :if={@pictures.entries != []} class="pb-post-pictures">
+          <.live_img_preview
+            :for={{entry, at} <- Enum.with_index(@pictures.entries)}
+            entry={entry}
+            id={"pb-hero-post-picture-#{entry.ref}"}
+            alt={"Picture #{at + 1} you added"}
+          />
+        </div>
         <p :if={@preview.thread["page_url"]} class="pb-post-page">
           Page: {@preview.thread["page_url"]}
         </p>
@@ -969,7 +1032,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           Tags: {Enum.join(@preview.thread["topic_tags"], ", ")}
         </p>
       </article>
-      <input type="hidden" name="previewed" value={@preview.digest} />
       <p class="pb-ask-visibility">
         Anyone can read what you post here — people, agents and search engines —
         under the name you chose when you signed in.
@@ -980,25 +1042,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     </section>
     """
   end
-
-  # The post form's fields a refusal can be said under, by the id of each.
-  @hero_fields %{
-    goal: "pb-fix-goal",
-    site: "pb-fix-site",
-    details: "pb-hero-body",
-    pictures: "pb-hero-pictures",
-    tags: "pb-hero-tags"
-  }
-
-  defp hero_field_id(problem), do: @hero_fields[problem[:field]]
-
-  # What is said under one field of the post form: the refusal that names it.
-  defp hero_errors(%{field: field, said: said}, field), do: [said]
-  defp hero_errors(_problem, _field), do: []
-
-  # A refusal that is about no one field, which keeps its place by the buttons.
-  defp hero_unplaced(%{field: _field}), do: nil
-  defp hero_unplaced(problem), do: problem
 
   # The site a post will be filed under, as the board names it.
   defp preview_site(address) do

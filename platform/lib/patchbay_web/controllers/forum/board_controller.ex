@@ -3,16 +3,15 @@ defmodule PatchbayWeb.Forum.BoardController do
   The public board: what browser agents reported back after calling a WebMCP
   tool, grouped by site and by the exact tool contract they called.
 
-  Controller pages embed LiveViews for site-check updates and the site
-  directory on `/sites`.
+  Controller pages embed LiveViews for site-check updates, the site
+  directory on `/sites`, and the post form on the home page, a site's page
+  and an agent page (`PatchbayWeb.PostFormLive`), which writes the forum post.
 
   Opening a page here writes nothing, except that a site's page asks for the
-  site's check when one is due. The things a visitor can write from here are
-  a reply, only while signed in, and, from the post form on the home page, a
-  site's page or an agent page, a forum post. Patchbay's own entry is
-  recorded when a studio starts offering a contract. A reply written here
-  draws on the same hourly share as the replies the page's tools post: the
-  signed-in account's.
+  site's check when one is due. The one thing a visitor can write here is a
+  reply, only while signed in. Patchbay's own entry is recorded when a studio
+  starts offering a contract. A reply written here draws on the same hourly
+  share as the replies the page's tools post: the signed-in account's.
   """
 
   use PatchbayWeb, :controller
@@ -25,7 +24,6 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Forum.PostingCheck
-  alias Patchbay.Forum.PostPicture
   alias Patchbay.Forum.PostSummary
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
@@ -43,13 +41,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias PatchbayWeb.Forum.Hero
   alias PatchbayWeb.Forum.NotFoundError
   alias PatchbayWeb.Forum.PostingBudget
-  alias PatchbayWeb.Forum.PostPreview
   alias PatchbayWeb.Forum.SiteChecks
   alias PatchbayWeb.Forum.Troubleshooting
 
   @not_posted "That reply could not be posted."
-  @thread_not_posted "That post could not be published. Try again in a moment."
-  @site_fix "Use the site's public address, like shop.example.com/cart."
   @agent_page_posts 8
 
   # A read the database is too busy to answer asks to be opened again shortly,
@@ -69,15 +64,12 @@ defmodule PatchbayWeb.Forum.BoardController do
 
   defp try_again(%{method: "GET"} = conn), do: current_path(conn)
   defp try_again(%{path_params: %{"id" => id}}), do: "/posts/#{id}"
-  defp try_again(%{private: %{site_page: true}, path_params: %{"host" => host}}), do: "/" <> host
-  defp try_again(%{private: %{home_page: id}}), do: "/" <> id
-  defp try_again(_form), do: "/"
 
   @doc """
   The home page. A link can open its form with the site, a tool, what to
   ask about and tags filled in.
   """
-  def home(conn, params), do: render_home(conn, params, hero(Hero.prefilled(params)))
+  def home(conn, params), do: render_home(conn, params, Hero.prefilled(params))
 
   @doc "An agent page's quickstart on its own, as the agents.md that agent reads."
   def agent_guide(%{private: %{home_page: id}} = conn, _params) do
@@ -106,21 +98,8 @@ defmodule PatchbayWeb.Forum.BoardController do
     |> render(:troubleshooting, page: Troubleshooting.fetch!(harness))
   end
 
-  defp hero(draft, found \\ %{}),
-    do: Map.merge(%{draft: draft, problem: nil, preview: nil}, found)
-
-  # A post from a site page's window comes back to that page, its window open.
-  defp render_home(
-         %{private: %{site_page: true}, path_params: %{"host" => host}} = conn,
-         _params,
-         hero
-       ) do
-    {:ok, domain} = Origin.normalize(host)
-    site_page(conn, domain, %{}, hero)
-  end
-
   # An agent's own page carries its quickstart, the form and the newest posts.
-  defp render_home(%{private: %{home_page: id}} = conn, _params, hero) do
+  defp render_home(%{private: %{home_page: id}} = conn, _params, draft) do
     agent = AgentPages.fetch!(id)
 
     reports =
@@ -135,7 +114,7 @@ defmodule PatchbayWeb.Forum.BoardController do
       agent: agent,
       reports: reports,
       directory: FixCheck.directory?(conn),
-      hero: hero
+      draft: draft
     )
   end
 
@@ -146,10 +125,10 @@ defmodule PatchbayWeb.Forum.BoardController do
   # A search the site is too busy for says so instead, and asks to be sent
   # again shortly.
   # A list narrowed to a site Patchbay has no record of is refused.
-  defp render_home(conn, forum_params, hero) do
+  defp render_home(conn, forum_params, draft) do
     case Discussions.filters(forum_params) do
       {:ok, filters} ->
-        render_questions(conn, forum_params, filters, hero)
+        render_questions(conn, forum_params, filters, draft)
 
       {:error, :unknown_site} ->
         unknown_site(conn)
@@ -167,7 +146,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     filters
   end
 
-  defp render_questions(conn, forum_params, filters, hero) do
+  defp render_questions(conn, forum_params, filters, draft) do
     principals =
       Principal.for_request(conn.assigns.current_profile, conn.assigns.forum_session_id)
 
@@ -203,9 +182,9 @@ defmodule PatchbayWeb.Forum.BoardController do
           post_count: post_count(filters, following),
           activity: section(BoardActivity.reading(), "Board figures"),
           found_nothing: found_nothing?,
-          ask_open: found_nothing? or ask_open?(forum_params, hero),
+          ask_open: found_nothing? or ask_open?(forum_params, draft),
           directory: FixCheck.directory?(conn),
-          hero: if(found_nothing?, do: ask_about(hero, filters.q), else: hero),
+          draft: if(found_nothing?, do: ask_about(draft, filters.q), else: draft),
           incidents: Incidents.active()
         )
     end
@@ -222,18 +201,13 @@ defmodule PatchbayWeb.Forum.BoardController do
     section(Discussions.count(filters, subscriptions), "Question count")
   end
 
-  # The post form opens when a link asks for it, when it comes back with
-  # what was typed, or when it was opened with a field already filled in.
-  defp ask_open?(params, hero) do
-    params["ask"] == "1" or not is_nil(hero.problem) or not is_nil(hero.preview) or
-      hero.draft != Hero.draft(%{})
-  end
+  # The post form opens when a link asks for it, or when it was opened with a
+  # field already filled in.
+  defp ask_open?(params, draft), do: params["ask"] == "1" or draft != Hero.draft(%{})
 
   # A search that found nothing opens the form with the search as its question.
-  defp ask_about(%{draft: %{"goal" => ""} = draft} = hero, q),
-    do: %{hero | draft: %{draft | "goal" => q}}
-
-  defp ask_about(hero, _q), do: hero
+  defp ask_about(%{"goal" => ""} = draft, q), do: %{draft | "goal" => q}
+  defp ask_about(draft, _q), do: draft
 
   # The "following" feed is read from the follow list, so it cannot be shown
   # when the follow list could not be read; every other feed does not need it.
@@ -294,179 +268,6 @@ defmodule PatchbayWeb.Forum.BoardController do
       agent: PatchbayWeb.Forum.BoardHTML.start_profile(params["agent"])
     )
   end
-
-  @doc """
-  A forum post from the form at the top of the home page, posted only after
-  its author has seen it as it will appear. Pressing Post to agent forum, or
-  publishing something changed since the last preview, shows the page again
-  with the post as the public will read it and anything in it that looks
-  private; publishing what was previewed posts it with its pictures.
-  """
-  def create_thread(conn, params) do
-    draft = Hero.draft(params["ask"])
-
-    case Hero.thread(draft) do
-      {:ok, thread} ->
-        if params["step"] == "post" and params["previewed"] == PostPreview.digest(thread),
-          do: publish_thread(conn, draft, thread, params["ask"]),
-          else: render_home(conn, %{}, hero(draft, %{preview: preview(thread)}))
-
-      {:error, problem} ->
-        render_home(conn, %{}, hero(draft, %{problem: problem}))
-    end
-  end
-
-  defp publish_thread(conn, draft, thread, sent) do
-    with {:ok, _profile} <- require_signed_in(conn),
-         {:ok, pictures} <- Hero.pictures(sent["pictures"]),
-         {:ok, posted} <- ask_question(conn, thread, pictures) do
-      redirect(conn, to: PostAddress.path(posted))
-    else
-      {:error, problem} ->
-        render_home(conn, %{}, hero(draft, %{problem: problem, preview: preview(thread)}))
-    end
-  end
-
-  @doc """
-  The same preview on its own, for the home page to show in place: the
-  pictures the author chose stay chosen, since the form is not sent again.
-  """
-  def preview_thread(conn, params) do
-    draft = Hero.draft(params["ask"])
-
-    assigns =
-      case Hero.thread(draft) do
-        {:ok, thread} -> [preview: preview(thread), problem: nil]
-        {:error, problem} -> [preview: nil, problem: problem]
-      end
-
-    conn
-    |> put_root_layout(false)
-    |> put_layout(false)
-    |> render(:hero_preview, assigns)
-  end
-
-  defp preview(thread), do: Map.put(PostPreview.build(thread), :thread, thread)
-
-  defp ask_site(site) when is_binary(site) and site != "" do
-    case Patchbay.Forum.Origin.normalize(site) do
-      {:ok, _host} ->
-        case Forum.register_site(site) do
-          {:ok, site} -> {:ok, site}
-          {:error, _failure} -> {:error, %{said: "That site could not be opened for a question."}}
-        end
-
-      {:error, _unreadable} ->
-        {:error, %{said: @site_fix, field: :site}}
-    end
-  end
-
-  defp ask_site(_site) do
-    {:error, %{said: "Name the site the post is about.", field: :site}}
-  end
-
-  defp require_signed_in(%{assigns: %{current_profile: nil}}) do
-    {:error,
-     %{
-       said:
-         "Sign in at the top of the page to post. Your post is published under the name you chose for yourself."
-     }}
-  end
-
-  defp require_signed_in(%{assigns: %{current_profile: profile}}), do: {:ok, profile}
-
-  # The site is opened inside the admitted write, so a question refused for
-  # its share or its words is rolled back together with the board it named.
-  defp ask_question(conn, draft, pictures) do
-    session_id = conn.assigns.forum_session_id
-
-    admitted =
-      PostingBudget.admit_thread(
-        conn.assigns.current_profile,
-        draft,
-        fn type ->
-          with {:ok, site} <- ask_site(draft["site"]) do
-            {:ok,
-             %{
-               site_id: site.id,
-               browser_session_id: session_id,
-               title: draft["title"],
-               body_markdown: draft["body_markdown"],
-               tool_names: draft["tools"],
-               page_url: draft["page_url"],
-               topic_tags: draft["topic_tags"],
-               thread_kind: type,
-               pictures: pictures
-             }
-             |> without_nils()
-             |> Forum.changeset_to_ask_question(
-               actor: conn.assigns.current_profile,
-               private_arguments: %{author_kind: :human}
-             )}
-          end
-        end,
-        &Ash.create/1
-      )
-
-    case admitted do
-      {:ok, thread} ->
-        {:ok, thread}
-
-      {:error, %{said: _said} = refused} ->
-        {:error, refused}
-
-      {:error, refused} ->
-        case not_admitted(refused) do
-          nil -> {:error, thread_refusal(refused)}
-          said -> {:error, %{said: said}}
-        end
-    end
-  end
-
-  # What the posting door itself says, in its own words: the account's hourly
-  # share is used up, the post was read and turned away, posting is paused, or
-  # the post could not be read just now. Anything else is the write's refusal.
-  defp not_admitted({:rate_limited, _counted, said, _seconds}), do: said
-  defp not_admitted({:post_rejected, said, _details}), do: said
-  defp not_admitted({:posting_paused, said, _until}), do: said
-  defp not_admitted({:unavailable, said}), do: said
-  defp not_admitted(_refused), do: nil
-
-  # What the write refused, with the form field it is said under. The tools
-  # are picked from a list that stops at five, so theirs is about no field a
-  # person can type in.
-  defp thread_refusal(%Ash.Error.Invalid{errors: errors}) do
-    refused = MapSet.new(errors, &Map.get(&1, :field))
-
-    cond do
-      :title in refused ->
-        %{said: "Say what you are trying to do in one short line.", field: :goal}
-
-      :body_markdown in refused ->
-        %{said: "Say what happened in up to about 16,000 characters.", field: :details}
-
-      :tool_names in refused ->
-        %{said: "Pick up to 5 of the site's tools."}
-
-      :pictures in refused or :image in refused ->
-        %{
-          said:
-            "Pictures can be PNG, JPEG or WebP, up to 3 MB each, and up to #{PostPicture.max_per_post()} of them.",
-          field: :pictures
-        }
-
-      :page_url in refused ->
-        %{said: @site_fix, field: :site}
-
-      :topic_tags in refused ->
-        %{said: "Use short words or hyphenated phrases, five at most.", field: :tags}
-
-      true ->
-        %{said: @thread_not_posted}
-    end
-  end
-
-  defp thread_refusal(_refused), do: %{said: @thread_not_posted}
 
   @doc """
   A person's conversational reply on a thread — an answer, not a verdict on a
@@ -533,7 +334,8 @@ defmodule PatchbayWeb.Forum.BoardController do
         {:ok, reply}
 
       {:error, refused} ->
-        {:error, %{said: not_admitted(refused) || conversation_refusal(refused), draft: draft}}
+        {:error,
+         %{said: PostingBudget.said(refused) || conversation_refusal(refused), draft: draft}}
     end
   end
 
@@ -666,7 +468,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     if page_name_md?(domain), do: raise(NotFoundError)
 
     if conn.request_path == "/" <> domain,
-      do: site_page(conn, domain, params, site_hero(domain, params)),
+      do: site_page(conn, domain, params),
       else: moved(conn, "/" <> domain, params)
   end
 
@@ -705,20 +507,7 @@ defmodule PatchbayWeb.Forum.BoardController do
     conn |> put_status(:moved_permanently) |> redirect(to: to)
   end
 
-  # The site page's form, filled in from the link that opened the page.
-  defp site_hero(domain, params) do
-    page = Origin.inner_page(params["page"])
-
-    hero(
-      Hero.draft(%{
-        "goal" => presence(params["goal"]),
-        "site_url" => page || domain,
-        "details" => presence(params["error"])
-      })
-    )
-  end
-
-  defp site_page(conn, domain, params, hero) do
+  defp site_page(conn, domain, params) do
     visitor = ClientAddress.visitor_key(conn)
     {asked, check} = SiteChecks.ask(domain, SiteChecks.current(domain), visitor)
     goal = presence(params["goal"])
@@ -753,7 +542,8 @@ defmodule PatchbayWeb.Forum.BoardController do
               Board.earned_tips(Enum.map(board.posts, & &1.author), conn.assigns.site_edition),
             ask: ask,
             directory: FixCheck.directory?(conn),
-            hero: hero
+            # The page's form, filled in from the link that opened the page.
+            draft: Hero.draft(%{"goal" => goal, "site_url" => page || domain, "details" => error})
           })
         )
 
@@ -1205,7 +995,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         {:ok, reply}
 
       {:error, refused} ->
-        {:error, %{said: not_admitted(refused) || refusal(refused), draft: draft}}
+        {:error, %{said: PostingBudget.said(refused) || refusal(refused), draft: draft}}
     end
   end
 

@@ -49,7 +49,13 @@ defmodule PatchbayWeb.AccountLiveTest do
     assert render(view) =~ "Where does the basket go?"
     assert has_element?(view, ~s(#account-inbox a[href="/#{site.origin}"]))
 
+    # The notice leaves the list at once, and it is acknowledged for good: the
+    # inbox opened again has nothing waiting.
     view |> element("#account-inbox button", "Acknowledge") |> render_click()
+
+    assert has_element?(view, "#account-inbox li[hidden]", "Where does the basket go?")
+
+    {:ok, view, _html} = live(conn, ~p"/account/inbox")
 
     refute render(view) =~ "Where does the basket go?"
     assert render(view) =~ "Nothing waiting."

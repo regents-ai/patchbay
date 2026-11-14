@@ -20,13 +20,12 @@
       <summary class="rg-button rg-button--secondary rg-button--no-arrow">
         <span class="rg-button__label">Ask a question</span>
       </summary>
-      <.hero_form
+      <.post_form
+        conn={@conn}
         home={~p"/"}
-        thread_action={~p"/threads"}
-        profile={@conn.assigns.current_profile}
+        draft={@draft}
         directory={@directory}
-        hero={@hero}
-        data-panel="fold"
+        container={[data: [panel: "fold"]]}
       />
     </details>
   </section>

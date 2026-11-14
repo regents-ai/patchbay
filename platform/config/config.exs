@@ -123,8 +123,9 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # subscribers (`Patchbay.Forum.EventSubscription`'s `:deliver`), and removing
 # the ones that have run out (`:forget_lapsed`); and a site's check
 # (`Patchbay.Forum.SiteCheck`'s `:run`) and the picture for its card
-# (`Patchbay.Forum.Site`'s `:take_picture`), each on its own queue so slow
-# sites wait only on each other; the daily clearing of saved errors
+# (`Patchbay.Forum.Site`'s `:take_picture`, and a listed site's own,
+# `Patchbay.Forum.ListedSitePicture.Workers.Take`), each on its own queue so
+# slow sites wait only on each other; the daily clearing of saved errors
 # (`Patchbay.SavedErrors`); the daily forgetting of the words of posts
 # turned away a month ago (`Patchbay.Forum.PostCheckPruner`); and reading a
 # signed-in wallet's ENS name and picture from Ethereum
@@ -140,7 +141,8 @@ config :patchbay, Patchbay.WalletBench.RunRecords,
 # and every five minutes checks are asked for a few listed sites, those never
 # checked first, then those due again, the longest unchecked first
 # (`Patchbay.Forum.SiteCheckSweep`, on `default`, so the ask never takes one of
-# the two check places).
+# the two check places), and pictures are queued for a few listed sites that
+# have none (`Patchbay.Forum.ListedSitePictureSweep`, on `default` too).
 config :patchbay, Oban,
   repo: Patchbay.Repo,
   notifier: Oban.Notifiers.PG,
@@ -170,8 +172,9 @@ config :patchbay, Oban,
     # apps are switched off (config/runtime.exs).
     connected_apps: [limit: 1],
     # The template runs 5 here; Patchbay's only jobs on it are the minute's
-    # SharedReading.Heal, which sends one message, and the five-minute
-    # SiteCheckSweep, which writes five asks, so one is enough.
+    # SharedReading.Heal, which sends one message, the five-minute
+    # SiteCheckSweep, which writes five asks, and the five-minute
+    # ListedSitePictureSweep, which queues `per_run` pictures, so one is enough.
     default: 1
   ],
   # AshOban adds each trigger's minute sweep here.
@@ -181,6 +184,8 @@ config :patchbay, Oban,
       {"47 4 * * *", Patchbay.Forum.PostCheckPruner},
       # Five listed sites due a check, every five minutes.
       {"*/5 * * * *", Patchbay.Forum.SiteCheckSweep},
+      # A few listed sites without a picture, every five minutes.
+      {"*/5 * * * *", Patchbay.Forum.ListedSitePictureSweep},
       {"0 6 * * 1", Patchbay.AnswerWatch.Ask},
       # This release's public pages, sent to IndexNow once per release.
       {"@hourly", Patchbay.IndexNow},
@@ -213,6 +218,15 @@ config :patchbay, Patchbay.Incidents.CveNow,
 # 4,000 or so listed sites is read every three days or so and never more than
 # once a day. `enabled?: false` stops the asking; checks already asked for run.
 config :patchbay, Patchbay.Forum.SiteCheckSweep, enabled?: true
+
+# Patchbay's own pictures of the listed sites that have none
+# (`Patchbay.Forum.ListedSitePictureSweep`): `per_run` home pages every five
+# minutes, taken one at a time. It starts small, to be measured before it is
+# raised: one is about 290 a day of the 4,000 or so listed sites. A picture is
+# about 0.1 to 0.3 MB, so that is 0.03 to 0.09 GB a day in the database while
+# it runs. `enabled?: false` stops the queueing; pictures already queued are
+# taken, and each run still measures what is kept.
+config :patchbay, Patchbay.Forum.ListedSitePictureSweep, enabled?: true, per_run: 1
 
 # The Wallet Bench's minute read (`Patchbay.WalletBench.Board`): Postgres
 # cancels any one view's read that runs longer, so it frees its connection.

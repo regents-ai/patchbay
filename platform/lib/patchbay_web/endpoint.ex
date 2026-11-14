@@ -101,12 +101,7 @@ defmodule PatchbayWeb.Endpoint do
 
   plug PatchbayWeb.Plugs.Parsers,
     body_reader: {PatchbayWeb.WalletBodyReader, :read_body, []},
-    # A forum post from the home page carries up to four 3 MB pictures.
-    parsers: [
-      Plug.Parsers.URLENCODED,
-      {Plug.Parsers.MULTIPART, length: 14_000_000},
-      Plug.Parsers.JSON
-    ],
+    parsers: [Plug.Parsers.URLENCODED, Plug.Parsers.JSON],
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 
