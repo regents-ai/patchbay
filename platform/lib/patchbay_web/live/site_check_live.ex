@@ -18,7 +18,6 @@ defmodule PatchbayWeb.SiteCheckLive do
 
   import PatchbayWeb.Forum.BoardHTML,
     only: [
-      call_json: 1,
       count_label: 3,
       moment: 1,
       page_nav: 1,
@@ -27,6 +26,7 @@ defmodule PatchbayWeb.SiteCheckLive do
       tool_path: 2
     ]
 
+  alias Patchbay.BoundedText
   alias PatchbayWeb.Forum.Board
   alias PatchbayWeb.Forum.SiteChecks
 
@@ -83,7 +83,8 @@ defmodule PatchbayWeb.SiteCheckLive do
       next_tools: next_tools,
       only_found: if(cursor, do: [], else: only_found),
       both?: found != [] and list_count > 0,
-      tool_count: list_count + length(only_found)
+      tool_count: list_count + length(only_found),
+      directory_tools?: Board.directory_tools?(site)
     )
     |> assign_copy_text()
   end
@@ -127,10 +128,6 @@ defmodule PatchbayWeb.SiteCheckLive do
     end
   end
 
-  # Every label the count can change between while the page is open, so a check
-  # that finishes swaps one for another in place.
-  defp tools_words(count), do: [@not_checked, @looking, tools_count(count)]
-
   # The owner's own words for the count.
   defp tools_count(1), do: "Agents see 1 WebMCP Tool"
   defp tools_count(count), do: "Agents see #{count} WebMCP Tools"
@@ -158,25 +155,20 @@ defmodule PatchbayWeb.SiteCheckLive do
       ],
       [
         "To ask about #{domain}, call ask_question with these arguments, filling in anything in capitals. Leave out keys, passwords and personal details.",
-        call_json(ask),
+        Jason.encode!(ask, pretty: true),
         "Its answer carries thread_id and updates_cursor. Later, call get_updates with both for replies."
       ]
     ]
     |> Enum.map_join("\n\n", &Enum.join(&1, "\n"))
   end
 
-  defp tool_line(name, nil), do: "- " <> name
+  # A tool the site gave no description has its name alone.
+  defp tool_line(name, description) when description in [nil, ""], do: "- " <> name
 
-  defp tool_line(name, description) do
-    text = PatchbayWeb.MD.line(description)
-
-    short =
-      if String.length(text) > @copy_description,
-        do: (text |> String.slice(0, @copy_description - 1) |> String.trim_trailing()) <> "…",
-        else: text
-
-    "- #{name}: #{short}"
-  end
+  defp tool_line(name, description),
+    do:
+      "- #{name}: " <>
+        (description |> PatchbayWeb.MD.line() |> BoundedText.cut(@copy_description))
 
   @impl true
   def render(assigns) do
@@ -201,9 +193,11 @@ defmodule PatchbayWeb.SiteCheckLive do
         <summary>
           <span class="pb-site-agent-heading">
             <h2 id="pb-site-agents-title" class="pb-site-agent-title">For agents</h2>
+            <%!-- Only the word showing is drawn: the shared status word also
+            draws the ones it is not showing, which text readers would read. --%>
             <Regent.Primitives.status_word
               class="pb-site-agent-count"
-              words={tools_words(@tool_count)}
+              words={[tools_label(@check, @tool_count)]}
               current={tools_label(@check, @tool_count)}
               title={tools_label(@check, @tool_count)}
             />
@@ -227,6 +221,9 @@ defmodule PatchbayWeb.SiteCheckLive do
                 {RegentFormat.relative_time(@check.checked_at, DateTime.utc_now())}
               </time>
             </span>
+            <%!-- The check never writes over the directory's list, so the list
+            is not what the check found. --%>
+            <span :if={@directory_tools?}>Tool list from Patchbay's directory.</span>
           </p>
           <p
             :if={@limited?}
@@ -250,7 +247,7 @@ defmodule PatchbayWeb.SiteCheckLive do
                 <div class="pb-tool-row">
                   <span class="pb-tool-row-main">
                     <span class="pb-tool-row-name">{tool["name"]}</span>
-                    <span :if={tool["description"]} class="pb-tool-row-desc">
+                    <span :if={tool["description"] != ""} class="pb-tool-row-desc">
                       {tool["description"]}
                     </span>
                     <span :if={@both?} class="pb-tool-row-meta">
@@ -284,6 +281,9 @@ defmodule PatchbayWeb.SiteCheckLive do
               label="More tools"
               next_label="More tools →"
             />
+            <p :if={@site_edition == :main} class="pb-site-check-guide">
+              <a href={~p"/webmcp"}>WebMCP guide</a>
+            </p>
           </div>
 
           <.findings :if={check_findings(@check)} findings={check_findings(@check)} />

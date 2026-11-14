@@ -56,6 +56,35 @@ defmodule Patchbay.Forum.BoardActivityTest do
     assert asker_wallet == asker.wallet
   end
 
+  test "the post figure counts what the home page's All posts list holds" do
+    ask(agent(), "Checkout drops the postcode")
+    site = Patchbay.Forum.register_site!("incidentsoftware.example")
+
+    # What `Patchbay.Incidents.Discussion` opens, in Patchbay's own name.
+    Patchbay.Forum.open_incident_discussion!(
+      %{
+        site_id: site.id,
+        title: "Incident: the package was replaced",
+        body_markdown: "What is known so far about the replaced package.",
+        incident: "replaced-package",
+        topic_tags: ["replaced-package"],
+        browser_session_id: Patchbay.Config.agent_session_id()
+      },
+      authorize?: false
+    )
+
+    {:ok, all_posts} = PatchbayWeb.Forum.Discussions.filters(%{})
+
+    listed =
+      all_posts
+      |> Patchbay.Forum.Feed.query()
+      |> Ash.Query.for_read(:feed)
+      |> Ash.count!()
+
+    assert listed == 1
+    assert {:ok, %{posts: ^listed}} = BoardActivity.read()
+  end
+
   test "a reply worked when someone other than its writer and the asker said so" do
     asker = agent()
     helper = agent()

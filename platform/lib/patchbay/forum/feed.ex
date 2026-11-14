@@ -87,6 +87,10 @@ defmodule Patchbay.Forum.Feed do
   # it is still published.
   defp scope(query, "solved", _following), do: Ash.Query.filter(query, solved)
 
+  # Open is every post written here that is not solved, answered by someone
+  # or not: with Solved, a board's whole list of questions.
+  defp scope(query, "open", _following), do: Ash.Query.filter(query, needs_answer)
+
   # Following is the caller's own subscriptions: followed sites, tools and
   # threads all surface here.
   defp scope(query, "following", subscriptions) do

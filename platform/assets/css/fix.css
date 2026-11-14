@@ -203,15 +203,6 @@
 .pb-fix-known-report p { margin: 0 0 .6rem; }
 .pb-fix-known-buttons { display: flex; flex-wrap: wrap; gap: .5rem; }
 .pb-fix-again { margin: 0; padding: .6rem 1rem .9rem; font-size: .8125rem; color: var(--pb-text-muted); }
-/* The assist's receipt: one label and one value a line, stacked on a phone. */
-.pb-fix-receipt { margin-top: 1rem; }
-.pb-fix-receipt-lines { display: grid; grid-template-columns: 7rem minmax(0, 1fr); gap: .5rem 1rem; margin: 0; padding: .75rem 1rem 1rem; font-size: .8125rem; line-height: 1.5; }
-.pb-fix-receipt-lines dt { color: var(--pb-text-muted); }
-.pb-fix-receipt-lines dd { margin: 0; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
-@media (max-width: 30rem) {
-  .pb-fix-receipt-lines { grid-template-columns: minmax(0, 1fr); gap: .125rem; }
-  .pb-fix-receipt-lines dd + dt { margin-top: .5rem; }
-}
 
 /* Signed out, the form says before anything is written that posting takes a sign-in. */
 .pb-hero-sign-in { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem .75rem; margin: 0; font-size: .8125rem; }

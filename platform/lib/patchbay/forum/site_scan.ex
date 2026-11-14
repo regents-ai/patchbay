@@ -29,6 +29,7 @@ defmodule Patchbay.Forum.SiteScan do
   alias Patchbay.Assist.McpClient
   alias Patchbay.Assist.PageTools
   alias Patchbay.Assist.Target
+  alias Patchbay.BoundedText
   alias Patchbay.Forum.Origin
   alias Patchbay.Forum.SiteDirectory
 
@@ -363,7 +364,7 @@ defmodule Patchbay.Forum.SiteScan do
   defp short(text, chars \\ @text_chars)
 
   defp short(text, chars) when is_binary(text),
-    do: text |> String.trim() |> String.slice(0, chars)
+    do: text |> String.trim() |> BoundedText.cut(chars)
 
   defp short(_absent, _chars), do: nil
 

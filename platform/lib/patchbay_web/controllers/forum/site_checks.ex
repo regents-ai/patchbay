@@ -89,6 +89,16 @@ defmodule PatchbayWeb.Forum.SiteChecks do
     end
   end
 
+  @doc """
+  When Patchbay last finished a check of the site: nil before the first,
+  `:failed` when the last could not be done. A check on its way keeps the
+  time of the one before it.
+  """
+  @spec last_checked(Ash.Resource.record() | nil) :: DateTime.t() | :failed | nil
+  def last_checked(%{findings: %{"failed" => true}}), do: :failed
+  def last_checked(%{findings: %{}, checked_at: %DateTime{} = at}), do: at
+  def last_checked(_check), do: nil
+
   @doc "Whether a finished check found nothing an agent can use."
   @spec nothing?(map()) :: boolean()
   def nothing?(findings),

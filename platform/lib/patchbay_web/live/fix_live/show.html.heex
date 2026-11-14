@@ -105,28 +105,4 @@
     <pre id="pb-fix-answer-text" class="pb-fix-answer-text">{@answer}</pre>
     <p class="pb-fix-again">Another one? <a href={~p"/"}>Ask Patchbay for the next fix</a>.</p>
   </section>
-
-  <section
-    id="pb-fix-receipt"
-    class="pb-fix-answer pb-fix-receipt"
-    aria-labelledby="pb-fix-receipt-title"
-  >
-    <div class="pb-fix-answer-head">
-      <h2 id="pb-fix-receipt-title">Receipt</h2>
-    </div>
-    <dl class="pb-fix-receipt-lines">
-      <dt>Payment</dt>
-      <dd id="pb-fix-receipt-payment">{payment_line(@receipt.payment)}</dd>
-      <dt>Model</dt>
-      <dd id="pb-fix-receipt-model">{model_line(@receipt.model)}</dd>
-      <dt>Suggested</dt>
-      <dd id="pb-fix-receipt-suggested">{suggested_line(@receipt.suggested_action)}</dd>
-      <dt>Actual call</dt>
-      <dd id="pb-fix-receipt-actual">Not recorded</dd>
-      <dt>Result</dt>
-      <dd id="pb-fix-receipt-result">{result_line(@receipt.result)}</dd>
-      <dt>Verification</dt>
-      <dd id="pb-fix-receipt-verification">Not checked</dd>
-    </dl>
-  </section>
 </main>

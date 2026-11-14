@@ -26,6 +26,7 @@ defmodule Patchbay.Forum do
       define(:get_site_by_slug, action: :read, get_by: [:slug])
       define(:list_directory, action: :directory)
       define(:list_showcase, action: :showcase)
+      define(:list_directory_boards, action: :directory_boards, args: [:except, :words])
       define(:list_site_picture_states, action: :picture_states, args: [:domains])
       define(:list_site_kinds, action: :kinds, args: [:origins])
       define(:find_sites, action: :find, args: [:text])

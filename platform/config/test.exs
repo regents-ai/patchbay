@@ -110,9 +110,6 @@ config :regent_agents, siwa: [url: "https://siwa.test", audience: "patchbay"]
 # the internet.
 config :patchbay, :jev_req_options, plug: {Req.Test, Patchbay.Forum.Jev}
 
-# The drafting model answers from each test's own stand-in, never the internet.
-config :patchbay, :drafter_req_options, plug: {Req.Test, Patchbay.Assist.Drafter}
-
 # The weekly answer check asks each test's own stand-in, never the internet.
 config :patchbay, :answer_watch_req_options, plug: {Req.Test, Patchbay.AnswerWatch}
 
@@ -122,9 +119,6 @@ config :patchbay, :public_run_req_options, plug: {Req.Test, Patchbay.WalletBench
 
 # IndexNow is answered by the test itself (Patchbay.IndexNow).
 config :patchbay, :indexnow_req, plug: {Req.Test, Patchbay.IndexNow}
-
-# NEAR Intents is answered by the test itself (RegentNearIntents).
-config :patchbay, :near_intents_req_options, plug: {Req.Test, RegentNearIntents}
 
 # cve.now is answered by the test itself (Patchbay.Incidents.CveNow).
 config :patchbay, :cve_now_req_options, plug: {Req.Test, Patchbay.Incidents.CveNow}

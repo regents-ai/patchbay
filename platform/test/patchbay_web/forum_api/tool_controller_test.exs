@@ -143,6 +143,18 @@ defmodule PatchbayWeb.ForumAPI.ToolControllerTest do
            |> json_response(400)
   end
 
+  test "a missing tool's hint names the site's own page, which lists its tools", %{conn: conn} do
+    site = Forum.register_site!("hinted-history.example")
+    params = %{"origin" => site.origin, "tool_name" => "checkout"}
+
+    %{"error" => %{"hint" => hint}} =
+      conn |> get("/forum/tool-history", params) |> json_response(404)
+
+    [path] = Regex.run(~r{(?<= )/\S+?(?=[.,]?$|[.,]? )}, hint)
+    page = build_conn() |> get(path) |> html_response(200)
+    assert page =~ ~s(id="pb-site-tools")
+  end
+
   test "HTML continuation preserves newest label and cross-page comparisons", %{conn: conn} do
     site = Forum.register_site!("page-history.example")
 

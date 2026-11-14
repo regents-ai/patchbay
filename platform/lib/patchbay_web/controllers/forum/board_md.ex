@@ -115,7 +115,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
   def step_lines(items), do: Enum.map_join(items, "\n\n", &step_line/1)
 
   defp step_line({:say, parts}), do: sentence(parts)
-  defp step_line({:run, text}), do: "```\n" <> text <> "\n```"
+  defp step_line({:run, text}), do: block(text)
 
   @doc "One sentence of an agent page or a troubleshooting page, from its parts."
   def sentence(parts), do: Enum.map_join(parts, &step_part/1)
@@ -123,6 +123,11 @@ defmodule PatchbayWeb.Forum.BoardMD do
   defp step_part({:c, text}), do: "`" <> text <> "`"
   defp step_part({:a, label, href}), do: "[#{label}](#{href})"
   defp step_part(text), do: text
+
+  @doc "When Patchbay last checked the site, after its tool count; nothing after a failed check."
+  def standing_checked(%DateTime{} = at), do: ", checked " <> stamp(at)
+  def standing_checked(nil), do: ", not checked yet"
+  def standing_checked(:failed), do: ""
 
   @doc "What a site's check found, as markdown, or where the check stands."
   def check_lines(domain, check) do

@@ -597,7 +597,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert standing =~ ~r/Solved\s+1/
       assert standing =~ ~r/Still open\s+1/
       assert page =~ ~s(href="/?scope=solved&amp;site=example.com")
-      assert page =~ ~s(href="/?scope=unanswered&amp;site=example.com")
+      assert page =~ ~s(href="/?scope=open&amp;site=example.com")
 
       [solved_list, open_list] =
         page
@@ -619,6 +619,58 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
       assert markdown =~ "### Solved: 1 ([all](/?site=example.com&scope=solved))"
       assert markdown =~ "- [Checkout hangs on pay](#{address(solved)})"
       assert markdown =~ "- [Coupon box rejects codes](#{address(open)})"
+    end
+
+    test "Solved and Still open together hold every question on the board, as their lists do",
+         %{conn: conn} do
+      asker = visitor()
+      %{"thread_id" => solved} = ask(asker, "Checkout hangs on pay") |> json_response(201)
+      ask(asker, "Coupon box rejects codes") |> json_response(201)
+      %{"thread_id" => talked} = ask(asker, "Search drops the size filter") |> json_response(201)
+
+      %{"reply_id" => reply_id} =
+        answer(visitor(), solved, "Retry with a fresh cart.") |> json_response(201)
+
+      # Answered by someone, but the asker has picked no answer: still open.
+      answer(visitor(), talked, "Send the size in the query string.") |> json_response(201)
+
+      asker
+      |> post_json("/forum/threads/#{solved}/solution", %{"reply_id" => reply_id})
+      |> json_response(201)
+
+      page = conn |> get("/example.com") |> html_response(200) |> LazyHTML.from_document()
+      heads = LazyHTML.query(page, "#pb-site-standing h3 a")
+
+      [solved_count, open_count] =
+        heads
+        |> LazyHTML.query(".pb-standing-count")
+        |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim() |> String.to_integer()))
+
+      assert solved_count + open_count == 3
+
+      listed = fn path ->
+        build_conn()
+        |> get(path)
+        |> html_response(200)
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("li[id^='feed-']")
+        |> Enum.count()
+      end
+
+      assert heads |> LazyHTML.attribute("href") |> Enum.map(listed) == [solved_count, open_count]
+
+      markdown =
+        build_conn()
+        |> put_req_header("accept", "text/markdown")
+        |> get("/example.com")
+        |> response(200)
+
+      [open_path] =
+        Regex.run(~r/### Still open: #{open_count} \(\[all\]\(([^)]+)\)\)/, markdown,
+          capture: :all_but_first
+        )
+
+      assert listed.(open_path) == open_count
     end
 
     test "the site and tool lists lead with what worked for the most people",

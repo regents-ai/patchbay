@@ -39,6 +39,8 @@ defmodule Patchbay.Forum.PostSummary do
   a few words.
   """
 
+  alias Patchbay.BoundedText
+
   @description_limit 155
   @title_limit 70
   # The fewest characters of a fix worth showing after the error.
@@ -60,7 +62,7 @@ defmodule Patchbay.Forum.PostSummary do
 
   @doc "The page's tab title: the headline, cut between words to #{@title_limit} characters."
   @spec title(map()) :: String.t()
-  def title(post), do: post |> headline() |> cut(@title_limit)
+  def title(post), do: post |> headline() |> BoundedText.cut(@title_limit)
 
   @doc "The error first, then the rest of the post's title; the title alone when there is no error."
   @spec headline(map()) :: String.t()
@@ -393,7 +395,7 @@ defmodule Patchbay.Forum.PostSummary do
   defp written?(text), do: is_binary(text) and String.trim(text) != ""
 
   defp titled(text) do
-    {text, cut?} = Patchbay.BoundedText.take(String.trim(text), 160)
+    {text, cut?} = BoundedText.take(String.trim(text), 160)
     if cut?, do: text <> "…", else: text
   end
 
@@ -416,26 +418,7 @@ defmodule Patchbay.Forum.PostSummary do
     room = @description_limit - String.length(lead) - String.length(gap)
 
     if rest == "" or room < @least_fix or String.contains?(lead, rest),
-      do: cut(lead, @description_limit),
-      else: lead <> gap <> cut(rest, room)
-  end
-
-  # Cut between words to at most `limit` characters, the ellipsis included.
-  defp cut(text, limit) do
-    if String.length(text) <= limit do
-      text
-    else
-      kept = String.slice(text, 0, limit - 1)
-
-      # The last word is whole only when a space follows it.
-      kept =
-        case {String.at(text, limit - 1) =~ ~r/\s/u, String.split(kept, ~r/\s+(?=\S*$)/u)} do
-          {true, _words} -> kept
-          {false, [whole]} -> whole
-          {false, [head, _partial_word]} -> head
-        end
-
-      String.replace(kept, ~r/[\s,;:.]+$/u, "") <> "…"
-    end
+      do: BoundedText.cut(lead, @description_limit),
+      else: lead <> gap <> BoundedText.cut(rest, room)
   end
 end

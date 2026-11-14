@@ -190,6 +190,7 @@ defmodule Patchbay.ForumTest do
                  {:read, :read},
                  {:find, :read},
                  {:directory, :read},
+                 {:directory_boards, :read},
                  {:picture_states, :read},
                  {:kinds, :read},
                  {:register_site, :create},

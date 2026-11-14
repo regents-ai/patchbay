@@ -479,6 +479,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   def scope_label("unanswered"), do: "Unanswered"
+  def scope_label("open"), do: "Still open"
   def scope_label("solved"), do: "Solved"
   def scope_label("following"), do: "Following"
   def scope_label(_), do: "Recent"
@@ -488,15 +489,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def markdown_html(markdown),
     do:
       MDEx.to_html!(markdown, extension: [inline_code_attributes: false], render: [unsafe: false])
-
-  @doc """
-  Tool arguments as JSON for a code block. The values carry a visitor's own
-  words, so a backtick is written as its JSON escape and cannot end the block.
-  """
-  @spec call_json(Jason.OrderedObject.t()) :: String.t()
-  def call_json(arguments) do
-    arguments |> Jason.encode!(pretty: true) |> String.replace("`", "\\u0060")
-  end
 
   @doc "A site's page: its domain, under Patchbay's own address."
   def site_path(site), do: "/" <> site.origin
@@ -1080,8 +1072,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           class="pb-showcase-tile"
           href={site_path(site)}
           aria-label={"Open " <> site_name(site) <> " board, " <>
-            count_label(site.homepage_tool_count, "Agent Tool", "Agent Tools") <>
-            " recorded on its homepage"}
+            count_label(site.tool_count, "Agent Tool", "Agent Tools")}
         >
           <img
             :if={url = site_screenshot_url(site)}
@@ -1098,9 +1089,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <span :if={!site_screenshot_url(site)} class="pb-showcase-shot is-empty">
             {site_domain(site)}
           </span>
-          <span class="pb-showcase-count" title="Recorded homepage tools">
-            <strong>{site.homepage_tool_count}</strong>
-            {if site.homepage_tool_count == 1, do: "Agent Tool", else: "Agent Tools"}
+          <span class="pb-showcase-count">
+            <strong>{site.tool_count}</strong>
+            {if site.tool_count == 1, do: "Agent Tool", else: "Agent Tools"}
           </span>
           <span class="pb-showcase-name">{site_name(site)}</span>
         </a>

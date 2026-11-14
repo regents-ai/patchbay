@@ -13,7 +13,8 @@ defmodule PatchbayWeb.Forum.Discussions do
   # Ten rows a page keeps the home page short on a phone; older posts are a
   # link away.
   @page_size 10
-  @scopes ~w(newest unanswered solved following)
+  # A site's status links to "open", beside "solved"; it is no home page tab.
+  @scopes ~w(newest unanswered open solved following)
   @loads [
     :author,
     :person,

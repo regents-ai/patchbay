@@ -120,6 +120,87 @@ defmodule Patchbay.Assist.PageToolsTest do
     assert fleets.name == "fleets_list"
   end
 
+  # Tools as sites write them: a parameter's description before the tool's
+  # own, tools handed over together with each description before its name,
+  # a tool whose words are put together at run time, and one whose schema
+  # runs on far past its name.
+  @own_descriptions ~S"""
+  navigator.modelContext.registerTool({name:"search_products",inputSchema:{type:"object",properties:{query:{type:"string",description:"Words to look for"}},required:["query"]},description:"Search the catalogue for products in stock.",execute:async({query})=>find(query)});
+  navigator.modelContext.provideContext({tools:[{description:"Add an item to the cart.",name:"add_to_cart",inputSchema:{type:"object",properties:{sku:{type:"string",description:"The item's SKU"}}},execute:add},{description:"Empty the cart.",name:"clear_cart",inputSchema:{},execute:clear}]});
+  navigator.modelContext.registerTool({name:"track_order",inputSchema:{type:"object",properties:{order_id:{type:"string",description:"The order number on the receipt"}}},execute:track});
+  navigator.modelContext.registerTool({name: "translate", description: t("translate.help"), inputSchema: {type: "object", properties: {text: {type: "string", description: "The text to translate"}}}, execute});
+  """
+
+  test "a tool's description is the one written on the tool, never one of its parameters'" do
+    wide =
+      ~s|navigator.modelContext.registerTool({name:"export_orders",inputSchema:{type:"object",properties:{| <>
+        Enum.map_join(
+          1..40,
+          ",",
+          &~s|field_#{&1}:{type:"string",description:"Field #{&1} of the export."}|
+        ) <>
+        ~s|}},description:"Export every order as a spreadsheet.",execute:run});|
+
+    assert read_tools(@own_descriptions <> wide) == %{
+             "search_products" => "Search the catalogue for products in stock.",
+             "add_to_cart" => "Add an item to the cart.",
+             "clear_cart" => "Empty the cart.",
+             # No words of its own that can be read without running the page.
+             "track_order" => "",
+             "translate" => "",
+             "export_orders" => "Export every order as a spreadsheet."
+           }
+  end
+
+  # Text written the ways scripts write it: split in two with `+` (here in the
+  # middle of a word), with escapes, apostrophes and a line carried on, in a
+  # template across two lines, in a template with a value put into it, and
+  # holding words that look like a tool's name.
+  @written_text ~S"""
+  navigator.modelContext.registerTool({
+    name: "book_table",
+    description: "Book a table for up to eight people. Returns the boo" +
+      "king reference and the time it was booked for.",
+    inputSchema: {type: "object"},
+    execute: async () => ({})
+  });
+  navigator.modelContext.registerTool({name:"quote_text",description:"Wraps text in \"quotes\" — it’s safe.\tTabs\\slashes \x41 \u{1F600} 😀 and a line \
+  carried on.",inputSchema:{},execute:q});
+  navigator.modelContext.registerTool({name:'cancel_booking',description:'Cancel a booking you\'ve made; it can\'t be "undone".',inputSchema:{},execute:c});
+  navigator.modelContext.registerTool({name:"list_rooms",description:`List the rooms free tonight,
+  with their prices.`,inputSchema:{},execute:()=>1});
+  navigator.modelContext.registerTool({name:"find_pages",description:`Find pages ${scope ? `in ${scope}` : "everywhere"}, newest first.`,inputSchema:{},execute:find});
+  navigator.modelContext.registerTool({name:"get_item",description:"Get one item, for example {name: 'sku-1'}, with its price.",inputSchema:{},execute:g});
+  """
+
+  test "a description is read whole, however the code writes it" do
+    assert read_tools(@written_text) == %{
+             "book_table" =>
+               "Book a table for up to eight people. Returns the booking reference and the time it was booked for.",
+             "quote_text" =>
+               "Wraps text in \"quotes\" — it’s safe.\tTabs\\slashes A 😀 😀 and a line carried on.",
+             "cancel_booking" => "Cancel a booking you've made; it can't be \"undone\".",
+             "list_rooms" => "List the rooms free tonight,\nwith their prices.",
+             # Its words are put together when the page runs.
+             "find_pages" => "",
+             "get_item" => "Get one item, for example {name: 'sku-1'}, with its price."
+           }
+  end
+
+  test "a description too long to keep is cut between words and ends with …" do
+    words = String.duplicate("Reserve a table tonight. ", 60)
+
+    %{"reserve_table" => kept} =
+      read_tools(
+        ~s|navigator.modelContext.registerTool({name:"reserve_table",description:"#{words}",inputSchema:{},execute:r});|
+      )
+
+    assert String.length(kept) <= 1_000
+    assert String.ends_with?(kept, "…")
+    assert String.starts_with?(words, String.trim_trailing(kept, "…"))
+    assert String.at(words, String.length(kept) - 1) =~ ~r/[\s.]/
+  end
+
   test "follows a redirect to the page, and says why a page cannot be read" do
     PageSite.serve(%{
       "/" => {301, [{"location", "/docs"}], ""},
@@ -233,4 +314,15 @@ defmodule Patchbay.Assist.PageToolsTest do
   end
 
   defp target_options, do: Application.get_env(:patchbay, :assist_target)
+
+  # The tools a page with `script` written into it signs up, name to description.
+  defp read_tools(script) do
+    page = %{
+      url: "https://shop.example/",
+      html: ~s(<html><body><script type="module">#{script}</script></body></html>),
+      cut?: false
+    }
+
+    page |> PageTools.inspect_tools() |> Map.fetch!(:tools) |> Map.new(&{&1.name, &1.description})
+  end
 end

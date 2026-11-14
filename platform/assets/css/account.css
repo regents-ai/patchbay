@@ -76,26 +76,3 @@
 @container pb-page (max-width: 479px) {
   .pb-account-page .rg-account-identity__who { flex-wrap: wrap; }
 }
-
-/* Fund with NEAR on the Agents page (PatchbayWeb.NearFundingPanel): one column
-   of fields, then the funding's facts as label and value rows that stack on a
-   phone. A long deposit address wraps inside its row. */
-.pb-near-funding { min-width: 0; }
-.pb-near-funding__form { display: grid; gap: var(--space-2); max-width: 28rem; min-width: 0; }
-.pb-near-funding__form select,
-.pb-near-funding__form input { inline-size: 100%; min-block-size: 2.75rem; }
-.pb-near-funding__funding { display: grid; gap: var(--space-2); min-width: 0; }
-.pb-near-funding__facts { display: grid; gap: var(--space-1); margin: 0; min-width: 0; }
-.pb-near-funding__facts > div {
-  display: grid;
-  grid-template-columns: 8rem minmax(0, 1fr);
-  gap: var(--space-2);
-  align-items: baseline;
-  min-width: 0;
-}
-.pb-near-funding__facts dt { color: var(--pb-text-muted); }
-.pb-near-funding__facts dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
-
-@container pb-page (max-width: 479px) {
-  .pb-near-funding__facts > div { grid-template-columns: minmax(0, 1fr); gap: 0; }
-}
