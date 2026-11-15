@@ -4,6 +4,11 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v406, 15 Nov 2026
+
+- Commit: 89757389 (image `8975738`), released by the Patchbay chief on Sean's 175 a. elixir-utils is pinned to 6ed42536, which is f2ad55a5 plus one commit: `RegentPayments.Operator.send/3` appends `RegentChain.BuilderCode`'s suffix, so the fee forward's approve and deposit end with Regent's Base Builder Code, `bc_u09360jo`. Amounts, recipients, nonces and the signer are unchanged. Patchbay's fee forward test now expects each call followed by the code. With v405 every transaction Patchbay's operator wallet sends carries the code; an x402 payment cannot, since the site only produces a signature. No migration and no sign-in change. Full check on the commit clean: 1312 site tests, browser walk 525 of 525, 79 contract tests. Rollback: v405 image `22f2c2b` and pin f2ad55a5.
+- Live read, headless Chromium, signed out, 1280 and 390: patchbay.help names 8975738, health ok with migrations applied; `/`, `/sites`, `/incidents`, `/points`, `/account`, `/docs`, `/webmcp` and the open address load with no page error, no file that fails to load and no page wider than the screen. The code on a forwarded fee was proven by tests, not seen on Base.
+
 ## v405, 15 Nov 2026
 
 - Commit: 22f2c2b0 (image `22f2c2b`), released by the Patchbay chief on Sean's 175 a. Every transaction `Patchbay.Escrow` sends from the operator wallet (credit, release, refund, revenue push) ends its calldata with Regent's Base Builder Code, `bc_u09360jo`, read from `RegentChain.BuilderCode` as the wallet buttons' steps are; the dry run before a revenue push stays plain. Amounts, recipients and the contract are unchanged. A test reads the refund Patchbay sends and finds the call followed by the code. regents-cli 1.10.30 was published during the check, so the Makefile pin, `capabilities.json` and the install lines move to it (tag 4a781568). No migration and no sign-in change. Full check on the commit clean: 1312 site tests, browser walk 525 of 525, 79 contract tests. Rollback: v404 image `64bb791`.
