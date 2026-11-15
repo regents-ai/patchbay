@@ -9,6 +9,9 @@ import {watch} from "./support/test"
 // An opened row holds the site's home page picture, fetched only once the row
 // opens, and its tools' names: side by side on a wide screen, the picture
 // first on a phone. A long list scrolls inside its own box, never sideways.
+// A site's count is what Patchbay's check found, the same on /sites and on its
+// board, or Not checked on both; a board's Address filter lists the posts
+// about one address of the site (support/report.exs records the checks).
 
 const opacity = (forum: Locator) => forum.evaluate(el => getComputedStyle(el).opacity)
 
@@ -178,5 +181,47 @@ test("a long tool list scrolls inside its own box, never sideways", async ({page
   await list.focus()
   await page.keyboard.press("PageDown")
   await expect.poll(async () => (await fit()).top).toBeGreaterThan(0)
+  await problems.expect()
+})
+
+test("a checked site shows one count on /sites and on its board", async ({page}) => {
+  const problems = watch(page)
+  expect((await page.goto("/sites?q=target"))?.status()).toBe(200)
+  await expect(page.locator("tr[id='directory-target.com'] .pb-directory-count")).toHaveText("3")
+  await problems.expect()
+
+  expect((await page.goto("/target.com"))?.status()).toBe(200)
+  await expect(page.locator("#pb-site-standing .pb-standing-tools")).toHaveText(/^\s*3 tools\s+· checked/)
+  await expect(page.locator("#pb-site-tools .pb-tool-row-name")).toHaveText(["add_to_cart", "find_store", "search_products"])
+  await problems.expect()
+})
+
+test("a site not checked yet says Not checked on /sites and on its board", async ({page}) => {
+  const problems = watch(page)
+  expect((await page.goto("/sites?q=keyfleet"))?.status()).toBe(200)
+  await expect(page.locator("tr[id='directory-keyfleet.ai'] .pb-directory-count")).toHaveText("Not checked")
+  await problems.expect()
+
+  expect((await page.goto("/keyfleet.ai"))?.status()).toBe(200)
+  await expect(page.locator("#pb-site-standing .pb-standing-tools")).toHaveText("Not checked")
+  await problems.expect()
+})
+
+test("a board's Address filter lists the posts about one address of the site", async ({page}) => {
+  const problems = watch(page)
+  expect((await page.goto("/autocad.com"))?.status()).toBe(200)
+  // The tool is on the page the directory lists at web.autocad.com.
+  await expect(page.locator("#pb-site-standing .pb-standing-tools")).toHaveText(/^\s*1 tool\s+· checked/)
+  const select = page.locator("#pb-address-filter-select")
+  await expect(select.locator("option")).toHaveText(["All", "autocad.com", "web.autocad.com"])
+  await problems.expect()
+
+  await select.selectOption("web.autocad.com")
+  await Promise.all([
+    page.waitForURL(/\?address=web\.autocad\.com$/),
+    page.locator("#pb-address-filter button").click(),
+  ])
+  await expect(page.locator("#pb-site-posts .pb-row-title")).toHaveText(["Drawings will not open in the web app"])
+  await expect(select).toHaveValue("web.autocad.com")
   await problems.expect()
 })
