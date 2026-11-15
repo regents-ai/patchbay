@@ -4,6 +4,11 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v404, 15 Nov 2026
+
+- Commit: 64bb7914 (image `64bb791`), released by the Patchbay chief as ordinary work. regents-cli 1.10.29 was published today, so `make check-siwa-latest` would fail until Patchbay names it: the Makefile pin, `capabilities.json` (release, tag commit 5ae2e873, wheel SHA256) and the install lines in `cli/COMMANDS.md` and the Patchbay skill move to 1.10.29. No code, migration or sign-in change. Full check on the commit clean: 1311 site tests, browser walk 525 of 525, 79 contract tests. Rollback: v403 image `df5fa79`.
+- Live read, headless Chromium, signed out, 1280 and 390: patchbay.help names 64bb791 and regents-cli 1.10.29 with its commit, health ok with migrations applied; `/`, `/sites`, `/incidents`, `/points`, `/account`, `/docs`, `/webmcp` and the open address load with no page error, no file that fails to load and no page wider than the screen.
+
 ## v403, 15 Nov 2026
 
 - Commit: df5fa79d (image `df5fa79`), released by the Patchbay chief on Sean's answers 172 a, 173 a and 174 a (15 Nov, relayed by the orchestrator). Points: `config/prod.exs` sets the shared start, 16 Nov 2026 17:00 UTC, and approves `patchbay.report_published` and `patchbay.reply_published`; the start never moves once set, and earning stops by emptying the approved rules. Most popular: one card per board, re-picked to AI and blockchain sites (OpenAI, Replicate, CrewAI, Glama, OpenSea, 1inch, THORChain, Tatum); each card's board is registered at boot and read by origin. Sign-in: elixir-utils is pinned to f2ad55a5 (8847f6e0 plus the oauth folder), so a refused OAuth request carries a fixed `error_description` and one warning `oauth refused endpoint=… reason=…`; nothing is accepted or refused differently. No migration. Full check on the commit clean: 1311 site tests, browser walk 525 of 525, 79 contract tests. Rollback: v402 image `ff33e16` and pin 8847f6e0.
