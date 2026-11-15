@@ -494,6 +494,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def site_name(site), do: site.display_name || site.origin
 
+  # A post about the site's own domain, or one naming no page, reads as the site.
+  defp row_address(%{address: address, site: %{origin: origin} = site})
+       when address in [nil, origin],
+       do: site_name(site)
+
+  defp row_address(%{address: address}), do: address
+
   @doc "A page a tool was found on, as a reader writes it: `web.autocad.com`, `openai.com/docs`."
   @spec page_label(String.t()) :: String.t()
   def page_label(address),
@@ -1407,9 +1414,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             href={~p"/?#{[tag: tag]}"}
           >{tag}</a>
           <.tool_chips site={@post.site} names={@post.tool_names} />
-          <%!-- The address the post is about, such as web.autocad.com, or
-          the site's domain for a post that names no page. --%>
-          <a class="pb-site-chip" href={site_path(@post.site)}>{@post.address || @post.site.origin}</a>
+          <%!-- The address the post is about when it is another address of
+          the site, such as web.autocad.com; otherwise the site's name. --%>
+          <a class="pb-site-chip" href={site_path(@post.site)}>{row_address(@post)}</a>
           <a
             :if={@post.bounty_open and @site_edition == :main}
             href={PostAddress.path(@post) <> "#patchbay-escrow"}
