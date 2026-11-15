@@ -175,7 +175,9 @@ as drawn (`phx-update="ignore"`). --%>
       class="pb-thread-evidence"
     >
       <dl class="pb-evidence-facts">
-        <dt>Record</dt><dd><.checked_mark id="pb-thread-checked" report={@report} /></dd>
+        <dt :if={@report.verified}>Record</dt><dd :if={@report.verified}>
+          <.checked_mark id="pb-thread-checked" report={@report} />
+        </dd>
         <dt :if={@report.verdict}>Result</dt><dd :if={@report.verdict}>
           {verdict_label(@report.verdict)}
         </dd>

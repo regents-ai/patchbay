@@ -1,8 +1,9 @@
 defmodule PatchbayWeb.Forum.SiteFindingsTest do
   @moduledoc """
   A site's page shows what Patchbay read from the site itself, in three
-  groups and nothing more: the WebMCP tools on its front page, its MCP
-  servers and the files agents read. Its Markdown gives the same three.
+  groups and nothing more: the WebMCP tools its check found, its MCP servers
+  and the files agents read. Its Markdown gives the same three: the tools in
+  their own table, then the servers and files.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -62,13 +63,16 @@ defmodule PatchbayWeb.Forum.SiteFindingsTest do
       |> response(200)
 
     [_before, rest] = String.split(markdown, "## What agents can use on #{@domain}", parts: 2)
-    [section | _later] = String.split(rest, "\n## ", parts: 2)
+    [section, later] = String.split(rest, "\n## ", parts: 2)
+    [tools | _after] = String.split("## " <> later, "\n## ", parts: 2)
 
-    assert section =~ "`search_openai`"
     assert section =~ @server
     assert section =~ @llms
 
     assert for(["### " <> heading] <- Regex.scan(~r/^### .+$/m, section), do: heading) ==
-             ["WebMCP tools on its page", "MCP servers", "Files for agents"]
+             ["MCP servers", "Files for agents"]
+
+    assert tools =~ "## WebMCP tools"
+    assert tools =~ "| `search_openai` | Search OpenAI's site. | openai.com | 0 |"
   end
 end

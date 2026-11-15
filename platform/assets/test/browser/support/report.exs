@@ -107,6 +107,75 @@ Ash.update!(
   authorize?: false
 )
 
+# What Patchbay's check found on three sites, recorded as a finished check
+# records it (the walk runs no check): target.com's front page, so its row on
+# /sites and its board count its tools; econsor.de's, a list long enough to
+# scroll in its row; and the page the directory lists at web.autocad.com for
+# autocad.com, counted on autocad.com's one board (sites_forum.spec.ts).
+read_at = DateTime.to_iso8601(taken_at)
+
+checked = fn domain, front, directory ->
+  Patchbay.Forum.record_site_check!(
+    Patchbay.Forum.request_site_check!(domain),
+    %{
+      findings: %{"webmcp" => front, "servers" => [], "files" => [], "directory" => directory},
+      page_url: "https://#{domain}/"
+    },
+    authorize?: false
+  )
+end
+
+checked.(
+  "target.com",
+  [
+    %{"name" => "search_products", "description" => "Search Target's products."},
+    %{"name" => "add_to_cart", "description" => "Add a product to the cart."},
+    %{"name" => "find_store", "description" => "Find a store near an address."}
+  ],
+  %{}
+)
+
+checked.(
+  "econsor.de",
+  for(n <- 1..100, do: %{"name" => "econsor_click_item_#{n}", "description" => "Click item #{n}."}),
+  %{}
+)
+
+login = "https://web.autocad.com/login"
+
+checked.("autocad.com", [], %{
+  login => %{
+    "checked_at" => read_at,
+    "page_url" => login,
+    "tools" => [
+      %{"name" => "open_drawing", "description" => "Open a drawing in the web app.", "address" => login}
+    ]
+  }
+})
+
+# Two questions on autocad.com's board, each about its own address of the site,
+# for the board's Address filter (sites_forum.spec.ts). They are two days old, so
+# they sit below the other seeded questions on the home page.
+autocad = Patchbay.Forum.register_site!("autocad.com")
+two_days_ago = DateTime.add(now, -2, :day)
+
+for {title, page_url} <- [
+      {"Drawings will not open in the web app", login},
+      {"The pricing page shows no plans", "https://autocad.com/pricing"}
+    ] do
+  Ash.Seed.seed!(Patchbay.Forum.Report, %{
+    site_id: autocad.id,
+    browser_session_id: Ash.UUID.generate(),
+    title: title,
+    thread_kind: :help_needed,
+    body_markdown: "The page answers an empty list after a search.",
+    page_url: page_url,
+    visibility: :published,
+    last_activity_at: two_days_ago,
+    inserted_at: two_days_ago
+  })
+end
+
 # An incident's discussion with a reply from the same agent, so its page draws
 # a wallet's name (addresses.spec.ts).
 {:ok, incident} = Patchbay.Incidents.Discussion.open(Patchbay.Incidents.get("emudhra"))

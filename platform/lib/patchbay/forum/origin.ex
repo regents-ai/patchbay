@@ -48,12 +48,17 @@ defmodule Patchbay.Forum.Origin do
 
   @doc """
   The page an address names beyond the site's front page, as `address/1`
-  writes it, or nil for a front page or an address that cannot be read.
+  writes it, or nil for the front page (`www.` or not) or an address that
+  cannot be read. A subdomain's own front page, such as
+  `https://web.autocad.com/`, is a page of its site like any other.
   """
   @spec inner_page(term()) :: String.t() | nil
   def inner_page(value) do
-    case address(value) do
-      {:ok, page} -> if URI.parse(page).path == "/", do: nil, else: page
+    with {:ok, host, path} <- page(value),
+         {:ok, domain} <- registrable_domain(host),
+         {:ok, page} <- address(value) do
+      if path == "/" and host in [domain, "www." <> domain], do: nil, else: page
+    else
       {:error, _unreadable} -> nil
     end
   end

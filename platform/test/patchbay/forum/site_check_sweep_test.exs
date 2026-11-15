@@ -139,8 +139,8 @@ defmodule Patchbay.Forum.SiteCheckSweepTest do
     Oban.drain_queue(queue: :site_checks)
 
     {:ok, %{sites: [after_failure]}} = SiteDirectory.page(%{"q" => "target.com"})
-    assert after_failure.tools == before.tools
-    assert after_failure.checked_at == before.checked_at
+    assert after_failure.tool_count == before.tool_count
+    assert Enum.map(after_failure.tools, & &1["name"]) == Enum.map(before.tools, & &1["name"])
 
     # Not asked for again until a day after the failed try.
     {:ok, check} = Forum.get_site_check(domain)

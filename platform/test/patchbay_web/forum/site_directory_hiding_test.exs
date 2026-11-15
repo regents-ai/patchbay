@@ -23,8 +23,9 @@ defmodule PatchbayWeb.Forum.SiteDirectoryHidingTest do
     :ok
   end
 
-  # A finished check of Target's directory pages, each found with `tools`
-  # (nil leaves that page unread), and the reread its notice asks for.
+  # A finished check of Target that found nothing on its front page and
+  # `tools` on each of its directory pages (nil leaves that page unread), and
+  # the reread its notice asks for.
   defp checked!(tools_by_page) do
     record_check!(tools_by_page)
     :ok = HiddenSites.refresh()
@@ -51,10 +52,12 @@ defmodule PatchbayWeb.Forum.SiteDirectoryHidingTest do
       end)
 
     # Patchbay's own job records findings: there is no actor for policies to check.
-    Forum.record_site_check!(check, %{findings: %{"directory" => directory}}, authorize?: false)
+    findings = %{"webmcp" => [], "servers" => [], "files" => [], "directory" => directory}
+    Forum.record_site_check!(check, %{findings: findings}, authorize?: false)
   end
 
-  # How many times the hidden sites are read from the database while `run` runs.
+  # How many times the hidden sites are read from the database while `run`
+  # runs: only that read asks whether the directory's pages were read.
   defp hidden_reads(run) do
     test = self()
     id = {__MODULE__, make_ref()}
@@ -63,7 +66,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryHidingTest do
       id,
       [:patchbay, :repo, :query],
       fn _event, _measurements, %{query: query}, _config ->
-        if query =~ "jsonb_path_exists", do: send(test, :hidden_read)
+        if query =~ "jsonb_typeof", do: send(test, :hidden_read)
       end,
       nil
     )
@@ -137,16 +140,16 @@ defmodule PatchbayWeb.Forum.SiteDirectoryHidingTest do
     checked!([["search_products"], []])
 
     site = Enum.find(listing(conn, %{"q" => "target"})["sites"], &(&1["host"] == @host))
-    assert %{"tools" => 1, "source" => "Source scan"} = site
+    assert %{"tools" => 1, "tool_inventory" => [%{"name" => "search_products"}]} = site
     assert sitemap(conn) =~ "/#{@domain}</loc>"
   end
 
-  test "a site not yet read on every page stays listed with its reported tools",
+  test "a site not yet read on every page stays listed with what the check found",
        %{conn: conn} do
     checked!([[], nil])
 
     site = Enum.find(listing(conn, %{"q" => "target"})["sites"], &(&1["host"] == @host))
-    assert %{"source" => "Research listing"} = site
+    assert %{"tools" => 0, "tool_inventory" => []} = site
   end
 
   test "listings read the hidden sites from memory, never from the database", %{conn: conn} do
@@ -167,13 +170,13 @@ defmodule PatchbayWeb.Forum.SiteDirectoryHidingTest do
   end
 
   @tag :capture_log
-  test "while site checks cannot be read, listings answer with the last reading",
-       %{conn: conn} do
+  test "a reread that fails keeps the last reading for every listing", %{conn: conn} do
     checked!([[], []])
     total = listing(conn)["pagination"]["total"]
 
     Repo.query!("ALTER TABLE site_checks RENAME TO site_checks_away")
     assert {:error, _unread} = HiddenSites.refresh()
+    Repo.query!("ALTER TABLE site_checks_away RENAME TO site_checks")
 
     after_failure = listing(conn, %{"q" => "target"})
     refute @host in hosts(after_failure)

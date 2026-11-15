@@ -99,10 +99,15 @@ defmodule PatchbayWeb.Forum.SiteChecks do
   def last_checked(%{findings: %{}, checked_at: %DateTime{} = at}), do: at
   def last_checked(_check), do: nil
 
-  @doc "Whether a finished check found nothing an agent can use."
-  @spec nothing?(map()) :: boolean()
-  def nothing?(findings),
-    do: Enum.all?(~w(webmcp servers files), &(findings[&1] == []))
+  @doc """
+  Whether a finished check found nothing an agent can use: no WebMCP tool on
+  any page it read (`SiteCheck.tools/1`), no MCP server and no agent file.
+  """
+  @spec nothing?(Ash.Resource.record()) :: boolean()
+  def nothing?(check),
+    do:
+      SiteCheck.tools(check) == [] and
+        Enum.all?(~w(servers files), &(check.findings[&1] == []))
 
   @doc "What an MCP server said when it was asked for its tools."
   @spec server_label(map()) :: String.t()

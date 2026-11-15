@@ -593,7 +593,7 @@ defmodule PatchbayWeb.Forum.SolutionsAndInboxTest do
         |> LazyHTML.text()
 
       assert standing =~ "Status"
-      assert standing =~ "0 tools"
+      assert standing =~ "Not checked"
       assert standing =~ ~r/Solved\s+1/
       assert standing =~ ~r/Still open\s+1/
       assert page =~ ~s(href="/?scope=solved&amp;site=example.com")

@@ -215,17 +215,12 @@ defmodule Patchbay.ForumTest do
       assert found.id == site.id
     end
 
-    test "counts tool names and reports per site" do
+    test "counts reports per site" do
       site = site!()
       report!(tool!(site))
-      # A second contract version of the same tool is still one tool.
-      tool!(site, %{contract_sha256: @other_contract})
       tool!(site, %{name: "search", contract_sha256: @other_contract})
 
-      assert {:ok, loaded} =
-               Forum.get_site_by_origin("example.com", load: [:tool_count, :report_count])
-
-      assert loaded.tool_count == 2
+      assert {:ok, loaded} = Forum.get_site_by_origin("example.com", load: [:report_count])
       assert loaded.report_count == 1
     end
 

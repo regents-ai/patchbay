@@ -25,6 +25,28 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     )
   end
 
+  # A finished check of `origin` that found `tools` on its front page, each a
+  # name or a name with its description, written as Patchbay's check writes it.
+  defp checked!(origin, tools) do
+    {:ok, check} = Forum.request_site_check(origin)
+
+    webmcp =
+      Enum.map(tools, fn
+        %{} = tool -> tool
+        name -> %{"name" => name, "description" => nil}
+      end)
+
+    # Patchbay's own job records findings: there is no actor for policies to check.
+    Forum.record_site_check!(
+      check,
+      %{
+        findings: %{"webmcp" => webmcp, "servers" => [], "files" => [], "directory" => %{}},
+        page_url: "https://#{origin}/"
+      },
+      authorize?: false
+    )
+  end
+
   defp report!(tool, attrs \\ %{}) do
     # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     Forum.file_report!(
@@ -206,13 +228,14 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
 
     test "a popular site's card counts its tools as its board and its row do", %{conn: conn} do
+      checked!("bitdefender.com", ["scan_url", "renew"])
       document = conn |> get(~p"/sites") |> html_response(200) |> LazyHTML.from_document()
 
       cards =
         for tile <- LazyHTML.query(document, ".pb-showcase-tile") do
           [href] = LazyHTML.attribute(tile, "href")
-          count = tile |> LazyHTML.query(".pb-showcase-count strong") |> LazyHTML.text()
-          {href, String.to_integer(count)}
+          count = tile |> LazyHTML.query(".pb-showcase-count") |> LazyHTML.text()
+          {href, count |> String.split() |> Enum.join(" ")}
         end
 
       for {href, count} <- cards do
@@ -224,10 +247,14 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
           |> LazyHTML.query("#pb-site-standing .pb-standing-tools")
           |> LazyHTML.text()
 
-        assert board =~ ~r/^\s*#{count} tools?\b/, href
+        case count do
+          "Not checked" -> assert board =~ ~r/^\s*Not checked\b/, href
+          words -> assert board =~ ~r/^\s*#{hd(String.split(words))} tools?\b/, href
+        end
       end
 
-      {_href, bitdefender} = Enum.find(cards, fn {href, _count} -> href =~ "bitdefender" end)
+      assert {_href, "2 Agent Tools"} =
+               Enum.find(cards, fn {href, _count} -> href =~ "bitdefender" end)
 
       %{"sites" => rows} =
         build_conn()
@@ -235,10 +262,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
         |> get(~p"/sites?q=bitdefender.com")
         |> json_response(200)
 
-      assert [%{"tools" => ^bitdefender}] =
-               Enum.filter(rows, &(&1["origin"] == "bitdefender.com"))
-
-      assert bitdefender == 8
+      assert [%{"tools" => 2}] = Enum.filter(rows, &(&1["origin"] == "bitdefender.com"))
     end
 
     test "each catalog picture in the gallery offers its small copy, and the copy is there",
@@ -266,6 +290,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
 
     test "lists Patchbay's own tools page by page", %{conn: conn} do
+      checked!("patchbay.help", Patchbay.Forum.Capabilities.names())
       first_page = conn |> get(~p"/patchbay.help") |> html_response(200)
 
       assert first_page =~
@@ -292,6 +317,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       report!(first)
       report!(second, %{verdict: :verified_failure})
       report!(second, %{verdict: :errored})
+      checked!("shopify.com", ["checkout", "search"])
 
       body = conn |> get(~p"/shopify.com") |> html_response(200)
 
@@ -370,6 +396,8 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     test "presents a tool's copy on the tool row", %{conn: conn} do
       site = site!("shopify.com")
       tool!(site, %{title: "Start checkout", description: "Puts the cart through."})
+
+      checked!("shopify.com", [%{"name" => "checkout", "description" => "Puts the cart through."}])
 
       body = conn |> get(~p"/shopify.com") |> html_response(200)
 
@@ -1202,17 +1230,6 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
              |> recycle()
              |> get(PostAddress.path(thread))
              |> html_response(200) =~ "It is under checkout extras."
-    end
-  end
-
-  describe "whether a report was checked" do
-    test "a report nobody could match says so", %{conn: conn} do
-      report = "shopify.com" |> site!() |> tool!() |> report!()
-
-      body = conn |> get(PostAddress.path(report)) |> html_response(200)
-
-      assert body =~ "Not matched to a logged call"
-      refute body =~ "Matches Patchbay's recorded call"
     end
   end
 

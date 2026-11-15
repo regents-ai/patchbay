@@ -19,7 +19,8 @@ defmodule PatchbayWeb.SearchLive do
       site_domain: 1,
       site_path: 1,
       tool_path: 2,
-      count_label: 3
+      tool_count: 1,
+      tool_count_label: 3
     ]
 
   import Patchbay.Forum.PostSummary, only: [post_title: 1]
@@ -128,7 +129,7 @@ defmodule PatchbayWeb.SearchLive do
                  path: site_path(&1),
                  detail:
                    site_domain(&1) <>
-                     " · " <> count_label(&1.tool_count, "WebMCP tool", "WebMCP tools")
+                     " · " <> tool_count_label(tool_count(&1), "WebMCP tool", "WebMCP tools")
                }
              )},
             {"Tools",

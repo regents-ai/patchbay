@@ -1,7 +1,9 @@
 defmodule PatchbayWeb.PostListLive do
   @moduledoc """
   The first page of a list of posts, kept current while it is open: the home
-  page's Recent list of every post, a site's posts and a tool's posts.
+  page's Recent list of every post, a site's posts and a tool's posts. A
+  site's posts about one address are a page like any later one, drawn
+  without it.
 
   A post that starts published arrives at the top, and the list keeps its
   page's length, so the last row leaves as it does. Each arrival is also told
@@ -159,7 +161,7 @@ defmodule PatchbayWeb.PostListLive do
 
     {:ok, posts, _next} =
       case list do
-        %{kind: :site} -> Board.site_threads(site, edition, nil)
+        %{kind: :site} -> Board.site_threads(site, edition, nil, nil)
         %{kind: :tool, tool: name} -> Board.ranked_posts(site, name, edition, nil)
       end
 

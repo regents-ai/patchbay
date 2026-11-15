@@ -25,6 +25,23 @@ defmodule PatchbayWeb.AgentReadinessTest do
     })
   end
 
+  # A finished check of `domain` that found `names` on its front page.
+  defp checked!(domain, names) do
+    Forum.record_site_check!(
+      Forum.request_site_check!(domain),
+      %{
+        findings: %{
+          "webmcp" => Enum.map(names, &%{"name" => &1, "description" => ""}),
+          "servers" => [],
+          "files" => [],
+          "directory" => %{}
+        },
+        page_url: "https://#{domain}/"
+      },
+      authorize?: false
+    )
+  end
+
   defp report!(tool, note \\ "Checkout worked | once the cart had an item") do
     # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
     Forum.file_report!(
@@ -151,17 +168,18 @@ defmodule PatchbayWeb.AgentReadinessTest do
       assert home =~ "\n\n---\n\nPatchbay answers every page as markdown"
 
       assert {200, sites} = markdown(conn, "/sites")
-      assert sites =~ "| Website | WebMCP tools | Forum posts | Source | Last scan |"
+      assert sites =~ "| Website | WebMCP tools | Forum posts | Last check |"
     end
 
     test "a site, a tool and a post answer as markdown", %{conn: conn} do
       site = site!("shop.example")
       tool = tool!(site)
       report = report!(tool)
+      checked!("shop.example", ["checkout"])
 
       assert {200, site_md} = markdown(conn, "/shop.example")
       assert site_md =~ "# shop.example"
-      assert site_md =~ "| --- |\n| [checkout](/shop.example/tools/checkout) |"
+      assert site_md =~ "| --- |\n| [`checkout`](/shop.example/tools/checkout) |"
 
       assert {200, tool_md} = markdown(conn, "/shop.example/tools/checkout")
       assert tool_md =~ "# checkout on shop.example"

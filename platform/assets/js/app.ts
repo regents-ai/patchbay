@@ -3,6 +3,7 @@ import "../vendor/regent_ui/blog.mjs"
 import "../vendor/regent_ui/confirm.mjs"
 import "../vendor/regent_ui/discussion.mjs"
 import "../vendor/regent_ui/pill_select.mjs"
+import "../vendor/regent_ui/status_word.mjs"
 import "../vendor/regent_ui/tip.mjs"
 // If you want to use Phoenix channels, run `mix help phx.gen.channel`
 // to get started and then uncomment the line below.

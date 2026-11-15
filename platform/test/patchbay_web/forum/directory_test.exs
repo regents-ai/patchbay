@@ -24,15 +24,21 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
 
   defp site!(origin), do: Forum.register_site!(origin)
 
-  # A site page's whole tool inventory, read the way a reader would: page by
-  # page, following each "More tools" link.
-  defp inventory(conn, path) do
-    html = conn |> get(path) |> html_response(200)
+  # A finished check of the site that found `names` on its front page,
+  # written as Patchbay's check writes it.
+  defp checked!(site, names) do
+    {:ok, check} = Forum.request_site_check(site.origin)
+    tools = Enum.map(names, &%{"name" => &1, "description" => nil})
 
-    case Regex.run(~r{href="([^"]*\?tools_after=[^"#]*)#pb-site-tools"}, html) do
-      [_, next] -> html <> inventory(conn, next)
-      nil -> html
-    end
+    # Patchbay's own job records findings: there is no actor for policies to check.
+    Forum.record_site_check!(
+      check,
+      %{
+        findings: %{"webmcp" => tools, "servers" => [], "files" => [], "directory" => %{}},
+        page_url: "https://#{site.origin}/"
+      },
+      authorize?: false
+    )
   end
 
   defp tool!(site, attrs \\ %{}) do
@@ -183,9 +189,11 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     end
 
     test "a tool row opens that tool's page", %{conn: conn} do
-      "tool-row.example" |> site!() |> tool!(%{name: "checkout"})
+      site = site!("tool-row.example")
+      tool!(site, %{name: "checkout"})
+      checked!(site, ["checkout"])
 
-      site = inventory(conn, ~p"/tool-row.example")
+      site = conn |> get(~p"/tool-row.example") |> html_response(200)
       assert site =~ ~s(href="/tool-row.example/tools/checkout")
 
       tool =
@@ -445,13 +453,17 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
   end
 
   describe "support is not inventory" do
-    test "a site an agent merely named is not shown as exposing tools", %{conn: conn} do
+    test "a site an agent merely named is not checked", %{conn: conn} do
       site!("named-only.example")
 
       page = conn |> get(~p"/named-only.example") |> html_response(200)
       assert page =~ "Posts for help with named-only.example."
-      assert page =~ "Tool inventory unverified"
-      refute page =~ "Observed tool inventory"
+
+      assert page
+             |> LazyHTML.from_document()
+             |> LazyHTML.query("#pb-site-standing")
+             |> LazyHTML.text() =~
+               "Not checked"
     end
 
     test "reimporting the catalog neither moves a documented tool's checked date nor invents its declaration",
@@ -471,7 +483,7 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
         |> get(~p"/shopify.com")
         |> response(200)
 
-      assert site =~ "Site's list checked 11 Sep 2026"
+      assert site =~ "Not checked"
 
       tool = conn |> get(~p"/shopify.com/tools/proceed_to_checkout") |> html_response(200)
       refute tool =~ "Raw schemas and declaration"
@@ -480,25 +492,16 @@ defmodule PatchbayWeb.Forum.DirectoryTest do
     test "an official supporter is not shown as exposing tools", %{conn: conn} do
       site = conn |> get(~p"/netlify.com") |> html_response(200)
       assert site =~ "Official supporter"
-      assert site =~ "No public tool inventory"
 
       assert site =~ "No WebMCP tools found on netlify.com yet."
     end
 
-    test "published inventories come from the owner's own publication", %{conn: conn} do
-      shopify = conn |> get(~p"/shopify.com") |> html_response(200)
-      assert shopify =~ "Official tool inventory"
-      assert shopify =~ ~s(href="/shopify.com/tools/proceed_to_checkout")
-      refute shopify =~ "start_checkout"
-
+    test "published tools keep their pages, from the owner's own publication", %{conn: conn} do
       tool = conn |> get(~p"/shopify.com/tools/proceed_to_checkout") |> html_response(200)
       assert tool =~ ~s(href="https://shopify.dev/docs/api/web-mcp")
 
-      patchbay = inventory(conn, ~p"/patchbay.help")
-      assert patchbay =~ "Official tool inventory"
-
       for name <- Capabilities.names() do
-        assert patchbay =~ ~s(href="/patchbay.help/tools/#{name}")
+        assert conn |> get(~p"/patchbay.help/tools/#{name}") |> html_response(200) =~ name
       end
     end
   end

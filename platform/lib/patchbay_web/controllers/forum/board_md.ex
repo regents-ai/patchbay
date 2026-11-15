@@ -124,10 +124,57 @@ defmodule PatchbayWeb.Forum.BoardMD do
   defp step_part({:a, label, href}), do: "[#{label}](#{href})"
   defp step_part(text), do: text
 
-  @doc "When Patchbay last checked the site, after its tool count; nothing after a failed check."
-  def standing_checked(%DateTime{} = at), do: ", checked " <> stamp(at)
-  def standing_checked(nil), do: ", not checked yet"
-  def standing_checked(:failed), do: ""
+  @doc """
+  A site's tool count and when Patchbay last checked it: "Not checked" before
+  a check has finished, and no time after a failed check.
+  """
+  def standing_line(nil, _checked), do: "Not checked"
+  def standing_line(count, %DateTime{} = at), do: tools_line(count) <> ", checked " <> stamp(at)
+  def standing_line(count, :failed), do: tools_line(count)
+
+  defp tools_line(count), do: count_label(count, "tool", "tools")
+
+  @doc """
+  One WebMCP tool the site's check found, as a table row: its name, linked to
+  its page on the board when it has one, its description, the page it was
+  found on and how many posts its page holds.
+  """
+  def tool_row(tool, _site, nil),
+    do: row(["`" <> tool["name"] <> "`", tool["description"] || "", found_on(tool), 0])
+
+  def tool_row(tool, site, page),
+    do:
+      row([
+        "[`" <> tool["name"] <> "`](" <> BoardHTML.tool_path(site, tool["name"]) <> ")",
+        tool["description"] || "",
+        found_on(tool),
+        page.report_count
+      ])
+
+  defp found_on(tool), do: BoardHTML.page_label(tool["address"])
+
+  @doc """
+  The board's Address filter as one line of links, the one showing in bold,
+  as the page's own filter offers them (`BoardHTML.filter_addresses/2`);
+  nothing for a board whose posts name no other address.
+  """
+  def address_line(site, address) do
+    case BoardHTML.filter_addresses(site, address) do
+      [] ->
+        ""
+
+      addresses ->
+        links =
+          [{"All", nil} | Enum.map(addresses, &{&1, &1})]
+          |> Enum.map_join(" · ", fn
+            {name, ^address} -> "**#{name}**"
+            {name, nil} -> "[#{name}](#{BoardHTML.site_path(site)})"
+            {name, value} -> "[#{name}](#{BoardHTML.site_path(site)}?address=#{value})"
+          end)
+
+        "Address: " <> links <> "\n\n"
+    end
+  end
 
   @doc "What a site's check found, as markdown, or where the check stands."
   def check_lines(domain, check) do
@@ -139,15 +186,13 @@ defmodule PatchbayWeb.Forum.BoardMD do
     end
   end
 
+  # The WebMCP tools have their own table on the page; these are the rest.
   defp found_lines(domain, check) do
     findings = check.findings
 
     [
       "Checked #{stamp(check.checked_at)}.",
-      SiteChecks.nothing?(findings) && "_Nothing for agents found on #{domain}._",
-      group("WebMCP tools on its page", findings["webmcp"], fn tool ->
-        "`#{line(tool["name"])}`" <> note(tool["description"])
-      end),
+      SiteChecks.nothing?(check) && "_Nothing for agents found on #{domain}._",
       group("MCP servers", findings["servers"], fn server ->
         names = Enum.map_join(server["tools"], ", ", &"`#{line(&1["name"])}`")
         "<#{server["url"]}> — #{SiteChecks.server_label(server)}" <> note(names)

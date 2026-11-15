@@ -2,9 +2,9 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
   @moduledoc """
   A site's page says one thing about its tools at a time. Text readers get the
   For agents count alone, never the words it is not showing. The status says
-  when Patchbay last checked the site, by that check's own clock, and where
-  the listed tools came from when that is not the check; the page and its
-  Markdown give no other time for a check.
+  when Patchbay last checked the site, by that check's own clock, and the
+  page and its Markdown give no other time for a check. Before a check has
+  finished, the site is not checked, whatever the researched directory lists.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -12,7 +12,8 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.Catalog
 
-  # A researched-directory site: its tools come from Patchbay's directory.
+  # A researched-directory site: the directory lists tools for it, and its
+  # count is still only what Patchbay's check found.
   @domain "bitdefender.com"
   @iso ~r/[Cc]hecked:? (\d{4}-\d\d-\d\dT[\d:.]+Z)/
 
@@ -21,15 +22,23 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
     :ok
   end
 
-  # A check of the site that finished and found nothing on its front page,
+  # A check of the site that finished and found two tools on its front page,
   # recorded as Patchbay's check records it.
   defp checked! do
     {:ok, check} = Forum.request_site_check(@domain)
 
+    tools = [
+      %{"name" => "scan_url", "description" => "Scans an address."},
+      %{"name" => "renew", "description" => "Renews a plan."}
+    ]
+
     # Patchbay's own job records findings: there is no actor for policies to check.
     Forum.record_site_check!(
       check,
-      %{findings: %{"webmcp" => [], "servers" => [], "files" => [], "directory" => %{}}},
+      %{
+        findings: %{"webmcp" => tools, "servers" => [], "files" => [], "directory" => %{}},
+        page_url: "https://" <> @domain <> "/"
+      },
       authorize?: false
     )
   end
@@ -47,17 +56,15 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
     checked!()
     html = page(conn)
     count = LazyHTML.query(html, ".pb-site-agent-count")
-    tools = Forum.get_site_by_origin!(@domain, load: [:tool_count]).tool_count
 
-    assert tools > 0
-    assert squish(LazyHTML.text(count)) == "Agents see #{tools} WebMCP Tools"
+    assert squish(LazyHTML.text(count)) == "Agents see 2 WebMCP Tools"
     assert LazyHTML.attribute(count, "title") == [squish(LazyHTML.text(count))]
-    refute text(html, "main") =~ ~r/Looking for WebMCP tools|Not checked yet/i
-    refute markdown(conn) =~ ~r/Looking for WebMCP tools|Not checked yet|Checking/i
+    assert text(html, "#pb-site-standing") =~ "2 tools"
+    refute text(html, "main") =~ ~r/Looking for WebMCP tools|Not checked/i
+    refute markdown(conn) =~ ~r/Looking for WebMCP tools|Not checked|Checking/i
   end
 
-  test "the status gives the check's own time, and where the listed tools came from",
-       %{conn: conn} do
+  test "the status gives the check's own time", %{conn: conn} do
     check = checked!()
     at = DateTime.to_iso8601(check.checked_at)
     html = page(conn)
@@ -65,7 +72,6 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
 
     assert LazyHTML.attribute(LazyHTML.query(standing, "time"), "datetime") == [at]
     refute squish(LazyHTML.text(standing)) =~ ~r/last seen/i
-    assert squish(LazyHTML.text(standing)) =~ "directory"
 
     # Every check time on the page is that check's.
     assert html
@@ -76,7 +82,7 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
     markdown = markdown(conn)
     [status] = Regex.run(~r/## Status\n\n(.+)\n/, markdown, capture: :all_but_first)
     assert status =~ at
-    assert status =~ "directory"
+    assert status =~ "2 tools"
 
     assert @iso |> Regex.scan(markdown, capture: :all_but_first) |> List.flatten() |> Enum.uniq() ==
              [at]
@@ -105,17 +111,18 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
     end
   end
 
-  test "before the first check finishes, the status says so, with no time", %{conn: conn} do
+  test "before the first check finishes, the site is not checked, with no time", %{conn: conn} do
     html = page(conn)
     standing = LazyHTML.query(html, "#pb-site-standing")
 
     assert LazyHTML.query(standing, "time") |> Enum.count() == 0
-    assert squish(LazyHTML.text(standing)) =~ ~r/not checked yet/i
-    assert text(html, ".pb-site-agent-count") =~ ~r/^Agents see \d+ WebMCP Tools$/
+    assert squish(LazyHTML.text(standing)) =~ "Not checked"
+    refute squish(LazyHTML.text(standing)) =~ ~r/\d+ tools?/
+    refute text(html, ".pb-site-agent-count") =~ ~r/\d/
 
     markdown = markdown(conn)
     assert Regex.scan(@iso, markdown) == []
     [status] = Regex.run(~r/## Status\n\n(.+)\n/, markdown, capture: :all_but_first)
-    assert status =~ ~r/not checked yet/i
+    assert status =~ "Not checked"
   end
 end

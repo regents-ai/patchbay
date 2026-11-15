@@ -28,6 +28,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   alias Patchbay.Forum.Principal
   alias Patchbay.Forum.PriorityRefund
   alias Patchbay.Forum.SearchUnavailable
+  alias Patchbay.Forum.SiteCheck
   alias Patchbay.Forum.SiteDirectory
   alias Patchbay.Forum.SolutionAccept
   alias Patchbay.Incidents
@@ -454,7 +455,9 @@ defmodule PatchbayWeb.Forum.BoardController do
   yet. Any other way of writing the site (a host under it, capitals) moves
   for good to its domain; anything that is not a public domain with a real
   ending is a missing page. `goal` and `error` in the address fill in the
-  post form, and `page` names the exact page the visitor was on.
+  post form, `page` names the exact page the visitor was on, and `address`
+  lists only the posts about one address of the site, such as
+  `web.autocad.com` (a host off the site is a missing page).
 
   A name ending in `.md` is a missing page when the part before `.md` is
   exactly one of Patchbay's own page names (`/docs.md`, `/wallet-bench.md`):
@@ -507,7 +510,7 @@ defmodule PatchbayWeb.Forum.BoardController do
   end
 
   defp moved(conn, path, params) do
-    query = Map.take(params, ~w(goal error page tools_after posts_after after))
+    query = Map.take(params, ~w(goal error page address tools_after posts_after after))
     to = if query == %{}, do: path, else: path <> "?" <> URI.encode_query(query)
     conn |> put_status(:moved_permanently) |> redirect(to: to)
   end
@@ -519,8 +522,9 @@ defmodule PatchbayWeb.Forum.BoardController do
     error = presence(params["error"])
     page = Origin.inner_page(params["page"])
     ask = ask_call(domain, page, goal, error)
+    address = post_address(params["address"], domain)
 
-    case board_for(conn, domain, params) do
+    case board_for(conn, domain, check, address, params) do
       {:ok, board} ->
         site_name = (board.site && board.site.display_name) || domain
 
@@ -543,6 +547,7 @@ defmodule PatchbayWeb.Forum.BoardController do
             refresh_session: board.site && %{"origin" => board.site.origin},
             standing: board.site && Board.site_standing(board.site, check),
             posts_cursor: params["posts_after"],
+            address: address,
             earned_tips:
               Board.earned_tips(Enum.map(board.posts, & &1.author), conn.assigns.site_edition),
             ask: ask,
@@ -559,40 +564,73 @@ defmodule PatchbayWeb.Forum.BoardController do
     end
   end
 
-  # The board's posts for the site, and its tools for the Markdown page; the
-  # HTML page's tools live in its For agents panel (SiteCheckLive). A site
-  # without a board has neither.
-  defp board_for(conn, domain, params) do
+  # The board's posts for the site, about one address when the page names
+  # one, and the tools its check found for the Markdown page; the HTML page's
+  # tools live in its For agents panel (SiteCheckLive). A site without a
+  # board has no posts.
+  defp board_for(conn, domain, check, address, params) do
     format = get_format(conn)
 
-    case Board.fetch_site(domain, [:refresh_due?]) do
+    case Board.fetch_site(domain, [:refresh_due?, :post_addresses]) do
       {:ok, site} ->
         with {:ok, posts, next_posts} <-
-               Board.site_threads(site, conn.assigns.site_edition, params["posts_after"]) do
+               Board.site_threads(
+                 site,
+                 conn.assigns.site_edition,
+                 params["posts_after"],
+                 address
+               ) do
           {:ok,
            Map.merge(
              %{site: site, posts: posts, next_posts: next_posts},
-             inventory(format, site, params)
+             inventory(format, site, check, params)
            )}
         end
 
       :error ->
-        {:ok, Map.merge(%{site: nil, posts: [], next_posts: nil}, inventory(format, nil, params))}
+        {:ok,
+         Map.merge(
+           %{site: nil, posts: [], next_posts: nil},
+           inventory(format, nil, check, params)
+         )}
     end
   end
 
-  defp inventory("md", nil, _params), do: %{tools: [], next_tools: nil}
+  defp inventory("md", site, check, params) do
+    tools = SiteCheck.tools(check)
+    {page, next_tools} = Board.tool_page(tools || [], inventory_cursor(params["tools_after"]))
 
-  defp inventory("md", site, params) do
-    {tools, next_tools} = Board.inventory(site, inventory_cursor(params["tools_after"]))
-    %{tools: tools, next_tools: next_tools}
+    %{
+      tools: tools && page,
+      tool_count: tools && length(tools),
+      next_tools: next_tools,
+      tool_pages: Board.tool_pages(site, Enum.map(page, & &1["name"]))
+    }
   end
 
   # The HTML page's panel reads the tools itself; the address is held to the
   # same rule as the Markdown page's.
-  defp inventory(_html, _site, params) do
+  defp inventory(_html, _site, _check, params) do
     inventory_cursor(params["tools_after"])
     %{}
+  end
+
+  # The address a site page's posts are filtered to, `www.` folded into the
+  # bare name as the posts' own addresses are (`Report`'s `:address`). A host
+  # off the site names no posts here: a missing page.
+  defp post_address(value, domain) do
+    case presence(value) do
+      nil ->
+        nil
+
+      text ->
+        with {:ok, page} <- Origin.address(text),
+             {:ok, ^domain} <- Origin.normalize(page) do
+          page |> URI.parse() |> Map.fetch!(:host) |> String.replace_prefix("www.", "")
+        else
+          _off_the_site -> raise NotFoundError
+        end
+    end
   end
 
   # The arguments for ask_question, with the agent's own words where it gave

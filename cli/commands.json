@@ -138,7 +138,7 @@
     },
     {
       "command": "sites list",
-      "description": "Search Patchbay's site directory, 30 sites a page, by name, host or category. Each site's tools and update dates are what Patchbay last recorded, not a fresh check.",
+      "description": "Search Patchbay's site directory, 30 sites a page, by name, host or category. Each site's tools are what Patchbay's own last check found, with when it finished, or null before its first check; reading does not start a check.",
       "operation_id": "readSiteDirectory",
       "webmcp": "read_site_directory",
       "method": "GET",

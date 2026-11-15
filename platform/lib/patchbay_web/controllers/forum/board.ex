@@ -30,14 +30,17 @@ defmodule PatchbayWeb.Forum.Board do
   alias RegentPayments.USDC
 
   @sites 200
-  @inventory_tools 20
+  @tools_per_page 20
   @priority_reports 20
   @ranked_posts 20
   @reports_per_version 10
   @replies_per_report 10
   @replies_per_page 100
 
-  @site_loads [:tool_count, :report_count]
+  # A site card's tool count is what Patchbay's own check found
+  # (`Patchbay.Forum.SiteCheck.tools/1`), so every card is read with its
+  # check. A site's own page reads its check itself, board or not.
+  @card_loads [:site_check, :report_count]
   @post_loads [
     :author,
     :person,
@@ -91,7 +94,7 @@ defmodule PatchbayWeb.Forum.Board do
     text = String.trim(q)
 
     if String.length(text) >= 2 do
-      with {:ok, sites} <- Forum.find_sites(text, load: [:tool_count, :report_count]),
+      with {:ok, sites} <- Forum.find_sites(text, load: @card_loads),
            {:ok, tools} <- Forum.find_tools(text),
            do: {:ok, %{sites: sites, tools: tools}}
     else
@@ -105,7 +108,7 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec list_directory() :: {:ok, [Site.t()], boolean()} | {:error, term()}
   def list_directory do
-    with {:ok, page} <- Forum.list_directory(query: site_summary(), page: [limit: @sites]),
+    with {:ok, page} <- Forum.list_directory(query: site_cards(), page: [limit: @sites]),
          do: {:ok, page.results, page.more?}
   end
 
@@ -135,16 +138,18 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec list_showcase(pos_integer()) :: {:ok, [Site.t()], boolean()} | {:error, term()}
   def list_showcase(limit \\ @sites) do
-    with {:ok, page} <- Forum.list_showcase(query: site_summary(), page: [limit: limit]),
+    with {:ok, page} <- Forum.list_showcase(query: site_cards(), page: [limit: limit]),
          do: {:ok, page.results, page.more?}
   end
 
-  # A site card carries the same summary wherever it is read: how much has been
+  defp site_cards, do: Ash.Query.load(site_summary(), @card_loads)
+
+  # A site carries the same summary wherever it is read: how much has been
   # reported, how it broke down, and when the last word came in. All of it is
   # counted alongside the site itself, so a page of cards is still one read.
   defp site_summary do
     Site
-    |> Ash.Query.load(@site_loads)
+    |> Ash.Query.load(:report_count)
     |> reports_counted(:verified_success_count, expr(verdict == :verified_success))
     |> reports_counted(:verified_failure_count, expr(verdict == :verified_failure))
     |> reports_counted(:errored_count, expr(verdict == :errored))
@@ -212,29 +217,35 @@ defmodule PatchbayWeb.Forum.Board do
   defp slug?(value), do: Regex.match?(@slug, value)
 
   @doc """
-  One page of a site's tools, one row per name with its newest version, in
-  name order, and the name the next page continues from.
+  One page of the tools a site's check found (`Patchbay.Forum.SiteCheck.tools/1`),
+  in name order from after `after_name`, and the name the next page
+  continues from.
   """
-  @spec inventory(Site.t(), String.t() | nil) :: {[Tool.t()], String.t() | nil}
-  def inventory(%Site{} = site, after_name \\ nil) do
-    page =
-      Forum.site_inventory!(site.id, %{after_name: after_name},
-        load: @tool_loads,
-        page: [limit: @inventory_tools]
-      )
+  @spec tool_page([map()], String.t() | nil) :: {[map()], String.t() | nil}
+  def tool_page(tools, after_name) do
+    {page, rest} =
+      tools
+      |> Enum.sort_by(& &1["name"])
+      |> Enum.filter(&(is_nil(after_name) or &1["name"] > after_name))
+      |> Enum.split(@tools_per_page)
 
-    {page.results, if(page.more?, do: List.last(page.results).name)}
+    {page, if(rest != [], do: List.last(page)["name"])}
   end
 
   @doc """
-  Which of these tool names the site's list holds now. The names are the ones
-  a check found on the site's page, so the read is as small as that list.
+  The board's own page for each of these tool names that has one, by name,
+  with how many posts it holds. The names are a page of the ones a check
+  found, so the read is as small as that page.
   """
-  @spec listed(Site.t(), [String.t()]) :: MapSet.t(String.t())
-  def listed(%Site{}, []), do: MapSet.new()
+  @spec tool_pages(Site.t() | nil, [String.t()]) :: %{optional(String.t()) => Tool.t()}
+  def tool_pages(nil, _names), do: %{}
+  def tool_pages(%Site{}, []), do: %{}
 
-  def listed(%Site{} = site, names),
-    do: site.id |> Forum.list_site_tools_named!(names) |> MapSet.new(& &1.name)
+  def tool_pages(%Site{} = site, names),
+    do:
+      site.id
+      |> Forum.list_site_tools_named!(names, load: [:report_count])
+      |> Map.new(&{&1.name, &1})
 
   @doc "Whether an address segment could name a tool at all; anything else is not on the board."
   @spec tool_name?(term()) :: boolean()
@@ -337,32 +348,24 @@ defmodule PatchbayWeb.Forum.Board do
   end
 
   @doc """
-  Solved and open on a site: how many tools it offers, whether they are
-  Patchbay's directory's list rather than what a check found, and when
-  Patchbay last checked the site (`PatchbayWeb.Forum.SiteChecks.last_checked/1`
-  of `check`), then its solved and still-open questions, the newest three of
-  each with how many there are in all.
+  Solved and open on a site: how many tools Patchbay's check found there, nil
+  before a check has finished (`Patchbay.Forum.SiteCheck.tools/1` of `check`),
+  and when Patchbay last checked the site
+  (`PatchbayWeb.Forum.SiteChecks.last_checked/1`), then its solved and
+  still-open questions, the newest three of each with how many there are in
+  all.
   """
   @spec site_standing(Site.t(), Ash.Resource.record() | nil) :: map()
   def site_standing(%Site{} = site, check) do
+    tools = Patchbay.Forum.SiteCheck.tools(check)
+
     %{
-      tool_count: site.tool_count,
-      directory_tools?: directory_tools?(site),
+      tool_count: tools && length(tools),
       checked: PatchbayWeb.Forum.SiteChecks.last_checked(check),
       solved: site_questions(site, "solved"),
       open: site_questions(site, "open")
     }
   end
-
-  @doc """
-  Whether a site's tools are its entry's in Patchbay's researched directory:
-  a check never writes over that list (`Patchbay.Forum.SiteCheck.record_tools/2`).
-  """
-  @spec directory_tools?(Site.t() | nil) :: boolean()
-  def directory_tools?(%Site{support_relationship: relationship, tool_count: count}),
-    do: not is_nil(relationship) and count > 0
-
-  def directory_tools?(nil), do: false
 
   defp site_questions(site, scope) do
     {:ok, filters} =
@@ -405,13 +408,14 @@ defmodule PatchbayWeb.Forum.Board do
   One page of every published thread on a site — the questions that name no
   tool and the posts about any of its tools — as `site_edition`'s address
   orders them (`ranked_posts/4`), and the cursor of the page after it when
-  there is one.
+  there is one. With `address`, only the threads about that address, such as
+  `web.autocad.com` (`Patchbay.Forum.Report`'s `:address`).
   """
-  @spec site_threads(Site.t(), PatchbayWeb.SiteEdition.t(), String.t() | nil) ::
+  @spec site_threads(Site.t(), PatchbayWeb.SiteEdition.t(), String.t() | nil, String.t() | nil) ::
           {:ok, [Report.t()], String.t() | nil} | {:error, :invalid_posts_cursor}
-  def site_threads(%Site{} = site, site_edition, cursor) do
+  def site_threads(%Site{} = site, site_edition, cursor, address) do
     site.id
-    |> Forum.list_ranked_threads_for_site(site_edition == :main,
+    |> Forum.list_ranked_threads_for_site(site_edition == :main, address,
       load: @site_post_loads,
       page: post_page(cursor)
     )
