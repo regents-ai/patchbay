@@ -6,6 +6,7 @@
 - A site's check now reads its front page and every page the directory lists for it, up to 20 pages. A product at its own address on the site, such as web.autocad.com, is checked with its site and counted on the site's one page.
 - Each site still has one page, under its main domain, with www. counted as the same site. A post's page address now shows which address of the site it is about, and a site's page has an Address filter to list only the posts about one address.
 - The counts that came with the imported site list, and the labels "Inventory", "Tool list from Patchbay's directory" and "Unverified", are gone: nothing could check them.
+- On a site's page, the For agents count now changes its words in place when a check finishes: the old words fade out as the new ones rise in, and nothing beside them moves.
 - For agents: `GET /sites`, its Markdown and `read_site_directory` give each site's `tools` and `tool_inventory` from Patchbay's own check, and a new `checked_at`, all null before the first check; `relationship`, `inventory`, `verified_at` and `source` are gone. `GET /DOMAIN?address=HOST` lists only the posts about one address of the site. A site's Markdown lists the check's tools in one WebMCP tools table, each with the page it was found on. `/openapi.json` is version 23.0.0; `read_site_directory` is version 5 and `ask_question` version 6, whose `page_url` now says it names the address a post is about. The ChatGPT app keeps its twelve tools.
 
 ## 2026-11-14 — Page links

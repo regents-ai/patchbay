@@ -161,12 +161,14 @@ defmodule PatchbayWeb.SiteCheckLive do
         <summary>
           <span class="pb-site-agent-heading">
             <h2 id="pb-site-agents-title" class="pb-site-agent-title">For agents</h2>
-            <%!-- Only the word showing is drawn: the shared status word also
-            draws the ones it is not showing, which text readers would read. --%>
+            <%!-- A finished check swaps the words in place. The line keeps the
+            width of the widest, "Agents see 999 WebMCP Tools" (24ch, as the
+            browser measures it in this font), so nothing beside it moves. --%>
             <Regent.Primitives.status_word
+              id="pb-site-tool-count"
               class="pb-site-agent-count"
-              words={[tools_label(@check, @tool_count)]}
-              current={tools_label(@check, @tool_count)}
+              word={tools_label(@check, @tool_count)}
+              width={24}
               title={tools_label(@check, @tool_count)}
             />
           </span>

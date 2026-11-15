@@ -196,6 +196,42 @@ test("a checked site shows one count on /sites and on its board", async ({page})
   await problems.expect()
 })
 
+// Where the For agents title, the count, View more and Copy for your agent are,
+// and the word on its way out, if one is. Given a word, it first changes the
+// count's text to it, as a LiveView patch does, and reads once the page has
+// answered that change.
+async function panel(word: string | null) {
+  if (word) {
+    document.querySelector("#pb-site-tool-count > .rg-status-word__word")!.firstChild!.nodeValue = word
+    await new Promise<void>(resolve => queueMicrotask(resolve))
+  }
+  const boxes = ["#pb-site-agents-title", "#pb-site-tool-count", ".pb-site-agent-toggle", "#pb-site-agent-copy"].map(selector => {
+    const r = document.querySelector(selector)!.getBoundingClientRect()
+    return [r.x, r.y, r.width, r.height].map(Math.round)
+  })
+  const leaving = [...document.querySelectorAll("#pb-site-tool-count-gone > *")].map(gone => gone.textContent)
+  return {boxes, leaving}
+}
+
+test("a board's tool count swaps its word in place, one word at a time, and nothing beside it moves", async ({page}) => {
+  const problems = watch(page)
+  expect((await page.goto("/target.com"))?.status()).toBe(200)
+  await expect(page.locator("[data-phx-session].phx-connected:has(#pb-site-tool-count)")).toBeAttached()
+  const count = page.locator("#pb-site-tool-count")
+  await expect(count).toHaveJSProperty("innerText", "Agents see 3 WebMCP Tools")
+  const before = await page.evaluate(panel, null)
+  expect(before.leaving).toEqual([])
+
+  const during = await page.evaluate(panel, "Looking for WebMCP tools…")
+  expect(during.leaving, "the old word leaves from its copy").toEqual(["Agents see 3 WebMCP Tools"])
+  expect(during.boxes, "the panel as the word changes").toEqual(before.boxes)
+
+  await expect(page.locator("#pb-site-tool-count-gone > *")).toHaveCount(0)
+  await expect(count).toHaveJSProperty("innerText", "Looking for WebMCP tools…")
+  expect((await page.evaluate(panel, null)).boxes, "the panel once the word has changed").toEqual(before.boxes)
+  await problems.expect()
+})
+
 test("a site not checked yet says Not checked on /sites and on its board", async ({page}) => {
   const problems = watch(page)
   expect((await page.goto("/sites?q=keyfleet"))?.status()).toBe(200)
