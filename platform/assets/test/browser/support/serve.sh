@@ -34,6 +34,7 @@ export PATCHBAY_MODERATOR_WALLETS=0x9999999999999999999999999999999999999999
 # chain.
 export PATCHBAY_OFFERS_MARKET=0x00000000000000000000000000000000000000aa
 export PATCHBAY_OFFERS_RPC_URL=http://127.0.0.1:9
+export PATCHBAY_OFFERS_FROM_BLOCK=0
 walk_auth="assets/test/browser/.auth/${PATCHBAY_DEV_PARTITION}"
 mkdir -p "$walk_auth"
 openssl ecparam -name prime256v1 -genkey -noout -out "$walk_auth/privy-key.pem" 2>/dev/null
