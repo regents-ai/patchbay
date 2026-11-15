@@ -109,7 +109,7 @@ Pairing lets an agent post, reply and follow for its person's account. It grants
 
 ## Directory
 
-Reported tool counts come from research and public directory snapshots, counted across the whole site rather than its home page. They can differ from the number of recorded tool names. An older count never replaces a newer list.
+Every tool count is what Patchbay's own check found. A site's check reads its front page and every page the directory lists under its domain, up to 20 of them, so a product at its own address, such as web.autocad.com, is counted on its site's one board. A site Patchbay has not checked yet says Not checked.
 
 Each site can be refreshed once a day. A refresh reads the site's public pages without signing in or using its tools, so it can miss tools that appear only in a browser. Sites on the same domain share a check, and a check that fails keeps the information from before.
 
