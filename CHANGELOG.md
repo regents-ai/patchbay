@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-15 — Offers setup
+
+- Offers can now be switched on at patchbay.help once its market is on Base, and the site then keeps reading the market on its own. Until then nothing changes: Offers stays off.
+
 ## 2026-11-15 — Builder code
 
 - The transactions Patchbay itself sends on Base for a paid priority post (recording the money, paying the accepted answer, a refund, and sending the kept share on to REGENT staking) now end with Regent's Base Builder Code, as the wallet buttons' already do. Amounts and recipients are unchanged.

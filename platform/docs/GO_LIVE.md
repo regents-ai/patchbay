@@ -164,3 +164,67 @@ transaction going out.
 contract cannot be rolled back — it has no upgrade path and no pause. If it is
 wrong, deploy a new one and change `ESCROW_CONTRACT_ADDRESS`; money already in
 the old contract is still refundable to its askers thirty days on.
+
+## Offers
+
+Agent offers stay off in production (`/offers` and the agent reads answer 404)
+until the market's settings below are set. Once they are, the site reads the
+market every five minutes on its own. **Deploying the contracts (step 1) and
+setting the secrets (step 3) each need Sean's own go**; an agent prepares and
+checks everything else.
+
+Before you start:
+
+- **The publisher wallet.** A fresh EOA. It signs Patchbay's admissions, so the
+  site holds its key, and it never holds money. It sends the three deploy
+  transactions, so it needs a little ETH on Base. Keep its key in a Foundry
+  keystore entry (`cast wallet import <name> --interactive`).
+- **The admin.** The factory's owner, who admits other publishers. Ideally a
+  Safe.
+- **The REGENT revenue staking contract**, the one `STAKING_CONTRACT_ADDRESS`
+  names.
+- **`BASE_RPC_URL` set on the Fly app** ("3. Turn on payments" above):
+  production reads the market through it.
+
+1. **Deploy the contracts** (Sean's go). From `repos/patchbay/contracts`, with
+   `OFFERS_ADMIN`, `OFFERS_PUBLISHER`, `OFFERS_STAKING`, `OFFERS_FEE_BPS`
+   (1000), `BASE_RPC_URL` and `ETHERSCAN_API_KEY` set in your shell. Run it once
+   without `--broadcast` to simulate, then:
+
+   ```sh
+   forge script script/DeployOffers.s.sol --rpc-url $BASE_RPC_URL --broadcast --verify --account <publisher keystore name>
+   ```
+
+   `contracts/README.md`, "Deploy the offer contracts", says what the script
+   checks and logs.
+
+2. **Record the addresses.** Write down the factory, staking payout and market
+   addresses the script logs, and the block number forge prints for the last of
+   the three transactions (`createMarket`). Check the owner, staking contract,
+   fee, publisher and payout it logs against what you meant: none of them can
+   be changed.
+
+3. **Set the three secrets** (Sean's go), in one command so the machine restarts
+   once:
+
+   ```sh
+   fly secrets set --app patchbay-regents PATCHBAY_OFFERS_MARKET="0x<the market address>" PATCHBAY_OFFERS_FROM_BLOCK="<the createMarket block>" PATCHBAY_OFFERS_PUBLISHER_KEY="0x<the publisher key>"
+   ```
+
+   A malformed address or block stops the machine's boot with a message naming
+   the setting, never its value; set it again correctly. A missing or malformed
+   key leaves buying closed.
+
+4. **Release** the current `main` with `scripts/deploy.sh`, as in "5. Deploy the
+   current code" above, if the commit that reads these settings in production
+   is not live yet.
+
+5. **Confirm.** <https://patchbay.help/offers> answers with the Offers page
+   instead of the 404 page, and so do `/offers.md` and `/api/offers`;
+   <https://open.patchbay.help/offers> still answers 404. The market starts with
+   no placements, so the page lists none until the publisher creates Patchbay's
+   own on the market.
+
+To switch Offers off again, `fly secrets unset --app patchbay-regents
+PATCHBAY_OFFERS_MARKET`. The contracts stay on Base, and every credit in them
+can still be claimed there.
