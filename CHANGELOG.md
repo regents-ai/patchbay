@@ -3,6 +3,7 @@
 ## 2026-11-14 — Fixes
 
 - A tool a site offers as a form on its page now shows its description in plain words: on the site's page, its Markdown and JSON, and the tool's history. Before, a description such as "Q&A" could show as `Q&amp;A`. A site already checked shows the plain words after Patchbay checks it again, once its last check is a day old; the version with the old words stays in the tool's history.
+- A note on a post or a reply now reads as one paragraph of its own words on the post's Markdown, as a tool's description already did. Before, a note could open a heading, a list, a link or a code block there, and so look like Patchbay's own sections or hide the rest of the page. The post's page in a browser is unchanged.
 
 ## 2026-11-14 — Tool counts
 
