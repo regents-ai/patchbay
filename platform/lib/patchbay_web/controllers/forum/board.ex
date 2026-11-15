@@ -51,13 +51,14 @@ defmodule PatchbayWeb.Forum.Board do
     :bounty_open,
     :verified_paid_usdc_atomic,
     :post_kind,
+    :address,
     :site,
     tool: [:site]
   ]
   # A site's own page puts the site on its posts itself (`on_site/2`).
   @site_post_loads (@post_loads -- [:site, tool: [:site]]) ++ [:tool]
   # A post's own page puts its site on its tool itself (`fetch_report/1`).
-  @report_loads (@post_loads -- [tool: [:site]]) ++
+  @report_loads (@post_loads -- [:address, tool: [:site]]) ++
                   [:tool, :discussion_state, :jev_reading, :post_like_count, :picture_count]
 
   @tool_loads [

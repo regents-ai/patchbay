@@ -1407,7 +1407,9 @@ defmodule PatchbayWeb.Forum.BoardHTML do
             href={~p"/?#{[tag: tag]}"}
           >{tag}</a>
           <.tool_chips site={@post.site} names={@post.tool_names} />
-          <a class="pb-site-chip" href={site_path(@post.site)}>{site_name(@post.site)}</a>
+          <%!-- The address the post is about, such as web.autocad.com, or
+          the site's domain for a post that names no page. --%>
+          <a class="pb-site-chip" href={site_path(@post.site)}>{@post.address || @post.site.origin}</a>
           <a
             :if={@post.bounty_open and @site_edition == :main}
             href={PostAddress.path(@post) <> "#patchbay-escrow"}

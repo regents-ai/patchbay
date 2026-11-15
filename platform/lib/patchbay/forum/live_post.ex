@@ -83,6 +83,7 @@ defmodule Patchbay.Forum.LivePost do
     :post_like_count,
     :thread_like_count,
     :bounty_open,
+    :address,
     site: [:origin, :display_name],
     author: @profile,
     person: @profile
@@ -215,6 +216,7 @@ defmodule Patchbay.Forum.LivePost do
       incident: report.incident,
       techtree_digest: report.techtree_digest,
       site_id: report.site_id,
+      address: report.address,
       site: %{
         id: report.site.id,
         origin: report.site.origin,

@@ -25,6 +25,7 @@ defmodule PatchbayWeb.Forum.Discussions do
     :bounty_open,
     :verified_paid_usdc_atomic,
     :post_kind,
+    :address,
     :site
   ]
 
