@@ -39,7 +39,9 @@ defmodule PatchbayWeb.PageBusyTest do
       assert_busy_page(get(conn, "/no-board.example"), "/no-board.example")
     end
 
-    test "is busy when its tools cannot be read, as a page and as Markdown", %{conn: conn} do
+    test "is busy when the pages of its check's tools cannot be read, as a page and as Markdown",
+         %{conn: conn} do
+      checked_with_a_tool!()
       lock_table("forum_tools")
 
       assert_busy_page(get(conn, "/busy-pages.example"), "/busy-pages.example")
@@ -68,7 +70,8 @@ defmodule PatchbayWeb.PageBusyTest do
       assert_error_sent 500, fn -> get(conn, "/no-board.example") end
     end
 
-    test "is a fault when its tools fail for another reason", %{conn: conn} do
+    test "is a fault when the pages of its check's tools fail for another reason", %{conn: conn} do
+      checked_with_a_tool!()
       Patchbay.Repo.query!("ALTER TABLE forum_tools RENAME COLUMN name TO hidden_away")
 
       assert_error_sent 500, fn ->
@@ -342,6 +345,27 @@ defmodule PatchbayWeb.PageBusyTest do
       assert {:error, fault} = Forum.get_site_check("no-board.example")
       refute ignored?(fault)
     end
+  end
+
+  # A check of the site that found one tool, written as Patchbay's check
+  # writes it, so the site's page and its Markdown read the board's page for
+  # that tool (`PatchbayWeb.Forum.Board.tool_pages/2`).
+  defp checked_with_a_tool! do
+    {:ok, check} = Forum.request_site_check("busy-pages.example")
+
+    # Patchbay's own job records findings: there is no actor for policies to check.
+    Forum.record_site_check!(
+      check,
+      %{
+        findings: %{
+          "webmcp" => [%{"name" => "find_cart", "description" => "Find the cart."}],
+          "servers" => [],
+          "files" => [],
+          "directory" => %{}
+        }
+      },
+      authorize?: false
+    )
   end
 
   # As ErrorTracker records an exception: its name and its printed message.
