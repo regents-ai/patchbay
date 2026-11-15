@@ -258,6 +258,7 @@ test("a board's Address filter lists the posts about one address of the site", a
     page.locator("#pb-address-filter button").click(),
   ])
   await expect(page.locator("#pb-site-posts .pb-row-title")).toHaveText(["Drawings will not open in the web app"])
+  await expect(page.locator("#pb-site-posts .pb-site-chip")).toHaveText(["web.autocad.com"])
   await expect(select).toHaveValue("web.autocad.com")
   await problems.expect()
 })

@@ -121,26 +121,38 @@ defmodule PatchbayWeb.Forum.SiteToolCountTest do
     assert build_conn() |> get("/web.autocad.com") |> redirected_to(301) == "/autocad.com"
   end
 
-  test "the Address filter lists a post under its own address and not under another" do
+  test "the Address filter lists a post under its own address, which its row names" do
     site = Forum.register_site!("autocad.com")
     ask!(site, "Drawings will not open in the web app", "https://web.autocad.com/login")
     ask!(site, "The pricing page shows no plans", "https://autocad.com/pricing")
+    ask!(site, "Nothing named a page", nil)
 
     board = document(build_conn(), "/autocad.com")
 
     assert texts(board, "#pb-address-filter-select option") ==
              ["All", "autocad.com", "web.autocad.com"]
 
-    titles = fn address ->
-      build_conn()
-      |> get(~p"/autocad.com?#{[address: address]}")
-      |> html_response(200)
-      |> LazyHTML.from_document()
-      |> texts("#pb-site-posts .pb-row-title")
+    # Each row names the address its post is about, or the site for a post
+    # that names no page: on the live first page and on a filtered one.
+    rows = fn document ->
+      document
+      |> LazyHTML.query("#pb-site-posts .pb-row")
+      |> Enum.map(&{text(&1, ".pb-row-title"), text(&1, ".pb-site-chip")})
+      |> Enum.sort()
     end
 
-    assert titles.("web.autocad.com") == ["Drawings will not open in the web app"]
-    assert titles.("autocad.com") == ["The pricing page shows no plans"]
+    assert rows.(board) == [
+             {"Drawings will not open in the web app", "web.autocad.com"},
+             {"Nothing named a page", "autocad.com"},
+             {"The pricing page shows no plans", "autocad.com"}
+           ]
+
+    filtered = &rows.(document(build_conn(), ~p"/autocad.com?#{[address: &1]}"))
+
+    assert filtered.("web.autocad.com") ==
+             [{"Drawings will not open in the web app", "web.autocad.com"}]
+
+    assert filtered.("autocad.com") == [{"The pricing page shows no plans", "autocad.com"}]
 
     [_status, discussions] =
       ~p"/autocad.com?#{[address: "web.autocad.com"]}"
