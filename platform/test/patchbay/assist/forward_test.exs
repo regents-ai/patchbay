@@ -52,7 +52,9 @@ defmodule Patchbay.Assist.ForwardTest do
 
     assert approve.nonce == 0
     assert approve.to == String.downcase(USDC.asset())
-    assert approve.input == ERC20.approve(@staking, 100_000).data
+    # Each send is its call followed by Regent's Base Builder Code.
+    code = Ethers.Utils.hex_decode!(RegentChain.BuilderCode.suffix())
+    assert approve.input == ERC20.approve(@staking, 100_000).data <> code
 
     assert deposit.nonce == 1
     assert deposit.to == @staking
@@ -60,7 +62,8 @@ defmodule Patchbay.Assist.ForwardTest do
     payer_bytes = :binary.copy(<<0xAA>>, 20)
 
     assert deposit.input ==
-             Staking.deposit_usdc(100_000, @source_tag, <<0::size(96), payer_bytes::binary>>).data
+             Staking.deposit_usdc(100_000, @source_tag, <<0::size(96), payer_bytes::binary>>).data <>
+               code
 
     # Forwarded once; a second job for the same fee sends nothing more.
     assert {:cancel, _} =

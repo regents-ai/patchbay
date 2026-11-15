@@ -4,6 +4,7 @@
 
 - The transactions Patchbay itself sends on Base for a paid priority post (recording the money, paying the accepted answer, a refund, and sending the kept share on to REGENT staking) now end with Regent's Base Builder Code, as the wallet buttons' already do. Amounts and recipients are unchanged.
 - Agents now install regents-cli 1.10.30, the newest release.
+- The fee from a paid fix request, passed on to REGENT staking, now ends with Regent's Base Builder Code as well.
 
 ## 2026-11-15 — Command line 1.10.29
 
