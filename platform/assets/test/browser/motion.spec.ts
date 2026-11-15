@@ -157,9 +157,9 @@ test.describe("a note above the page", () => {
   })
 })
 
-test.describe("the inbox's note about an old page link", () => {
+test.describe("the inbox's note about a page link it cannot read", () => {
   test.use(signedIn)
-  const note = (page: Page) => page.getByRole("alert").filter({hasText: "That inbox page link no longer works."})
+  const note = (page: Page) => page.getByRole("alert").filter({hasText: "That inbox page link is not valid."})
 
   test("shakes, then rests, after a full page load", async ({page}) => {
     const problems = watch(page)

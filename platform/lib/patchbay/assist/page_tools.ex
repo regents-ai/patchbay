@@ -16,8 +16,9 @@ defmodule Patchbay.Assist.PageTools do
   tool's description is the one written on the tool object itself, read
   whole and as the browser would read it, never one of its parameters'. A
   description put together at run time is not seen, and the tool is kept
-  with none. A description longer than is kept is cut between words and
-  ends with "…".
+  with none. A form's attributes are read as the browser reads them, so a
+  description written `Q&amp;A` is kept as `Q&A`. A description longer than
+  is kept is cut between words and ends with "…".
 
   `Patchbay.Forum.ToolName` alone decides what a tool name is: the reader
   picks out every candidate and keeps only the names the board would store.
@@ -224,13 +225,19 @@ defmodule Patchbay.Assist.PageTools do
   defp same_site?(other, {:ok, site}), do: Origin.normalize(other) == {:ok, site}
   defp same_site?(_other, {:error, _not_a_site}), do: false
 
-  # Forms the page marks as tools, by the attributes WebMCP reads.
+  # Forms the page marks as tools, by the attributes WebMCP reads, read as
+  # the browser reads them: the first of each name counts, and character
+  # references such as `&amp;` are decoded once.
   defp form_tools(html) do
     for [tag] <- Regex.scan(~r/<form\b[^>]*>/i, html),
-        name = attribute(tag, "toolname"),
+        {:ok, [{"form", attributes, _children}]} <- [Floki.parse_fragment(tag)],
+        name = form_attribute(attributes, "toolname"),
         ToolName.valid?(name),
-        do: tool(name, attribute(tag, "tooldescription") || "")
+        do: tool(name, form_attribute(attributes, "tooldescription") || "")
   end
+
+  defp form_attribute(attributes, name),
+    do: attributes |> List.keyfind(name, 0, {name, nil}) |> elem(1)
 
   # Tool objects in a page's code: an object whose own keys name the tool in
   # text and hold an input schema or the function run. Its description is

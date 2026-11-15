@@ -560,7 +560,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         )
 
       {:error, :invalid_posts_cursor} ->
-        expired_posts_page(conn, "/" <> domain)
+        first_posts_page(conn, "/" <> domain)
     end
   end
 
@@ -663,11 +663,12 @@ defmodule PatchbayWeb.Forum.BoardController do
     if Board.tool_name?(name), do: name, else: raise(NotFoundError)
   end
 
-  # A continuation that names no page any more sends the reader back to the
-  # first page of posts, and says so, rather than showing an empty list.
-  defp expired_posts_page(conn, path) do
+  # A continuation that cannot be read, edited or made up, sends the reader
+  # back to the first page of posts, and says so, rather than showing an
+  # empty list.
+  defp first_posts_page(conn, path) do
     conn
-    |> put_flash(:error, "That page of posts has expired. Showing the first page.")
+    |> put_flash(:error, "That link to more posts is not valid here. Showing the first page.")
     |> redirect(to: path <> "#pb-site-posts")
   end
 
@@ -688,7 +689,7 @@ defmodule PatchbayWeb.Forum.BoardController do
         render_catalog(conn, :tool, assigns)
 
       {:error, :invalid_posts_cursor} ->
-        expired_posts_page(
+        first_posts_page(
           conn,
           PatchbayWeb.Forum.BoardHTML.tool_path(site, name)
         )

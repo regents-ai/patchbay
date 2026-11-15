@@ -233,6 +233,26 @@ defmodule Patchbay.Assist.PageToolsTest do
     assert {:ok, []} = PageTools.read("https://bookings.example.com/names", target_options())
   end
 
+  test "a form's description is read as the browser reads it, its character references decoded once" do
+    page = %{
+      url: "https://shop.example/",
+      html: """
+      <form toolname="ask_team" tooldescription="Questions &amp; answers &mdash; it&#39;s free, &quot;fast&quot; &#x1F600; and &amp;amp; stays"></form>
+      <form TOOLNAME='find_rooms' ToolDescription='Rooms &lt;b&gt; tonight' tooldescription='Not this one'></form>
+      """,
+      cut?: false
+    }
+
+    assert page
+           |> PageTools.inspect_tools()
+           |> Map.fetch!(:tools)
+           |> Map.new(&{&1.name, &1.description}) ==
+             %{
+               "ask_team" => "Questions & answers — it's free, \"fast\" 😀 and &amp; stays",
+               "find_rooms" => "Rooms <b> tonight"
+             }
+  end
+
   test "keeps only names the board would store, in code and on forms" do
     PageSite.serve(%{
       "/" =>
