@@ -115,6 +115,9 @@ defmodule Patchbay.MixProject do
       {:logger_json, "~> 7.0"},
       {:error_tracker, "~> 0.9"},
       {:mdex, "== 0.14.6"},
+      # Reads a form a site's page marks as a tool as a browser does
+      # (`Patchbay.Assist.PageTools`); regent_blog uses the same copy.
+      {:floki, "~> 0.38"},
       {:domainatrex, "~> 3.2"},
       {:regent_privy,
        git: @elixir_utils, ref: @elixir_utils_ref, sparse: "privy", override: true},

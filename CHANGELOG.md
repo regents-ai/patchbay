@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-14 — Fixes
+
+- A tool a site offers as a form on its page now shows its description in plain words: on the site's page, its Markdown and JSON, and the tool's history. Before, a description such as "Q&A" could show as `Q&amp;A`. A site already checked shows the plain words after Patchbay checks it again, once its last check is a day old; the version with the old words stays in the tool's history.
+
 ## 2026-11-14 — Tool counts
 
 - A site's tool count now has one source: what Patchbay's own check found. Sites, each site's page, the Most popular cards and search all show the same number. A site Patchbay has not checked yet says Not checked instead of a number.
