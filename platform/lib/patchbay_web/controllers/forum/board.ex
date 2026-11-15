@@ -444,9 +444,9 @@ defmodule PatchbayWeb.Forum.Board do
   defp post_page(nil), do: [limit: @ranked_posts]
   defp post_page(cursor), do: [limit: @ranked_posts, after: cursor]
 
-  # A page of posts and the cursor that continues it. A cursor that names no
-  # page — expired, edited, or made up — is said so, never shown as an empty
-  # list.
+  # A page of posts and the cursor that continues it, which never expires. A
+  # cursor that cannot be read — edited or made up — is said so, never shown
+  # as an empty list.
   defp post_page_result({:ok, %{results: results, more?: more?}}) do
     {:ok, results, if(more?, do: List.last(results).__metadata__.keyset)}
   end

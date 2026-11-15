@@ -92,7 +92,7 @@ defmodule PatchbayWeb.AccountLive do
     |> assign(PatchbayWeb.PublicDocuments.page("/account/inbox"))
     |> assign(
       inbox_cursor: cursor,
-      inbox_expired?: false,
+      inbox_link_refused?: false,
       unfollow_problem: nil,
       leaving: MapSet.new()
     )
@@ -122,7 +122,8 @@ defmodule PatchbayWeb.AccountLive do
   end
 
   # Confined to the visitor's own principals; the event join reads their own
-  # mail. A page link that names no page any more starts from the top.
+  # mail. Its page links never expire; one that cannot be read, edited or
+  # made up, starts from the top and says so.
   defp read_inbox(socket) do
     principals = principals(socket)
     cursor = socket.assigns.inbox_cursor
@@ -143,7 +144,7 @@ defmodule PatchbayWeb.AccountLive do
       {:error, %Ash.Error.Invalid{errors: errors} = invalid} ->
         unless Enum.any?(errors, &match?(%Ash.Error.Page.InvalidKeyset{}, &1)), do: raise(invalid)
 
-        socket |> assign(inbox_cursor: nil, inbox_expired?: true) |> read_inbox()
+        socket |> assign(inbox_cursor: nil, inbox_link_refused?: true) |> read_inbox()
 
       {:error, failure} ->
         raise failure
@@ -321,15 +322,15 @@ defmodule PatchbayWeb.AccountLive do
     ~H"""
     <div id="account-inbox" class="pb-account-tab">
       <p
-        :if={@inbox_expired?}
-        id="pb-inbox-expired"
+        :if={@inbox_link_refused?}
+        id="pb-inbox-link-refused"
         class="pb-flash"
         role="alert"
         phx-hook="MotionRefusal"
         phx-remove={PatchbayWeb.Motion.leave()}
         data-refused
       >
-        That inbox page link no longer works. Here is the start of your inbox.
+        That inbox page link is not valid. Here is the start of your inbox.
       </p>
       <p class="patchbay-muted">
         What happened on the sites, tools and threads you follow. Each notice stays
