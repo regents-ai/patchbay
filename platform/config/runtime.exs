@@ -297,35 +297,48 @@ config :patchbay, :escrow,
 # operator wallet for a person to forward.
 config :patchbay, :assist, staking_contract_address: System.get_env("STAKING_CONTRACT_ADDRESS")
 
-# Agent offers, only ever in development, on a lab market on this machine
-# (`scripts/offers-lab.sh`). PATCHBAY_OFFERS_MARKET turns the feature on;
-# PATCHBAY_OFFERS_RPC_URL is the lab chain's node, read by the site and added
-# by the wallet; PATCHBAY_OFFERS_FROM_BLOCK is the block the market was made
-# in; PATCHBAY_OFFERS_PUBLISHER_KEY signs Patchbay's admissions, and buying is
-# closed without it. Production never reads them, so the feature stays off.
-if config_env() == :dev do
+# Agent offers (`Patchbay.Offers`), in production and in development; tests
+# switch them on themselves. With none of these set the feature stays off.
+# PATCHBAY_OFFERS_MARKET turns it on and adds the market's five-minute read to
+# the Oban cron (`Patchbay.Offers.Watch`); PATCHBAY_OFFERS_FROM_BLOCK is the
+# block the market was made in; PATCHBAY_OFFERS_PUBLISHER_KEY signs Patchbay's
+# admissions, and buying is closed without it. A malformed address or block
+# stops the boot, naming the setting and never its value. Production reads the
+# market through its Base node (BASE_RPC_URL, above). In development the market
+# is a lab chain on this machine (`scripts/offers-lab.sh`), whose node
+# PATCHBAY_OFFERS_RPC_URL names: the site reads through it and the wallet adds
+# it.
+if config_env() != :test do
   if market = System.get_env("PATCHBAY_OFFERS_MARKET") do
     market = String.downcase(String.trim(market))
 
     Regex.match?(~r/\A0x[0-9a-f]{40}\z/, market) or
       raise "PATCHBAY_OFFERS_MARKET must be an address"
 
-    node_url = System.fetch_env!("PATCHBAY_OFFERS_RPC_URL")
+    from_block = String.trim(System.get_env("PATCHBAY_OFFERS_FROM_BLOCK", "0"))
 
-    case URI.new(node_url) do
-      {:ok, %URI{scheme: "http", host: host}} when host in ["127.0.0.1", "localhost"] -> :ok
-      _other -> raise "PATCHBAY_OFFERS_RPC_URL must be a lab chain on this machine"
-    end
+    Regex.match?(~r/\A[0-9]+\z/, from_block) or
+      raise "PATCHBAY_OFFERS_FROM_BLOCK must be a block number"
 
     config :patchbay, Patchbay.Offers,
       market_address: market,
-      wallet_rpc_url: node_url,
-      from_block: String.to_integer(System.get_env("PATCHBAY_OFFERS_FROM_BLOCK", "0")),
+      from_block: String.to_integer(from_block),
       publisher_private_key: System.get_env("PATCHBAY_OFFERS_PUBLISHER_KEY")
 
-    config :patchbay,
-           :chain_nodes,
-           Map.put(Application.fetch_env!(:patchbay, :chain_nodes), 8453, node_url)
+    if config_env() == :dev do
+      node_url = System.fetch_env!("PATCHBAY_OFFERS_RPC_URL")
+
+      case URI.new(node_url) do
+        {:ok, %URI{scheme: "http", host: host}} when host in ["127.0.0.1", "localhost"] -> :ok
+        _other -> raise "PATCHBAY_OFFERS_RPC_URL must be a lab chain on this machine"
+      end
+
+      config :patchbay, Patchbay.Offers, wallet_rpc_url: node_url
+
+      config :patchbay,
+             :chain_nodes,
+             Map.put(Application.fetch_env!(:patchbay, :chain_nodes), 8453, node_url)
+    end
 
     oban = Application.fetch_env!(:patchbay, Oban)
 

@@ -1,7 +1,7 @@
 defmodule PatchbayWeb.OffersGate do
   @moduledoc """
   The gate on agent offers' addresses (`Patchbay.Offers.enabled?/0`): while no
-  market is set, as in production, a request answers the site's own 404 and a
+  market is set, a request answers the site's own 404 and a
   connected page goes to the home page, as `PatchbayWeb.Showcase` gates the
   motion lab.
   """
