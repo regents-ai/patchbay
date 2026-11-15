@@ -491,9 +491,12 @@ defmodule PatchbayWeb.Forum.Board do
   def replies_per_page, do: @replies_per_page
 
   @doc """
-  One page of the replies to a report, oldest first: the opening page, or the
-  one that follows a continuation the board or the API handed out, with the
-  continuation for the page after it when there is one.
+  One page of the replies to a report, most helpful first, in
+  `Patchbay.Forum.Reply`'s `:for_report` order: the asker's pick, then by
+  helpfulness with a tie going to the newer reply, then the unmarked replies
+  newest first. The opening page, or the one that follows a continuation the
+  board or the API handed out, with the continuation for the page after it
+  when there is one.
   """
   @spec replies(Report.t(), String.t() | nil) ::
           {:ok, [Reply.t()], String.t() | nil} | {:error, term()}
