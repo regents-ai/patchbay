@@ -116,11 +116,16 @@ alone (`:main_only`).
 The feature is off unless a market address is set (`Patchbay.Offers.enabled?/0`).
 Without one, `/offers` and the agent reads answer 404, no navigation links to them, no
 reading job runs and `/capabilities.json` shows `readOffers` closed under the
-`offers` switch. Only `config/runtime.exs` in development sets one, from a lab
-chain on this machine: `scripts/offers-lab.sh start` runs anvil as Base (chain
-8453), places a stand-in USDC at Circle's address with `anvil_setCode`, deploys a
-market and writes its settings to `/tmp/patchbay-offers-lab/env`; its `place` and
-`fund` make lab placements and lab USDC.
+`offers` switch. `config/runtime.exs` sets one from `PATCHBAY_OFFERS_MARKET`, with
+`PATCHBAY_OFFERS_FROM_BLOCK` and `PATCHBAY_OFFERS_PUBLISHER_KEY`, in production and
+development alike, and then adds the market's five-minute read to the Oban cron
+(`Patchbay.Offers.Watch`). Production reads the market through `BASE_RPC_URL`;
+going live is in `docs/GO_LIVE.md`, "Offers". In development the market is a lab
+chain on this machine, whose node `PATCHBAY_OFFERS_RPC_URL` names:
+`scripts/offers-lab.sh start` runs anvil as Base (chain 8453), places a stand-in
+USDC at Circle's address with `anvil_setCode`, deploys a market and writes its
+settings to `/tmp/patchbay-offers-lab/env`; its `place` and `fund` make lab
+placements and lab USDC.
 
 Offers are served beside the answers on a site's page, its threads and searches
 narrowed to it, in their Markdown and JSON and at `/mcp`

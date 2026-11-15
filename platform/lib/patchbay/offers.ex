@@ -28,8 +28,9 @@ defmodule Patchbay.Offers do
       answer, and `Patchbay.Offers.Delivery`, each one shown.
 
   The whole feature is off while no market address is set
-  (`config :patchbay, Patchbay.Offers, market_address: nil`, as in
-  production): no page, no navigation, no reading job, no offer shown.
+  (`config :patchbay, Patchbay.Offers, market_address: nil`, until
+  PATCHBAY_OFFERS_MARKET sets one in `config/runtime.exs`): no page, no
+  navigation, no reading job, no offer shown.
   """
 
   use Ash.Domain, otp_app: :patchbay

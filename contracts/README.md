@@ -171,10 +171,11 @@ forge script script/Sanity.s.sol --rpc-url $BASE_RPC_URL
 
 `AgentOfferFactory` and `AgentOfferMarket` (interface `IAgentOfferMarket`) are where agent Offers are
 bought on Base; `AgentOfferStakingPayout` is the payout address of Patchbay's own market. They are
-built and tested here and **not deployed**: there is no deploy script for
-them, and the factory refuses to deploy anywhere but Base mainnet (chain 8453, with Circle's native
-USDC at `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), so they cannot be tried on Base Sepolia as
-written. The tests set the chain id to 8453 and place a stand-in token at that address.
+built and tested here and **not deployed yet**; `script/DeployOffers.s.sol` deploys them (see
+"Deploy the offer contracts" below). The factory refuses to deploy anywhere but Base mainnet (chain
+8453, with Circle's native USDC at `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`), so they cannot be
+tried on Base Sepolia as written. The tests set the chain id to 8453 and place a stand-in token at
+that address.
 
 ## The model
 
@@ -256,7 +257,7 @@ therefore `AgentOfferStakingPayout`, a contract that does one thing:
   is given, so it can only serve the market that factory creates for that publisher, with the token
   and staking contract that market itself uses.
 
-Deploy order, one transaction each (there is no script):
+Deploy order, one transaction each:
 
 1. Deploy `AgentOfferFactory`, admitting Patchbay's publisher address.
 2. Read `factory.predictMarket(publisher)`: the address Patchbay's market will have.
@@ -272,12 +273,43 @@ The publisher's signing key only creates and terminates placements and signs adm
 holds or receives money. Anyone, Patchbay's server included, may call `pushRevenue` and
 `pushEarnings` at any time, and neither can send money anywhere but staking.
 
+## Deploy the offer contracts
+
+`script/DeployOffers.s.sol` performs the five steps above in order and stops with a reason if a check
+fails. Every transaction is sent from the publisher address, since step 4 must come from it; the
+factory and the payout contract give whoever deploys them no role. The publisher pays the gas of
+three transactions, so it needs a little ETH on Base first. The script stops before sending
+anything on a chain other than Base mainnet or when an address is zero, and the factory refuses a fee
+above 2,000.
+
+| Variable            | Meaning                                                                                    |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| `OFFERS_ADMIN`      | The factory's owner, who admits and removes publishers. A Safe is a good choice.           |
+| `OFFERS_PUBLISHER`  | Patchbay's publisher address, whose key the site holds as `PATCHBAY_OFFERS_PUBLISHER_KEY`. |
+| `OFFERS_STAKING`    | The REGENT revenue staking contract the fee and Patchbay's earnings go into.               |
+| `OFFERS_FEE_BPS`    | The protocol fee in basis points: 1000 for the planned deployment.                         |
+| `BASE_RPC_URL`      | Base mainnet RPC endpoint.                                                                 |
+| `ETHERSCAN_API_KEY` | Used by `--verify`.                                                                        |
+
+Then, from this directory, signing as the publisher (a Foundry keystore entry holding its key, or
+`--ledger --sender <publisher>`; no key is ever written in the repository):
+
+```sh
+forge script script/DeployOffers.s.sol --rpc-url $BASE_RPC_URL --broadcast --verify --account <publisher keystore name>
+```
+
+The script logs the factory, its implementation, owner, staking contract and fee, the staking payout
+contract, and the market with its publisher and payout. The market's address and the block its
+`MarketCreated` transaction landed in are what the site needs (`platform/docs/GO_LIVE.md`, "Offers").
+Without `--broadcast` the same command only simulates.
+
 ## Checks
 
 The same commands as above. `test/AgentOfferMarket.t.sol` holds the unit, fuzz, reentrancy and
 invariant suites; `test/AgentOfferFactory.t.sol` the factory's, including a permit for one market
 being refused by another; `test/AgentOfferStakingPayout.t.sol` the staking payout's, including a
-staking contract that calls back mid-deposit.
+staking contract that calls back mid-deposit; `test/DeployOffers.t.sol` runs the deploy script and
+checks what it leaves wired, sells on it and pushes everything earned into staking.
 
 `test/AgentOfferForkRehearsal.t.sol` rehearses the whole money path on a local fork of Base mainnet
 pinned to one block, with Circle's real USDC and the live REGENT revenue staking contract: the

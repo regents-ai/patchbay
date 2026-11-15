@@ -279,11 +279,12 @@ config :patchbay,
   ]
 
 # Agent offers (`Patchbay.Offers`), on Patchbay's market on Base. With no
-# market address, as here and in production, the feature is off: no page, no
-# navigation, no reading job. `config/runtime.exs` sets a lab's market on this
-# machine in development. `policy` is the name of Patchbay's admission policy;
-# a placement created under any other is never admitted. `wallet_rpc_url` is
-# the public address a wallet adds the chain with, never the site's own node.
+# market address, as here, the feature is off: no page, no navigation, no
+# reading job. `config/runtime.exs` sets the market from PATCHBAY_OFFERS_MARKET
+# in production and development. `policy` is the name of Patchbay's admission
+# policy; a placement created under any other is never admitted.
+# `wallet_rpc_url` is the public address a wallet adds the chain with, never the
+# site's own node.
 config :patchbay, Patchbay.Offers,
   market_address: nil,
   chain_id: 8453,
