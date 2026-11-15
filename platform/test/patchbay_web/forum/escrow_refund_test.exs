@@ -187,6 +187,21 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
       assert page =~ ~s(href="https://basescan.org/tx/#{@refund_tx}")
     end
 
+    test "the refund Patchbay sends ends its call with Regent's Base Builder Code", %{
+      tool: tool,
+      node: node
+    } do
+      asker = profile("aaa")
+      report = credited(tool, asker)
+
+      assert {:ok, _sent} = PriorityRefund.run(report.id, asker)
+
+      call = report.id |> Patchbay.Escrow.post_id() |> Patchbay.Escrow.Contract.refund()
+      "0x" <> suffix = RegentChain.BuilderCode.suffix()
+
+      assert Agent.get(node, & &1.raw) =~ Base.encode16(call.data, case: :lower) <> suffix
+    end
+
     test "a refund the contract refused in its block is written as refused", %{
       conn: conn,
       tool: tool,
@@ -445,7 +460,9 @@ defmodule PatchbayWeb.Forum.EscrowRefundTest do
 
   defp rpc(requests, node) when is_list(requests), do: Enum.map(requests, &rpc(&1, node))
 
-  defp rpc(%{"id" => id, "method" => "eth_sendRawTransaction"}, node) do
+  defp rpc(%{"id" => id, "method" => "eth_sendRawTransaction", "params" => [raw]}, node) do
+    Agent.update(node, &Map.put(&1, :raw, raw))
+
     case Agent.get(node, & &1.send) do
       {:ok, tx_hash} ->
         %{jsonrpc: "2.0", id: id, result: tx_hash}

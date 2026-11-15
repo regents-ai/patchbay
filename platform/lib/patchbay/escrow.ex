@@ -13,7 +13,8 @@ defmodule Patchbay.Escrow do
   REGENT revenue staking contract; Patchbay does so after each one.
 
   Every call here is one transaction, signed locally with the operator key
-  and handed to the chain. It comes back with the transaction hash the moment
+  and handed to the chain. Its calldata ends with Regent's Base Builder
+  Code. It comes back with the transaction hash the moment
   the chain has taken it; nothing waits for the receipt, so a caller records
   the hash and moves on. What a call needs to have landed first, such as the
   payment a credit records, is waited for with `await_landed/1`, and what
@@ -243,7 +244,9 @@ defmodule Patchbay.Escrow do
 
   defp submit(tx_data) do
     with {:ok, operator} <- operator() do
-      Ethers.send_transaction(tx_data,
+      tx_data
+      |> with_builder_code()
+      |> Ethers.send_transaction(
         from: operator.address,
         to: operator.contract_address,
         signer: Ethers.Signer.Local,
@@ -255,6 +258,13 @@ defmodule Patchbay.Escrow do
     # Whatever went wrong, the exception is raised from a call that was handed
     # the operator key, so it is named and not carried.
     _exception -> {:error, :submit_failed}
+  end
+
+  # Every transaction Patchbay sends ends with Regent's Base Builder Code, as
+  # the wallet buttons' do (`RegentChain.BuilderCode`); the contract ignores it.
+  defp with_builder_code(%Ethers.TxData{data: data} = tx_data) when is_binary(data) do
+    "0x" <> suffix = RegentChain.BuilderCode.suffix()
+    %{tx_data | data: data <> Base.decode16!(suffix, case: :lower)}
   end
 
   @doc """
