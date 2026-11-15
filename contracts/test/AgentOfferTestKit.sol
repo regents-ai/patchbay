@@ -143,16 +143,21 @@ abstract contract AgentOfferBase is Test {
         market = AgentOfferMarket(factory.createMarket(payout));
     }
 
-    /// @dev Chain 8453, a stand-in USDC at Circle's address, the staking stand-in, and a factory with
-    ///      a 10% fee that admits Patchbay; no market yet.
+    /// @dev `_baseChain`, then a factory with a 10% fee that admits Patchbay; no market yet.
     function _deployFactory(FreezableUSDC tokenCode) internal {
+        _baseChain(tokenCode);
+        factory = new AgentOfferFactory(admin, publisher, staking, FEE_BPS);
+    }
+
+    /// @dev Chain 8453, Patchbay's publisher key, a stand-in USDC at Circle's address and the staking
+    ///      stand-in; nothing of the offer contracts yet.
+    function _baseChain(FreezableUSDC tokenCode) internal {
         vm.chainId(8453);
         vm.warp(START);
         (publisher, publisherKey) = makeAddrAndKey("publisher");
         vm.etch(BASE_USDC, address(tokenCode).code);
         usdc = FreezableUSDC(BASE_USDC);
         staking = new RecordingStaking(IERC20(BASE_USDC));
-        factory = new AgentOfferFactory(admin, publisher, staking, FEE_BPS);
     }
 
     function _terms(uint16 capacity, uint32 duration, uint16 bump, uint128 floor)
