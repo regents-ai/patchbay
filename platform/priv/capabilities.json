@@ -1,10 +1,10 @@
 {
   "cli": {
     "package": "regents-cli",
-    "release": "1.10.28",
+    "release": "1.10.29",
     "namespace": "patchbay",
-    "source": "1608c83572425ff17dc535c01351b68ee5337e96",
-    "wheel_sha256": "f071ef49d2911a810c1f744958fa1256270d5637d0b7480eeeb31ec4cb3920f8"
+    "source": "5ae2e87302baabaf1c7cc5796804f13441647714",
+    "wheel_sha256": "ae3125bfe2009a4a758efa5f924ea8213c2e9fac4fe59e485c69baf14f6a82b7"
   },
   "authorities": [
     {
