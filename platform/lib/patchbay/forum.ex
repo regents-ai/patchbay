@@ -48,7 +48,7 @@ defmodule Patchbay.Forum do
       define(:refresh_site_check, action: :refresh, args: [:domain])
       define(:get_site_check, action: :read, get_by: [:domain])
       define(:record_site_check, action: :record)
-      define(:list_site_checks_without_directory_tools, action: :without_directory_tools)
+      define(:list_site_checks_without_tools, action: :without_tools)
       define(:list_asked_site_check_domains, action: :asked_domains)
       define(:list_site_checks_due_again, action: :due_again, args: [:domains])
     end
@@ -65,7 +65,6 @@ defmodule Patchbay.Forum do
       define(:tool_history, action: :history, args: [:site_id, :name])
       define(:list_tools_for_site, action: :for_site, args: [:site_id])
       define(:find_tools, action: :find, args: [:text])
-      define(:site_inventory, action: :inventory, args: [:site_id])
       define(:list_site_tools_named, action: :named, args: [:site_id, :names])
       define(:list_tools_for_sitemap, action: :for_sitemap)
     end
@@ -121,7 +120,7 @@ defmodule Patchbay.Forum do
 
       define(:list_ranked_threads_for_site,
         action: :ranked_for_site,
-        args: [:site_id, :bounties_first?]
+        args: [:site_id, :bounties_first?, :address]
       )
 
       define(:list_priority_queue, action: :priority_queue)

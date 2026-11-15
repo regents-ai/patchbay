@@ -19,7 +19,8 @@ defmodule Patchbay.Forum.SiteCheck do
 
   A finished check is told to open pages on `"site_check:<domain>"`, and the
   WebMCP tools it found are recorded on the site's board when the site has
-  one outside the researched directory.
+  one. What it found is the one source of a site's tool count (`tools/1`):
+  the directory, the board and the JSON at `/sites` all read it.
   """
 
   use Ash.Resource,
@@ -118,6 +119,20 @@ defmodule Patchbay.Forum.SiteCheck do
         )
       )
     )
+
+    # Whether the last finished check found a WebMCP tool on the front page or
+    # on any page the directory lists: the rule `tools/1` counts by.
+    calculate(
+      :found_tools?,
+      :boolean,
+      expr(
+        fragment(
+          "coalesce(jsonb_path_exists(?, '$.webmcp[*]') or jsonb_path_exists(?, '$.directory.*.tools[*]'), false)",
+          findings,
+          findings
+        )
+      )
+    )
   end
 
   identities do
@@ -151,21 +166,15 @@ defmodule Patchbay.Forum.SiteCheck do
       prepare(build(select: [:domain], sort: [checked_at: :asc]))
     end
 
-    read :without_directory_tools do
+    read :without_tools do
       description("""
-      Checks that found no WebMCP tool on any directory page they read, each
-      with the pages it read: the directory leaves out the sites whose every
-      page is among them.
+      Checks that found no WebMCP tool, on the front page or on any directory
+      page they read, each with the pages it read: the directory leaves out
+      the sites whose every page is among them.
       """)
 
       filter(
-        expr(
-          fragment(
-            "jsonb_typeof(? -> 'directory') = 'object' and not jsonb_path_exists(?, '$.directory.*.tools[*]')",
-            findings,
-            findings
-          )
-        )
+        expr(fragment("jsonb_typeof(? -> 'directory') = 'object'", findings) and not found_tools?)
       )
 
       prepare(build(select: [:domain], load: [:read_directory_pages]))
@@ -301,47 +310,113 @@ defmodule Patchbay.Forum.SiteCheck do
     do: is_nil(check.checked_at) or DateTime.before?(check.checked_at, check.requested_at)
 
   @doc """
-  Records the WebMCP tools a check found on the site's board, keyed by
-  exactly the words the page published each with, seen at the page that was
-  read and marked as found by a check. A check that read the whole page and
-  found at least one tool then retires the tools an earlier check found there
-  and this one did not; a tool known only from what agents saw stays, as does
+  The WebMCP tools Patchbay's own check found for a site, the one count every
+  page shows: on its front page, then on every page the directory lists for
+  it that the check read whole, each name once, with the page it was found on
+  and its description. Nil until a check has finished: the site is not
+  checked. A check that could not be done keeps the last finished one's tools.
+  """
+  @spec tools(Ash.Resource.record() | nil) :: [map()] | nil
+  def tools(%{findings: %{"webmcp" => front, "directory" => directory}, page_url: page_url}) do
+    on_front = Enum.map(front, &Map.put(&1, "address", page_url))
+
+    Enum.uniq_by(
+      on_front ++ listed(directory, directory |> Map.keys() |> Enum.sort()),
+      & &1["name"]
+    )
+  end
+
+  def tools(_check), do: nil
+
+  @doc """
+  The tools the check found on `pages` alone, some of the pages the directory
+  lists, by the rule of `tools/1`: a directory row for another address on the
+  site, such as a product's own, counts only its own pages.
+  """
+  @spec tools(Ash.Resource.record() | nil, [String.t()]) :: [map()] | nil
+  def tools(%{findings: %{"webmcp" => _front, "directory" => directory}}, pages),
+    do: directory |> listed(pages) |> Enum.uniq_by(& &1["name"])
+
+  def tools(_check, _pages), do: nil
+
+  defp listed(directory, pages),
+    do: Enum.flat_map(pages, &(get_in(directory, [&1, "tools"]) || []))
+
+  @doc """
+  Records the WebMCP tools a check found on the site's board, on the front
+  page and on every page the directory lists, keyed by exactly the words each
+  page published them with, seen at the page they were found on and marked
+  as found by a check. Where this check read a page whole and found at least
+  one tool there, it then retires the tools an earlier check found there and
+  this one did not; a tool known only from what agents saw stays, as does
   everything after a partial read or one that found no tools, since a page
-  may put its tools together where the reader cannot see them. A site in the
-  researched directory keeps the directory's list.
+  may put its tools together where the reader cannot see them.
   """
   @spec record_tools(Ash.Resource.record(), Ash.Resource.record()) :: :ok
-  def record_tools(%{support_relationship: nil} = site, %{page_url: page_url} = check)
-      when is_binary(page_url) do
-    # Patchbay's own background work: there is no actor for policies to check.
-    found =
-      Enum.map(check.findings["webmcp"], fn %{"name" => name, "description" => description} ->
-        contract = %{"name" => name, "title" => nil, "description" => description}
+  def record_tools(site, %{findings: %{"webmcp" => _front, "directory" => _pages}} = check) do
+    reads = page_reads(check)
+    whole = for {address, _tools, true} <- reads, into: MapSet.new(), do: address
 
-        Forum.find_tool_on_page!(
-          %{
-            site_id: site.id,
-            name: name,
-            contract_sha256: contract |> CanonicalJSON.encode() |> Digest.sha256(),
-            description: description,
-            address: page_url
-          },
-          authorize?: false
-        )
-      end)
-
-    if found != [] and not is_nil(check.page_read_at) do
-      Tool
-      |> Ash.Query.for_read(
-        :missed_by_check,
-        %{site_id: site.id, page_url: page_url, found_ids: Enum.map(found, & &1.id)},
-        authorize?: false
-      )
-      |> Ash.bulk_update!(:retire, %{}, authorize?: false)
-    end
-
-    :ok
+    reads
+    |> Enum.flat_map(&elem(&1, 1))
+    |> Enum.group_by(& &1["address"])
+    |> Enum.each(fn {address, tools} ->
+      found = tools |> Enum.uniq_by(& &1["name"]) |> Enum.map(&find_tool!(site, &1))
+      if MapSet.member?(whole, address), do: retire_missed(site, address, found)
+    end)
   end
 
   def record_tools(_site, _check), do: :ok
+
+  # Each page the check has tools from, with them and whether this check read
+  # it whole: the front page, and the directory's pages with a whole read,
+  # each read in this check when its read is no older than the request.
+  defp page_reads(%{findings: %{"webmcp" => front, "directory" => directory}} = check) do
+    on_front =
+      if is_binary(check.page_url),
+        do: [
+          {check.page_url, Enum.map(front, &Map.put(&1, "address", check.page_url)),
+           not is_nil(check.page_read_at)}
+        ],
+        else: []
+
+    listed =
+      for {_url, %{"page_url" => address, "tools" => tools, "checked_at" => at}} <- directory,
+          do: {address, tools, not DateTime.before?(timestamp(at), check.requested_at)}
+
+    on_front ++ listed
+  end
+
+  defp timestamp(text) do
+    {:ok, at, _offset} = DateTime.from_iso8601(text)
+    at
+  end
+
+  # Patchbay's own background work: there is no actor for policies to check.
+  defp find_tool!(site, %{"name" => name, "address" => address} = tool) do
+    description = tool["description"]
+    contract = %{"name" => name, "title" => nil, "description" => description}
+
+    Forum.find_tool_on_page!(
+      %{
+        site_id: site.id,
+        name: name,
+        contract_sha256: contract |> CanonicalJSON.encode() |> Digest.sha256(),
+        description: description,
+        address: address
+      },
+      authorize?: false
+    )
+  end
+
+  # Patchbay's own background work: there is no actor for policies to check.
+  defp retire_missed(site, address, found) do
+    Tool
+    |> Ash.Query.for_read(
+      :missed_by_check,
+      %{site_id: site.id, page_url: address, found_ids: Enum.map(found, & &1.id)},
+      authorize?: false
+    )
+    |> Ash.bulk_update!(:retire, %{}, authorize?: false)
+  end
 end

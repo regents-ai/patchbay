@@ -50,21 +50,22 @@
 /* Search is as tall as the box and the list beside it. */
 .pb-directory-search .rg-button { min-height: 44px; padding-block: 0; }
 /* The list draws its own arrow, inset from the edge, which dips on hover and
-   turns over while the list is open. */
+   turns over while the list is open: the directory's category and a board's
+   Address filter alike. */
 .pb-directory-select { position: relative; display: block; }
 .pb-directory-search select { appearance: none; -webkit-appearance: none; padding-right: 3rem; color: var(--pb-text); cursor: pointer; }
-.pb-directory-select::after {
+.pb-directory-select::after, .pb-address-select::after {
   content: ""; position: absolute; top: 50%; right: 1.125rem; width: 12px; height: 8px; margin-top: -4px;
   background: var(--pb-text); pointer-events: none;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1.5 1.75 6 6.25l4.5-4.5' fill='none' stroke='%23000' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
   transition: transform 180ms ease;
 }
-@media (hover: hover) { .pb-directory-select:hover::after { transform: translateY(2px); } }
-.pb-directory-select:has(select:open)::after { transform: rotate(180deg); }
-@media (prefers-reduced-motion: reduce) { .pb-directory-select::after { transition: none; } }
+@media (hover: hover) { .pb-directory-select:hover::after, .pb-address-select:hover::after { transform: translateY(2px); } }
+.pb-directory-select:has(select:open)::after, .pb-address-select:has(select:open)::after { transform: rotate(180deg); }
+@media (prefers-reduced-motion: reduce) { .pb-directory-select::after, .pb-address-select::after { transition: none; } }
 @media (forced-colors: active) {
   .pb-directory-search select { appearance: auto; padding-right: .75rem; }
-  .pb-directory-select::after { display: none; }
+  .pb-directory-select::after, .pb-address-select::after { display: none; }
 }
 .pb-directory-results-heading { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: 1rem 0 .6rem; }
 .pb-directory-results-heading p { margin: 0; }
@@ -89,6 +90,8 @@
 .pb-directory-url > a { color: inherit; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pb-directory-count { display: inline-flex; flex-direction: column; align-items: end; justify-content: center; min-width: 44px; min-height: 34px; padding: 0; }
 .pb-directory-count strong { font-weight: 400; font-size: 1rem; }
+/* A site Patchbay has not checked has words, not a number, kept on one line. */
+.pb-directory-unchecked { font-size: .75rem; color: var(--pb-text-muted); white-space: nowrap; }
 .pb-directory-posts { display: inline-flex; min-width: 44px; min-height: 34px; align-items: center; justify-content: end; }
 /* View Forum follows the address. It is always laid out, so the row never
    moves: with a mouse it fades in while the pointer is on the row or a control
@@ -188,3 +191,18 @@
 @media (max-width: 640px) {
   .pb-standing-lists { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* A board's Address filter: a label, the list of addresses its posts name and
+   Show, on one line that wraps on a narrow screen. The list grows to the
+   longest address it can and never past the card. */
+.pb-address-filter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); margin: 0 0 var(--space-2); }
+.pb-address-filter label { color: var(--pb-text-muted); font-size: var(--pb-fs-xs); }
+.pb-address-select { position: relative; display: block; flex: 0 1 20rem; min-width: 0; }
+.pb-address-filter select {
+  width: 100%; min-height: 44px; padding: 0 3rem 0 .75rem;
+  border: 1px solid var(--pb-line); border-radius: var(--radius); background-color: var(--pb-surface);
+  color: var(--pb-text); font-size: max(1rem, 16px); text-overflow: ellipsis;
+  appearance: none; -webkit-appearance: none; cursor: pointer;
+}
+.pb-address-filter .rg-button { min-height: 44px; padding-block: 0; }
+@media (forced-colors: active) { .pb-address-filter select { appearance: auto; padding-right: .75rem; } }

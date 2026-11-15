@@ -1,15 +1,23 @@
 defmodule Patchbay.Forum.SiteDirectory do
   @moduledoc """
-  Public website listings, with 24-hour observations from the existing
-  site-check jobs: the saved listing's sites, then every board outside it with
-  a tool still offered or a public post, busiest first, searched and paged
-  together.
+  Public website listings, with what Patchbay's own site checks found: the
+  saved listing's sites, then every board outside it with a tool a check found
+  or a public post, busiest first, searched and paged together.
+
+  The listing names each site's page and the other pages it lists, such as
+  `web.autocad.com` or a `chatgpt.site` app. A site's check reads them all
+  (`pages/1`), at most `most_pages/0` of them besides its front page. The
+  row for the site itself shows the count its board shows
+  (`Patchbay.Forum.SiteCheck.tools/1`); a row for another address on it, such
+  as a product's own, counts only that row's pages (`SiteCheck.tools/2`), so
+  one maker's count is never another's. A row Patchbay has not checked has
+  no count.
   """
 
   require Ash.Query
 
   alias Patchbay.Forum
-  alias Patchbay.Forum.{HiddenSites, ListedSitePicture, Origin, Site, SiteCheck, Tool}
+  alias Patchbay.Forum.{HiddenSites, ListedSitePicture, Origin, Site, SiteCheck}
 
   @external_resource "priv/data/site_directory.json"
   @document Jason.decode!(File.read!(@external_resource))
@@ -22,18 +30,27 @@ defmodule Patchbay.Forum.SiteDirectory do
   @by_domain Enum.group_by(@entries, & &1["domain"])
   @domains @entries |> Enum.map(& &1["domain"]) |> Enum.uniq()
   @page_size 30
+  @most_pages 20
 
   @doc "Every listed domain, once, in listing order."
   def domains, do: @domains
 
   def categories, do: @entries |> Enum.map(& &1["category"]) |> Enum.uniq() |> Enum.sort()
 
-  @doc "The exact public pages to inspect for a domain, including its listed subdomains."
+  @doc "How many listed pages one site's check reads at most, besides its front page."
+  @spec most_pages() :: pos_integer()
+  def most_pages, do: @most_pages
+
+  @doc """
+  The exact public pages to inspect for a domain: every listed row's own page
+  and the other pages it lists, in listing order, at most `most_pages/0`.
+  """
   def pages(domain) do
     @by_domain
     |> Map.get(domain, [])
     |> Enum.flat_map(&entry_pages/1)
     |> Enum.uniq()
+    |> Enum.take(@most_pages)
   end
 
   @doc "One page of the listing with its checks and forum counts, or why `params` names no page."
@@ -45,13 +62,14 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   @doc """
   Reads the listed hosts whose last finished check read every one of their
-  pages and found no WebMCP tool. Every listing leaves them out, and its
-  totals do not count them, until a check finds a tool; their own pages stay
-  open. Listings take them from `Patchbay.Forum.HiddenSites`, which calls this.
+  pages and found no WebMCP tool, there or on the site's front page. Every
+  listing leaves them out, and its totals do not count them, until a check
+  finds a tool; their own pages stay open. Listings take them from
+  `Patchbay.Forum.HiddenSites`, which calls this.
   """
   @spec read_hidden_hosts() :: {:ok, MapSet.t(String.t())} | {:error, term()}
   def read_hidden_hosts do
-    with {:ok, checks} <- Forum.list_site_checks_without_directory_tools() do
+    with {:ok, checks} <- Forum.list_site_checks_without_tools() do
       hosts =
         for check <- checks,
             seed <- Map.get(@by_domain, check.domain, []),
@@ -73,12 +91,8 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   defp read(selected) do
     domains = selected.sites |> Enum.map(&domain/1) |> Enum.uniq()
-
-    page =
-      case SiteCheck |> Ash.Query.filter(domain in ^domains) |> Ash.read() do
-        {:ok, checks} -> decorate(selected, Map.new(checks, &{&1.domain, &1}), true)
-        {:error, _failure} -> decorate(selected, %{}, false)
-      end
+    checks = SiteCheck |> Ash.Query.filter(domain in ^domains) |> Ash.read!()
+    page = decorate(selected, Map.new(checks, &{&1.domain, &1}))
 
     # One public aggregate read for the visible domains. Hidden posts never count.
     result =
@@ -154,8 +168,7 @@ defmodule Patchbay.Forum.SiteDirectory do
       page: page,
       pages: pages,
       q: q,
-      category: category,
-      imported_at: @document["imported_at"]
+      category: category
     }
   end
 
@@ -170,24 +183,11 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   defp boards(_words, _offset, room) when room <= 0, do: []
 
-  defp boards(words, offset, room) do
-    tools =
-      Tool
-      |> Ash.Query.filter(current?)
-      |> Ash.Query.select([:name, :address])
-      |> Ash.Query.sort(name: :asc)
+  defp boards(words, offset, room),
+    do: Forum.list_directory_boards!(@domains, words, page: [offset: offset, limit: room]).results
 
-    Forum.list_directory_boards!(@domains, words,
-      page: [offset: offset, limit: room],
-      load: [:tool_count, tools: tools]
-    ).results
-  end
-
-  defp decorate(page, checks, available?) do
-    page
-    |> Map.put(:sites, Enum.map(page.sites, &entry(&1, Map.get(checks, domain(&1)))))
-    |> Map.put(:cache_available?, available?)
-  end
+  defp decorate(page, checks),
+    do: Map.put(page, :sites, Enum.map(page.sites, &entry(&1, Map.get(checks, domain(&1)))))
 
   def replace_check(page, check) do
     Map.put(page, :sites, Enum.map(page.sites, &replace_entry(&1, check)))
@@ -202,36 +202,31 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   defp replace_entry(site, _check), do: site
 
-  # The listing's own words for a site, with what Patchbay's checks found:
-  # the tools on its listed pages once every one of them was read in full,
-  # and when the oldest of those reads was.
+  # The listing's own words for a site, with the tools Patchbay's check found:
+  # the row whose host is the site itself shows the count the site's board
+  # shows, and a row for another address on it counts that row's pages.
   defp entry({:seed, seed} = listing, check) do
-    snapshot = snapshot(seed, (check && check.findings) || %{})
-    observed = snapshot["tools"]
-    tools = Enum.uniq_by(observed || seed["tools"], & &1["name"])
+    domain = domain(listing)
+
+    tools =
+      if seed["host"] in [domain, "www." <> domain],
+        do: SiteCheck.tools(check),
+        else: SiteCheck.tools(check, entry_pages(seed))
 
     %{
       listing: listing,
       host: seed["host"],
-      domain: domain(listing),
+      domain: domain,
       name: seed["name"],
       category: seed["category"],
       page_url: seed["url"],
-      tools: tools,
-      tool_count: if(observed, do: length(tools), else: reported_count(seed, tools)),
-      forum_posts: nil,
-      logo_path: Map.get(@logos, domain(listing)),
-      screenshot_path: nil,
-      checked_at: snapshot["checked_at"],
-      pending?: pending?(check),
-      due?: SiteCheck.due?(check),
-      retry_at: retry_at(check),
-      source: if(observed, do: "Source scan", else: "Research listing")
+      logo_path: Map.get(@logos, domain)
     }
+    |> Map.merge(found(tools, check))
   end
 
-  # A board's row: the tools it still offers, as its own page counts them, and
-  # when Patchbay last finished a check of the site.
+  # A board's row: the tools Patchbay's check found on the site, as its own
+  # page counts them.
   defp entry({:board, site} = listing, check) do
     %{
       listing: listing,
@@ -240,19 +235,22 @@ defmodule Patchbay.Forum.SiteDirectory do
       name: site.display_name || site.origin,
       category: nil,
       page_url: "https://" <> site.origin <> "/",
-      tools:
-        site.tools
-        |> Enum.uniq_by(& &1.name)
-        |> Enum.map(&%{"name" => &1.name, "address" => &1.address}),
-      tool_count: site.tool_count,
+      logo_path: nil
+    }
+    |> Map.merge(found(SiteCheck.tools(check), check))
+  end
+
+  # A row's count is nil, not a number, until a check of the site finishes.
+  defp found(tools, check) do
+    %{
+      tools: tools || [],
+      tool_count: tools && length(tools),
       forum_posts: nil,
-      logo_path: nil,
       screenshot_path: nil,
       checked_at: checked_at(check),
       pending?: pending?(check),
       due?: SiteCheck.due?(check),
-      retry_at: retry_at(check),
-      source: "Forum"
+      retry_at: retry_at(check)
     }
   end
 
@@ -261,31 +259,7 @@ defmodule Patchbay.Forum.SiteDirectory do
 
   defp checked_at(_check), do: nil
 
-  defp reported_count(%{"reported_tool_count" => count}, _tools), do: count
-  defp reported_count(_seed, []), do: nil
-  defp reported_count(_seed, tools), do: length(tools)
-
-  defp entry_pages(seed),
-    do:
-      Enum.uniq(
-        [seed["url"] | Enum.map(seed["tools"], & &1["address"])] ++
-          Map.get(seed, "additional_urls", [])
-      )
-
-  # A page's snapshot keeps its last full read's tools and time when a later
-  # read could not finish (`Patchbay.Forum.SiteScan.directory_findings/3`).
-  defp snapshot(seed, findings) do
-    snapshots = Enum.map(entry_pages(seed), &get_in(findings, ["directory", &1]))
-
-    if Enum.all?(snapshots, &match?(%{"tools" => tools} when is_list(tools), &1)) do
-      %{
-        "tools" => snapshots |> Enum.flat_map(& &1["tools"]) |> Enum.uniq(),
-        "checked_at" => snapshots |> Enum.map(& &1["checked_at"]) |> Enum.min()
-      }
-    else
-      %{"tools" => nil, "checked_at" => nil}
-    end
-  end
+  defp entry_pages(seed), do: Enum.uniq([seed["url"] | seed["pages"]])
 
   defp pending?(nil), do: false
   defp pending?(check), do: SiteCheck.pending?(check)

@@ -700,6 +700,22 @@ defmodule Patchbay.Forum.Report do
         end
       )
     )
+
+    # The address the post is about, one per host of the site such as
+    # `web.autocad.com` or `autocad.com`, with `www.` folded into the bare
+    # name: the host of its page, which `NormalizePageUrl` keeps on the
+    # post's own site. Empty for a post that names no page.
+    calculate(
+      :address,
+      :string,
+      expr(
+        fragment(
+          "regexp_replace(substring(? from '^https://([^/]+)'), '^www[.]', '')",
+          page_url
+        )
+      ),
+      public?: true
+    )
   end
 
   changes do
@@ -814,12 +830,15 @@ defmodule Patchbay.Forum.Report do
       `bounties_first?`, the largest funded, unanswered bounty leads. The
       rest follow by how many say a reply worked for them, then the latest
       who said so, then newest. Pending, failed, refunded or paid-out escrow
-      does not promote a thread.
+      does not promote a thread. With `address`, only the threads about that
+      address (`:address`).
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
       argument(:bounties_first?, :boolean, allow_nil?: false)
+      argument(:address, :string, allow_nil?: true)
       filter(expr(site_id == ^arg(:site_id) and visibility == :published))
+      filter(expr(is_nil(^arg(:address)) or address == ^arg(:address)))
       pagination(keyset?: true, default_limit: 20, max_page_size: 20)
       prepare(Patchbay.Forum.Ranked)
     end

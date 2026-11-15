@@ -11,8 +11,9 @@
       <h2>Posts</h2>
       <.site_post_button domain={@domain} />
     </div>
-    <%!-- The first page stays current while it is open. --%>
-    {if is_nil(@posts_cursor),
+    <.address_filter site={@site} address={@address} />
+    <%!-- The first page of every post stays current while it is open. --%>
+    {if is_nil(@posts_cursor) and is_nil(@address),
       do:
         live_render(@conn, PatchbayWeb.PostListLive,
           id: "pb-site-posts-live",
@@ -25,7 +26,7 @@
             })
         )}
     <.post_list
-      :if={@posts_cursor}
+      :if={@posts_cursor || @address}
       posts={@posts}
       site_edition={@site_edition}
       earned_tips={@earned_tips}
@@ -41,6 +42,7 @@
       next={@next_posts}
       label="More posts"
       next_label="Next page →"
+      query={if @address, do: %{"address" => @address}, else: %{}}
     />
   </section>
 
@@ -63,17 +65,15 @@
   >
     <h2 id="pb-standing-title">Status</h2>
     <%!-- One clock: when Patchbay last checked the site. A check that could
-    not be done says nothing; the tools' own times are on their rows. --%>
+    not be done says nothing; the count stays the last finished check's. --%>
     <p class="pb-standing-tools">
-      {count_label(@standing.tool_count, "tool", "tools")}
-      <span :if={@standing.directory_tools?}>from Patchbay's directory</span>
+      {tool_count_label(@standing.tool_count, "tool", "tools")}
       <span :if={match?(%DateTime{}, @standing.checked)}>
         · checked
         <time datetime={DateTime.to_iso8601(@standing.checked)} title={moment(@standing.checked)}>
           {RegentFormat.relative_time(@standing.checked, DateTime.utc_now())}
         </time>
       </span>
-      <span :if={is_nil(@standing.checked)}>· not checked yet</span>
     </p>
     <div class="pb-standing-lists">
       <div :for={
@@ -115,11 +115,11 @@
         <span class="pb-entry-domain">{site_domain(@site)}</span>
       </p>
       <p class="patchbay-muted">{relationship_sentence(@site)}</p>
+      <%!-- Only an official source can verify a site, so a site without one
+      says so once and claims nothing more. --%>
       <dl class="pb-entry-facts">
-        <dt>Inventory</dt>
-        <dd>{inventory_label(@site.tool_inventory_status)}</dd>
-        <dt>Support status</dt>
-        <dd>{support_status_label(@site.support_status)}</dd>
+        <dt :if={@site.support_status}>Support status</dt>
+        <dd :if={@site.support_status}>{support_status_label(@site.support_status)}</dd>
         <dt>Source</dt>
         <dd>
           <a :if={@site.support_evidence_url} href={@site.support_evidence_url} rel="noreferrer">
@@ -127,8 +127,8 @@
           </a>
           <span :if={!@site.support_evidence_url}>No official source on file</span>
         </dd>
-        <dt>Verified</dt>
-        <dd>
+        <dt :if={@site.support_evidence_url}>Verified</dt>
+        <dd :if={@site.support_evidence_url}>
           <time
             :if={@site.last_verified_at}
             datetime={DateTime.to_iso8601(@site.last_verified_at)}

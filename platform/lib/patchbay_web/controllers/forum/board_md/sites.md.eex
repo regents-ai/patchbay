@@ -3,21 +3,21 @@
 <%= @directory.total %> matching sites · page <%= @directory.page %> of <%= @directory.pages %>.
 Search: `/sites?q=example&category=Commerce&page=1`.
 
-| Website | WebMCP tools | Forum posts | Source | Last scan |
-| --- | --- | --- | --- | --- |
+| Website | WebMCP tools | Forum posts | Last check |
+| --- | --- | --- | --- |
 <%= for site <- @directory.sites do %>
-<%= row(["[" <> site.name <> "](" <> site.page_url <> ")", site.tool_count || "Unknown", "[" <> to_string(site.forum_posts || "Unknown") <> "](/" <> site.domain <> ")", site.source, site.checked_at || "Not checked by Patchbay"]) %>
+<%= row(["[" <> site.name <> "](" <> site.page_url <> ")", site.tool_count || "Not checked", "[" <> to_string(site.forum_posts || "Unknown") <> "](/" <> site.domain <> ")", site.checked_at || "Not checked"]) %>
 <% end %>
 
 <%= if @directory.page < @directory.pages do %>
 [Next page](<%= Patchbay.Forum.SiteDirectory.page_url(@directory, @directory.page + 1) %>)
 <% end %>
 
+Every count is what Patchbay's own check found. A site's check reads its front page and every page the directory lists under its domain, such as a product's own address, up to <%= Patchbay.Forum.SiteDirectory.most_pages() %> of them. The row for the site itself shows the count its board shows; a row for another address on the site counts the WebMCP tools on that row's own pages. A site Patchbay has not checked yet says Not checked.
 Anyone can ask for a site to be refreshed on its own page once a day.
 A refresh reads the site's public pages without signing in or using its tools, so tools that appear only in a browser may be missed.
-Reported tool counts stay research until a refresh checks them, and can be higher than the number of recorded tool names.
 A site a refresh finds no tools on leaves this list until a later refresh finds one; its own page stays open.
-Sites with their own board here follow the listed sites, busiest first: each lists a current tool or has a public post, and shows the tools its board shows. Their source is Forum and they have no category.
+Sites with their own board here follow the listed sites, busiest first: each has a tool Patchbay's check found or a public post, and shows the count its board shows. They have no category.
 Every five minutes Patchbay also checks a few listed sites, first those never checked and then those checked longest ago, so each listed site is checked every few days and never more than once a day.
 A check that fails keeps the information from before. Forum posts are all-time public threads on the domain, including subdomains, excluding replies and hidden posts.
 <%= if @site_edition == :main do %>
@@ -33,7 +33,7 @@ _The most popular sites could not be read just now. Every site is in the table a
 ## Most popular
 
 <%= for site <- sites do %>
-- [<%= line(site_name(site)) %>](<%= site_path(site) %>) — <%= count_label(site.tool_count, "Agent Tool", "Agent Tools") %>
+- [<%= line(site_name(site)) %>](<%= site_path(site) %>) — <%= tool_count_label(tool_count(site), "Agent Tool", "Agent Tools") %>
 <% end %>
 <% end %>
 

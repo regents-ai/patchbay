@@ -1,9 +1,8 @@
 defmodule PatchbayWeb.PageReadsTest do
   # A site's page reads the site and its check once: its two live panels draw
   # first from the page's own reads. Each panel reads them itself when it
-  # joins, and the check panel reads one page of tools, or none for a site
-  # with no tools. When that page is the whole list, it answers which tools
-  # the check found are on the list without asking again.
+  # joins, and the check panel reads the board's pages for one page of the
+  # tools the check found, or nothing for a site with no tools.
   use PatchbayWeb.ConnCase, async: false
 
   import Phoenix.LiveViewTest
@@ -85,26 +84,20 @@ defmodule PatchbayWeb.PageReadsTest do
     assert panel |> LazyHTML.query("button[disabled]") |> Enum.count() == 1
   end
 
-  test "the check panel shows each tool once when its one page is the whole list", %{
-    conn: conn
-  } do
-    find_tools(["checkout", "search_docs"])
+  test "the check panel shows each tool the check found once, in name order", %{conn: conn} do
+    find_tools(["search_docs", "checkout", "search_docs"])
 
-    assert conn |> get("/reads.example") |> tool_rows() == ["search_docs", "checkout"]
+    assert conn |> get("/reads.example") |> tool_rows() == ["checkout", "search_docs"]
   end
 
-  test "the check panel shows each tool once when the list runs past its first page", %{
-    conn: conn,
-    site: site
-  } do
-    for n <- 10..29, do: list_tool(site, "tool_#{n}")
-    find_tools(["search_docs", "tool_29"])
+  test "the check panel shows the tools the check found a page at a time", %{conn: conn} do
+    find_tools(for n <- 10..34, do: "tool_#{n}")
 
-    rows = conn |> get("/reads.example") |> tool_rows()
+    first = conn |> get("/reads.example") |> tool_rows()
+    assert first == for(n <- 10..29, do: "tool_#{n}")
 
-    assert hd(rows) == "search_docs"
-    assert length(rows) == 21
-    refute "tool_29" in rows
+    assert build_conn() |> get("/reads.example?tools_after=tool_29") |> tool_rows() ==
+             for(n <- 30..34, do: "tool_#{n}")
   end
 
   # The tool names the check panel lists, in order.
@@ -116,8 +109,8 @@ defmodule PatchbayWeb.PageReadsTest do
     |> Enum.map(&LazyHTML.text/1)
   end
 
-  # A tool an agent saw on the site's docs page. The check reads the front
-  # page only, so the tool stays on the list whatever the check finds there.
+  # A tool an agent saw on the site's docs page: its page on the board is the
+  # one the check panel links to when the check finds it.
   defp list_tool(site, name) do
     Forum.observe_tool!(%{
       site_id: site.id,

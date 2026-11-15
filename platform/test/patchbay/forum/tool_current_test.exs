@@ -7,10 +7,12 @@ defmodule Patchbay.Forum.ToolCurrentTest do
   own domain included, and found at least one tool on it. A tool known only
   from what agents saw is never retired, a retired tool seen again is offered
   again, and nothing is retired after a failed or partial read, or one that
-  found no tools. A site in the researched directory keeps its own list.
+  found no tools.
   """
 
   use Patchbay.DataCase, async: false
+
+  require Ash.Query
 
   alias Patchbay.Forum
   alias Patchbay.PageSite
@@ -33,7 +35,6 @@ defmodule Patchbay.Forum.ToolCurrentTest do
     real_check!(%{"/" => PageSite.with_tool("search_docs")})
 
     assert current(site) == ["search_docs"]
-    assert tool_count(site) == 1
     assert %{retired_at: %DateTime{} = retired_at} = tool(site, "book")
     assert DateTime.compare(retired_at, before) != :lt
     assert %{retired_at: nil} = tool(site, "search_docs")
@@ -44,7 +45,6 @@ defmodule Patchbay.Forum.ToolCurrentTest do
 
     seen!(site, "book", @page)
     assert current(site) == ["book", "search_docs"]
-    assert tool_count(site) == 2
     assert %{retired_at: nil} = tool(site, "book")
   end
 
@@ -91,7 +91,6 @@ defmodule Patchbay.Forum.ToolCurrentTest do
     # The only script answers 503 and the page shows no tools.
     real_check!(%{"/" => PageSite.without_tools() <> app, "/app.js" => {503, [], "away"}})
     assert current(site) == ["book"]
-    assert tool_count(site) == 1
 
     # The page signs up a tool itself, but its script still went unread.
     real_check!(%{"/" => PageSite.with_tool("search_docs") <> app, "/app.js" => {503, [], ""}})
@@ -110,36 +109,6 @@ defmodule Patchbay.Forum.ToolCurrentTest do
     })
 
     assert current(site) == ["deep_tool", "shallow_tool"]
-  end
-
-  test "a site in the researched directory keeps its own list", %{site: site} do
-    verified = ~U[2026-10-01 12:00:00.000000Z]
-
-    Forum.upsert_catalog_entry!("example.com", %{
-      support_relationship: :site_tools,
-      tool_inventory_status: :observed,
-      last_verified_at: verified
-    })
-
-    Forum.publish_catalog_tool!(%{
-      site_id: site.id,
-      address: @page,
-      name: "book",
-      contract_sha256: String.duplicate("c", 64),
-      source_kind: :observed,
-      first_seen_at: verified,
-      last_seen_at: verified
-    })
-
-    seen!(site, "track", @page)
-
-    # The gate's case: the check finds both there, and records neither.
-    real_check!(%{"/" => PageSite.with_tool("book") <> PageSite.with_tool("track")})
-    assert current(site) == ["book", "track"]
-    assert tool_count(site) == 2
-
-    real_check!(%{"/" => PageSite.with_tool("search")})
-    assert current(site) == ["book", "track"]
   end
 
   test "a whole read that found no tools retires nothing", %{site: site} do
@@ -214,12 +183,13 @@ defmodule Patchbay.Forum.ToolCurrentTest do
       ~s|inputSchema: {type: "object"}, execute: async () => ({})});|
   end
 
+  # The names the site still offers, each once, in name order.
   defp current(site) do
-    site.id |> Forum.site_inventory!() |> Map.fetch!(:results) |> Enum.map(& &1.name)
-  end
-
-  defp tool_count(site) do
-    {:ok, loaded} = Forum.get_site_by_origin(site.origin, load: [:tool_count])
-    loaded.tool_count
+    Forum.Tool
+    |> Ash.Query.filter(site_id == ^site.id and current?)
+    |> Ash.read!(authorize?: false)
+    |> Enum.map(& &1.name)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 end

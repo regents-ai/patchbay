@@ -59,14 +59,14 @@ defmodule PatchbayWeb.OpenEditionTest do
   # is set aside on /terms inside that one sentence and nowhere else.
   @cap "THE AMOUNT YOU PAID DIRECTLY TO REGENTS LABS FOR THE RELEVANT SERVICE DURING THE 12 MONTHS BEFORE THE EVENT GIVING RISE TO THE CLAIM; OR"
 
-  # The directory's sites and their tools are other sites' own names, from the
-  # registry it was imported from. Only the directory page shows them, so only
-  # there is a word inside one of them set aside.
+  # The directory's sites are other sites' own names, from the registry it was
+  # imported from. Only the directory page shows them, so only there is a word
+  # inside one of them set aside.
   @directory "priv/data/site_directory.json"
              |> File.read!()
              |> Jason.decode!()
              |> Map.fetch!("sites")
-             |> Enum.flat_map(&[&1["name"] | Enum.map(&1["tools"], fn t -> t["name"] end)])
+             |> Enum.map(& &1["name"])
              |> Enum.uniq()
              |> Enum.join("\n")
 

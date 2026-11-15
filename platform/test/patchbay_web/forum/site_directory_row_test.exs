@@ -2,12 +2,13 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
   @moduledoc """
   A row on /sites tells people what Patchbay knows about a site, never how
   its checks went: after a read that could not finish, the page, its
-  Markdown and its JSON keep the last tools and when Patchbay last read the
-  site, with no word of the failure, and none of them names the outside
-  directory the site was first listed in. Opened, a row holds the picture
-  Patchbay took of the site's home page and its tools' names, nothing else;
-  View Forum goes where the row's post count goes. A check that could not be
-  done changes nothing on the site's own page either.
+  Markdown and its JSON keep the last tools and give the time of Patchbay's
+  last check, with no word of the failure, and none of them names the
+  outside directory the site was first listed in. Opened, a row holds the
+  picture Patchbay took of the site's home page and its tools' names, or
+  that it is not checked yet, nothing else; View Forum goes where the row's
+  post count goes. A check that could not be done changes nothing on the
+  site's own page either.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -26,8 +27,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
 
   setup do
     site = Forum.register_site!(@domain)
-    incomplete_check!()
-    {:ok, site: site}
+    {:ok, site: site, check: incomplete_check!()}
   end
 
   # A check that read OpenAI's listed page whole at `@read_at`, then a later
@@ -100,8 +100,10 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
   defp texts(html, selector),
     do: html |> LazyHTML.query(selector) |> Enum.map(&String.trim(LazyHTML.text(&1)))
 
-  test "after a read that could not finish, the page, Markdown and JSON keep the last tools and read",
-       %{conn: conn} do
+  test "after a read that could not finish, the page, Markdown and JSON keep the last tools",
+       %{conn: conn, check: check} do
+    at = DateTime.to_iso8601(check.checked_at)
+
     html = conn |> get(~p"/sites?q=openai") |> html_response(200)
     row = html |> LazyHTML.from_document() |> LazyHTML.query("tr[id='directory-openai.com']")
 
@@ -116,7 +118,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
       |> response(200)
 
     refute markdown =~ @outside
-    assert markdown =~ "| Source scan | #{@read_at} |"
+    assert markdown =~ "](https://openai.com/) | 1 | [0](/openai.com) | #{at} |"
 
     body =
       conn
@@ -126,9 +128,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
 
     refute Jason.encode!(body) =~ @outside
     site = Enum.find(body["sites"], &(&1["origin"] == @domain))
-    refute Map.has_key?(site, "reported_tool_observation")
-
-    assert %{"verified_at" => @read_at, "source" => "Source scan", "tools" => 1} = site
+    assert %{"checked_at" => ^at, "tools" => 1} = site
     assert [%{"name" => "search_openai"}] = site["tool_inventory"]
   end
 
@@ -152,7 +152,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
     assert texts(opened, "li") == ["search_openai"]
   end
 
-  test "a listed site with no board shows the picture Patchbay took of its home page",
+  test "a listed site with no board shows the picture Patchbay took of its home page, unchecked",
        %{conn: conn} do
     host = "target.com"
     picture = "RIFF" <> <<4::little-32>> <> "WEBP" <> "VP8 "
@@ -170,7 +170,8 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
 
     opened = conn |> directory(host) |> opened(host)
 
-    assert tags(opened) == ["img", "ul"]
+    assert tags(opened) == ["img", "p"]
+    assert texts(opened, "p") == ["Not checked yet."]
     assert [path] = opened |> LazyHTML.query("img") |> LazyHTML.attribute("src")
     assert path =~ "/listed-site-pictures/target.com?at="
 
@@ -179,7 +180,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
     assert response_content_type(served, :webp) =~ "image/webp"
   end
 
-  test "a listed site whose picture failed shows only its tools", %{conn: conn} do
+  test "a listed site whose picture failed shows no picture", %{conn: conn} do
     host = "target.com"
     old = Application.get_env(:patchbay, :shots_req_options)
     on_exit(fn -> Application.put_env(:patchbay, :shots_req_options, old) end)
@@ -193,11 +194,11 @@ defmodule PatchbayWeb.Forum.SiteDirectoryRowTest do
                repo: Patchbay.Repo
              )
 
-    assert conn |> directory(host) |> opened(host) |> tags() == ["ul"]
+    assert conn |> directory(host) |> opened(host) |> tags() == ["p"]
     assert build_conn() |> get("/listed-site-pictures/target.com") |> response(404)
   end
 
-  test "an opened row without a picture holds only the tools, and one without tools says so",
+  test "an opened row without a picture holds only the tools, and an unchecked one says so",
        %{conn: conn} do
     assert conn |> directory() |> opened() |> tags() == ["ul"]
 

@@ -19,7 +19,8 @@ defmodule PatchbayWeb.Forum.BoardJSON do
   ]
 
   # Each link names the address the directory is read at
-  # (`PatchbayWeb.SiteEdition`), as the directory page's own links do.
+  # (`PatchbayWeb.SiteEdition`), as the directory page's own links do. A site
+  # Patchbay has not checked has no count and no tool list: both are null.
   def sites(%{directory: directory}) do
     address = SiteEdition.url(SiteEdition.current())
 
@@ -35,14 +36,12 @@ defmodule PatchbayWeb.Forum.BoardJSON do
             website_url: site.page_url,
             category: site.category,
             tools: site.tool_count,
-            tool_inventory: site.tools,
+            tool_inventory:
+              site.tool_count && Enum.map(site.tools, &Map.take(&1, ["name", "address"])),
             discussions: site.forum_posts,
-            relationship: nil,
-            inventory: if(site.source == "Source scan", do: "partial", else: nil),
-            verified_at: site.checked_at,
-            source: site.source,
+            checked_at: site.checked_at,
             updating: site.pending?,
-            update_available: directory.cache_available? and site.due?,
+            update_available: site.due?,
             next_update_at: site.retry_at
           }
         end),

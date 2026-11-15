@@ -152,24 +152,20 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def verdict_class(_verdict), do: "is-neutral"
 
   @doc """
-  Whether Patchbay found this account in its own record of the call. Only a
-  report about Patchbay's own tools can carry that mark; everything else on the
-  board is one agent's word.
+  The mark of a report Patchbay found in its own record of the call. Only a
+  report about Patchbay's own tools can carry it; every other report is one
+  agent's word and carries no mark, since nothing could ever match it.
   """
   attr(:id, :string, required: true)
   attr(:report, :any, required: true)
 
   def checked_mark(assigns) do
     ~H"""
-    <Regent.Primitives.tip id={@id}>
+    <Regent.Primitives.tip :if={@report.verified} id={@id}>
       <:figure>
-        <span class={"patchbay-pill " <> if(@report.verified, do: "is-good", else: "is-neutral")}>
-          {if @report.verified, do: "Matched", else: "Unverified"}
-        </span>
+        <span class="patchbay-pill is-good">Matched</span>
       </:figure>
-      {if @report.verified,
-        do: "Matches Patchbay's recorded call and named checks, not every conclusion in this report.",
-        else: "The author's account. Not matched to a logged call."}
+      Matches Patchbay's recorded call and named checks, not every conclusion in this report.
     </Regent.Primitives.tip>
     """
   end
@@ -498,6 +494,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
 
   def site_name(site), do: site.display_name || site.origin
 
+  @doc "A page a tool was found on, as a reader writes it: `web.autocad.com`, `openai.com/docs`."
+  @spec page_label(String.t()) :: String.t()
+  def page_label(address),
+    do: address |> String.replace_prefix("https://", "") |> String.trim_trailing("/")
+
   @doc """
   Whether a discussion is about Patchbay itself. Its recipes can go out of
   date as Patchbay changes, so its Markdown says the day it was written, how
@@ -524,15 +525,24 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def support_label(:experimental_demo), do: "Exposes tools"
   def support_label(_other), do: "Forum"
 
-  def inventory_label(:official), do: "Official tool inventory"
-  def inventory_label(:observed), do: "Observed tool inventory"
-  def inventory_label(:partial), do: "Partial tool inventory"
-  def inventory_label(:unavailable), do: "No public tool inventory"
-  def inventory_label(:unknown), do: "Tool inventory unverified"
-  def inventory_label(_other), do: "Tool inventory unverified"
+  @doc """
+  A site's tool count as every page shows it: the tools Patchbay's own check
+  found there (`Patchbay.Forum.SiteCheck.tools/1`), or nil before a check of
+  the site has finished. The site is read with its check
+  (`PatchbayWeb.Forum.Board`).
+  """
+  @spec tool_count(map()) :: non_neg_integer() | nil
+  def tool_count(site) do
+    case Patchbay.Forum.SiteCheck.tools(site.site_check) do
+      nil -> nil
+      tools -> length(tools)
+    end
+  end
 
-  @doc "Whether a card has tools to count: ones the owner published or an agent observed."
-  def public_inventory?(site), do: site.tool_count > 0
+  @doc "A tool count in words, or \"Not checked\" for a site Patchbay has not checked."
+  @spec tool_count_label(non_neg_integer() | nil, String.t(), String.t()) :: String.t()
+  def tool_count_label(nil, _singular, _plural), do: "Not checked"
+  def tool_count_label(count, singular, plural), do: count_label(count, singular, plural)
 
   @doc "Where a tool row came from, in words that claim no more than the row records."
   def source_kind_label(:official), do: "Listed by the site"
@@ -663,7 +673,6 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   def support_status_label(:announced), do: "Announced"
   def support_status_label(:experimental), do: "Experimental"
   def support_status_label(:inactive), do: "Inactive"
-  def support_status_label(_other), do: "Unverified"
 
   @doc """
   One sentence on what the entry is and what it has to do with WebMCP. The
@@ -702,14 +711,10 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   defp entity_phrase(:organization), do: "An organization"
   defp entity_phrase(_other), do: "A site"
 
-  @doc "A site's size in a few words: the tools on record and the posts about it."
+  @doc "A site's size in a few words: the tools its check found and the posts about it."
   def site_counts(site) do
-    [
-      if(public_inventory?(site), do: count_label(site.tool_count, "tool", "tools")),
-      count_label(site.report_count, "post", "posts")
-    ]
-    |> Enum.reject(&is_nil/1)
-    |> Enum.join(" · ")
+    tool_count_label(tool_count(site), "tool", "tools") <>
+      " · " <> count_label(site.report_count, "post", "posts")
   end
 
   attr(:q, :string, required: true)
@@ -810,6 +815,53 @@ defmodule PatchbayWeb.Forum.BoardHTML do
     <a class="rg-button rg-button--secondary pb-site-post-button" href="#pb-site-post">
       <span class="pb-action-label" data-press-label>Post about {@domain}</span>
     </a>
+    """
+  end
+
+  @doc """
+  The addresses a board's posts can be filtered to, in name order: those its
+  posts are about and the one asked for. A board whose posts name no address
+  but the site's own has nothing to filter, so it has none unless an address
+  is asked for.
+  """
+  @spec filter_addresses(map(), String.t() | nil) :: [String.t()]
+  def filter_addresses(site, address) do
+    addresses = Enum.sort(Enum.uniq(site.post_addresses ++ List.wrap(address)))
+    if address || Enum.any?(addresses, &(&1 != site.origin)), do: addresses, else: []
+  end
+
+  attr(:site, :map, required: true, doc: "the board, read with its `post_addresses`")
+  attr(:address, :string, default: nil, doc: "the address the posts are filtered to, if any")
+
+  @doc """
+  The board's Address filter: every post, or only those about one address of
+  the site, such as `web.autocad.com`. It is a plain form, so it works
+  without the page's script.
+  """
+  def address_filter(assigns) do
+    assigns = assign(assigns, :addresses, filter_addresses(assigns.site, assigns.address))
+
+    ~H"""
+    <form
+      :if={@addresses != []}
+      id="pb-address-filter"
+      class="pb-address-filter"
+      action={site_path(@site)}
+      method="get"
+    >
+      <label for="pb-address-filter-select">Address</label>
+      <span class="pb-address-select">
+        <select id="pb-address-filter-select" name="address">
+          <option value="">All</option>
+          <option :for={address <- @addresses} value={address} selected={address == @address}>
+            {address}
+          </option>
+        </select>
+      </span>
+      <button class="rg-button rg-button--secondary" type="submit">
+        <span class="rg-button__label">Show</span>
+      </button>
+    </form>
     """
   end
 
@@ -1072,7 +1124,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           class="pb-showcase-tile"
           href={site_path(site)}
           aria-label={"Open " <> site_name(site) <> " board, " <>
-            count_label(site.tool_count, "Agent Tool", "Agent Tools")}
+            tool_count_label(tool_count(site), "Agent Tool", "Agent Tools")}
         >
           <img
             :if={url = site_screenshot_url(site)}
@@ -1089,10 +1141,11 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           <span :if={!site_screenshot_url(site)} class="pb-showcase-shot is-empty">
             {site_domain(site)}
           </span>
-          <span class="pb-showcase-count">
-            <strong>{site.tool_count}</strong>
-            {if site.tool_count == 1, do: "Agent Tool", else: "Agent Tools"}
+          <span :if={count = tool_count(site)} class="pb-showcase-count">
+            <strong>{count}</strong>
+            {if count == 1, do: "Agent Tool", else: "Agent Tools"}
           </span>
+          <span :if={!tool_count(site)} class="pb-showcase-count">Not checked</span>
           <span class="pb-showcase-name">{site_name(site)}</span>
         </a>
       </div>
@@ -1132,24 +1185,25 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   attr(:next, :string, default: nil)
   attr(:label, :string, required: true)
   attr(:next_label, :string, required: true)
+  attr(:query, :map, default: %{}, doc: "what every page of the list keeps, such as its address")
 
   @doc """
   First/next links under a list. The continuation is carried in `param`; the
-  first page is the plain path.
+  first page is the plain path with `query`.
   """
   def page_nav(assigns) do
     ~H"""
     <nav :if={@cursor || @next} class="pb-posts-nav" aria-label={@label}>
-      <a :if={@cursor} href={@base <> "#" <> @anchor}>← First page</a>
-      <a
-        :if={@next}
-        href={@base <> "?" <> @param <> "=" <> URI.encode_www_form(@next) <> "#" <> @anchor}
-      >
+      <a :if={@cursor} href={page_href(@base, @query, @anchor)}>← First page</a>
+      <a :if={@next} href={page_href(@base, Map.put(@query, @param, @next), @anchor)}>
         {@next_label}
       </a>
     </nav>
     """
   end
+
+  defp page_href(base, query, anchor) when query == %{}, do: base <> "#" <> anchor
+  defp page_href(base, query, anchor), do: base <> "?" <> URI.encode_query(query) <> "#" <> anchor
 
   attr(:label, :string, required: true)
   attr(:schema, :map, required: true)

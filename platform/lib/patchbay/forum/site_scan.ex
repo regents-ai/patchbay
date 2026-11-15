@@ -96,8 +96,10 @@ defmodule Patchbay.Forum.SiteScan do
 
   @doc """
   Read the directory's exact public pages without calling any discovered
-  tool. A page read whole gives its tools and when; a page that could not be
-  read whole keeps what its last whole read gave, or nothing.
+  tool: at most `Patchbay.Forum.SiteDirectory.most_pages/0` of them. A page
+  read whole gives its tools, each with its description and the page it was
+  found on, and when; a page that could not be read whole keeps what its last
+  whole read gave, or nothing.
   """
   def directory_findings(domain, previous, opts) do
     earlier = (previous || %{})["directory"] || %{}
@@ -113,7 +115,11 @@ defmodule Patchbay.Forum.SiteScan do
             %{
               "checked_at" => now,
               "page_url" => page_url,
-              "tools" => Enum.map(tools, &%{"name" => &1.name, "address" => page_url})
+              "tools" =>
+                Enum.map(
+                  tools,
+                  &%{"name" => &1.name, "description" => &1.description, "address" => page_url}
+                )
             }
           else
             _incomplete -> Map.get(earlier, url, %{})

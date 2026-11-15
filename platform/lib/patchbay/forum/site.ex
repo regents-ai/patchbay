@@ -217,14 +217,6 @@ defmodule Patchbay.Forum.Site do
   end
 
   aggregates do
-    # A tool is one name, however many contract versions it has been seen with.
-    # Retired tools stay in a tool's history; they are not counted as offered.
-    count :tool_count, :tools do
-      field(:name)
-      uniq?(true)
-      filter(expr(current?))
-    end
-
     # When the site's published tool list was last checked. Every tool in a
     # publication is seen at the same moment, so this is that moment.
     max :latest_check_at, :tools, :last_seen_at do
@@ -232,6 +224,14 @@ defmodule Patchbay.Forum.Site do
     end
 
     count(:report_count, :reports)
+
+    # The addresses the board's posts are about, each once, in name order:
+    # the choices of the board's Address filter (`Report`'s `:address`).
+    list :post_addresses, :reports, :address do
+      uniq?(true)
+      filter(expr(not is_nil(address)))
+      sort(address: :asc)
+    end
   end
 
   calculations do
@@ -291,9 +291,9 @@ defmodule Patchbay.Forum.Site do
     read :directory_boards do
       description("""
       The boards the site directory lists after its own sites: each with a
-      tool still offered or a public post, outside `except` (the directory's
-      own domains), whose address or name holds every one of `words` in any
-      case, busiest first.
+      tool Patchbay's check found or a public post, outside `except` (the
+      directory's own domains), whose address or name holds every one of
+      `words` in any case, busiest first.
       """)
 
       argument(:except, {:array, :string}, allow_nil?: false)
@@ -302,7 +302,7 @@ defmodule Patchbay.Forum.Site do
       filter(
         expr(
           origin not in ^arg(:except) and
-            (exists(tools, current?) or exists(reports, true))
+            (exists(site_check, found_tools?) or exists(reports, true))
         )
       )
 
@@ -321,11 +321,11 @@ defmodule Patchbay.Forum.Site do
 
     read :showcase do
       description("""
-      The sites that offer agents WebMCP tools, in directory order: the
-      search window's sites before anything is typed.
+      The sites on which Patchbay's check found WebMCP tools, in directory
+      order: the search window's sites before anything is typed.
       """)
 
-      filter(expr(tool_count > 0))
+      filter(expr(exists(site_check, found_tools?)))
       pagination(keyset?: true, default_limit: 50, max_page_size: 200)
       prepare(build(sort: [featured_rank: :asc, display_name: :asc, origin: :asc]))
     end

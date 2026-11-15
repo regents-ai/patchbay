@@ -1,8 +1,10 @@
 defmodule PatchbayWeb.SiteDirectoryLive do
   @moduledoc """
-  The public site directory. A row opens on the picture Patchbay took of the
-  site's home page and its WebMCP tools, and changes as Patchbay's checks of
-  its sites finish.
+  The public site directory. A row's Tools are what Patchbay's own check
+  found on the pages the listing names for it, or "Not checked" before a
+  check of the site has finished (`Patchbay.Forum.SiteDirectory`). A row
+  opens on the picture Patchbay took of the site's home page and those
+  tools, and changes as Patchbay's checks of its sites finish.
 
   At patchbay.help a site showing a paid offer carries a badge, with a line
   under it as long as the share of its soonest-ending offer's time still left
@@ -190,7 +192,8 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   >
                     <li :for={tool <- site.tools}><code>{tool["name"]}</code></li>
                   </ul>
-                  <p :if={site.tools == []} class="pb-directory-empty">No tool names recorded yet.</p>
+                  <p :if={is_nil(site.tool_count)} class="pb-directory-empty">Not checked yet.</p>
+                  <p :if={site.tool_count == 0} class="pb-directory-empty">No WebMCP tools found.</p>
                 </div>
               </th>
               <td class="pb-directory-numeric">
@@ -203,7 +206,8 @@ defmodule PatchbayWeb.SiteDirectoryLive do
                   aria-expanded={to_string(MapSet.member?(@expanded, site.host))}
                   aria-controls={"tools-" <> site.host}
                 >
-                  <strong>{metric(site.tool_count)}</strong>
+                  <strong :if={site.tool_count}>{site.tool_count}</strong>
+                  <span :if={!site.tool_count} class="pb-directory-unchecked">Not checked</span>
                 </button>
               </td>
               <td class="pb-directory-numeric">

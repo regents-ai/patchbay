@@ -176,28 +176,25 @@ defmodule Patchbay.Forum.Tool do
   end
 
   calculations do
-    # On a site with no published list: a site in the researched directory
-    # keeps its list, since the check records and retires nothing there
-    # (`SiteCheck.record_tools/2`).
     calculate(
       :current?,
       :boolean,
       expr(
         if is_nil(site.latest_check_at) do
-          not is_nil(site.support_relationship) or is_nil(retired_at)
+          is_nil(retired_at)
         else
           last_seen_at >= site.latest_check_at
         end
       ),
       description: """
       Whether the tool is still offered. On a site with a published tool list:
-      seen at or after the latest check of that list. On a site in Patchbay's
-      researched directory without one: always. On any other site: not
-      retired. A check retires a tool it once found on the page it reads and
-      no longer finds there, and only when it read the whole page, every
-      script on the site's own domain included, and found at least one tool;
-      a tool known only from what agents saw is never retired, and a retired
-      tool is offered again once it is seen again.
+      seen at or after the latest check of that list. On any other site: not
+      retired. A check retires a tool it once found on a page it reads and no
+      longer finds there, and only when it read the whole page, every script
+      on the site's own domain included, and found at least one tool there
+      (`SiteCheck.record_tools/2`); a tool known only from what agents saw is
+      never retired, and a retired tool is offered again once it is seen
+      again.
       """
     )
   end
@@ -212,30 +209,17 @@ defmodule Patchbay.Forum.Tool do
       prepare(build(sort: [name: :asc, last_seen_at: :desc, id: :asc]))
     end
 
-    read :inventory do
-      description("""
-      A site's current tools one name at a time, each with its newest version,
-      in name order from an optional name onward.
-      """)
-
-      argument(:site_id, :uuid, allow_nil?: false)
-      argument(:after_name, :string)
-      filter(expr(site_id == ^arg(:site_id) and current?))
-      filter(expr(is_nil(^arg(:after_name)) or name > ^arg(:after_name)))
-      pagination(offset?: true, default_limit: 20, max_page_size: 20)
-      prepare(build(distinct: [:name], sort: [name: :asc, last_seen_at: :desc, id: :asc]))
-    end
-
     read :named do
       description("""
-      Which of the given names a site offers as tools now, one entry per name:
-      the names a check found on the site's page that its list already holds.
+      Which of the given names a site offers as tools now, one entry per name
+      with its newest version: the names a check found that have a tool page
+      on the site's board.
       """)
 
       argument(:site_id, :uuid, allow_nil?: false)
       argument(:names, {:array, :string}, allow_nil?: false)
       filter(expr(site_id == ^arg(:site_id) and current? and name in ^arg(:names)))
-      prepare(build(distinct: [:name], sort: [name: :asc]))
+      prepare(build(distinct: [:name], sort: [name: :asc, last_seen_at: :desc, id: :asc]))
     end
 
     read :find do

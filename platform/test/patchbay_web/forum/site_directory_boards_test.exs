@@ -1,10 +1,10 @@
 defmodule PatchbayWeb.Forum.SiteDirectoryBoardsTest do
   @moduledoc """
-  /sites lists every board with a tool still offered or a public post next to
-  the directory's own sites: once each, found by its search, counted in its
-  totals and pages, with the board's own tool count. A board on a domain the
-  directory already lists is that row, and a listed site left out after a
-  check found no tools stays out.
+  /sites lists every board on which Patchbay's check found a tool, or with a
+  public post, next to the directory's own sites: once each, found by its
+  search, counted in its totals and pages, with the board's own tool count. A
+  board on a domain the directory already lists is that row, and a listed
+  site left out after a check found no tools stays out.
   """
 
   use PatchbayWeb.ConnCase, async: false
@@ -18,13 +18,21 @@ defmodule PatchbayWeb.Forum.SiteDirectoryBoardsTest do
     :ok
   end
 
-  defp tool!(site, name) do
-    Forum.observe_tool!(%{
-      site_id: site.id,
-      address: "https://#{site.origin}/",
-      name: name,
-      contract_sha256: :crypto.hash(:sha256, site.origin <> name) |> Base.encode16(case: :lower)
-    })
+  # A finished check of the site that found `names` on its front page,
+  # written as Patchbay's check writes it.
+  defp checked!(site, names) do
+    {:ok, check} = Forum.request_site_check(site.origin)
+    tools = Enum.map(names, &%{"name" => &1, "description" => "The #{&1} tool."})
+
+    # Patchbay's own job records findings: there is no actor for policies to check.
+    Forum.record_site_check!(
+      check,
+      %{
+        findings: %{"webmcp" => tools, "servers" => [], "files" => [], "directory" => %{}},
+        page_url: "https://#{site.origin}/"
+      },
+      authorize?: false
+    )
   end
 
   # Seeded by Patchbay itself, as nobody in particular: posting takes a signed-in poster.
@@ -53,13 +61,10 @@ defmodule PatchbayWeb.Forum.SiteDirectoryBoardsTest do
   test "a board with a tool is found by the directory's search, with the board's tool count",
        %{conn: conn} do
     site = Forum.register_site!("keyfleet.ai")
-    tool!(site, "list_fleets")
-    tool!(site, "join_fleet")
+    checked!(site, ["list_fleets", "join_fleet"])
 
     assert %{"sites" => [row], "pagination" => %{"total" => 1}} =
              listing(conn, %{"q" => "KEYFLEET"})
-
-    board = Forum.get_site_by_origin!("keyfleet.ai", load: [:tool_count])
 
     assert %{
              "origin" => "keyfleet.ai",
@@ -71,7 +76,6 @@ defmodule PatchbayWeb.Forum.SiteDirectoryBoardsTest do
              "discussions" => 0
            } = row
 
-    assert tools == board.tool_count
     assert tools == 2
     assert url =~ ~r{/keyfleet\.ai$}
 
@@ -97,6 +101,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryBoardsTest do
        %{conn: conn} do
     asked = Forum.register_site!("askedonly.example")
     ask!(asked)
+    checked!(asked, [])
     Forum.register_site!("emptyboard.example")
 
     assert [%{"origin" => "askedonly.example", "tools" => 0, "discussions" => 1}] =
@@ -108,7 +113,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryBoardsTest do
   test "a board on a domain the directory lists is that row, not a second one", %{conn: conn} do
     before = listing(conn, %{"q" => "openai"})
     site = Forum.register_site!("openai.com")
-    tool!(site, "search_openai")
+    checked!(site, ["search_openai"])
     ask!(site)
 
     after_board = listing(conn, %{"q" => "openai"})
@@ -137,7 +142,7 @@ defmodule PatchbayWeb.Forum.SiteDirectoryBoardsTest do
   test "boards come after the directory's sites, in its totals and pages, with no category",
        %{conn: conn} do
     before = listing(conn)["pagination"]["total"]
-    tool!(Forum.register_site!("keyfleet.ai"), "list_fleets")
+    checked!(Forum.register_site!("keyfleet.ai"), ["list_fleets"])
 
     %{"pagination" => %{"total" => total, "pages" => pages}} = listing(conn)
     assert total == before + 1
@@ -152,11 +157,11 @@ defmodule PatchbayWeb.Forum.SiteDirectoryBoardsTest do
 
   test "a page reads its boards together, however many it lists", %{conn: conn} do
     one = Forum.register_site!("qzboard1.example")
-    tool!(one, "first_tool")
+    checked!(one, ["first_tool"])
     reads_for_one = queries(fn -> listing(conn, %{"q" => "qzboard"}) end)
 
     for n <- 2..4 do
-      "qzboard#{n}.example" |> Forum.register_site!() |> tool!("tool_#{n}")
+      "qzboard#{n}.example" |> Forum.register_site!() |> checked!(["tool_#{n}"])
     end
 
     assert length(listing(conn, %{"q" => "qzboard"})["sites"]) == 4
