@@ -204,16 +204,21 @@ Before you start:
    fee, publisher and payout it logs against what you meant: none of them can
    be changed.
 
-3. **Set the three secrets** (Sean's go), in one command so the machine restarts
-   once:
+3. **Set the three secrets** (Sean's go). The publisher key never goes on a
+   command line, in a chat or in a log: it is read from a file only this step
+   reads, on standard input. The file holds one line,
+   `PATCHBAY_OFFERS_PUBLISHER_KEY=0x<the publisher key>`. All three are staged
+   and then applied together, so the machine restarts once:
 
    ```sh
-   fly secrets set --app patchbay-regents PATCHBAY_OFFERS_MARKET="0x<the market address>" PATCHBAY_OFFERS_FROM_BLOCK="<the createMarket block>" PATCHBAY_OFFERS_PUBLISHER_KEY="0x<the publisher key>"
+   fly secrets import --stage --app patchbay-regents < <the key file>
+   fly secrets set --stage --app patchbay-regents PATCHBAY_OFFERS_MARKET="0x<the market address>" PATCHBAY_OFFERS_FROM_BLOCK="<the createMarket block>"
+   fly secrets deploy --app patchbay-regents
    ```
 
-   A malformed address or block stops the machine's boot with a message naming
-   the setting, never its value; set it again correctly. A missing or malformed
-   key leaves buying closed.
+   The block is required with the market. A malformed address or block stops
+   the machine's boot with a message naming the setting, never its value; set
+   it again correctly. A missing or malformed key leaves buying closed.
 
 4. **Release** the current `main` with `scripts/deploy.sh`, as in "5. Deploy the
    current code" above, if the commit that reads these settings in production

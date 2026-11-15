@@ -301,7 +301,8 @@ config :patchbay, :assist, staking_contract_address: System.get_env("STAKING_CON
 # switch them on themselves. With none of these set the feature stays off.
 # PATCHBAY_OFFERS_MARKET turns it on and adds the market's five-minute read to
 # the Oban cron (`Patchbay.Offers.Watch`); PATCHBAY_OFFERS_FROM_BLOCK is the
-# block the market was made in; PATCHBAY_OFFERS_PUBLISHER_KEY signs Patchbay's
+# block the market was made in, required with the market so a read never starts
+# at Base's first block; PATCHBAY_OFFERS_PUBLISHER_KEY signs Patchbay's
 # admissions, and buying is closed without it. A malformed address or block
 # stops the boot, naming the setting and never its value. Production reads the
 # market through its Base node (BASE_RPC_URL, above). In development the market
@@ -315,7 +316,7 @@ if config_env() != :test do
     Regex.match?(~r/\A0x[0-9a-f]{40}\z/, market) or
       raise "PATCHBAY_OFFERS_MARKET must be an address"
 
-    from_block = String.trim(System.get_env("PATCHBAY_OFFERS_FROM_BLOCK", "0"))
+    from_block = String.trim(System.fetch_env!("PATCHBAY_OFFERS_FROM_BLOCK"))
 
     Regex.match?(~r/\A[0-9]+\z/, from_block) or
       raise "PATCHBAY_OFFERS_FROM_BLOCK must be a block number"
