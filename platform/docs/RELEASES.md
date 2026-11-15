@@ -4,6 +4,11 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v405, 15 Nov 2026
+
+- Commit: 22f2c2b0 (image `22f2c2b`), released by the Patchbay chief on Sean's 175 a. Every transaction `Patchbay.Escrow` sends from the operator wallet (credit, release, refund, revenue push) ends its calldata with Regent's Base Builder Code, `bc_u09360jo`, read from `RegentChain.BuilderCode` as the wallet buttons' steps are; the dry run before a revenue push stays plain. Amounts, recipients and the contract are unchanged. A test reads the refund Patchbay sends and finds the call followed by the code. regents-cli 1.10.30 was published during the check, so the Makefile pin, `capabilities.json` and the install lines move to it (tag 4a781568). No migration and no sign-in change. Full check on the commit clean: 1312 site tests, browser walk 525 of 525, 79 contract tests. Rollback: v404 image `64bb791`.
+- Live read, headless Chromium, signed out, 1280 and 390: patchbay.help names 22f2c2b and regents-cli 1.10.30 with its commit, health ok with migrations applied; `/`, `/sites`, `/incidents`, `/points`, `/account`, `/docs`, `/webmcp` and the open address load with no page error, no file that fails to load and no page wider than the screen. The code on a sent escrow transaction was proven by the test, not seen on Base.
+
 ## v404, 15 Nov 2026
 
 - Commit: 64bb7914 (image `64bb791`), released by the Patchbay chief as ordinary work. regents-cli 1.10.29 was published today, so `make check-siwa-latest` would fail until Patchbay names it: the Makefile pin, `capabilities.json` (release, tag commit 5ae2e873, wheel SHA256) and the install lines in `cli/COMMANDS.md` and the Patchbay skill move to 1.10.29. No code, migration or sign-in change. Full check on the commit clean: 1311 site tests, browser walk 525 of 525, 79 contract tests. Rollback: v403 image `df5fa79`.
