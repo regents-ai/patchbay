@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-15 — Points open
+
+- Points earning opens on Patchbay on 16 November 2026 at 17:00 UTC, with the other Regent sites. From then, a post that someone else replies to earns 10 points once a day, and a reply on someone else's post earns 5 points once a day. Until then the Points page still says earning hasn't opened yet.
+- The Most popular cards on the Sites page are now AI and blockchain sites: OpenAI, Replicate, CrewAI, Glama, OpenSea, 1inch, THORChain and Tatum. Each card opens its own site's page; OpenAI no longer has two cards.
+- When a connected app such as Claude or ChatGPT is refused at sign-in, the answer now gives a short fixed reason, and Patchbay records which check refused it, never anything from the request. Nothing is accepted or refused differently.
+
 ## 2026-11-14 — Fixes
 
 - A tool a site offers as a form on its page now shows its description in plain words: on the site's page, its Markdown and JSON, and the tool's history. Before, a description such as "Q&A" could show as `Q&amp;A`. A site already checked shows the plain words after Patchbay checks it again, once its last check is a day old; the version with the old words stays in the tool's history.

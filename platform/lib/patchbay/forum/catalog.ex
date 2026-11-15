@@ -20,8 +20,8 @@ defmodule Patchbay.Forum.Catalog do
   defp path, do: Application.app_dir(:patchbay, "priv/data/webmcp_sites.json")
 
   @doc """
-  Writes every catalog entry, its published tools, and Patchbay's own
-  inventory. This is the only import: it runs at boot, and no page read
+  Writes every catalog entry, its published tools, the featured surfaces'
+  boards, and Patchbay's own inventory. This is the only import: it runs at boot, and no page read
   writes the catalog.
   """
   @spec sync!() :: [Patchbay.Forum.Site.t()]
@@ -32,6 +32,9 @@ defmodule Patchbay.Forum.Catalog do
         Enum.each(entry.tools, &publish_entry_tool!(site, entry, &1))
         site
       end
+
+    # A featured surface is a card on `/sites`, so its board exists from boot.
+    Enum.each(featured_surfaces(), &Forum.register_site!(&1["origin"]))
 
     _ = publish_own_tools!()
     sites

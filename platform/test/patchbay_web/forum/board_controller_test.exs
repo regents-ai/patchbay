@@ -228,7 +228,7 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
     end
 
     test "a popular site's card counts its tools as its board and its row do", %{conn: conn} do
-      checked!("bitdefender.com", ["scan_url", "renew"])
+      checked!("replicate.com", ["scan_url", "renew"])
       document = conn |> get(~p"/sites") |> html_response(200) |> LazyHTML.from_document()
 
       cards =
@@ -254,15 +254,15 @@ defmodule PatchbayWeb.Forum.BoardControllerTest do
       end
 
       assert {_href, "2 Agent Tools"} =
-               Enum.find(cards, fn {href, _count} -> href =~ "bitdefender" end)
+               Enum.find(cards, fn {href, _count} -> href =~ "replicate" end)
 
       %{"sites" => rows} =
         build_conn()
         |> put_req_header("accept", "application/json")
-        |> get(~p"/sites?q=bitdefender.com")
+        |> get(~p"/sites?q=replicate.com")
         |> json_response(200)
 
-      assert [%{"tools" => 2}] = Enum.filter(rows, &(&1["origin"] == "bitdefender.com"))
+      assert [%{"tools" => 2}] = Enum.filter(rows, &(&1["origin"] == "replicate.com"))
     end
 
     test "each catalog picture in the gallery offers its small copy, and the copy is there",

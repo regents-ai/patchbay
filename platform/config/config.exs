@@ -17,8 +17,8 @@ config :ash, custom_expressions: [Patchbay.Forum.SearchTerms]
 config :regent_identity, repo: Patchbay.Repo, ash_domains: [RegentIdentity]
 
 # Regent Points: one account per person, shared by every Regent site, in the
-# `regent_points` schema `bin/migrate-shared` applies. Nothing earns until Sean sets the
-# rules and the start time; until then Patchbay only shows the account. `adapters` are
+# `regent_points` schema `bin/migrate-shared` applies. Nothing earns without a start time
+# and approved rules; production sets both (config/prod.exs). `adapters` are
 # this site's checks of what may earn, offered by `Patchbay.Points.Award`; a rule earns
 # only once it is also on `approved_rules`.
 config :regent_points,

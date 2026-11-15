@@ -14,6 +14,12 @@ config :patchbay, :secure_session_cookie, true
 # The port `fly.toml` names under `[metrics]`. Fly sends no public traffic to it.
 config :patchbay, :metrics_listener, ip: {0, 0, 0, 0, 0, 0, 0, 0}, port: 9091
 
+# Regent Points earns from the shared start (Sean, 15 November 2026). The start never
+# changes once set; to stop earning, empty `approved_rules`.
+config :regent_points,
+  starts_at: ~U[2026-11-16 17:00:00Z],
+  approved_rules: ~w(patchbay.report_published patchbay.reply_published)
+
 # Force using SSL in production. This also sets the "strict-transport-security" header,
 # known as HSTS. Note `:force_ssl` is required to be set at compile-time.
 #

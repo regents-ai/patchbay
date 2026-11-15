@@ -119,11 +119,15 @@ defmodule PatchbayWeb.Forum.Board do
   """
   @spec most_popular() :: {:ok, [Site.t()]} | {:error, term()}
   def most_popular do
-    with {:ok, sites, _more?} <- list_directory() do
+    surfaces = Patchbay.Forum.Catalog.featured_surfaces()
+    origins = Enum.map(surfaces, & &1["origin"])
+
+    with {:ok, %{results: sites}} <-
+           Forum.list_directory(query: Ash.Query.filter(site_cards(), origin in ^origins)) do
       by_origin = Map.new(sites, &{&1.origin, &1})
 
       {:ok,
-       for surface <- Patchbay.Forum.Catalog.featured_surfaces(),
+       for surface <- surfaces,
            site = by_origin[surface["origin"]],
            site do
          site

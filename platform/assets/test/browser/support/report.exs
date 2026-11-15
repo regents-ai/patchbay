@@ -90,7 +90,7 @@ Ash.create!(
   Patchbay.Forum.SiteScreenshot,
   %{
     site_id: target.id,
-    image: File.read!("priv/static/images/home-sites/target-960.webp"),
+    image: File.read!("priv/static/images/home-sites/openai-960.webp"),
     captured_at: taken_at
   },
   action: :store,

@@ -1795,14 +1795,6 @@
   ],
   "featured_surfaces": [
     {
-      "origin": "target.com",
-      "display_name": "Target",
-      "page_url": "https://target.com/",
-      "screenshot_path": "/images/home-sites/target.jpg",
-      "screenshot_captured_at": "2026-10-14T23:08:29.149932+00:00",
-      "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
-    },
-    {
       "origin": "openai.com",
       "display_name": "OpenAI",
       "page_url": "https://openai.com/",
@@ -1811,51 +1803,59 @@
       "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
     },
     {
-      "origin": "monday.com",
-      "display_name": "Monday",
-      "page_url": "https://monday.com/",
-      "screenshot_path": "/images/home-sites/monday.jpg",
-      "screenshot_captured_at": "2026-10-14T23:09:21.910654+00:00",
+      "origin": "replicate.com",
+      "display_name": "Replicate",
+      "page_url": "https://replicate.com/",
+      "screenshot_path": "/images/home-sites/replicate.jpg",
+      "screenshot_captured_at": "2026-11-15T10:35:00+00:00",
       "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
     },
     {
-      "origin": "asus.com",
-      "display_name": "ASUS",
-      "page_url": "https://asus.com/",
-      "screenshot_path": "/images/home-sites/asus.jpg",
-      "screenshot_captured_at": "2026-10-14T23:09:48.334054+00:00",
+      "origin": "crewai.com",
+      "display_name": "CrewAI",
+      "page_url": "https://crewai.com/",
+      "screenshot_path": "/images/home-sites/crewai.jpg",
+      "screenshot_captured_at": "2026-11-15T10:35:00+00:00",
       "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
     },
     {
-      "origin": "redbus.in",
-      "display_name": "redBus",
-      "page_url": "https://redbus.in/",
-      "screenshot_path": "/images/home-sites/redbus.jpg",
-      "screenshot_captured_at": "2026-10-14T23:10:57.584566+00:00",
+      "origin": "glama.ai",
+      "display_name": "Glama",
+      "page_url": "https://glama.ai/",
+      "screenshot_path": "/images/home-sites/glama.jpg",
+      "screenshot_captured_at": "2026-11-15T10:35:00+00:00",
       "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
     },
     {
-      "origin": "bitdefender.com",
-      "display_name": "Bitdefender",
-      "page_url": "https://bitdefender.com/",
-      "screenshot_path": "/images/home-sites/bitdefender.jpg",
-      "screenshot_captured_at": "2026-10-14T23:11:15.793878+00:00",
+      "origin": "opensea.io",
+      "display_name": "OpenSea",
+      "page_url": "https://opensea.io/",
+      "screenshot_path": "/images/home-sites/opensea.jpg",
+      "screenshot_captured_at": "2026-11-15T10:35:00+00:00",
       "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
     },
     {
-      "origin": "feverup.com",
-      "display_name": "Fever",
-      "page_url": "https://feverup.com/en",
-      "screenshot_path": "/images/home-sites/feverup.jpg",
-      "screenshot_captured_at": "2026-10-14T23:11:33.551520+00:00",
+      "origin": "1inch.com",
+      "display_name": "1inch",
+      "page_url": "https://1inch.com/",
+      "screenshot_path": "/images/home-sites/1inch.jpg",
+      "screenshot_captured_at": "2026-11-15T10:35:00+00:00",
       "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
     },
     {
-      "origin": "openai.com",
-      "display_name": "OpenAI Developers",
-      "page_url": "https://developers.openai.com/",
-      "screenshot_path": "/images/home-sites/developers.jpg",
-      "screenshot_captured_at": "2026-10-14T23:11:50.160660+00:00",
+      "origin": "thorchain.org",
+      "display_name": "THORChain",
+      "page_url": "https://thorchain.org/",
+      "screenshot_path": "/images/home-sites/thorchain.jpg",
+      "screenshot_captured_at": "2026-11-15T10:35:00+00:00",
+      "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
+    },
+    {
+      "origin": "tatum.io",
+      "display_name": "Tatum",
+      "page_url": "https://tatum.io/",
+      "screenshot_path": "/images/home-sites/tatum.jpg",
+      "screenshot_captured_at": "2026-11-15T10:35:00+00:00",
       "screenshot_note": "Public homepage captured in the browser; not a live tool execution check."
     }
   ]
