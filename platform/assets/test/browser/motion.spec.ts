@@ -62,6 +62,14 @@ test.describe("the home page's preview", () => {
   })
 
   test("the buttons stay put while the address is looked at and answered", async ({page}) => {
+    // The server's answer is held until the look has been seen: the walk's server
+    // answers in a few milliseconds, before a check from outside could see it.
+    let answer!: () => void
+    const held = new Promise<void>(resolve => (answer = resolve))
+    await page.route(/\/fix-check\?/, async route => {
+      await held
+      await route.continue()
+    })
     // The post button and the details toggle. On a phone both are under the
     // address; on a desktop the post button stands beside the question and the
     // toggle is under the address.
@@ -74,6 +82,7 @@ test.describe("the home page's preview", () => {
     await site.blur()
     await expect(site).toHaveAccessibleDescription("Looking for WebMCP tools at this address…")
     expect(await places()).toEqual(before)
+    answer()
     await expect(site).toHaveAccessibleDescription("That address does not lead to any site.")
     expect(await places()).toEqual(before)
   })

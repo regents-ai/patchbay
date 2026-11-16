@@ -60,7 +60,12 @@ config :patchbay, PatchbayWeb.Endpoint,
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}],
   check_origin: false,
-  code_reloader: true,
+  # The walk's server runs as a release does, with no code reloader. The code reloader
+  # checks the build on every request and every live connection, one at a time, which
+  # made pages answer so slowly on a busy machine that their live connections gave up
+  # and checks timed out. The walk builds into its own folder
+  # (assets/test/browser/support/serve.sh), so this never recompiles the everyday build.
+  code_reloader: not walk?,
   reloadable_compilers: [:ash_signals, :phoenix_live_view, :elixir, :app],
   # scripts/readiness.sh sets this to off, so error pages answer as they do in a release.
   debug_errors: System.get_env("PATCHBAY_DEBUG_ERRORS", "on") == "on",
