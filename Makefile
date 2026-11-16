@@ -1,15 +1,55 @@
 .DEFAULT_GOAL := help
-.PHONY: help check check-platform check-browser check-required-fixes check-cli check-siwa-latest check-contracts release readiness
+.PHONY: help check platform-deps check-platform platform-assets platform-precommit check-browser check-required-fixes check-cli check-siwa-latest check-contracts release readiness
 help:
-	@echo "Run make check for every gate, or check-platform, check-browser, check-required-fixes, check-cli, check-siwa-latest or check-contracts for one component."
+	@echo "Run make check for every gate, side by side, each writing its output to platform/_build/check/<gate>.log; it prints every gate's log, the failed ones last, then one line per gate. Or run check-platform, check-browser, check-required-fixes, check-cli, check-siwa-latest or check-contracts for one component."
 	@echo "Run make release to run every gate, then build the committed tree into an image."
 	@echo "Run make readiness to start the local server and check what the agent-readiness scorer looks for."
-check: check-platform check-browser check-required-fixes check-cli check-siwa-latest check-contracts
-# A new checkout needs nothing first: the libraries, the page packages, esbuild and the
-# shared library copies the type check reads are all fetched or built here, so the
-# browser walk itself fetches nothing.
-check-platform:
-	cd platform && mix deps.get && mix assets.setup && mix do regent_ui.assets + regent_blog.assets + regent_identity.assets + regent_agent_access.assets && mix precommit
+# make check fetches the libraries first (platform-deps), since three gates read them,
+# then runs its gates side by side, each writing its output to $(CHECK_LOGS)/<gate>.log,
+# then prints every gate's log, the failed ones last, and one line per gate, and fails
+# when any gate failed. The gates of the quoted lane run in turn: platform-assets
+# installs assets/node_modules afresh and copies the shared libraries' files into
+# assets/vendor, which mix precommit's type check and Node tests read, and the browser
+# walk runs from assets/node_modules and copies assets/vendor again (mix assets.build
+# deletes each folder first). The other gates write nothing another reads.
+CHECK_LANES := "platform-assets platform-precommit check-browser" check-required-fixes check-cli check-siwa-latest check-contracts
+CHECK_GATES := $(subst ",,$(CHECK_LANES))
+CHECK_LOGS := platform/_build/check
+check: platform-deps
+	@mkdir -p $(CHECK_LOGS) && : > $(CHECK_LOGS)/results
+	@echo "Running $(words $(CHECK_GATES)) gates side by side; each writes $(CHECK_LOGS)/<gate>.log."
+	@for lane in $(CHECK_LANES); do \
+	  for gate in $$lane; do \
+	    start=$$(date +%s); \
+	    $(MAKE) --no-print-directory $$gate > $(CHECK_LOGS)/$$gate.log 2>&1; \
+	    code=$$?; echo "$$gate $$code $$(( $$(date +%s) - start ))" >> $(CHECK_LOGS)/results; \
+	  done & \
+	done; wait
+	@failed=; \
+	for gate in $(CHECK_GATES); do \
+	  if grep -q "^$$gate 0 " $(CHECK_LOGS)/results; then \
+	    echo; echo "== $$gate ($(CHECK_LOGS)/$$gate.log)"; cat $(CHECK_LOGS)/$$gate.log; \
+	  else failed="$$failed $$gate"; fi; \
+	done; \
+	for gate in $$failed; do \
+	  echo; echo "== $$gate FAILED ($(CHECK_LOGS)/$$gate.log)"; cat $(CHECK_LOGS)/$$gate.log; \
+	done; \
+	echo; \
+	for gate in $(CHECK_GATES); do \
+	  set -- $$(grep "^$$gate " $(CHECK_LOGS)/results); \
+	  if [ "$$2" = 0 ]; then echo "$$gate: ok in $$3 s"; else echo "$$gate: FAILED after $$3 s"; fi; \
+	done; \
+	test -z "$$failed"
+# A new checkout needs nothing first: the libraries (platform-deps), the page packages,
+# esbuild and the shared library copies the type check reads (platform-assets) are all
+# fetched or built here, so the browser walk itself fetches nothing.
+check-platform: platform-deps platform-assets platform-precommit
+platform-deps:
+	cd platform && mix deps.get
+platform-assets:
+	cd platform && mix assets.setup && mix do regent_ui.assets + regent_blog.assets + regent_identity.assets + regent_agent_access.assets
+platform-precommit:
+	cd platform && mix precommit
 # The browser walk (platform/assets/test/browser): pages at 320, 390 and 1280 in
 # headless Chromium. Each run starts its own server on its own port and database,
 # drops it at the end, and refuses every request outside this machine.
