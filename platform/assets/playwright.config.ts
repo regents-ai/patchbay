@@ -1,4 +1,5 @@
 import {execFileSync} from "node:child_process"
+import {availableParallelism} from "node:os"
 import {defineConfig, devices} from "@playwright/test"
 
 // The browser walk (make check-browser). It builds the pages' scripts and styles,
@@ -21,11 +22,15 @@ process.env.PATCHBAY_WALK_PORT ??= execFileSync(process.execPath, [
 const port = Number(process.env.PATCHBAY_WALK_PORT)
 process.env.PATCHBAY_DEV_PARTITION = `_browser_${port}`
 const baseURL = `http://127.0.0.1:${port}`
+// One browser for every two of the machine's cores, so the walk's server, its database
+// and the check's other gates have the rest; at most twelve, past which the one server
+// is the limit (ash-template's measure).
+const workers = Math.max(1, Math.min(12, Math.floor(availableParallelism() / 2)))
 
 export default defineConfig({
   testDir: "./test/browser",
   fullyParallel: true,
-  workers: 3,
+  workers,
   forbidOnly: true,
   retries: 0,
   reporter: "line",
