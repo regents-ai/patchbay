@@ -2,10 +2,8 @@ defmodule Patchbay.Offers.Cursor do
   @moduledoc """
   How far Patchbay's market has been read on its chain, always at the latest
   block: the first block not read yet, and the head last seen and when.
-
-  A reading that disagrees with the record sets `rescan_from` and stops the
-  reading until a person corrects the record and a moderator clears it
-  (`:clear`, from the operator page, `PatchbayWeb.OffersAdminLive`).
+  Reading never stops: where the chain disagrees with the record, the reader
+  keeps what it saved first and reads on (`Patchbay.Offers.Scanner`).
   """
 
   use Ash.Resource,
@@ -38,7 +36,6 @@ defmodule Patchbay.Offers.Cursor do
     attribute(:head_block, :integer, public?: true, constraints: [min: 0])
     attribute(:head_block_hash, :string, public?: true, constraints: [match: @hash])
     attribute(:observed_at, :utc_datetime_usec, public?: true)
-    attribute(:rescan_from, :integer, public?: true, constraints: [min: 0])
 
     timestamps()
   end
@@ -71,37 +68,13 @@ defmodule Patchbay.Offers.Cursor do
       return_skipped_upsert?(true)
     end
 
-    # Moves only a cursor still where this pass found it and not stopped, so a
-    # second machine's pass or a hand correction is never undone.
+    # Moves only a cursor still where this pass found it, so a second
+    # machine's pass is never undone.
     update :advance do
       accept([:next_block, :head_block, :head_block_hash, :observed_at])
       require_attributes([:next_block, :head_block, :head_block_hash, :observed_at])
       argument(:from, :integer, allow_nil?: false)
       validate(Patchbay.Offers.CursorUnmoved)
-    end
-
-    # Keeps the earliest block where the chain disagreed with the record.
-    update :stop do
-      accept([])
-      require_atomic?(true)
-      argument(:block, :integer, allow_nil?: false, constraints: [min: 0])
-
-      change(
-        atomic_update(
-          :rescan_from,
-          expr(
-            if is_nil(rescan_from) or rescan_from > ^arg(:block),
-              do: ^arg(:block),
-              else: rescan_from
-          )
-        )
-      )
-    end
-
-    # A person corrected the record by hand and reading may go on.
-    update :clear do
-      accept([:next_block])
-      change(set_attribute(:rescan_from, nil))
     end
   end
 
@@ -110,12 +83,8 @@ defmodule Patchbay.Offers.Cursor do
       authorize_if(always())
     end
 
-    policy action([:open, :advance, :stop]) do
+    policy action([:open, :advance]) do
       authorize_if(actor_attribute_equals(:role, :system))
-    end
-
-    policy action(:clear) do
-      authorize_if(Patchbay.Checks.Moderator)
     end
   end
 end

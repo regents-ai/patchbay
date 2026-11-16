@@ -260,7 +260,6 @@ a.pb-oa-name { text-decoration: none; }
 .pb-oa-leases .pb-oa-num { text-align: end; font-variant-numeric: tabular-nums; }
 .pb-oa-steps { padding: var(--space-2) var(--space-3); border-inline-start: 3px solid var(--pb-bad); background: var(--pb-bad-wash); font-size: var(--pb-fs-sm); }
 .pb-oa-step-list { margin: var(--space-1) 0 0; padding-inline-start: 1.25rem; }
-.pb-oa-card { padding: var(--space-3); border: 1px solid var(--pb-bad); background: var(--pb-bad-wash); }
 .pb-oa-pull { flex: 1 1 20rem; }
 /* Placements: Patchbay's own two, then a line for each site's that opens in place. */
 .pb-oa-group { margin: var(--space-2) 0 0; color: var(--pb-text-muted); font-size: var(--pb-fs-micro); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; }

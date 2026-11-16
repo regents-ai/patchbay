@@ -4,9 +4,9 @@ defmodule Patchbay.Offers.ReadMarket do
   `Patchbay.Offers.Scanner` pass; the job then waits five minutes and runs
   again. `Patchbay.Offers.Watch.refresh/0` brings the next run forward to ten
   seconds away, never later. When the node does not answer, the job waits a
-  minute; any other failure is retried a minute later. A reading stopped at a
-  disagreement, or a node serving another chain, ends the job until a person
-  looks.
+  minute; any other failure is retried a minute later. A node serving another
+  chain ends the job with an error line, and the watch queues it again five
+  minutes later (`Patchbay.Offers.Watch`).
   """
 
   use Oban.Worker,
@@ -37,9 +37,6 @@ defmodule Patchbay.Offers.ReadMarket do
         )
 
         {:cancel, {:wrong_chain, other_chain}}
-
-      {:stopped, block} ->
-        {:cancel, {:stopped, block}}
 
       {:error, :unavailable} ->
         Logger.warning("Agent offers: the node did not answer; reading again in a minute")

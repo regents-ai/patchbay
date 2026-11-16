@@ -72,19 +72,23 @@ defmodule Patchbay.Offers.Termination do
       upsert_fields([])
       upsert_condition(expr(false))
       return_skipped_upsert?(true)
-      change(Patchbay.Offers.RecordOnce)
     end
 
-    read :in_blocks do
+    # What a second reading of blocks `from` to `to` is checked against
+    # (`Patchbay.Offers.Scanner`): the rows recorded in them, and every row
+    # recorded from `transactions`, wherever it was.
+    read :recorded do
       argument(:chain_id, :integer, allow_nil?: false)
       argument(:market, :string, allow_nil?: false)
       argument(:from, :integer, allow_nil?: false)
       argument(:to, :integer, allow_nil?: false)
+      argument(:transactions, {:array, :string}, allow_nil?: false)
 
       filter(
         expr(
           chain_id == ^arg(:chain_id) and market == ^arg(:market) and
-            block_number >= ^arg(:from) and block_number <= ^arg(:to)
+            ((block_number >= ^arg(:from) and block_number <= ^arg(:to)) or
+               transaction_hash in ^arg(:transactions))
         )
       )
     end

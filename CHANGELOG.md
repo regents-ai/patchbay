@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-15 — Offers reading
+
+- Patchbay never stops reading its Offers market now. If Base later disagrees with something Patchbay already recorded, Patchbay keeps what it recorded first, notes it in its own log, and reads on, so nobody has to correct the record by hand; the moderators' Offers page no longer has a notice or a Continue form for a stopped reading. Offers is still off, so nothing visible changes.
+
 ## 2026-11-15 — Offers setup
 
 - Offers can now be switched on at patchbay.help once its market is on Base, and the site then keeps reading the market on its own. Until then nothing changes: Offers stays off.

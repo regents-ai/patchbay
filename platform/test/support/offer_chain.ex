@@ -11,7 +11,8 @@ defmodule PatchbayTest.OfferChain do
 
   Every range of logs asked for is noted (`asked/0`), and the node can be
   made to refuse a range wider than some number of blocks, or to answer
-  nothing at all.
+  nothing at all. The chain's history can change: a block's hash, its logs
+  dropped, or moved to another block.
   """
 
   @behaviour Patchbay.Offers.Client
@@ -83,6 +84,26 @@ defmodule PatchbayTest.OfferChain do
   @doc "Takes every log of `block` off the chain."
   def drop_logs!(block),
     do: update(fn state -> %{state | logs: Enum.reject(state.logs, &(&1.block == block))} end)
+
+  @doc """
+  Moves every log of `block` to block `to`, each `shift` places later there
+  and still in its own transaction, as a change in the chain's history can.
+  """
+  def move_logs!(block, to, shift) do
+    update(fn state ->
+      logs =
+        Enum.map(state.logs, fn
+          %{block: ^block, index: index, raw: raw} = log ->
+            moved = %{"blockNumber" => quantity(to), "logIndex" => quantity(index + shift)}
+            %{log | block: to, index: index + shift, raw: Map.merge(raw, moved)}
+
+          log ->
+            log
+        end)
+
+      %{state | logs: logs}
+    end)
+  end
 
   @doc """
   A `PlacementCreated` log in `block`: a placement of three 72-hour slots for
