@@ -60,6 +60,29 @@ defmodule PatchbayWeb.MCPAnonymousClientTest do
     assert page.resp_body == markdown
   end
 
+  # A client holding a list of tools from another day calls a name the address
+  # does not list: the answer names the tool and where the current list is,
+  # and the tools the address does list go on answering on the same session.
+  test "a name an address does not list is refused by name, pointing at tools/list",
+       %{conn: conn} do
+    for path <- ["/mcp", "/chatgpt/mcp"] do
+      session = initialize(conn, path)
+      listed = for tool <- tools(conn, path, session), do: tool["name"]
+      name = "read_nothing_listed"
+      refute name in listed
+
+      answer = conn |> call(path, session, name, %{}) |> json_response(200)
+
+      assert %{"error" => %{"code" => -32_602, "message" => message}} = answer
+      assert message =~ name
+      assert message =~ "tools/list"
+      refute Map.has_key?(answer, "result")
+
+      assert %{"sites" => [_ | _] = _first_page} =
+               answer(conn, path, session, "read_site_directory")
+    end
+  end
+
   test "a signed tool tells an unsigned caller how to sign here, and runs once signed",
        %{conn: conn} do
     agent = SignedAgent.pair!()
