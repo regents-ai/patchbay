@@ -120,8 +120,6 @@ defmodule Patchbay.Offers do
       define(:get_cursor, action: :read, get_by: [:chain_id, :market], not_found_error?: false)
       define(:open_cursor, action: :open)
       define(:advance_cursor, action: :advance)
-      define(:stop_cursor, action: :stop, args: [:block])
-      define(:clear_cursor, action: :clear)
     end
   end
 

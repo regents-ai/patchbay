@@ -5,7 +5,7 @@ defmodule PatchbayWeb.OffersAdminLive do
   members, choose the pools each placement shows from, and see each
   placement's live leases with how often each was shown: General and CVE
   incidents first (`Patchbay.Offers.Source`), then each site's placement as a
-  line that opens. A stopped reading of the market is cleared here too.
+  line that opens.
 
   Every press acts in place, as the signed-in moderator: each action's own
   policy decides (`Patchbay.Checks.Moderator`), never this page. Pulling a
@@ -88,19 +88,6 @@ defmodule PatchbayWeb.OffersAdminLive do
   def handle_event("drop_pool", %{"id" => id}, socket),
     do: press_on(socket, &Offers.get_placement_pool/2, id, &Offers.drop_pool/2)
 
-  def handle_event("clear_stop", %{"next_block" => next_block}, socket) do
-    %{chain_id: chain_id} = Offers.chain()
-    actor = socket.assigns.current_profile
-
-    with {:ok, cursor} <- Offers.get_cursor(chain_id, Offers.market(), actor: actor),
-         {:ok, _cleared} <- Offers.clear_cursor(cursor, %{next_block: next_block}, actor: actor) do
-      Offers.Watch.refresh()
-      {:noreply, socket |> assign(problem: nil) |> reread()}
-    else
-      {:error, problem} -> {:noreply, socket |> assign(problem: refusal(problem)) |> reread()}
-    end
-  end
-
   # One action, run as the signed-in moderator; the page shows what it left.
   defp press(socket, action, args) do
     case apply(action, args ++ [[actor: socket.assigns.current_profile]]) do
@@ -178,7 +165,6 @@ defmodule PatchbayWeb.OffersAdminLive do
   defp said(%{field: :name}), do: "Name the pool in 2 to 40 characters."
   defp said(%{field: :tags}), do: "Use topic tags, such as payments or auth."
   defp said(%{field: :reason}), do: "Keep the reason to 500 characters."
-  defp said(%{field: :next_block}), do: "Give the block to read on from."
   defp said(_error), do: "That could not be saved. Check it and try again."
 
   @impl true
@@ -213,45 +199,12 @@ defmodule PatchbayWeb.OffersAdminLive do
       </p>
 
       <%= if admin = @admin.value do %>
-        <.reading cursor={admin.cursor} />
         <.campaigns admin={admin} />
         <.advertisers rules={admin.rules} />
         <.pools pools={admin.pools} />
         <.placements admin={admin} />
       <% end %>
     </main>
-    """
-  end
-
-  attr :cursor, :any, required: true
-
-  defp reading(assigns) do
-    ~H"""
-    <section
-      :if={@cursor && @cursor.rescan_from}
-      id="pb-oa-reading"
-      class="pb-sheet-section pb-oa-card"
-      aria-labelledby="pb-oa-reading-title"
-    >
-      <h2 id="pb-oa-reading-title">Reading</h2>
-      <p>
-        Patchbay's record of the market disagrees with Base at block {@cursor.rescan_from}, so reading
-        is stopped. Correct the record, then go on from the block it is right up to.
-      </p>
-      <form id="pb-oa-clear" phx-submit="clear_stop" class="pb-offmod-actions">
-        <Primitives.field id="pb-oa-next-block" label="Block">
-          <input
-            id="pb-oa-next-block"
-            type="number"
-            name="next_block"
-            min="0"
-            value={@cursor.rescan_from}
-            required
-          />
-        </Primitives.field>
-        <Primitives.button type="submit" variant="secondary">Continue</Primitives.button>
-      </form>
-    </section>
     """
   end
 

@@ -34,6 +34,11 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
     assert_error_sent 404, fn -> get(conn, @path) end
     assert_error_sent 404, fn -> conn |> sign_in(advertiser.id) |> get(@path) end
 
+    # The market is being read, as it always is once a market is set.
+    Offers.open_cursor!(%{chain_id: 8453, market: market(), next_block: 10},
+      actor: %{role: :system}
+    )
+
     moderator = moderator()
     assert conn |> sign_in(moderator.id) |> get(@path) |> html_response(200) =~ "pb-offers-admin"
     assert_error_sent 404, fn -> conn |> on_open() |> sign_in(moderator.id) |> get(@path) end
@@ -136,22 +141,6 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
     assert Offers.list_pools!(actor: moderator()) == []
   end
 
-  test "a moderator lets a stopped reading of the market go on", %{conn: conn} do
-    system = %{role: :system}
-
-    cursor =
-      Offers.open_cursor!(%{chain_id: 8453, market: market(), next_block: 10}, actor: system)
-
-    Offers.stop_cursor!(cursor, 12, actor: system)
-
-    {:ok, view, _html} = conn |> sign_in(moderator().id) |> live(@path)
-    assert has_element?(view, "#pb-oa-reading")
-
-    view |> form("#pb-oa-clear", %{"next_block" => "12"}) |> render_submit()
-    refute has_element?(view, "#pb-oa-reading")
-    assert %{rescan_from: nil, next_block: 12} = Offers.get_cursor!(8453, market())
-  end
-
   test "every action behind a press refuses anyone but a moderator", %{
     advertiser: advertiser,
     campaign: campaign
@@ -164,9 +153,6 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
     choice = %{chain_id: 8453, market: market(), placement_id: 1, pool_id: pool.id}
     chosen = Offers.choose_pool!(choice, actor: moderator)
 
-    cursor =
-      Offers.open_cursor!(%{chain_id: 8453, market: market(), next_block: 10}, actor: system)
-
     presses = [
       fn actor -> Offers.approve_campaign(campaign.campaign_id, actor: actor) end,
       fn actor -> Offers.pull_campaign(campaign.campaign_id, actor: actor) end,
@@ -177,8 +163,7 @@ defmodule PatchbayWeb.OffersAdminLiveTest do
       fn actor -> Offers.add_pool_member(pool.id, wallet(), actor: actor) end,
       fn actor -> Offers.remove_pool_member(member, actor: actor) end,
       fn actor -> Offers.choose_pool(%{choice | placement_id: 2}, actor: actor) end,
-      fn actor -> Offers.drop_pool(chosen, actor: actor) end,
-      fn actor -> Offers.clear_cursor(cursor, %{next_block: 10}, actor: actor) end
+      fn actor -> Offers.drop_pool(chosen, actor: actor) end
     ]
 
     for press <- presses, actor <- [advertiser, system, nil] do
