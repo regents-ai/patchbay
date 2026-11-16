@@ -283,8 +283,10 @@ config :patchbay,
 # reading job. `config/runtime.exs` sets the market from PATCHBAY_OFFERS_MARKET
 # in production and development. `policy` is the name of Patchbay's admission
 # policy; a placement created under any other is never admitted.
-# `wallet_rpc_url` is the public address a wallet adds the chain with, never the
-# site's own node.
+# `chain_id` is the site's wallet chain: every page names it, and Privy connects
+# wallets on it and switches to no other (`assets/js/privy/provider.ts`), so it
+# must be a network in Privy's own list. `wallet_rpc_url` is the chain's public
+# address, which a review carries and no wallet reads, never the site's own node.
 config :patchbay, Patchbay.Offers,
   market_address: nil,
   chain_id: 8453,
@@ -323,9 +325,9 @@ config :patchbay, Patchbay.Accounts.EnsIdentity, primary_name: AgentEns.PrimaryN
 # The payment records live in the shared `regent_payments` schema, which
 # `bin/migrate-shared` applies; Patchbay reads and writes only its own rows.
 #
-# `payment_chain` is the network a page's wallet signs a payment on, as the
-# wallet is told it: Base, with Base's public endpoint for a wallet that has
-# to add the network. Only the wallet uses that endpoint.
+# `payment_chain` is the network a page's wallet signs a payment on: Base, the
+# wallet chain Privy connects wallets on (`Patchbay.Offers` `chain_id`), with
+# Base's public endpoint, which a review carries and no wallet reads.
 config :regent_payments,
   repo: Patchbay.Repo,
   site: "patchbay",

@@ -307,8 +307,7 @@ config :patchbay, :assist, staking_contract_address: System.get_env("STAKING_CON
 # stops the boot, naming the setting and never its value. Production reads the
 # market through its Base node (BASE_RPC_URL, above). In development the market
 # is a lab chain on this machine (`scripts/offers-lab.sh`), whose node
-# PATCHBAY_OFFERS_RPC_URL names: the site reads through it and the wallet adds
-# it.
+# PATCHBAY_OFFERS_RPC_URL names: the site and the lab read through it.
 if config_env() != :test do
   if market = System.get_env("PATCHBAY_OFFERS_MARKET") do
     market = String.downcase(String.trim(market))

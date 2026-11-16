@@ -177,7 +177,8 @@ export function paymentCancellation(
 
 // Why nothing reached the wallet's prompt once it had been found: its open
 // account is no longer the one this payment was prepared for (it changed
-// during the call), it would not switch network, or it did not answer.
+// during the call), the person declined the network switch, it could not
+// switch network, or it did not answer.
 function beforeSigning(error: unknown): string {
   if (!(error instanceof NothingSent)) return "wallet_unanswered";
   return error.reason === "wallet_unavailable" ? "wallet_changed" : error.reason;

@@ -137,7 +137,10 @@ defmodule Patchbay.Offers do
 
   @doc """
   The chain the market is on, as a wallet step names it: its id, its name and
-  the public address a wallet adds it with.
+  its public address. Every page names its id as the wallet chain, the only
+  network Privy connects wallets on (`wallet-chain-id` in the root layout);
+  a wallet switches to it through Privy, which takes the network's details
+  from its own list, so no wallet reads the public address.
   """
   @spec chain() :: %{chain_id: pos_integer(), name: String.t(), rpc_url: String.t()}
   def chain do

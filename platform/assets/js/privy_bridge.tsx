@@ -1,11 +1,20 @@
 import {createElement, useEffect} from "react"
 import type {ComponentProps} from "react"
 import {createRoot} from "react-dom/client"
-import {PrivyProvider, getIdentityToken, useActiveWallet, useFiatOnramp, useLogin, usePrivy, useWallets} from "@privy-io/react-auth"
+import {
+  PrivyProvider,
+  SUPPORTED_CHAINS,
+  getIdentityToken,
+  useActiveWallet,
+  useFiatOnramp,
+  useLogin,
+  usePrivy,
+  useWallets,
+} from "@privy-io/react-auth"
 import type {ConnectedWallet, PrivyErrorCode} from "@privy-io/react-auth"
 import type {Root} from "react-dom/client"
 import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
-import {providerConfig, signInChoices} from "./privy/provider.ts"
+import {providerConfig, signInChoices, walletChainId} from "./privy/provider.ts"
 import {handOver, stateWaiters} from "./privy/sign_in.ts"
 import type {Proof, Refusal} from "./privy/sign_in.ts"
 import {sendingWallet} from "./privy/wallet_choice.ts"
@@ -84,6 +93,8 @@ function start(appId: string) {
     if (mountedAppId !== appId) throw new Error("privy_application_changed")
     return
   }
+  const walletChain = SUPPORTED_CHAINS.find(chain => chain.id === walletChainId(document))
+  if (!walletChain) throw new Error("privy_wallet_chain_unknown")
   mountedAppId = appId
 
   const container = document.createElement("div")
@@ -96,7 +107,7 @@ function start(appId: string) {
     createElement(
       PrivyProvider,
       // Its children are the next argument, which React hands it as props.children.
-      {appId, config: providerConfig(signInChoices(document))} as ComponentProps<typeof PrivyProvider>,
+      {appId, config: providerConfig(signInChoices(document), walletChain)} as ComponentProps<typeof PrivyProvider>,
       createElement(Bridge),
     ),
   )
@@ -177,7 +188,9 @@ export async function signOut(appId: string): Promise<void> {
 /**
  * The wallet that sends for the signed-in account (`sendingWallet`): Privy's
  * active wallet when the account links it, else the account's own wallet this
- * tab holds connected. Its address and the provider a payment is signed through.
+ * tab holds connected. Its address, the provider a payment is signed through,
+ * and Privy's own way of moving it to another network, which adds the network
+ * first the way each wallet app needs.
  * With none (`wallet_unavailable`), nothing opens and nothing is signed; the page
  * asks the person to open one of their wallets. One whose provider does not
  * answer is `wallet_unanswered`. The server decides whether this wallet may pay
@@ -200,7 +213,10 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
 
   try {
     const provider = await active.getEthereumProvider()
-    return {ok: true, wallet: {address: active.address.toLowerCase(), provider}}
+    return {
+      ok: true,
+      wallet: {address: active.address.toLowerCase(), provider, switchChain: chainId => active.switchChain(chainId)},
+    }
   } catch {
     return {ok: false, reason: "wallet_unanswered"}
   }

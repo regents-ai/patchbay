@@ -82,7 +82,8 @@ defmodule PatchbayDev.PaymentsLab do
       <label><input type="radio" name="lab-network" value="8453" checked> Base (the copy)</label>
       <label><input type="radio" name="lab-network" value="1"> Ethereum</label>
       </fieldset>
-      <label><input type="checkbox" name="lab-refuse-switch"> Refuse to switch network</label>
+      <label><input type="checkbox" name="lab-decline-switch"> Decline the network switch</label>
+      <label><input type="checkbox" name="lab-fail-switch"> Fail the network switch</label>
       <label><input type="checkbox" name="lab-decline"> Decline in the wallet</label>
       <label><input type="checkbox" name="lab-slow"> Answer slowly (1.5 s a request)</label>
       <label><input type="checkbox" name="lab-low-v"> End signatures with 0 or 1, not 27 or 28</label>

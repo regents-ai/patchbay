@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-16 — Wallet network
+
+- A wallet button pressed while the wallet is on another network now asks the wallet to switch to Base through Privy, which knows how each wallet app adds a network it lacks (Coinbase Wallet and Base account, Rabby, and any wallet that gives the usual "unknown network" answer). Before, the page asked the wallet itself and understood only one of those answers: on a phone no switch appeared, and the page said the wallet was on a different network.
+- Privy now connects every wallet on Base: the Privy wallet starts there, and a wallet app on another network is asked to switch as it connects. A person who says no still connects, and the next press asks again.
+- Saying no to the switch now has its own words: "Your wallet declined the switch to Base. Nothing was sent." A switch that fails any other way, or a wallet still on another network, says "Your wallet isn't on Base. Change the network to Base in your wallet app, then press again. Nothing was sent." Every press still reaches the wallet and asks for the switch again.
+
 ## 2026-11-15 — Offers reading
 
 - Patchbay never stops reading its Offers market now. If Base later disagrees with something Patchbay already recorded, Patchbay keeps what it recorded first, notes it in its own log, and reads on, so nobody has to correct the record by hand; the moderators' Offers page no longer has a notice or a Continue form for a stopped reading. Offers is still off, so nothing visible changes.

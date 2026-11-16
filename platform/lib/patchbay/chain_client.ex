@@ -1,8 +1,8 @@
 defmodule Patchbay.ChainClient do
   @moduledoc """
   JSON-RPC reads at the latest block of a chain, through the site's own node
-  for it (`config :patchbay, :chain_nodes`), never the public address a wallet
-  adds the chain with. Regent Points reads the NFTs a person holds through
+  for it (`config :patchbay, :chain_nodes`), never the public address a review
+  carries. Regent Points reads the NFTs a person holds through
   `rpc/3`; `RegentChain.Outcome` reads a step a page sent through
   `transaction/2` and `receipt/2`.
   """

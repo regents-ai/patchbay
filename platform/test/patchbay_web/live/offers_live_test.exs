@@ -268,6 +268,34 @@ defmodule PatchbayWeb.OffersLiveTest do
       assert_reply(view, %{send: "claim", review: %{}})
     end
 
+    test "a declined network switch is heard and has its own note, apart from a failed one", %{
+      conn: conn,
+      person: person
+    } do
+      claim = "#offers-claim-#{person.wallet_address}"
+      {:ok, view, _html} = live(conn, ~p"/offers")
+      render_async(view)
+
+      notes =
+        for reason <- ~w(switch_declined network_mismatch) do
+          view
+          |> with_target(claim)
+          |> render_hook("step_failed", %{"step" => "claim", "reason" => reason})
+
+          view |> element("#{claim}-note") |> render()
+        end
+
+      assert [declined, failed] = notes
+      assert declined != failed
+
+      # A reason the page does not know shows no note of its own: the last stays.
+      view
+      |> with_target(claim)
+      |> render_hook("step_failed", %{"step" => "claim", "reason" => "made_up"})
+
+      assert view |> element("#{claim}-note") |> render() == failed
+    end
+
     test "a wallet that could not be read is never held back", %{conn: conn, person: person} do
       {:ok, view, _html} = live(conn, ~p"/offers")
       render_async(view)
