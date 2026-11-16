@@ -27,7 +27,7 @@ defmodule PatchbayWeb.OnchainSteps do
   @recheck_ms 250
   # What the hook reports when nothing was sent, or may have been: Patchbay's
   # buttons send transactions only, so no signature is ever left unconfirmed.
-  @reasons ~w(step_unknown wallet_unavailable network_mismatch wallet_declined insufficient_funds send_unconfirmed)
+  @reasons ~w(step_unknown wallet_unavailable switch_declined network_mismatch wallet_declined insufficient_funds send_unconfirmed)
 
   @doc "The assigns a wallet-button component starts with."
   def init(socket), do: assign(socket, presses: Presses.new(), press_note: nil)
@@ -98,9 +98,12 @@ defmodule PatchbayWeb.OnchainSteps do
         ". Open it in your wallet app, then press again. Nothing was sent."
       ]
 
+  def failure_note("switch_declined", _signer, chain_name),
+    do: ["Your wallet declined the switch to #{chain_name}. Nothing was sent."]
+
   def failure_note("network_mismatch", _signer, chain_name),
     do: [
-      "Your wallet is on a different network. Switch it to #{chain_name}, then press again. Nothing was sent."
+      "Your wallet isn't on #{chain_name}. Change the network to #{chain_name} in your wallet app, then press again. Nothing was sent."
     ]
 
   def failure_note("wallet_declined", _signer, _chain_name),

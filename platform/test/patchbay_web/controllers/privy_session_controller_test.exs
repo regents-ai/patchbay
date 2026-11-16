@@ -191,6 +191,23 @@ defmodule PatchbayWeb.PrivySessionControllerTest do
     assert refused |> recycle([]) |> get("/account") |> html_response(200) =~ @sign_in_button
   end
 
+  # The page's Privy connects wallets on this chain only (`assets/js/privy/provider.ts`),
+  # so it is the chain the wallet buttons' steps go to, from the one setting.
+  test "every page at either address names the wallet chain from the offers setting" do
+    settings = Patchbay.Offers.settings()
+    on_exit(fn -> Application.put_env(:patchbay, Patchbay.Offers, settings) end)
+
+    for chain_id <- [8453, 84_532], address <- [& &1, &on_open/1] do
+      Application.put_env(:patchbay, Patchbay.Offers, Keyword.put(settings, :chain_id, chain_id))
+      page = build_conn() |> address.() |> get("/account") |> html_response(200)
+
+      assert page
+             |> LazyHTML.from_document()
+             |> LazyHTML.query(~s(meta[name="wallet-chain-id"]))
+             |> LazyHTML.attribute("content") == [Integer.to_string(chain_id)]
+    end
+  end
+
   test "at the open address email is the only sign-in choice and no wallet is named",
        %{key: key, linked: linked} do
     assert build_conn() |> on_open() |> get("/account") |> html_response(200) =~

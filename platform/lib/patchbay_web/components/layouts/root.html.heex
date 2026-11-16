@@ -40,6 +40,9 @@
     <%!-- The open address offers email as its only sign-in choice and shows no
     wallet screens (`assets/js/privy/provider.ts`). --%>
     <meta :if={@site_edition == :open} name="privy-sign-in" content="email" />
+    <%!-- The chain the wallet buttons send on, Privy's only network
+    (`assets/js/privy/provider.ts`). --%>
+    <meta name="wallet-chain-id" content={Patchbay.Offers.chain().chain_id} />
     <meta name="privy-bridge-src" content={~p"/assets/js/privy_bridge.js"} />
     <.live_title suffix={metadata.suffix}>{@page_title}</.live_title>
     <Regent.AgentMetadata.head

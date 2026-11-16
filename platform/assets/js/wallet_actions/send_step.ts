@@ -6,11 +6,24 @@ export type EthereumProvider = {
   request(args: {method: string; params?: unknown[]}): Promise<unknown>
 }
 
-/** The wallet a press signs with: its address and the provider it signs through. */
-export type SelectedWallet = {address: string; provider: EthereumProvider}
+/**
+ * Privy's own way of moving one wallet to another network, which knows how each
+ * wallet app asks to add a network it lacks. It rejects as the wallet does,
+ * 4001 when the person says no.
+ */
+export type SwitchChain = (chainId: number) => Promise<void>
 
-/** The chain a step goes to, as the server names it for the wallet's prompt. */
-export type StepChain = {chain_id: number; name: string; rpc_url: string}
+/**
+ * The wallet a press signs with: its address, the provider it signs through
+ * and Privy's own switch for it.
+ */
+export type SelectedWallet = {address: string; provider: EthereumProvider; switchChain: SwitchChain}
+
+/**
+ * The chain a step goes to. The server's review also names it and its public
+ * node; the wallet takes those from Privy's own list of networks instead.
+ */
+export type StepChain = {chain_id: number}
 
 /** One transaction a button sends, built on the server. */
 export type TransactionStep = {kind: "transaction"; step: string; to: string; data: string; value: string}
@@ -20,9 +33,9 @@ export type SignatureStep = {kind: "signature"; step: string; typed_data: Record
 
 /** Nothing reached the wallet's prompt; the reason picks the words the page shows. */
 export class NothingSent extends Error {
-  readonly reason: "wallet_unavailable" | "network_mismatch"
+  readonly reason: "wallet_unavailable" | "switch_declined" | "network_mismatch"
 
-  constructor(reason: "wallet_unavailable" | "network_mismatch") {
+  constructor(reason: "wallet_unavailable" | "switch_declined" | "network_mismatch") {
     super(reason)
     this.reason = reason
   }
@@ -101,43 +114,25 @@ export function sendFailure(sending: boolean, error: unknown): SendFailure {
   return hasMessage(error, /insufficient funds/i) ? "insufficient_funds" : "send_unconfirmed"
 }
 
-// The wallet is on the step's chain and account.
+// The wallet is on the step's chain and account. A wallet on another chain is
+// asked to switch on every press, through Privy's own switch: a person who says
+// no hears that they did, and any other failure, or a wallet still elsewhere
+// afterwards, is told to change network in the wallet app.
 async function ready(
   chain: StepChain,
   signer: string,
-  {provider}: SelectedWallet,
+  {provider, switchChain}: SelectedWallet,
 ): Promise<EthereumProvider> {
-
-  if ((await chainId(provider)) !== chain.chain_id) await switchChain(provider, chain)
+  if ((await chainId(provider)) !== chain.chain_id) {
+    await switchChain(chain.chain_id).catch((error: unknown) => {
+      throw new NothingSent(hasCode(error, 4001) ? "switch_declined" : "network_mismatch")
+    })
+  }
 
   const [account] = await accounts(provider)
   if (!account || account.toLowerCase() !== signer.toLowerCase()) throw new NothingSent("wallet_unavailable")
   if ((await chainId(provider)) !== chain.chain_id) throw new NothingSent("network_mismatch")
   return provider
-}
-
-/** Asks the wallet onto `chain`, adding it first when the wallet does not know it. */
-export async function switchChain(provider: EthereumProvider, chain: StepChain): Promise<void> {
-  const chainId = `0x${chain.chain_id.toString(16)}`
-  try {
-    try {
-      await provider.request({method: "wallet_switchEthereumChain", params: [{chainId}]})
-    } catch (error) {
-      if (!hasCode(error, 4902)) throw error
-      await provider.request({
-        method: "wallet_addEthereumChain",
-        params: [{
-          chainId,
-          chainName: chain.name,
-          nativeCurrency: {name: "Ether", symbol: "ETH", decimals: 18},
-          rpcUrls: [chain.rpc_url],
-        }],
-      })
-      await provider.request({method: "wallet_switchEthereumChain", params: [{chainId}]})
-    }
-  } catch {
-    throw new NothingSent("network_mismatch")
-  }
 }
 
 /** The chain the wallet is on now; -1 when it does not say. */

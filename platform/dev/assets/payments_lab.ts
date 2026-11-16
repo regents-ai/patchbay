@@ -1,12 +1,13 @@
 // The payments lab's stand-in wallet app, after the template's
 // `onchain_lab.ts`. It holds anvil's first three accounts, one provider each,
-// and signs through the lab page on the lab's copy of Base; the network, a
-// refused switch, a decline, a slow answer and a signature ending in 0 or 1
+// and signs through the lab page on the lab's copy of Base. Its switch stands
+// in for Privy's: it moves to Base or Ethereum. The network, a declined or
+// failed switch, a decline, a slow answer and a signature ending in 0 or 1
 // are the tester's to set. The Tip button runs the lab's `payForIntent`
 // (paid_actions.ts) with this wallet in Privy's place, and every press reaches it.
 import {payForIntent} from "./paid_actions.ts"
 import type {PaymentWallet} from "./paid_actions.ts"
-import type {EthereumProvider} from "../../assets/js/wallet_actions/send_step.ts"
+import type {EthereumProvider, SwitchChain} from "../../assets/js/wallet_actions/send_step.ts"
 
 type WalletReply = {result?: string; error?: {code: number; message: string}}
 
@@ -23,24 +24,29 @@ root.addEventListener("change", event => {
   if (input.name === "lab-network") chainId = Number(input.value)
 })
 
+const slowly = async () => {
+  if (ticked("lab-slow")) await new Promise(resolve => setTimeout(resolve, 1500))
+}
+
+const switchChain: SwitchChain = async wanted => {
+  await slowly()
+  if (ticked("lab-decline-switch")) throw rpcError(4001, "User rejected the request.")
+  const network = root.querySelector<HTMLInputElement>(`[name="lab-network"][value="${wanted}"]`)
+  if (ticked("lab-fail-switch") || !network) throw rpcError(4902, "Unrecognized chain.")
+  chainId = wanted
+  network.checked = true
+  log(`The wallet switched to network ${wanted}.`)
+}
+
 function provider(address: string): EthereumProvider {
   return {
     request: async ({method, params = []}) => {
-      if (ticked("lab-slow")) await new Promise(resolve => setTimeout(resolve, 1500))
+      await slowly()
       switch (method) {
         case "eth_chainId":
           return `0x${chainId.toString(16)}`
         case "eth_accounts":
           return [address]
-        case "wallet_switchEthereumChain": {
-          if (ticked("lab-refuse-switch")) throw rpcError(4001, "User rejected the request.")
-          const wanted = Number(BigInt((params[0] as {chainId: string}).chainId))
-          if (wanted !== LAB_CHAIN_ID && wanted !== 1) throw rpcError(4902, "Unrecognized chain.")
-          chainId = wanted
-          root.querySelector<HTMLInputElement>(`[name="lab-network"][value="${wanted}"]`)!.checked = true
-          log(`The wallet switched to network ${wanted}.`)
-          return null
-        }
         case "eth_signTypedData_v4": {
           if (ticked("lab-decline")) {
             log("The wallet declined.")
@@ -77,7 +83,7 @@ async function wallet(): Promise<PaymentWallet> {
     log("The press asked the wallet app to connect. Choose a wallet above.")
     return {ok: false, reason: "wallet_unavailable"}
   }
-  return {ok: true, wallet: {address, provider: providers.get(address)!}}
+  return {ok: true, wallet: {address, provider: providers.get(address)!, switchChain}}
 }
 
 const form = document.getElementById("lab-tip") as HTMLFormElement

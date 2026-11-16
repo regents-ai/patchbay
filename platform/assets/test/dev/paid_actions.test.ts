@@ -43,31 +43,36 @@ function sent(request: PaymentRequestInit): SentBody | undefined {
   return request.body === undefined ? undefined : JSON.parse(request.body);
 }
 
-// A wallet app that answers by method name, as the template's stand-in does.
-function standInWallet({address = SIGNER, chainId = 8453, sign, switchTo}: {
+// A wallet app that answers by method name, as the template's stand-in does,
+// and moves network only through its own switch, which stands in for Privy's:
+// `switching` says what it does with each ask, the network it ends on or an
+// error it rejects with.
+function standInWallet({address = SIGNER, chainId = 8453, sign, switching = (wanted: number) => wanted}: {
   address?: string;
   chainId?: number;
   sign?: (params: unknown[] | undefined) => unknown;
-  switchTo?: number;
+  switching?: (wanted: number) => number | Error;
 } = {}) {
   const asked: WalletAsk[] = [];
+  const switches: number[] = [];
   let chain = chainId;
   const provider = {
     request: async ({method, params}: WalletAsk): Promise<unknown> => {
       asked.push({method, params});
       if (method === "eth_chainId") return `0x${chain.toString(16)}`;
       if (method === "eth_accounts") return [address];
-      if (method === "wallet_switchEthereumChain") {
-        if (!switchTo) throw Object.assign(new Error("User rejected the request."), {code: 4001});
-        chain = switchTo;
-        return null;
-      }
       if (method === "eth_signTypedData_v4") return sign ? sign(params) : SIGNATURE;
       throw new Error(`unexpected ${method}`);
     },
   };
-  const wallet = async (): Promise<PaymentWallet> => ({ok: true, wallet: {address, provider}});
-  return {asked, wallet};
+  const switchChain = async (wanted: number) => {
+    switches.push(wanted);
+    const answer = switching(wanted);
+    if (answer instanceof Error) throw answer;
+    chain = answer;
+  };
+  const wallet = async (): Promise<PaymentWallet> => ({ok: true, wallet: {address, provider, switchChain}});
+  return {asked, switches, wallet};
 }
 
 type Answer = ReturnType<typeof jsonResponse>;
@@ -145,24 +150,29 @@ test("a declined signature is wallet_declined and nothing goes back", async () =
   assert.equal(requests.length, 2);
 });
 
-test("a wallet that stays on another network is asked nothing to sign", async () => {
-  const {fetch, requests} = patchbay();
-  const {asked, wallet} = standInWallet({chainId: 1});
+test("a wallet that stays on another network is asked nothing to sign, and says whether the person declined", async () => {
+  const declined = () => Object.assign(new Error("User rejected the request."), {code: 4001});
+  const failed = () => Object.assign(new Error("Unrecognized chain."), {code: 4902});
 
-  const outcome = await payForIntent({fetch, wallet}, ACTION);
+  for (const [switching, unsigned] of [[declined, "switch_declined"], [failed, "network_mismatch"]] as const) {
+    const {fetch, requests} = patchbay();
+    const {asked, wallet} = standInWallet({chainId: 1, switching});
 
-  assert.equal(outcome.unsigned, "network_mismatch");
-  assert.equal(asked.some(one => one.method === "eth_signTypedData_v4"), false);
-  assert.equal(requests.length, 2);
+    const outcome = await payForIntent({fetch, wallet}, ACTION);
+
+    assert.equal(outcome.unsigned, unsigned);
+    assert.equal(asked.some(one => one.method === "eth_signTypedData_v4"), false);
+    assert.equal(requests.length, 2);
+  }
 });
 
 test("a wallet that switches to Base when asked then signs", async () => {
   const {fetch} = patchbay();
-  const {asked, wallet} = standInWallet({chainId: 1, switchTo: 8453});
+  const {switches, wallet} = standInWallet({chainId: 1});
 
   const outcome = await payForIntent({fetch, wallet}, ACTION);
 
-  assert.deepEqual(asked.find(one => one.method === "wallet_switchEthereumChain")!.params, [{chainId: "0x2105"}]);
+  assert.deepEqual(switches, [8453]);
   assert.equal(outcome.body!.status, "applied");
 });
 
