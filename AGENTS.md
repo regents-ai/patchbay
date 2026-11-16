@@ -11,6 +11,11 @@ report unverified boundaries. Wallet, signing, production-data and deployment
 permissions remain unchanged; every distinct wallet press reaches the wallet.
 Never read `.env`, `.env.local` or `.envrc`.
 
+`make check` runs every gate side by side and writes each gate's output to
+`platform/_build/check/<gate>.log`; the failed ones print last, then one line per
+gate with its time. [platform/README.md](platform/README.md#verification-commands)
+says which gates run in turn and why.
+
 For product orientation and related Regent products, see [README.md](README.md).
 The public agent entry point is the one-page [platform/priv/public/llms.txt](platform/priv/public/llms.txt),
 with the long-form guide in [platform/priv/public/docs_agents.md](platform/priv/public/docs_agents.md)
