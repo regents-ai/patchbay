@@ -255,6 +255,17 @@ did not happen.
 
 ## Verification commands
 
+From the repository root, `make check` runs every gate side by side, each writing its
+output to `platform/_build/check/<gate>.log`, then prints every gate's log, the failed
+ones last, and one line per gate with its time, and fails when any gate failed. A gate
+over its time budget (`CHECK_BUDGETS` in the `Makefile`) gets a `SLOW` line under its
+own, which never fails the check. It fetches the libraries first. Then the page
+packages and the shared libraries' copied files (`make platform-assets`), `mix
+precommit` and the browser walk run in turn, since they share `assets/node_modules`
+and `assets/vendor`. `mix test` and the tests whose transactions must really commit
+(`make platform-test`) run beside them, as do the required-fixes, command description,
+SIWA and contract checks. `make check-platform` runs the platform's gates in turn.
+
 The full Elixir suite should use an isolated test partition so an old local
 database cannot collide with the current migrations:
 
@@ -275,7 +286,9 @@ The browser walk runs pages in headless Chromium on a desktop at 1280 and on tou
 phones (a Pixel 7) at 390 and 320. Each run picks a free port, makes its own database
 (`patchbay_browser_<port>_dev`) and its own sign-ins and results folder, starts its
 own server and drops the database and sign-ins at the end, so two runs at once never
-meet, even in one checkout. Besides what each page shows, it checks how pages move: what settles in, what
+meet, even in one checkout. It runs one browser for every two of the machine's cores,
+at most twelve. Its server runs without the code reloader, so it builds into
+`_build/walk` and leaves the everyday development build as it is. Besides what each page shows, it checks how pages move: what settles in, what
 shakes, what stays still from the keyboard or with less motion, and that everything
 ends with nothing left written on it. Its WebMCP step (`test/browser/webmcp.spec.ts`)
 starts Chromium with its WebMCP testing switch, checks that each page's

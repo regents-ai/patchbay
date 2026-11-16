@@ -15,8 +15,14 @@ test("Escape closes the window first, then the open section behind it", async ({
   await more.locator("summary").click()
   await expect(more).toHaveAttribute("open", "")
 
+  // The menu is pressed in once it is done dropping in. A press while it still moves
+  // waits, and Playwright's later attempts scroll the page, which on a phone put
+  // the press on the form behind the menu, and that closed it.
   await page.locator("#pb-account-chip").click()
-  await page.locator("#account-menu").getByRole("button", {name: "Pair New Agent"}).click()
+  const menu = page.locator("#account-menu")
+  await expect(menu).toBeVisible()
+  await expect.poll(() => menu.evaluate(element => element.getAnimations().length)).toBe(0)
+  await menu.getByRole("button", {name: "Pair New Agent"}).click()
   const pairing = page.locator("#pb-pairing")
   await expect(pairing).toBeVisible()
   const agents = pairing.locator("details")

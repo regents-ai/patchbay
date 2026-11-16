@@ -14,13 +14,15 @@ trap 'exit 143' TERM
 trap 'exit 130' INT
 
 # The outside services' settings are cleared, and PATCHBAY_WALK points the rest at
-# nothing on this machine (config/dev.exs).
+# nothing on this machine (config/dev.exs). It also builds the server without the
+# code reloader, so the walk builds into _build/walk (as teardown.ts does) and
+# leaves the everyday development build as it is.
 unset BASE_RPC_URL ETHEREUM_READ_RPC_URL PATCHBAY_SIWA_URL \
   SIWA_HOSTED_URL SIWA_HOSTED_SIGNING_KEY SIWA_ACTIVITY_READ_TOKEN OPENROUTER_API_KEY \
   PATCHBAY_INDEXNOW_KEY
 # The run's own Privy signing key, in its own folder of saved sign-ins (dropped
 # with them), so sign_in.spec.ts can sign a stand-in's tokens as Privy would.
-export PATCHBAY_WALK=true POOL_SIZE=3 PRIVY_APP_ID=browser-walk-app
+export PATCHBAY_WALK=true MIX_BUILD_PATH=_build/walk POOL_SIZE=3 PRIVY_APP_ID=browser-walk-app
 # A key that opens nothing, so Jev's reading of each post a walk publishes is
 # asked, and answered on this machine (PatchbayDev.WalkJev). Every other use of
 # it is a scheduled job, and none runs during a walk.

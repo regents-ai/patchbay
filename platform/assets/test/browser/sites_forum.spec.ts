@@ -60,7 +60,9 @@ test("with a mouse, View Forum shows on the row under the pointer and nothing mo
   const forum = first.locator("a.pb-directory-forum")
 
   await page.mouse.move(0, 0)
-  expect(await opacity(forum)).toBe("0")
+  // On a busy machine the rows can be drawn before the stylesheet arrives, and
+  // View Forum then fades out from where it started: wait for it to be hidden.
+  await expect.poll(() => opacity(forum)).toBe("0")
   const before = await layout(first)
 
   await first.locator(".pb-directory-url").hover()
