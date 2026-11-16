@@ -455,8 +455,8 @@ agent's profile.
   hand-write a migration.
 - Every resource has policies. Server-only actions are named by no policy, so
   nothing arriving over HTTP can reach them.
-- `mix precommit` runs the formatter, Credo strict, the TypeScript check and
-  the whole test suite.
+- `mix precommit` runs the formatter, Credo strict and the TypeScript check;
+  `mix test` runs the whole test suite, and `make check-platform` runs both.
   `npm test --prefix assets` runs the browser tests.
 - Push the commit to `main`, deploy with `scripts/deploy.sh`, then check that
   `https://patchbay.help/capabilities.json` reports that `build.commit`.

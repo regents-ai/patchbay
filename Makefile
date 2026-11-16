@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help check platform-deps check-platform platform-assets platform-precommit check-browser check-required-fixes check-cli check-siwa-latest check-contracts release readiness
+.PHONY: help check platform-deps check-platform platform-assets platform-precommit platform-test check-browser check-required-fixes check-cli check-siwa-latest check-contracts release readiness
 help:
 	@echo "Run make check for every gate, side by side, each writing its output to platform/_build/check/<gate>.log; it prints every gate's log, the failed ones last, then one line per gate. Or run check-platform, check-browser, check-required-fixes, check-cli, check-siwa-latest or check-contracts for one component."
 	@echo "Run make release to run every gate, then build the committed tree into an image."
@@ -11,8 +11,11 @@ help:
 # installs assets/node_modules afresh and copies the shared libraries' files into
 # assets/vendor, which mix precommit's type check and Node tests read, and the browser
 # walk runs from assets/node_modules and copies assets/vendor again (mix assets.build
-# deletes each folder first). The other gates write nothing another reads.
-CHECK_LANES := "platform-assets platform-precommit check-browser" check-required-fixes check-cli check-siwa-latest check-contracts
+# deletes each folder first). mix test runs beside them: it reads neither folder, its
+# databases are its own (MIX_TEST_PARTITION), and of _build/test, which mix precommit
+# compiles too, Mix lets one compile at a time. The other gates write nothing another
+# reads.
+CHECK_LANES := "platform-assets platform-precommit check-browser" platform-test check-required-fixes check-cli check-siwa-latest check-contracts
 CHECK_GATES := $(subst ",,$(CHECK_LANES))
 CHECK_LOGS := platform/_build/check
 check: platform-deps
@@ -43,13 +46,17 @@ check: platform-deps
 # A new checkout needs nothing first: the libraries (platform-deps), the page packages,
 # esbuild and the shared library copies the type check reads (platform-assets) are all
 # fetched or built here, so the browser walk itself fetches nothing.
-check-platform: platform-deps platform-assets platform-precommit
+check-platform: platform-deps platform-assets platform-precommit platform-test
 platform-deps:
 	cd platform && mix deps.get
 platform-assets:
 	cd platform && mix assets.setup && mix do regent_ui.assets + regent_blog.assets + regent_identity.assets + regent_agent_access.assets
 platform-precommit:
 	cd platform && mix precommit
+# The Elixir suite, then the tests whose transactions must really commit, in a database
+# of their own (platform/scripts/committed_tests.sh).
+platform-test:
+	cd platform && mix test --warnings-as-errors && scripts/committed_tests.sh
 # The browser walk (platform/assets/test/browser): pages at 320, 390 and 1280 in
 # headless Chromium. Each run starts its own server on its own port and database,
 # drops it at the end, and refuses every request outside this machine.
