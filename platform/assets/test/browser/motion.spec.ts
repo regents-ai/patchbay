@@ -160,6 +160,9 @@ test.describe("a note above the page", () => {
     }, MISSING_FIX)
     await page.getByRole("link", {name: "A fix that is not there"}).click()
     await expect(page).toHaveURL("/")
+    // The server sends the reader on with a full page load. The note is drawn
+    // before the page's script runs, and the script is what shakes it.
+    await page.waitForLoadState()
     await expect(note(page)).toBeVisible()
     await toRest(note(page))
     expect(shakes(await movesOf(note(page)))).toBe(true)
