@@ -31,7 +31,7 @@ defmodule PatchbayWeb.OffersReadTest do
 
   test "an open market reads the same at every door", %{conn: conn} do
     offers_on!()
-    campaign = campaign!(person!(wallet()))
+    campaign = shown_campaign!(person!(wallet()))
     placement!(1, "stripe.com")
     placement!(9, "general")
     lease!(1, 1, campaign, %{paid_usdc: Decimal.new(12_000_000)})
@@ -73,6 +73,27 @@ defmodule PatchbayWeb.OffersReadTest do
     assert markdown.resp_body =~ campaign.title
 
     assert %{"gate" => %{"state" => "open"}, "agent_use" => "run"} = operation(conn)
+  end
+
+  test "a pulled campaign keeps its slot and is named at no door", %{conn: conn} do
+    offers_on!()
+    campaign = shown_campaign!(person!(wallet()))
+    placement!(1, "stripe.com")
+    lease!(1, 0, campaign, %{paid_usdc: Decimal.new(12_000_000)})
+
+    Patchbay.Offers.pull_campaign!(campaign.campaign_id, %{reason: "Misleading"},
+      actor: Patchbay.ModeratorFixtures.moderator()
+    )
+
+    assert %{"placements" => [%{"slots" => [slot | _rest]}]} =
+             conn |> get("/api/offers") |> json_response(200)
+
+    assert %{"offer" => nil, "paid_usdc" => "12.00", "minimum_usdc" => "13.20"} = slot
+
+    markdown = conn |> recycle() |> get("/offers.md") |> response(200)
+    refute markdown =~ campaign.title
+    refute markdown =~ campaign.link
+    assert markdown =~ "Not shown"
   end
 
   test "the open address answers nothing about offers, even with a market", %{conn: conn} do

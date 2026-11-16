@@ -1,8 +1,9 @@
 defmodule Patchbay.Offers.Board do
   @moduledoc """
   The market as Patchbay's record has it: each open placement, and for each
-  of its slots the offer it shows now, what that lease paid, when it ends and
-  the least the next purchase must pay. Read from the market's own events
+  of its slots the offer it shows now (none while Patchbay does not show the
+  lease's campaign there, `Eligibility.runnable/2`), what that lease paid,
+  when it ends and the least the next purchase must pay. Read from the market's own events
   (`Patchbay.Offers.Placement` and `Patchbay.Offers.Lease`); the page reads
   the chain again at the latest block before it builds a purchase.
   """
@@ -37,11 +38,14 @@ defmodule Patchbay.Offers.Board do
 
     current = chain_id |> Offers.live_leases!(market) |> Enum.uniq_by(&{&1.placement_id, &1.slot})
 
+    # A slot names its offer only while Patchbay shows it there: a campaign
+    # pulled, blocked or otherwise not eligible keeps its slot and names nothing.
     offers =
-      current
-      |> Enum.map(& &1.campaign_id)
-      |> Offers.campaigns_by_ids!()
-      |> Map.new(&{&1.campaign_id, &1})
+      placements
+      |> Eligibility.runnable(current)
+      |> Map.new(fn {lease, campaign, _placement} ->
+        {{lease.placement_id, lease.slot}, campaign}
+      end)
 
     leases = Map.new(current, &{{&1.placement_id, &1.slot}, &1})
 
@@ -114,7 +118,7 @@ defmodule Patchbay.Offers.Board do
       %{
         slot: slot,
         lease: lease,
-        offer: lease && offers[lease.campaign_id],
+        offer: offers[{placement.placement_id, slot}],
         minimum_usdc: minimum(placement, lease)
       }
     end

@@ -16,7 +16,11 @@ _No placements yet._
 | --- | --- | --- | --- | --- | --- | --- |
 <%= for slot <- placement.slots do %><%= row([
   "[#{slot.slot + 1}](#{slot.page})",
-  if(slot.offer, do: label(slot.offer.title), else: "Open"),
+  cond do
+    slot.offer -> label(slot.offer.title)
+    slot.paid_usdc -> "Not shown"
+    true -> "Open"
+  end,
   slot.offer && slot.offer.body,
   slot.offer && slot.offer.link,
   slot.paid_usdc && "#{slot.paid_usdc} USDC",

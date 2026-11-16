@@ -36,7 +36,7 @@ defmodule PatchbayWeb.OffersLiveTest do
   describe "the board" do
     setup do
       owner = person!(wallet())
-      %{campaign: campaign!(owner)}
+      %{campaign: shown_campaign!(owner)}
     end
 
     test "shows each slot's offer, what it paid and the least the next purchase pays", %{

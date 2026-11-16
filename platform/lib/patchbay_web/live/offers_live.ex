@@ -454,7 +454,7 @@ defmodule PatchbayWeb.OffersLive do
               </a>
               <p class="pb-slot-body">{slot.offer.body}</p>
             <% slot.lease -> %>
-              <p class="pb-slot-title">An offer Patchbay doesn't hold</p>
+              <p class="pb-slot-title">Not shown</p>
             <% true -> %>
               <p class="pb-slot-title pb-slot-open">Open</p>
           <% end %>
