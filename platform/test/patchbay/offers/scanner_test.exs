@@ -103,7 +103,8 @@ defmodule Patchbay.Offers.ScannerTest do
     Chain.lease!(7, 1, 1, @buyer, @campaign, 5_500_000)
     Chain.mine!(10)
     assert :ok = pass()
-    %{transaction_hash: transaction} = Enum.find(Ash.read!(Lease), &(&1.block_number == 6))
+    leases = Ash.read!(Lease)
+    %{transaction_hash: transaction} = Enum.find(leases, &(&1.block_number == 6))
 
     # The lease in block 6 is gone and the block changed; the placement and
     # the lease in block 7 read again as saved.
