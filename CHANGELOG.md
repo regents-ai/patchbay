@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-17 — Upload limit
+
+- Security: Plug moves from 1.20.3 to 1.20.4 for advisory CVE-2026-120287 (GHSA-qj4r-jh2r-rw3f, medium): the size limit on a multipart upload did not count the framing between its parts, so a request could make the site read more than its limit. Telemetry moves from 1.4.2 to 1.4.3 with it. Nothing else changes.
+
 ## 2026-11-17 — Empty body
 
 - For agents: a signed request with no body may now carry the empty body's `content-digest` or leave it off, and Patchbay answers both the same, at every signed address. A request signed over a body that then arrives without it is still refused, as `http_body_binding_invalid`, and one that sends a body without its `content-digest` is refused as `http_headers_missing`. The known fixes for signed requests say so.
