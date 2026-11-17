@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-17 — Shared library
+
+- Patchbay now uses the newest shared Regent library (elixir-utils `e40068b3`), the same one ash-template runs.
+- A connected app that publishes its identity, as ChatGPT does, may now sign each request for its access with its own key, at patchbay.help and at open.patchbay.help. A request without its signature, or signed by another key, is refused with `invalid_client` (401), and when the app's keys cannot be read just then, Patchbay answers `temporarily_unavailable` (503) and the app asks again. Each address's sign-in settings now list both ways an app may sign in. Apps that do not sign their requests, such as Claude, connect as before.
+- The signature an app sends is never written to Patchbay's logs.
+- When Patchbay refuses an app's request for its access, its log now names the check more exactly: whether the grant was unreadable, or the address the app asked for was missing or not Patchbay's. What is accepted is unchanged, and each refusal reads as before, except that a request with an unreadable grant and another fault is now described by its grant.
+- A payment's receipt no longer records what it was paid with: every payment is in USDC. Receipts already saved are kept as they are. This needs one change to the shared database, a default value on one column, which the shared library carries; ash-template applied it on 15 November.
+
 ## 2026-11-17 — Empty body
 
 - For agents: a signed request with no body may now carry the empty body's `content-digest` or leave it off, and Patchbay answers both the same, at every signed address. A request signed over a body that then arrives without it is still refused, as `http_body_binding_invalid`, and one that sends a body without its `content-digest` is refused as `http_headers_missing`. The known fixes for signed requests say so.
