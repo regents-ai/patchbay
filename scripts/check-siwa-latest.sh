@@ -10,10 +10,11 @@
 #
 # regents-cli: the pin is the newest release's tag commit; capabilities.json's cli
 # block names the release, that commit and the wheel's SHA256, which the agent
-# guide reads; every install line names the release. The SIWA library: the
-# elixir-utils commit platform/mix.exs pins contains the newest commit that
-# changed siwa/siwa-elixir/apps/siwa on elixir-utils main. Needs `gh auth login`
-# and curl.
+# guide reads; every install line names the release. The SIWA library:
+# siwa/siwa-elixir/apps/siwa at the elixir-utils commit platform/mix.exs pins is
+# the same folder, file for file, as on elixir-utils main. The folder is
+# compared, not the history, so a site whose pin is its own line plus the SIWA
+# change passes. Needs `gh auth login` and curl.
 set -euo pipefail
 
 # Where this site keeps them. A site copying this script sets these three and keeps
@@ -30,7 +31,9 @@ d = json.load(sys.stdin)
 print(d["info"]["version"], next(u["digests"]["sha256"] for u in d["urls"] if u["packagetype"] == "bdist_wheel"))')
 tag=$(gh api "repos/regents-ai/regents-cli/commits/v$latest" --jq .sha)
 utils=$(sed -nE 's/^ *@elixir_utils_ref "([0-9a-f]{40})"$/\1/p' platform/mix.exs)
-siwa=$(gh api "repos/regents-ai/elixir-utils/commits?path=siwa/siwa-elixir/apps/siwa&sha=main&per_page=1" --jq '.[0].sha')
+siwa_at() {
+  gh api "repos/regents-ai/elixir-utils/contents/siwa/siwa-elixir/apps?ref=$1" --jq '.[] | select(.name == "siwa") | .sha'
+}
 
 failed=0
 fail() {
@@ -54,10 +57,9 @@ release=$(python3 -I -c 'import json, sys; print(json.load(open(sys.argv[1]))["c
 if [ -z "$utils" ]; then
   fail "platform/mix.exs has no @elixir_utils_ref \"<40-character commit>\" line to check."
 else
-  case $(gh api "repos/regents-ai/elixir-utils/compare/$siwa...$utils" --jq .status) in
-    identical | ahead) ;;
-    *) fail "elixir-utils $siwa is the newest SIWA library change: move @elixir_utils_ref in platform/mix.exs from $utils to a commit that contains it." ;;
-  esac
+  newest=$(siwa_at main)
+  [ -n "$newest" ] && [ "$(siwa_at "$utils")" = "$newest" ] ||
+    fail "The SIWA library changed on elixir-utils main: move @elixir_utils_ref in platform/mix.exs from $utils to a commit whose siwa/siwa-elixir/apps/siwa is main's."
 fi
 
 exit "$failed"
