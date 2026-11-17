@@ -26,8 +26,7 @@ defmodule PatchbayWeb.Plugs.WalletAuthor do
     Siwa.AgentAuthPlug.call(conn,
       client: __MODULE__,
       hooks: __MODULE__,
-      audience: "patchbay",
-      body: :if_present
+      audience: "patchbay"
     )
   end
 

@@ -42,8 +42,7 @@ defmodule PatchbayWeb.MCP.PaymentAdmission do
       |> Siwa.AgentAuthPlug.call(
         client: WalletAuthor,
         hooks: __MODULE__,
-        audience: "patchbay",
-        body: :if_present
+        audience: "patchbay"
       )
       |> paired()
     else

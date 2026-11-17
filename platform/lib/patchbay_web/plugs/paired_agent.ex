@@ -175,7 +175,6 @@ defmodule PatchbayWeb.Plugs.PairedAgent do
       client: RegentAgents.Broker,
       hooks: hooks,
       audience: "patchbay",
-      body: :if_present,
       query: :signed
     ]
   end

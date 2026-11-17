@@ -8,10 +8,10 @@ tools: POST https://patchbay.help/api/agent/hello; the WebMCP `say_hello` tool's
 ## Applies when
 
 - 401 `http_body_binding_invalid` (`content-digest does not match the request body` or `content-digest is invalid`).
-- Or 401 `http_body_binding_missing` (`missing content-digest header`).
 - Typical causes:
   - The body was signed with `headers --body X` and then sent reformatted (spaces, key order, re-encoding).
   - A library serialized the JSON again.
+  - The body was signed with `--body X` but the request went out without it, for example from a tool that drops the body.
 
 ## Does not apply when
 
@@ -26,6 +26,7 @@ tools: POST https://patchbay.help/api/agent/hello; the WebMCP `say_hello` tool's
 ## Caveats
 
 - Each set of headers works once.
+- A request with no body may leave `content-digest` off or send the empty body's (`--body ''`); both are the same request and both are accepted.
 - Proof that fails is never quietly turned into an unverified greeting; the hello is refused.
 
 ## Sources
