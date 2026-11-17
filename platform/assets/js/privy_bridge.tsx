@@ -17,7 +17,7 @@ import {NETWORK_CAIP2, USDC_CONTRACT} from "./webmcp/payment_readiness.ts"
 import {providerConfig, signInChoices, walletChainId} from "./privy/provider.ts"
 import {handOver, stateWaiters} from "./privy/sign_in.ts"
 import type {Proof, Refusal} from "./privy/sign_in.ts"
-import {sendingWallet} from "./privy/wallet_choice.ts"
+import {sendingWallet, switchChainOf} from "./privy/wallet_choice.ts"
 import type {SelectedWallet} from "./wallet_actions/send_step.ts"
 
 // This module carries a whole wallet SDK, so it is a bundle of its own that the
@@ -189,8 +189,7 @@ export async function signOut(appId: string): Promise<void> {
  * The wallet that sends for the signed-in account (`sendingWallet`): Privy's
  * active wallet when the account links it, else the account's own wallet this
  * tab holds connected. Its address, the provider a payment is signed through,
- * and Privy's own way of moving it to another network, which adds the network
- * first the way each wallet app needs.
+ * and the way a press moves it to another network (`switchChainOf`).
  * With none (`wallet_unavailable`), nothing opens and nothing is signed; the page
  * asks the person to open one of their wallets. One whose provider does not
  * answer is `wallet_unanswered`. The server decides whether this wallet may pay
@@ -215,7 +214,7 @@ export async function activeWallet(appId: string): Promise<{ok: true, wallet: Se
     const provider = await active.getEthereumProvider()
     return {
       ok: true,
-      wallet: {address: active.address.toLowerCase(), provider, switchChain: chainId => active.switchChain(chainId)},
+      wallet: {address: active.address.toLowerCase(), provider, switchChain: switchChainOf(active, provider)},
     }
   } catch {
     return {ok: false, reason: "wallet_unanswered"}

@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-17 — Privy wallet
+
+- A wallet button pressed while the wallet Privy makes at sign-in is on another network now moves that wallet to Base and goes on to send or sign in the same press. Before, Privy only noted the new network and the wallet stayed where it was, so the press ended with "Your wallet isn't on Base". Wallet apps still switch through Privy, as before. Patchbay lists only Base, so the Privy wallet starts there and this rarely comes up.
+
 ## 2026-11-17 — Empty body
 
 - For agents: a signed request with no body may now carry the empty body's `content-digest` or leave it off, and Patchbay answers both the same, at every signed address. A request signed over a body that then arrives without it is still refused, as `http_body_binding_invalid`, and one that sends a body without its `content-digest` is refused as `http_headers_missing`. The known fixes for signed requests say so.
