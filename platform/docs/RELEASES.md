@@ -4,6 +4,12 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v414, 17 Nov 2026
+
+- Commit: 20f6582e (image `20f6582`), released by the Patchbay chief on Sean's 17 Nov word on the security update. bandit 1.14.1 to 1.15.0 for GHSA-j9wq-h5xx-5qx5 (medium, published 16 Nov 23:31Z, every version up to 1.14.1): logging HTTP/2 trailers cost far more than the request that carried them. Read on bandit's own advisory page; the Hex and OSV lists did not carry it yet, so `mix hex.audit` was clean on 1.14.1. Lock only. 1.15.0 also stops compressing answers under 300 bytes and hibernates a quiet connection after 15 s. phoenix 1.8.16 and plug_crypto 2.2.1: no advisory found. No migration, no sign-in change. Full check on the commit clean, every gate ok: 1323 site tests, browser walk 525 of 525, 85 contract tests.
+- Live read, headless Chromium, signed out, 1280 and 390: patchbay.help names 20f6582, health ok; `/`, `/sites`, `/incidents`, `/points`, `/account`, `/docs`, `/webmcp` and the open address load with no page error, no file that fails to load and no page wider than the screen; the sign-in window opens on both addresses.
+- Rollback: v413 image `2647ab6`.
+
 ## v413, 17 Nov 2026
 
 - Commit: 2647ab67 (image `2647ab6`), released by the Patchbay chief. Three things. (1) Sean, 17 Nov: "make sure ash-template, and all repos, pull in the plug security update". plug 1.20.3 to 1.20.4 for CVE-2026-120287 (GHSA-qj4r-jh2r-rw3f, medium): `Plug.Parsers.MULTIPART` did not charge part and header framing against `:length`. telemetry 1.4.2 to 1.4.3 came with it. Lock only; `mix hex.audit` clean after. (2) regents-cli 1.10.31 came out the same day; every pin moves to it (tag commit 2e8b98c7). (3) Sean's 180 as he changed it (orchestrator 278): "the wallet swap does not happen do not guard for that, and we need to be prompting for the user to switch to Base, not refuse", and the switch for the wallet Privy makes at sign-in "sounds ok to do". `pb/privy-wallet-switch-1117` at 6f8be2ab, as template 8f28f899: `switchChainOf` in `assets/js/privy/wallet_choice.ts` asks the provider the page holds when `walletClientType` is "privy", since Privy's own switch only changes its record; wallet apps still go through Privy's switch. No wallet-swap check, nothing that refuses a send, `ready()` unchanged. No migration, no sign-in change.
