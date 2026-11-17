@@ -124,6 +124,19 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     refute_receive {:settle, _, _}, 200
   end
 
+  test "a paid tip's receipt is saved with the wallet that paid and its transaction", c do
+    {worker, _} = execute(c)
+    assert_receive {:settle, service, _}, 3_000
+    send(service, {:reply, 200, settled("b")})
+    assert_receive {:done, ^worker, response}, 3_000
+
+    body = json_response(response, 200)
+    assert body["status"] == "applied"
+    assert body["receipt"]["transaction_hash"] == settled("b")["transaction"]
+    assert String.downcase(body["receipt"]["payer_address"]) == String.downcase(c.wallet.address)
+    assert recovery(c)["receipt"] == body["receipt"]
+  end
+
   test "receipt recovery does not depend on the recipient's current profile", c do
     {worker, _} = execute(c)
     assert_receive {:settle, service, _}, 3_000

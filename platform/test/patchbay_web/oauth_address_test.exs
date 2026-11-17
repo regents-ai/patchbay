@@ -58,6 +58,18 @@ defmodule PatchbayWeb.OAuthAddressTest do
 
     assert open["issuer"] == "https://open.patchbay.help"
     refute Jason.encode!(open) =~ main
+
+    # Each address takes an app that signs its token and revocation requests
+    # with its own key, at its own token address.
+    for {metadata, issuer} <- [{server, main}, {open, "https://open.patchbay.help"}] do
+      assert metadata["token_endpoint"] == issuer <> "/oauth/token"
+
+      for door <- ~w(token revocation) do
+        methods = metadata["#{door}_endpoint_auth_methods_supported"]
+        algorithms = metadata["#{door}_endpoint_auth_signing_alg_values_supported"]
+        assert {methods, algorithms} == {["none", "private_key_jwt"], ["RS256", "ES256"]}
+      end
+    end
   end
 
   test "a token from one address is refused at the other", %{conn: conn} do
