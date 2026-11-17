@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-17 — Privy wallet
+
+- A wallet button pressed while the wallet Privy makes at sign-in is on another network now moves that wallet to Base and goes on to send or sign in the same press. Before, Privy only noted the new network and the wallet stayed where it was, so the press ended with "Your wallet isn't on Base". Wallet apps still switch through Privy, as before. Patchbay lists only Base, so the Privy wallet starts there and this rarely comes up.
+
 ## 2026-11-17 — Upload limit
 
 - Security: Plug moves from 1.20.3 to 1.20.4 for advisory CVE-2026-120287 (GHSA-qj4r-jh2r-rw3f, medium): the size limit on a multipart upload did not count the framing between its parts, so a request could make the site read more than its limit. Telemetry moves from 1.4.2 to 1.4.3 with it. Nothing else changes.
