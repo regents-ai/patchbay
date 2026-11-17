@@ -2,6 +2,7 @@ import assert from "node:assert/strict"
 import {test} from "node:test"
 
 import {press, type Review} from "../../js/hooks/onchain_steps.ts"
+import {switchChainOf} from "../../js/privy/wallet_choice.ts"
 import {
   sendStep,
   signStep,
@@ -26,6 +27,7 @@ const signature: SignatureStep = {kind: "signature", step: "sign", typed_data: {
 
 // A wallet app on network `on`. `switching` says what its switch does with each
 // ask: the network it ends on, an error it rejects with, or a promise for either.
+// Its provider also moves when asked itself (`moves`), as Privy's own wallet's does.
 function walletOn(
   on: number,
   switching: (wanted: number) => number | Error | Promise<number | Error> = wanted => wanted,
@@ -33,6 +35,7 @@ function walletOn(
   let current = on
   const sent: unknown[] = []
   const switches: number[] = []
+  const moves: unknown[] = []
   const switchChain: SwitchChain = async wanted => {
     switches.push(wanted)
     const answer = await switching(wanted)
@@ -46,6 +49,11 @@ function walletOn(
       request: async ({method, params}) => {
         if (method === "eth_chainId") return `0x${current.toString(16)}`
         if (method === "eth_accounts") return [SIGNER]
+        if (method === "wallet_switchEthereumChain") {
+          moves.push(params)
+          current = Number((params?.[0] as {chainId: string}).chainId)
+          return null
+        }
         if (method === "eth_sendTransaction") {
           sent.push(params?.[0])
           return HASH
@@ -58,7 +66,7 @@ function walletOn(
       },
     },
   }
-  return {sent, switches, selected}
+  return {sent, switches, moves, selected}
 }
 
 function walletError(code: number, message: string): Error {
@@ -93,6 +101,42 @@ test("a wallet on another network is moved by its own switch, then sends and sig
     const wallet = walletOn(1)
     await send(wallet.selected)
     assert.deepEqual(wallet.switches, [BASE])
+    assert.equal(wallet.sent.length, 1)
+  }
+})
+
+// The wallet as the bridge hands it over: `walletClientType` is Privy's name for
+// the kind of wallet, "privy" for the one Privy makes at sign-in.
+function asBridgeHands(walletClientType: string, wallet: ReturnType<typeof walletOn>): SelectedWallet {
+  const {provider, switchChain} = wallet.selected
+  return {...wallet.selected, switchChain: switchChainOf({walletClientType, switchChain}, provider)}
+}
+
+// The hook's whole press, then the send and the signature it ends in.
+const pressAll = [(wallet: SelectedWallet) => pressBuy(wallet).pressed, ...sendBoth]
+
+// Privy's own switch for the wallet it makes at sign-in only changes Privy's
+// record, so the provider the page holds stays on network 1 (`() => 1`). Asked
+// through that switch, the press would end as network_mismatch (the `() => 1`
+// case in the test after these two).
+test("Privy's own wallet is moved through the provider the page holds, and the same press sends and signs", async () => {
+  for (const send of pressAll) {
+    const wallet = walletOn(1, () => 1)
+    await send(asBridgeHands("privy", wallet))
+
+    assert.deepEqual(wallet.switches, [])
+    assert.deepEqual(wallet.moves, [[{chainId: "0x2105"}]])
+    assert.equal(wallet.sent.length, 1)
+  }
+})
+
+test("a wallet app is moved through Privy's own switch, and the same press sends and signs", async () => {
+  for (const send of pressAll) {
+    const wallet = walletOn(1)
+    await send(asBridgeHands("metamask", wallet))
+
+    assert.deepEqual(wallet.switches, [BASE])
+    assert.deepEqual(wallet.moves, [])
     assert.equal(wallet.sent.length, 1)
   }
 })
