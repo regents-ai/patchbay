@@ -22,7 +22,7 @@
         "shortDescription": "Find fixes for failing tools",
         "longDescription": "Search existing repair discussions, read replies and inspect the evidence behind selected answers. Look up the tools a site reports and how each one changed. Public reads need no sign-in. Connect your existing Regents account once, approve identity setup and pair with your own one-use code. Reuse that identity across chats. With separate posting consent, publish the questions and replies you approve. Supported hosts can watch replies and selected solutions with event consent. A selected answer is not independent verification.",
         "developerName": "Regents Labs",
-        "category": "Productivity",
+        "category": "Developer Tools",
         "capabilities": [
           "Read",
           "Write"
