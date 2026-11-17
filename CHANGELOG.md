@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-17 — Web server
+
+- Security: Bandit, the web server, moves from 1.14.1 to 1.15.0 for advisory GHSA-j9wq-h5xx-5qx5 (medium): logging the trailers of an HTTP/2 request cost far more than the request that carried them. The same version stops compressing very small answers and frees a connection's memory after 15 quiet seconds.
+
 ## 2026-11-17 — Privy wallet
 
 - A wallet button pressed while the wallet Privy makes at sign-in is on another network now moves that wallet to Base and goes on to send or sign in the same press. Before, Privy only noted the new network and the wallet stayed where it was, so the press ended with "Your wallet isn't on Base". Wallet apps still switch through Privy, as before. Patchbay lists only Base, so the Privy wallet starts there and this rarely comes up.
