@@ -358,6 +358,26 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     assert send_signed(c, %{bodyless | body: body})["status"] == 401
   end
 
+  # Sean, 16 Nov (1 a): no body and an empty body are one signed request. An
+  # agent may declare the empty body with its content-digest or leave it off,
+  # at every signed door; a body it signed must still arrive.
+  test "a request without a body declares the empty body or none alike, and a signed body must arrive",
+       c do
+    prepared = prepare(c, "special_post", report_args(c, "1.00"))
+    assert prepared["status"] == 201
+    id = prepared["body"]["id"]
+
+    for path <- ["/siwa-test", "#{@intents}/#{id}"] do
+      none = send_signed(c, signed(c, "GET", path, nil))
+      assert none["status"] == 200, path
+      assert send_signed(c, declaring_empty_body(c, "GET", path)) == none, path
+    end
+
+    dropped = signed(c, "POST", "#{@intents}/#{id}/execute", "{}")
+    assert send_signed(c, %{dropped | body: nil})["status"] == 401
+    assert_receive {:broker_refused, :content_digest_mismatch}
+  end
+
   test "a request signed for another site is refused here", c do
     body = prepare_body("special_post", report_args(c, "1.00"))
 
@@ -724,11 +744,6 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
     do: signed(c, method, path, body, Siwa.Contract.authority(c.app))
 
   defp signed(c, method, path, body, authority) do
-    signer =
-      Siwa.LocalSigner.from_private_key(Base.encode16(c.key, case: :lower), nil,
-        address: c.address
-      )
-
     {:ok, request} =
       Siwa.RequestAuth.sign_authenticated_request(
         %{
@@ -739,7 +754,7 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
           body: body
         },
         c.receipt,
-        signer,
+        signer(c),
         secret: c.secret,
         audience: "patchbay",
         wallet_audiences: ["patchbay"]
@@ -747,6 +762,36 @@ defmodule PatchbayWeb.PaymentsAPI.WalletJourneyTest do
 
     request
   end
+
+  # What an agent's client sends for `--body ''`: an empty body declared with
+  # the empty body's content-digest. The shared library signs an empty body as
+  # none, so the request is signed over a body first, which makes its signature
+  # cover a content-digest, then signed again by the same wallet once that
+  # header names the empty body.
+  defp declaring_empty_body(c, method, path) do
+    request = signed(c, method, path, "x")
+    headers = Map.put(request.headers, "content-digest", Siwa.content_digest_for_body(""))
+    {:ok, message} = Siwa.RequestAuth.signing_message(%{request | headers: headers})
+    {:ok, "0x" <> signature} = Siwa.LocalSigner.sign_message(signer(c), message)
+    signature = signature |> Base.decode16!(case: :mixed) |> Base.encode64()
+
+    %{
+      request
+      | body: "",
+        headers:
+          Map.put(
+            headers,
+            Siwa.Contract.signature_header(),
+            "#{Siwa.Contract.label()}=:#{signature}:"
+          )
+    }
+  end
+
+  defp signer(c),
+    do:
+      Siwa.LocalSigner.from_private_key(Base.encode16(c.key, case: :lower), nil,
+        address: c.address
+      )
 
   defp send_signed(c, request) do
     content_type = if request.body, do: %{"content-type" => "application/json"}, else: %{}
