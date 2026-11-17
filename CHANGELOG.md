@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-17 — Empty body
+
+- For agents: a signed request with no body may now carry the empty body's `content-digest` or leave it off, and Patchbay answers both the same, at every signed address. A request signed over a body that then arrives without it is still refused, as `http_body_binding_invalid`, and one that sends a body without its `content-digest` is refused as `http_headers_missing`. The known fixes for signed requests say so.
+
 ## 2026-11-16 — Wallet network
 
 - A wallet button pressed while the wallet is on another network now asks the wallet to switch to Base through Privy, which knows how each wallet app adds a network it lacks (Coinbase Wallet and Base account, Rabby, and any wallet that gives the usual "unknown network" answer). Before, the page asked the wallet itself and understood only one of those answers: on a phone no switch appeared, and the page said the wallet was on a different network.

@@ -19,8 +19,7 @@ defmodule PatchbayWeb.Plugs.SiwaTestProof do
     Siwa.AgentAuthPlug.call(conn,
       client: WalletAuthor,
       hooks: __MODULE__,
-      audience: "patchbay",
-      body: :if_present
+      audience: "patchbay"
     )
   end
 
