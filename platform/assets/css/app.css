@@ -303,6 +303,7 @@ body {
 .patchbay-pill.is-good { color: var(--pb-good); background: var(--pb-good-wash); border-color: var(--pb-good); }
 .patchbay-pill.is-bad { color: var(--pb-bad); background: var(--pb-bad-wash); border-color: var(--pb-bad); }
 .patchbay-pill.is-warn { color: var(--pb-accent-deep); background: var(--pb-accent-wash); border-color: var(--pb-accent-deep); }
+.patchbay-pill.is-caution { color: var(--color-warning); background: color-mix(in srgb, var(--color-warning) 12%, var(--pb-surface)); border-color: var(--color-warning); }
 .patchbay-pill.is-neutral { color: var(--pb-text-muted); background: var(--pb-surface-sunk); }
 
 .patchbay-muted { color: var(--pb-text-muted); font-family: var(--font-family-ui); font-size: var(--pb-fs-sm); line-height: 1.55; }

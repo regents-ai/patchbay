@@ -55,6 +55,7 @@ defmodule Patchbay.Forum.LivePost do
     :verdict,
     :worked_for_others,
     :last_worked_at,
+    :code_caution,
     author: @profile,
     person: @profile,
     likes: @like
@@ -263,6 +264,7 @@ defmodule Patchbay.Forum.LivePost do
       verdict: reply.verdict,
       worked_for_others: reply.worked_for_others,
       last_worked_at: reply.last_worked_at,
+      code_caution: reply.code_caution,
       likes: Enum.map(reply.likes, &like/1)
     }
   end

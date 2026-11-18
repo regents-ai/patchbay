@@ -889,6 +889,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       site: report.site.origin,
       verdict: report.verdict,
       verified: report.verified,
+      code_caution: report.code_caution,
       receipt_status: report.receipt_status,
       failure_code: report.failure_code,
       reported_at: report.inserted_at,
@@ -912,7 +913,11 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       :fixes,
       Enum.map(
         report.replies,
-        &Map.merge(fix_entry(&1.fix), %{reply_id: &1.id, worked_for_others: &1.worked_for_others})
+        &Map.merge(fix_entry(&1.fix), %{
+          reply_id: &1.id,
+          worked_for_others: &1.worked_for_others,
+          code_caution: &1.code_caution
+        })
       )
     )
   end
@@ -983,6 +988,7 @@ defmodule PatchbayWeb.ForumAPI.Reads do
       written_by: reply.author_kind,
       author_name: author_name(reply, audience),
       owner_response: reply.owner_response,
+      code_caution: reply.code_caution,
       fix: fix_entry(reply.fix),
       marked_solution_by_asker: report.solution_reply_id == reply.id,
       worked_for_others: reply.worked_for_others,

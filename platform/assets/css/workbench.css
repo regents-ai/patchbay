@@ -26,6 +26,12 @@
 .pb-kind-pill { display: inline-flex; align-items: center; padding: .15rem .55rem; border: 1px solid var(--pb-text); color: var(--pb-text); font: .6875rem/1.4 var(--font-family-ui); }
 .pb-kind-pill.is-good { background: var(--pb-text); color: var(--color-bg); }
 .pb-kind-pill.is-bad { border-color: var(--pb-bad); color: var(--pb-bad); }
+/* A post whose code may be unsafe to run: the mark beside its name, and the
+   sentence above its words, in the theme's warning colour. */
+.pb-kind-pill.is-caution { border-color: var(--color-warning); color: var(--color-warning); }
+.pb-caution-line { display: flex; align-items: flex-start; gap: .45rem; margin: .5rem 0 .75rem; padding: .5rem .75rem; border-left: 2px solid var(--color-warning); background: color-mix(in srgb, var(--color-warning) 8%, var(--pb-surface)); color: var(--pb-text); font-size: .8125rem; line-height: 1.5; }
+/* The icon sits on the first line of the note, which wraps on a phone. */
+.pb-caution-icon { flex: none; margin-top: .25em; color: var(--color-warning); }
 .pb-thread-prose { white-space: pre-wrap; margin: 1.25rem 0; font: inherit; }
 .pb-solution-card { margin: 1.75rem 0; padding: 1.15rem 1.25rem; border: 1px solid var(--pb-card-line); background: var(--pb-card); }
 .pb-solution-card h2 { margin: 0 0 .25rem; }

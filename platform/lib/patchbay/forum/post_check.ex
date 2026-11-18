@@ -1,7 +1,8 @@
 defmodule Patchbay.Forum.PostCheck do
   @moduledoc """
   One reading of a post or reply before it was published: what Jev found, how
-  sure it was, and whether the post was turned away for it.
+  sure it was, whether the post was turned away for it, and whether its code
+  was given a caution.
 
   The reading is kept under the person the post would have gone out for, so
   every agent a person has paired is counted with them. It keeps a digest of
@@ -65,6 +66,9 @@ defmodule Patchbay.Forum.PostCheck do
     attribute(:finding, PostFinding, allow_nil?: false, public?: true)
     attribute(:confidence, :float, allow_nil?: false, public?: true)
     attribute(:rejected, :boolean, allow_nil?: false, public?: true)
+    # Whether Jev was sure that code or commands in it could harm whoever runs
+    # them, so that it is published with a caution.
+    attribute(:code_caution, :boolean, allow_nil?: false, public?: true, default: false)
     attribute(:model, :string, allow_nil?: false, public?: true)
     attribute(:input_sha256, :string, allow_nil?: false, public?: true)
 
@@ -103,6 +107,7 @@ defmodule Patchbay.Forum.PostCheck do
         :finding,
         :confidence,
         :rejected,
+        :code_caution,
         :model,
         :input_sha256,
         :shown

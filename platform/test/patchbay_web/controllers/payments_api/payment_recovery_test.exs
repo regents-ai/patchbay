@@ -286,7 +286,7 @@ defmodule PatchbayWeb.PaymentsAPI.PaymentRecoveryTest do
     {:ok, intent} =
       Purchase.prepare(
         SpecialPost,
-        %{amount_atomic: 1_000_000, tool: tool, draft: draft},
+        %{amount_atomic: 1_000_000, tool: tool, draft: draft, code_caution: false},
         c.payer
       )
 

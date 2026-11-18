@@ -30,6 +30,7 @@ defmodule Patchbay.Payments.SpecialPost do
   alias Patchbay.Escrow
   alias Patchbay.Forum
   alias Patchbay.Forum.OtherSiteReport
+  alias Patchbay.Forum.PostingCheck
   alias Patchbay.Forum.Report
   alias Patchbay.Forum.Tool
   alias Patchbay.Payments.Completion
@@ -59,10 +60,14 @@ defmodule Patchbay.Payments.SpecialPost do
 
   @doc """
   Freezes a paid priority report of `draft` about `tool` (with its site
-  loaded), holding `amount_atomic` in escrow.
+  loaded), holding `amount_atomic` in escrow, with the caution the reading
+  before it gave its code (`Patchbay.Forum.PostingCheck`).
   """
   @impl true
-  def freeze(%{tool: tool, draft: draft, amount_atomic: amount_atomic}, actor) do
+  def freeze(
+        %{tool: tool, draft: draft, amount_atomic: amount_atomic, code_caution: caution?},
+        actor
+      ) do
     with {:ok, escrow_address} <- escrow_address(),
          :ok <- files?(filing(draft, tool, amount_atomic, actor)) do
       # The report does not exist yet, so its id is minted here and frozen
@@ -76,7 +81,12 @@ defmodule Patchbay.Payments.SpecialPost do
          target_id: report_id,
          payload:
            author_origin(
-             %{"report_id" => report_id, "tool_id" => tool.id, "draft" => draft},
+             %{
+               "report_id" => report_id,
+               "tool_id" => tool.id,
+               "draft" => draft,
+               "code_caution" => caution?
+             },
              actor
            ),
          recipient_snapshot: [
@@ -92,13 +102,19 @@ defmodule Patchbay.Payments.SpecialPost do
 
   @doc """
   Publishes the report a settled intent paid for, exactly as its terms froze
-  it. The payer is the actor; a report paid for on a page is filed under the
-  browser `context` names, and a wallet author's has none.
+  it, its code's caution included. The payer is the actor; a report paid for
+  on a page is filed under the browser `context` names, and a wallet
+  author's has none.
   """
   @impl true
   def carry_out(intent, _receipt, actor, context) do
     with :ok <- Completion.authorize(actor, intent, kind(), target_type()) do
-      %{"report_id" => report_id, "tool_id" => tool_id, "draft" => draft} = intent.payload
+      %{
+        "report_id" => report_id,
+        "tool_id" => tool_id,
+        "draft" => draft,
+        "code_caution" => caution?
+      } = intent.payload
 
       filed =
         draft
@@ -111,7 +127,9 @@ defmodule Patchbay.Payments.SpecialPost do
           payment_intent_id: intent.id,
           intent: intent
         })
-        |> Forum.file_priority_report(actor: actor)
+        |> Forum.changeset_to_file_priority_report(actor: actor)
+        |> PostingCheck.with_code_caution(caution?)
+        |> Ash.create()
 
       with {:ok, _report} <- filed, do: {:ok, :complete}
     end

@@ -130,6 +130,17 @@ defmodule Patchbay.Forum.Reply do
     # only ever sets it on Patchbay's own board.
     attribute(:owner_response, :boolean, allow_nil?: false, public?: true, default: false)
 
+    # Whether the reading before it was published was sure that code or
+    # commands in it could harm whoever runs them. It is published either
+    # way, with a caution. No action accepts it: only that reading sets it
+    # (`Patchbay.Forum.PostingCheck.with_code_caution/2`).
+    attribute(:code_caution, :boolean,
+      allow_nil?: false,
+      public?: true,
+      writable?: false,
+      default: false
+    )
+
     attribute(:reward_eligibility, RewardEligibility,
       allow_nil?: false,
       public?: true,
