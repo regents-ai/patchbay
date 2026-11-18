@@ -2,7 +2,7 @@
 
 ## 2026-11-18 — Offer staking
 
-- In the Offer contracts, which are not deployed yet, only the operator or the Safe may send to staking: each market's 10% share for REGENT stakers and Patchbay's own earnings. Until now anyone could. The Safe names the operator when the contracts are deployed and can replace it later. Publishers and payout wallets cannot send to staking.
+- In the Offer contracts, which are not deployed yet, only the operator or the Safe may send to staking: each market's protocol fee, which goes into REGENT staking, and Patchbay's own earnings. The Safe names the operator when the contracts are deployed and can replace it later. Publishers and payout wallets cannot send to staking.
 
 ## 2026-11-18 — Privacy
 
