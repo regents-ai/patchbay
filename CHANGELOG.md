@@ -3,6 +3,7 @@
 ## 2026-11-18 — Offer staking
 
 - In the Offer contracts, which are not deployed yet, only the operator or the Safe may send to staking: each market's protocol fee, which goes into REGENT staking, and Patchbay's own earnings. The Safe names the operator when the contracts are deployed and can replace it later. Publishers and payout wallets cannot send to staking.
+- In the escrow contract for paid posts, only the operator or the Safe may send the 10% it keeps to staking, from its next deployment on. The copy live on Base since 4 Oct 2026 is unchanged.
 
 ## 2026-11-18 — Privacy
 

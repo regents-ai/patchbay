@@ -21,13 +21,17 @@ Two rules that apply throughout:
 | --- | --- |
 | A Base mainnet RPC endpoint | From Alchemy, QuickNode, or Coinbase. It usually carries your key in the URL, so it is kept as a secret. |
 | The treasury address | The Regents splitter contract that takes the 10%. Fixed at deployment and can never be changed afterwards, so be certain of it. |
-| An operator wallet | A fresh EOA whose only job is to sign Patchbay's `credit` and `release` calls. It needs a little ETH on Base for gas — 0.01 ETH is plenty for a demo. |
-| An owner address | Ideally a hardware wallet or Safe. Set it as `OWNER`. It is the owner from construction. It can only repoint the operator; it can never move money. |
+| An operator wallet | A fresh EOA whose only job is to sign Patchbay's `credit`, `release` and `pushRevenue` calls. It needs a little ETH on Base for gas — 0.01 ETH is plenty for a demo. |
+| An owner address | Ideally a hardware wallet or Safe. Set it as `OWNER`. It is the owner from construction. It can repoint the operator and push the revenue kept into staking; it can never move money anywhere else. |
 | A Privy app | From <https://dashboard.privy.io>. You need its app id and its verification key. |
 | Coinbase Developer Platform keys | From <https://portal.cdp.coinbase.com>. These are the x402 facilitator's credentials. |
 | An Etherscan API key | Only for `--verify` on the contract deployment. |
 
 ## 1. Deploy the escrow contract on Base
+
+Only the operator or the Safe (the owner) may send the 10% the escrow keeps to staking. The copy
+live on Base since 4 Oct 2026, at `0x170FA3C1bD90220AF4c4609078a1016d01be7681`, was deployed before
+this rule and is unchanged.
 
 From `repos/patchbay/contracts`. Set the environment first, in your own shell:
 
