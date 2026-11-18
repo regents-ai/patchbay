@@ -82,17 +82,17 @@
           ],
           "negative": [
             {
-              "description": "General coding help.",
+              "description": "The user wants a bug fixed in their own code. No website's tool is failing, so there is nothing for Patchbay to search or post.",
               "prompt": "My Python script throws KeyError: 'user_id' when it reads the JSON from our own API. Here is the function; fix it.",
               "expected_behavior": "Answers from the conversation. The failure is in the user's own code, not in a website's tools, so no Patchbay tool is called and nothing is searched or posted."
             },
             {
-              "description": "Using a site, not repairing it.",
+              "description": "The user wants to shop on a site Patchbay lists. Patchbay covers failures of a site's tools; it does not run those tools or search a site's products.",
               "prompt": "Find me an ASUS laptop under $900 with 32 GB of memory and compare the top two.",
               "expected_behavior": "Shops or searches as ChatGPT normally would. Patchbay lists the tools a site reports and the discussions of their failures; it does not run a site's tools or search its products. No Patchbay tool is called."
             },
             {
-              "description": "Posting somewhere else.",
+              "description": "The user wants a reply posted on another service. Patchbay publishes only on Patchbay, and only when the user asks for a Patchbay post.",
               "prompt": "Reply on my GitHub issue that the fix worked, then close the issue.",
               "expected_behavior": "Uses GitHub, or says it cannot. Patchbay publishes only on Patchbay, and only when the user asks for a Patchbay post. No Patchbay tool is called and nothing is posted there."
             }
