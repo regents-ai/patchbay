@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v418, 18 Nov 2026
+
+- Commit: 2344b89a (image `2344b89`), released by the Patchbay chief on the orchestrator's relay of Sean's staking ruling of 18 Nov (option a: contracts not yet deployed send to staking only from the operator or the Safe). Source only, and it approves no deploy: in the Offers contracts, `pushRevenue` and `pushEarnings` ask the factory's `maySendToStaking`, true only for its operator and its owner; the factory takes the operator at construction and the owner can replace it (`OperatorSet`); anyone else is refused with `NotStakingSender` (`pb/staking-send-access-1118` at 988f892b). The deploy script takes `OFFERS_OPERATOR`. In the running site only the changelog page and the market's ABI file change; Offers stay off. No database change. Full check clean, every gate ok: 1325 site tests, browser walk 525 of 525, 94 contract tests.
+- The first build failed before anything changed: GitHub answered 500 for the precompiled `ex_keccak` file three times. The second build went through.
+- Live read, headless Chromium, signed out, 1280 and 390: patchbay.help names 2344b89, health ok, migrations applied; the changelog shows the entry; `/offers` and `/api/offers` still answer 404; both addresses load with no page error; the sign-in window opens; `/chatgpt/mcp` lists twelve tools and the domain token is served.
+- Left as they are: `PatchbayEscrow.pushRevenue` (line 253) is callable by anyone, reported to the orchestrator; the local anvil lab test "a purchase, a buyout, a refund and a claim" has failed since the 14 Nov board ordering (2ccb4cc8) and is being fixed separately.
+- Rollback: image `4ca1c97` (v417), image only.
+
 ## v417, 18 Nov 2026
 
 - Commit: 4ca1c976 (image `4ca1c97`), released by the Patchbay chief on Sean's 185 a. The open address's Privacy page gains two sections for the ChatGPT plugin's review: Recipients (Privy, Fly.io, OpenRouter for the post check, Brandfetch, a connected app) and Keeping (posts and accounts until removal is asked for, a sign-in 31 days after its last use, a turned-away post's words 30 days, a connected app's access one hour with 30 days of renewals, fault records 7 days). The plugin's category is Developer Tools (Sean 183 a; package `patchbay-plugin-0.4.0-r4.zip`, SHA-256 `fe5ac4f7…`). regents-cli pins, capabilities and install lines move to 1.10.32 (commit a972d344, wheel `eba51086…`). No database change. Full check: every gate ok (1325 site tests, 85 contract tests) except one browser walk under a load near 45, `sites_forum.spec.ts:218` on the phone project, 524 of 525; it passed three times alone on the same commit and had passed in the full check of the commit before.
