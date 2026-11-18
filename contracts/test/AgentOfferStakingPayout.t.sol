@@ -42,10 +42,10 @@ abstract contract StakingPayoutBase is AgentOfferBase {
 
 /// @title AgentOfferStakingPayoutTest
 /// @notice What the staking payout promises: it serves exactly the market its factory creates for
-///         its publisher; anyone may push; a push deposits everything the market owes it, and any
-///         USDC it holds, into the market's own staking contract tagged `agent.offers.payout`, and
-///         leaves nothing behind; and a paused staking contract leaves the earnings owed in the
-///         market.
+///         its publisher; only the factory's operator and owner may push; a push deposits
+///         everything the market owes it, and any USDC it holds, into the market's own staking
+///         contract tagged `agent.offers.payout`, and leaves nothing behind; and a paused staking
+///         contract leaves the earnings owed in the market.
 contract AgentOfferStakingPayoutTest is StakingPayoutBase {
     address internal stranger = makeAddr("stranger");
 
@@ -62,6 +62,7 @@ contract AgentOfferStakingPayoutTest is StakingPayoutBase {
         assertEq(predicted.code.length, 0, "no market yet");
 
         AgentOfferStakingPayout fresh = new AgentOfferStakingPayout(factory, later);
+        assertEq(address(fresh.factory()), address(factory));
         assertEq(address(fresh.market()), predicted);
         assertEq(address(fresh.usdc()), BASE_USDC);
         assertEq(address(fresh.staking()), address(factory.staking()));
@@ -89,36 +90,88 @@ contract AgentOfferStakingPayoutTest is StakingPayoutBase {
 
     // ---------------------------------------------------------------- pushes
 
-    function test_pushEarnings_depositsEverythingOwedTaggedForAnyCaller() public {
-        assertEq(_earn(0, 6_000_000), 5_400_000);
+    /// @dev The operator pushes the first earnings and the factory's owner the second, each with the
+    ///      same effects: all of it into staking, tagged, with nothing left behind.
+    function test_pushEarnings_depositsEverythingOwedTaggedForTheOperatorAndTheOwner() public {
+        address[2] memory senders = [operator, admin];
+        for (uint16 slot; slot < senders.length; ++slot) {
+            assertEq(_earn(slot, 6_000_000), 5_400_000);
 
-        vm.expectEmit(address(earnings));
-        emit AgentOfferStakingPayout.EarningsPushed(stranger, 5_400_000, 5_400_000);
-        vm.prank(stranger);
-        assertEq(earnings.pushEarnings(), 5_400_000);
+            vm.expectEmit(address(earnings));
+            emit AgentOfferStakingPayout.EarningsPushed(senders[slot], 5_400_000, 5_400_000);
+            vm.prank(senders[slot]);
+            assertEq(earnings.pushEarnings(), 5_400_000);
 
-        assertEq(usdc.balanceOf(address(staking)), 5_400_000);
-        assertEq(staking.lastSourceTag(), bytes32("agent.offers.payout"));
-        assertEq(staking.lastSourceRef(), _ref());
-        assertEq(market.claimable(address(earnings)), 0);
-        assertEq(usdc.balanceOf(address(earnings)), 0);
-        assertEq(usdc.allowance(address(earnings), address(staking)), 0);
+            assertEq(staking.lastSourceTag(), bytes32("agent.offers.payout"));
+            assertEq(staking.lastSourceRef(), _ref());
+            assertEq(market.claimable(address(earnings)), 0);
+            assertEq(usdc.balanceOf(address(earnings)), 0);
+            assertEq(usdc.allowance(address(earnings), address(staking)), 0);
 
-        // The fee goes in on its own push, under its own tag; together they are all that was earned.
-        vm.prank(stranger);
-        assertEq(market.pushRevenue(), 600_000);
-        assertEq(staking.lastSourceTag(), bytes32("agent.offers"));
-        assertEq(usdc.balanceOf(address(staking)), 6_000_000);
+            // The fee goes in on its own push, under its own tag; together they are all that was
+            // earned.
+            vm.prank(senders[slot]);
+            assertEq(market.pushRevenue(), 600_000);
+            assertEq(staking.lastSourceTag(), bytes32("agent.offers"));
+            assertEq(usdc.balanceOf(address(staking)), 6_000_000 * (uint256(slot) + 1));
+            _assertBooks(market);
+        }
+    }
+
+    /// @dev A stranger, Patchbay's publisher (which is not the operator) and the payout contract
+    ///      itself are refused, and the earnings stay owed in the market.
+    function test_pushEarnings_refusesEveryoneButTheOperatorAndTheOwner() public {
+        uint256 owed = _earn(0, 6_000_000);
+
+        address[3] memory refused = [stranger, publisher, address(earnings)];
+        for (uint256 i; i < refused.length; ++i) {
+            vm.expectRevert(AgentOfferStakingPayout.NotStakingSender.selector);
+            vm.prank(refused[i]);
+            earnings.pushEarnings();
+        }
+        assertEq(market.claimable(address(earnings)), owed);
+        assertEq(usdc.balanceOf(address(staking)), 0);
         _assertBooks(market);
+    }
+
+    /// @dev Any caller but the operator and the factory's owner is refused, whatever is owed.
+    function testFuzz_pushEarnings_refusesAnyOtherCaller(address caller, bool owed) public {
+        vm.assume(caller != operator && caller != admin);
+        if (owed) _earn(0, FLOOR);
+        uint256 claimable = market.claimable(address(earnings));
+
+        vm.expectRevert(AgentOfferStakingPayout.NotStakingSender.selector);
+        vm.prank(caller);
+        earnings.pushEarnings();
+        assertEq(market.claimable(address(earnings)), claimable);
+    }
+
+    /// @dev The operator key is replaced: from then on the old one is refused and the new one pushes.
+    function test_pushEarnings_followsTheOperatorTheOwnerSets() public {
+        address newOperator = makeAddr("new-operator");
+        uint256 owed = _earn(0, 6_000_000);
+        vm.prank(admin);
+        factory.setOperator(newOperator);
+
+        vm.expectRevert(AgentOfferStakingPayout.NotStakingSender.selector);
+        vm.prank(operator);
+        earnings.pushEarnings();
+
+        vm.prank(newOperator);
+        assertEq(earnings.pushEarnings(), owed);
+        assertEq(usdc.balanceOf(address(staking)), owed);
     }
 
     function test_pushEarnings_withNothingOwedOrHeldIsRefused() public {
         vm.expectRevert(AgentOfferStakingPayout.NothingToPush.selector);
+        vm.prank(operator);
         earnings.pushEarnings();
 
         _earn(0, FLOOR);
+        vm.prank(operator);
         earnings.pushEarnings();
         vm.expectRevert(AgentOfferStakingPayout.NothingToPush.selector);
+        vm.prank(operator);
         earnings.pushEarnings();
     }
 
@@ -128,8 +181,8 @@ contract AgentOfferStakingPayoutTest is StakingPayoutBase {
 
         vm.expectCall(address(market), abi.encodeCall(IAgentOfferMarket.claim, (address(earnings))), 0);
         vm.expectEmit(address(earnings));
-        emit AgentOfferStakingPayout.EarningsPushed(stranger, 0, 1_000_000);
-        vm.prank(stranger);
+        emit AgentOfferStakingPayout.EarningsPushed(operator, 0, 1_000_000);
+        vm.prank(operator);
         assertEq(earnings.pushEarnings(), 1_000_000);
 
         assertEq(usdc.balanceOf(address(staking)), 1_000_000);
@@ -142,8 +195,8 @@ contract AgentOfferStakingPayoutTest is StakingPayoutBase {
         usdc.mint(address(earnings), 250_000);
 
         vm.expectEmit(address(earnings));
-        emit AgentOfferStakingPayout.EarningsPushed(stranger, owed, owed + 250_000);
-        vm.prank(stranger);
+        emit AgentOfferStakingPayout.EarningsPushed(operator, owed, owed + 250_000);
+        vm.prank(operator);
         assertEq(earnings.pushEarnings(), owed + 250_000);
 
         assertEq(usdc.balanceOf(address(staking)), owed + 250_000);
@@ -158,7 +211,7 @@ contract AgentOfferStakingPayoutTest is StakingPayoutBase {
         staking.setPaused(true);
 
         vm.expectRevert("PAUSED");
-        vm.prank(stranger);
+        vm.prank(operator);
         earnings.pushEarnings();
         assertEq(market.claimable(address(earnings)), owed);
         assertEq(usdc.balanceOf(address(market)), marketHeld);
@@ -167,6 +220,7 @@ contract AgentOfferStakingPayoutTest is StakingPayoutBase {
         _assertBooks(market);
 
         staking.setPaused(false);
+        vm.prank(operator);
         assertEq(earnings.pushEarnings(), owed);
         assertEq(market.claimable(address(earnings)), 0);
     }
@@ -179,6 +233,7 @@ contract AgentOfferStakingPayoutTest is StakingPayoutBase {
         uint256 owed = _earn(0, paid);
         usdc.mint(address(earnings), held);
 
+        vm.prank(operator);
         assertEq(earnings.pushEarnings(), owed + held);
         assertEq(usdc.balanceOf(address(staking)), owed + held);
         assertEq(market.claimable(address(earnings)), 0);
@@ -223,11 +278,12 @@ contract ReenteringStaking is IRegentRevenueStaking {
 contract AgentOfferStakingPayoutReentrancyTest is StakingPayoutBase {
     ReenteringStaking internal attacker;
 
-    /// @dev A factory whose staking contract is the attacker; the kit's own factory goes unused.
+    /// @dev A factory whose staking contract is the attacker, and whose operator it is too, so only
+    ///      the reentrancy guard can refuse its call back; the kit's own factory goes unused.
     function setUp() public {
         _deployFactory(new FreezableUSDC());
         attacker = new ReenteringStaking(IERC20(BASE_USDC));
-        factory = new AgentOfferFactory(admin, publisher, attacker, FEE_BPS);
+        factory = new AgentOfferFactory(admin, address(attacker), publisher, attacker, FEE_BPS);
         _deployPayoutAndMarket();
         attacker.aim(earnings);
     }
@@ -236,6 +292,7 @@ contract AgentOfferStakingPayoutReentrancyTest is StakingPayoutBase {
         uint256 owed = _earn(0, 6_000_000);
         usdc.mint(address(earnings), 1);
 
+        vm.prank(admin);
         assertEq(earnings.pushEarnings(), owed + 1);
 
         assertEq(

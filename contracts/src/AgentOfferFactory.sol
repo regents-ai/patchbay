@@ -18,10 +18,14 @@ import {AgentOfferMarket} from "./AgentOfferMarket.sol";
 ///      address is a CREATE2 clone salted by its publisher, so `predictMarket` gives it before it
 ///      exists and it does not move if a block is reorganised.
 ///
-///      The owner only admits and removes publishers. Removing one stops it creating a market; a
-///      market already created keeps running, and the owner has no way to touch it or its money.
+///      The owner admits and removes publishers and sets the operator. Removing a publisher stops it
+///      creating a market; a market already created keeps running. Only the operator or the Safe
+///      (the owner) may send to staking: every market's `pushRevenue` and the staking payout's
+///      `pushEarnings` ask `maySendToStaking`. Beyond that send, which can only reach the fixed
+///      staking contract, the owner has no way to touch a market or its money.
 ///      Only a market this factory created (see `MarketCreated` or `marketOf`) is a real one: anyone
-///      can clone the public implementation, but such a clone is not listed here.
+///      can clone the public implementation, but such a clone is not listed here, and it answers to
+///      whoever initialized it, never to this factory.
 contract AgentOfferFactory is Ownable2Step {
     /// @notice Circle's native USDC on Base mainnet.
     address public constant BASE_USDC = 0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913;
@@ -47,8 +51,14 @@ contract AgentOfferFactory is Ownable2Step {
     /// @notice Each publisher's market, once created.
     mapping(address publisher => address market) public marketOf;
 
+    /// @notice The one address besides the owner that may send to staking. The owner can change it.
+    address public operator;
+
     /// @notice Emitted when the owner admits or removes a publisher, and once at deployment.
     event PublisherAllowed(address indexed publisher, bool allowed);
+
+    /// @notice Emitted when the owner sets the operator, and once at deployment.
+    event OperatorSet(address indexed operator);
 
     /// @notice Emitted when a publisher creates its market.
     event MarketCreated(address indexed publisher, address indexed market, address payout);
@@ -63,14 +73,22 @@ contract AgentOfferFactory is Ownable2Step {
     /// @notice Thrown when a publisher that already has a market tries to create another.
     error MarketAlreadyExists();
 
-    /// @notice Deploys the factory and the market implementation, and admits Patchbay.
-    /// @param admin The owner: admits and removes publishers. Ownable2Step applies to handovers.
+    /// @notice Deploys the factory and the market implementation, sets the operator, and admits
+    ///         Patchbay.
+    /// @param admin The owner (the Safe): admits and removes publishers, sets the operator, and may
+    ///        send to staking. Ownable2Step applies to handovers.
+    /// @param stakingOperator The operator: the one address besides the owner that may send to
+    ///        staking.
     /// @param patchbayPublisher Patchbay's publisher address, admitted from the start.
     /// @param protocolStaking The REGENT revenue staking contract the protocol fee is pushed into.
     /// @param protocolFeeBps The protocol fee, at most `AgentOfferMarket.MAX_FEE_BPS`.
-    constructor(address admin, address patchbayPublisher, IRegentRevenueStaking protocolStaking, uint16 protocolFeeBps)
-        Ownable(admin)
-    {
+    constructor(
+        address admin,
+        address stakingOperator,
+        address patchbayPublisher,
+        IRegentRevenueStaking protocolStaking,
+        uint16 protocolFeeBps
+    ) Ownable(admin) {
         if (
             block.chainid != BASE_CHAIN_ID || BASE_USDC.code.length == 0 || patchbayPublisher == address(0)
                 || address(protocolStaking).code.length == 0
@@ -78,6 +96,7 @@ contract AgentOfferFactory is Ownable2Step {
 
         staking = protocolStaking;
         feeBps = protocolFeeBps;
+        _setOperator(stakingOperator);
         publisherAllowed[patchbayPublisher] = true;
         emit PublisherAllowed(patchbayPublisher, true);
 
@@ -93,6 +112,17 @@ contract AgentOfferFactory is Ownable2Step {
         publisherAllowed[publisher] = allowed;
 
         emit PublisherAllowed(publisher, allowed);
+    }
+
+    /// @notice Sets the operator, replacing the last one: only the operator or the Safe may send to
+    ///         staking. Owner only.
+    function setOperator(address newOperator) external onlyOwner {
+        _setOperator(newOperator);
+    }
+
+    /// @notice Whether `caller` may send to staking: true only for the operator and the owner.
+    function maySendToStaking(address caller) external view returns (bool) {
+        return caller == operator || caller == owner();
     }
 
     /// @notice Creates the caller's market, with `payout` as the wallet its earnings are credited
@@ -125,6 +155,14 @@ contract AgentOfferFactory is Ownable2Step {
     /// @notice The address `publisher`'s market has, or will have once created.
     function predictMarket(address publisher) public view returns (address) {
         return Clones.predictDeterministicAddress(implementation, _salt(publisher));
+    }
+
+    /// @dev Records a new operator, which may not be the zero address.
+    function _setOperator(address newOperator) private {
+        if (newOperator == address(0)) revert InvalidConfiguration();
+        operator = newOperator;
+
+        emit OperatorSet(newOperator);
     }
 
     /// @dev One salt per publisher, so one address per publisher.

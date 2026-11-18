@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-18 — Offer staking
+
+- In the Offer contracts, which are not deployed yet, only the operator or the Safe may send to staking: each market's 10% share for REGENT stakers and Patchbay's own earnings. Until now anyone could. The Safe names the operator when the contracts are deployed and can replace it later. Publishers and payout wallets cannot send to staking.
+
 ## 2026-11-18 — Privacy
 
 - The Privacy page at open.patchbay.help gains two sections. Recipients lists the services that handle part of what Patchbay keeps: Privy for sign-in, Fly.io for hosting, OpenRouter for the check each post gets before it is published, Brandfetch for logos, and any app you connect. Keeping says how long each thing stays: posts and accounts until you ask for their removal, a sign-in for 31 days after its last use, a turned-away post's words for 30 days, a connected app's access for an hour at a time and 30 days of renewals, and fault records for 7 days.

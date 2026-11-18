@@ -179,7 +179,7 @@ that address.
 
 ## The model
 
-- A **publisher** is the operator that shows Offers to agents and is paid for it. Patchbay is
+- A **publisher** is the site that shows Offers to agents and is paid for it. Patchbay is
   admitted from the start; the factory's owner admits others later. Each admitted publisher creates
   **one market**, a clone of one fixed implementation that the factory deploys itself, at an address
   `predictMarket(publisher)` gives in advance.
@@ -207,9 +207,10 @@ that address.
   credits: the refund to the buyer, the earned part to the payout wallet less the protocol fee, and
   the fee to `revenueOwed`. The three always add up to exactly what the lease paid.
 - Every credit leaves only through its owner's `claim(recipient)`; a wallet USDC has frozen can send
-  its credit to another wallet of its own. The fee leaves only through `pushRevenue()`, which anyone
-  may call and which deposits into the REGENT revenue staking contract tagged `agent.offers`, with the
-  market's address as the reference. While staking is paused, only the push waits.
+  its credit to another wallet of its own. The fee leaves only through `pushRevenue()`, which only
+  the operator or the Safe may call (see "Who can do what") and which deposits into the REGENT
+  revenue staking contract tagged `agent.offers`, with the market's address as the reference. While
+  staking is paused, only the push waits.
 - The market keeps its books by amounts:
   `usdc.balanceOf(market) >= totalLeaseDeposits() + totalClaimable() + revenueOwed()` at all times.
   USDC sent straight to a market is nobody's credit and stays there; there is no sweep.
@@ -218,8 +219,15 @@ that address.
 
 ## Who can do what
 
-- **Factory owner:** admits and removes publishers. Removing one stops it creating a market; a market
-  already created keeps running. The owner has no way to touch any market or its money.
+- **Factory owner (the Safe):** admits and removes publishers, sets the operator, and may send to
+  staking. Removing a publisher stops it creating a market; a market already created keeps running.
+  Beyond sending to staking, the owner has no way to touch any market or its money.
+- **Operator:** one address, set when the factory is deployed and replaceable only by the owner
+  (`setOperator`, which emits `OperatorSet`). Only the operator or the Safe may send to staking:
+  `pushRevenue` on every market of the factory and `pushEarnings` on the staking payout ask the
+  factory's `maySendToStaking(caller)`, and refuse anyone else, a publisher and a payout wallet
+  included, with `NotStakingSender()`. Neither call can send money anywhere but the staking
+  contract.
 - **Publisher:** creates placements, signs admissions and terminates placements. A termination
   refunds every live lease from that moment, one slot per `settleTerminated` call (anyone may make
   it), however late. A stolen publisher key can do no more than this: it cannot redirect earnings or
@@ -229,7 +237,11 @@ that address.
   then terminate its placements and, with the owner admitting a new publisher address, create a new
   market with a new payout wallet. A Safe is the better choice for the payout wallet. Patchbay's is
   the staking payout contract below, which nobody controls.
-- **Anyone:** buys (with an admission), settles run-out or terminated leases, and pushes the fee.
+- **Anyone:** buys (with an admission) and settles run-out or terminated leases.
+
+A market records the factory that initialized it (`factory()`). Anyone can clone the public
+implementation, but a clone the factory did not create answers to whoever initialized it, never to
+the factory's operator or owner, and is not listed in `marketOf`.
 
 Lease lengths are capped at 365 days, the step at 10,000 basis points (a buyout never has to pay more
 than double), and every bound is checked when a placement is created.
@@ -245,21 +257,22 @@ therefore `AgentOfferStakingPayout`, a contract that does one thing:
 - `pushEarnings()` claims everything the market owes it and, in the same call, deposits it into the
   staking contract with `depositUSDC`, tagged `agent.offers.payout` with the market's address as the
   reference. The fee keeps its own tag, `agent.offers`, so the staking books tell the two apart.
-  Anyone may call it; it returns the amount deposited.
+  Only the operator or the Safe may call it, as for `pushRevenue`; it returns the amount deposited.
 - Every push deposits the contract's whole USDC balance, so nothing can be stranded in it: USDC
   anyone sends it goes into staking with the next push. `EarningsPushed(caller, claimedUSDC,
   depositedUSDC)` shows how much of a push came from the market. The market is asked only when it
   owes something; with nothing owed and nothing held, the push reverts with `NothingToPush()`.
 - While staking is paused the deposit reverts, and the whole push with it: the earnings stay owed in
   the market for a later push.
-- It has no owner, no settings and no way to send money anywhere but the staking contract. Its
-  market, USDC and staking contract are read from the factory, at deployment, for the publisher it
-  is given, so it can only serve the market that factory creates for that publisher, with the token
-  and staking contract that market itself uses.
+- It has no owner, no settings of its own and no way to send money anywhere but the staking
+  contract; who may push is the factory's rule. Its factory is fixed at deployment, and its market,
+  USDC and staking contract are read from that factory for the publisher it is given, so it can only
+  serve the market that factory creates for that publisher, with the token and staking contract that
+  market itself uses.
 
 Deploy order, one transaction each:
 
-1. Deploy `AgentOfferFactory`, admitting Patchbay's publisher address.
+1. Deploy `AgentOfferFactory` with its owner and operator, admitting Patchbay's publisher address.
 2. Read `factory.predictMarket(publisher)`: the address Patchbay's market will have.
 3. Deploy `AgentOfferStakingPayout(factory, publisher)` from any address, and check that its
    `market()` is that predicted address and its `staking()` is the factory's.
@@ -270,8 +283,9 @@ Deploy order, one transaction each:
    earnings it never claims.
 
 The publisher's signing key only creates and terminates placements and signs admissions; it never
-holds or receives money. Anyone, Patchbay's server included, may call `pushRevenue` and
-`pushEarnings` at any time, and neither can send money anywhere but staking.
+holds or receives money, and it is not the operator unless the owner names it so. Only the operator
+or the Safe may call `pushRevenue` and `pushEarnings`, at any time, and neither can send money
+anywhere but staking.
 
 ## Deploy the offer contracts
 
@@ -284,7 +298,8 @@ above 2,000.
 
 | Variable            | Meaning                                                                                    |
 | ------------------- | ------------------------------------------------------------------------------------------ |
-| `OFFERS_ADMIN`      | The factory's owner, who admits and removes publishers. A Safe is a good choice.           |
+| `OFFERS_ADMIN`      | The factory's owner (the Safe): admits and removes publishers, sets the operator.          |
+| `OFFERS_OPERATOR`   | The operator: with the owner, the only address that may send to staking.                   |
 | `OFFERS_PUBLISHER`  | Patchbay's publisher address, whose key the site holds as `PATCHBAY_OFFERS_PUBLISHER_KEY`. |
 | `OFFERS_STAKING`    | The REGENT revenue staking contract the fee and Patchbay's earnings go into.               |
 | `OFFERS_FEE_BPS`    | The protocol fee in basis points: 1000 for the planned deployment.                         |
@@ -298,24 +313,26 @@ Then, from this directory, signing as the publisher (a Foundry keystore entry ho
 forge script script/DeployOffers.s.sol --rpc-url $BASE_RPC_URL --broadcast --verify --account <publisher keystore name>
 ```
 
-The script logs the factory, its implementation, owner, staking contract and fee, the staking payout
-contract, and the market with its publisher and payout. The market's address and the block its
-`MarketCreated` transaction landed in are what the site needs (`platform/docs/GO_LIVE.md`, "Offers").
+The script logs the factory, its implementation, owner, operator, staking contract and fee, the
+staking payout contract, and the market with its publisher and payout. The market's address and the
+block its `MarketCreated` transaction landed in are what the site needs (`platform/docs/GO_LIVE.md`,
+"Offers").
 Without `--broadcast` the same command only simulates.
 
 ## Checks
 
 The same commands as above. `test/AgentOfferMarket.t.sol` holds the unit, fuzz, reentrancy and
-invariant suites; `test/AgentOfferFactory.t.sol` the factory's, including a permit for one market
-being refused by another; `test/AgentOfferStakingPayout.t.sol` the staking payout's, including a
-staking contract that calls back mid-deposit; `test/DeployOffers.t.sol` runs the deploy script and
-checks what it leaves wired, sells on it and pushes everything earned into staking.
+invariant suites; `test/AgentOfferFactory.t.sol` the factory's, including who may send to staking,
+a clone made outside the factory, and a permit for one market being refused by another;
+`test/AgentOfferStakingPayout.t.sol` the staking payout's, including a staking contract that calls
+back mid-deposit; `test/DeployOffers.t.sol` runs the deploy script and checks what it leaves wired,
+sells on it and pushes everything earned into staking.
 
 `test/AgentOfferForkRehearsal.t.sol` rehearses the whole money path on a local fork of Base mainnet
 pinned to one block, with Circle's real USDC and the live REGENT revenue staking contract: the
 factory, Patchbay's market paying its staking payout contract and a second market paying a plain
 wallet, sales, a buyout, a lease run to its end, a placement terminated early, every claim, the fees
-and Patchbay's earnings pushed into staking, and every unit accounted for.
+and Patchbay's earnings pushed into staking by the operator, and every unit accounted for.
 It logs the gas of each step as a transaction of its own. Nothing is broadcast. It is skipped
 unless `BASE_RPC_URL` is set, so `forge test` stays offline:
 

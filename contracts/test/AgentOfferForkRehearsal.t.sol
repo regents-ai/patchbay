@@ -115,7 +115,7 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
     ///      market for one publisher. Patchbay's market is created in the README's order: predict its
     ///      address, deploy its staking payout contract, then create the market naming that contract.
     function _deployFactoryAndMarkets() internal {
-        factory = new AgentOfferFactory(admin, publisher, IRegentRevenueStaking(REGENT_STAKING), FEE_BPS);
+        factory = new AgentOfferFactory(admin, operator, publisher, IRegentRevenueStaking(REGENT_STAKING), FEE_BPS);
         _logGas("factory deploy", _txGas());
 
         address predicted = factory.predictMarket(publisher);
@@ -265,9 +265,16 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         console2.log("site wallet claimed", uint256(900_000));
     }
 
-    /// @dev Step 6: anyone pushes each market's fee, and Patchbay's earnings through its staking
-    ///      payout contract, into the live staking contract.
+    /// @dev Step 6: the operator pushes each market's fee, and Patchbay's earnings through its
+    ///      staking payout contract, into the live staking contract; a stranger is refused first.
     function _pushIntoStaking() internal {
+        vm.expectRevert(IAgentOfferMarket.NotStakingSender.selector);
+        vm.prank(stranger);
+        market.pushRevenue();
+        vm.expectRevert(AgentOfferStakingPayout.NotStakingSender.selector);
+        vm.prank(stranger);
+        earnings.pushEarnings();
+
         _logGas("pushRevenue (Patchbay market)", _pushFee(market, 1_595_000));
         _logGas("pushEarnings (Patchbay staking payout)", _pushEarnings(14_355_001));
         _pushFee(siteMarket, 100_000);
@@ -343,12 +350,12 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         claimedOut[address(m)] += expected;
     }
 
-    /// @dev A stranger pushes `m`'s fee: tagged `agent.offers`, with the market as both depositor
+    /// @dev The operator pushes `m`'s fee: tagged `agent.offers`, with the market as both depositor
     ///      and reference, and no allowance left behind.
     function _pushFee(AgentOfferMarket m, uint256 fee) internal returns (uint256 gasUsed) {
         StakingBooks memory before = _stakingBooks();
         vm.recordLogs();
-        vm.prank(stranger);
+        vm.prank(operator);
         uint256 pushed = m.pushRevenue();
         gasUsed = _txGas();
         _assertDeposited(before, address(m), address(m), "agent.offers", fee);
@@ -358,13 +365,13 @@ contract AgentOfferForkRehearsalTest is AgentOfferBase {
         pushedOut[address(m)] += fee;
     }
 
-    /// @dev A stranger pushes Patchbay's earnings: the staking payout contract claims them from the
+    /// @dev The operator pushes Patchbay's earnings: the staking payout contract claims them from the
     ///      market and deposits them in the same call, tagged `agent.offers.payout`, with itself as
     ///      depositor and the market as reference, keeping nothing and leaving no allowance.
     function _pushEarnings(uint256 owed) internal returns (uint256 gasUsed) {
         StakingBooks memory before = _stakingBooks();
         vm.recordLogs();
-        vm.prank(stranger);
+        vm.prank(operator);
         uint256 pushed = earnings.pushEarnings();
         gasUsed = _txGas();
         _assertDeposited(before, address(earnings), address(market), "agent.offers.payout", owed);

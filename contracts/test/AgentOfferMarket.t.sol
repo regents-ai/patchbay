@@ -25,8 +25,8 @@ import {
 ///         current nonce, before its deadline, for at least the floor or the step over a live lease;
 ///         a replaced buyer refunded the unused share rounded down; earnings credited only when a
 ///         lease ends, split 90/10; termination refunding from its own moment, one slot at a time;
-///         credit leaving only through its owner's claim; and nobody else's frozen wallet blocking
-///         anything.
+///         credit leaving only through its owner's claim; the fee sent to staking only by the
+///         factory's operator or owner; and nobody else's frozen wallet blocking anything.
 contract AgentOfferMarketTest is AgentOfferBase {
     address internal alice = makeAddr("alice");
     address internal bob = makeAddr("bob");
@@ -741,6 +741,7 @@ contract AgentOfferMarketTest is AgentOfferBase {
         vm.prank(bob);
         assertEq(market.claim(bob), bobOwed);
         uint256 owed = market.revenueOwed();
+        vm.prank(operator);
         assertEq(market.pushRevenue(), owed);
         _buy(market, makeAddr("dave"), placementId, 1, FLOOR);
 
@@ -758,23 +759,64 @@ contract AgentOfferMarketTest is AgentOfferBase {
 
     // ---------------------------------------------------------------- revenue
 
-    function test_pushRevenue_depositsAllOwedTaggedForAnyCaller() public {
+    /// @dev The operator pushes the first fee and the factory's owner the second, each with the same
+    ///      effects: all of it into staking, tagged, with no allowance left behind.
+    function test_pushRevenue_depositsAllOwedTaggedForTheOperatorAndTheOwner() public {
+        address[2] memory senders = [operator, admin];
+        for (uint16 slot; slot < senders.length; ++slot) {
+            _buy(market, alice, placementId, slot, 6_000_000);
+            skip(DURATION);
+            market.settleExpired(placementId, slot);
+
+            vm.expectEmit(address(market));
+            emit IAgentOfferMarket.RevenuePushed(senders[slot], 600_000);
+            vm.prank(senders[slot]);
+            assertEq(market.pushRevenue(), 600_000);
+            assertEq(usdc.balanceOf(address(staking)), 600_000 * (uint256(slot) + 1));
+            assertEq(staking.lastSourceTag(), bytes32("agent.offers"));
+            assertEq(staking.lastSourceRef(), bytes32(uint256(uint160(address(market)))));
+            assertEq(usdc.allowance(address(market), address(staking)), 0);
+            assertEq(market.revenueOwed(), 0);
+
+            vm.expectRevert(IAgentOfferMarket.NothingOwed.selector);
+            vm.prank(senders[slot]);
+            market.pushRevenue();
+            _assertBooks(market);
+        }
+    }
+
+    /// @dev A stranger, the market's publisher (which is not the operator) and its payout wallet
+    ///      are refused, and the fee stays owed.
+    function test_pushRevenue_refusesEveryoneButTheOperatorAndTheOwner() public {
         _buy(market, alice, placementId, 0, 6_000_000);
         skip(DURATION);
         market.settleExpired(placementId, 0);
 
-        vm.expectEmit(address(market));
-        emit IAgentOfferMarket.RevenuePushed(stranger, 600_000);
-        vm.prank(stranger);
-        assertEq(market.pushRevenue(), 600_000);
-        assertEq(usdc.balanceOf(address(staking)), 600_000);
-        assertEq(staking.lastSourceTag(), bytes32("agent.offers"));
-        assertEq(staking.lastSourceRef(), bytes32(uint256(uint160(address(market)))));
-        assertEq(usdc.allowance(address(market), address(staking)), 0);
-
-        vm.expectRevert(IAgentOfferMarket.NothingOwed.selector);
-        market.pushRevenue();
+        address[3] memory refused = [stranger, publisher, payout];
+        for (uint256 i; i < refused.length; ++i) {
+            vm.expectRevert(IAgentOfferMarket.NotStakingSender.selector);
+            vm.prank(refused[i]);
+            market.pushRevenue();
+        }
+        assertEq(market.revenueOwed(), 600_000);
+        assertEq(usdc.balanceOf(address(staking)), 0);
         _assertBooks(market);
+    }
+
+    /// @dev Any caller but the operator and the factory's owner is refused, whatever is owed.
+    function testFuzz_pushRevenue_refusesAnyOtherCaller(address caller, bool owed) public {
+        vm.assume(caller != operator && caller != admin);
+        if (owed) {
+            _buy(market, alice, placementId, 0, FLOOR);
+            skip(DURATION);
+            market.settleExpired(placementId, 0);
+        }
+        uint256 revenueOwed = market.revenueOwed();
+
+        vm.expectRevert(IAgentOfferMarket.NotStakingSender.selector);
+        vm.prank(caller);
+        market.pushRevenue();
+        assertEq(market.revenueOwed(), revenueOwed);
     }
 
     function test_aPausedStakingContractHoldsUpOnlyThePush() public {
@@ -784,12 +826,14 @@ contract AgentOfferMarketTest is AgentOfferBase {
 
         _buy(market, bob, placementId, 0, FLOOR);
         vm.expectRevert("PAUSED");
+        vm.prank(operator);
         market.pushRevenue();
         assertEq(market.revenueOwed(), 600_000);
         vm.prank(payout);
         market.claim(payout);
 
         staking.setPaused(false);
+        vm.prank(operator);
         assertEq(market.pushRevenue(), 600_000);
         _assertBooks(market);
     }
@@ -890,6 +934,7 @@ contract AgentOfferMarketTest is AgentOfferBase {
             vm.prank(accounts[i]);
             paidOut += market.claim(accounts[i]);
         }
+        vm.prank(operator);
         paidOut += market.pushRevenue();
         assertEq(paidOut, paidIn);
         assertEq(usdc.balanceOf(address(market)), 0);
@@ -1027,6 +1072,7 @@ contract MarketHandler is Test {
     RecordingStaking internal immutable staking;
     address internal immutable publisher;
     uint256 internal immutable publisherKey;
+    address internal immutable operator;
     address[] internal buyers;
     address[] internal recipients;
     uint256[] public placementIds;
@@ -1049,6 +1095,7 @@ contract MarketHandler is Test {
         FreezableUSDC usdc_,
         RecordingStaking staking_,
         uint256 publisherKey_,
+        address operator_,
         address[] memory buyers_,
         address[] memory recipients_,
         uint256[] memory placementIds_
@@ -1058,6 +1105,7 @@ contract MarketHandler is Test {
         staking = staking_;
         publisher = vm.addr(publisherKey_);
         publisherKey = publisherKey_;
+        operator = operator_;
         buyers = buyers_;
         recipients = recipients_;
         placementIds = placementIds_;
@@ -1241,9 +1289,11 @@ contract MarketHandler is Test {
         }
     }
 
+    /// @dev The operator pushes the fee. Only a paused staking contract may refuse it.
     function pushRevenue() external {
         uint256 owed = market.revenueOwed();
         if (owed == 0) return;
+        vm.prank(operator);
         try market.pushRevenue() returns (uint256 amount) {
             assertEq(amount, owed);
             pushedOut += amount;
@@ -1315,7 +1365,7 @@ contract AgentOfferMarketInvariantTest is AgentOfferBase {
         recipients[0] = makeAddr("recipient-0");
         recipients[1] = buyers[0];
 
-        handler = new MarketHandler(market, usdc, staking, publisherKey, buyers, recipients, ids);
+        handler = new MarketHandler(market, usdc, staking, publisherKey, operator, buyers, recipients, ids);
 
         handler.buy(0, 0, 0, 0); // an empty slot
         handler.buyout(1, 0, 0, 1 hours, 0); // bought out an hour in
