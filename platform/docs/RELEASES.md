@@ -4,6 +4,18 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v417, 18 Nov 2026
+
+- Commit: 4ca1c976 (image `4ca1c97`), released by the Patchbay chief on Sean's 185 a. The open address's Privacy page gains two sections for the ChatGPT plugin's review: Recipients (Privy, Fly.io, OpenRouter for the post check, Brandfetch, a connected app) and Keeping (posts and accounts until removal is asked for, a sign-in 31 days after its last use, a turned-away post's words 30 days, a connected app's access one hour with 30 days of renewals, fault records 7 days). The plugin's category is Developer Tools (Sean 183 a; package `patchbay-plugin-0.4.0-r4.zip`, SHA-256 `fe5ac4f7…`). regents-cli pins, capabilities and install lines move to 1.10.32 (commit a972d344, wheel `eba51086…`). No database change. Full check: every gate ok (1325 site tests, 85 contract tests) except one browser walk under a load near 45, `sites_forum.spec.ts:218` on the phone project, 524 of 525; it passed three times alone on the same commit and had passed in the full check of the commit before.
+- Live read, headless Chromium, signed out, 1280 and 390: patchbay.help names 4ca1c97 and 1.10.32, health ok, migrations applied; the open Privacy page shows both new sections and names no wallet or payment; `/`, `/privacy` and `/sites` load on both addresses with no page error, no file that fails to load and no page wider than the screen; the sign-in window opens; `/chatgpt/mcp` lists twelve tools; the domain token is still served.
+- Not proven live: nothing about the plugin's review itself; OpenAI's portal has not connected yet.
+- Rollback: image `6b1ce41` (v415 and v416), image only.
+
+## v416, 17 Nov 2026
+
+- No new code: a restart on image `6b1ce41` at 23:36Z that set the new secret `OPENAI_APPS_CHALLENGE` on Sean's 182 a, pasted by Sean through a secret card. `https://open.patchbay.help/.well-known/openai-apps-challenge` returns exactly that value as plain text; patchbay.help answers 404 there. Sentinel's check at 00:06Z found nothing new.
+- Rollback: remove the secret.
+
 ## v415, 17 Nov 2026
 
 - Commit: 6b1ce414 (image `6b1ce41`), released by the Patchbay chief on Sean's 181 a (orchestrator 279 a, and "181. a" in the chief's own thread). Patchbay leaves its narrow elixir-utils branch (fbd512f1) for elixir-utils main e40068b3, the commit the template runs (`pb/utils-main-1117` at 6f766fff). What crossed: RegentOAuth lets an app with a published identity sign its token requests (`private_key_jwt`, RS256 and ES256; a missing or wrong signature is 401 `invalid_client`, unreadable keys 503 `temporarily_unavailable`), names token-step refusals more exactly (`code_resource_missing`, `code_resource_other`, `refresh_resource_other`, grant type checked first), and RegentPayments receipts no longer carry `paid_with`. Every other package was already file-for-file the same. Site change: `client_assertion` joins the parameters kept out of logs; tests for the signed token request, both addresses' sign-in details and a receipt saved without `paid_with`. Database: nothing of Patchbay's. The library's migration `regent_payments 20261112180000` (default "usdc" on `payment_receipts.paid_with`; no row rewritten, nothing dropped) was already on the shared database, applied by the template on 15 Nov: `/app/bin/migrate` refuses a deploy while a shared change is missing, and it passed. Full check on the commit clean, every gate ok: 1325 site tests, browser walk 525 of 525, 85 contract tests.
