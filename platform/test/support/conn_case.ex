@@ -27,6 +27,25 @@ defmodule PatchbayWeb.ConnCase do
   def on_open(conn), do: %{conn | host: PatchbayWeb.SiteEdition.open_host()}
 
   @doc """
+  The app address a person's Allow or Cancel returns them to: the consent
+  form's answer is a page that goes there by itself and links there too.
+  """
+  def returned_to(conn) do
+    assert conn.status == 200
+    assert Plug.Conn.get_resp_header(conn, "location") == []
+    [_, refresh] = Regex.run(~r/<meta http-equiv="refresh" content="0;url=([^"]+)">/, conn.resp_body)
+    [_, link] = Regex.run(~r/<a href="([^"]+)">Continue<\/a>/, conn.resp_body)
+    assert refresh == link
+
+    link
+    |> String.replace("&lt;", "<")
+    |> String.replace("&gt;", ">")
+    |> String.replace("&quot;", "\"")
+    |> String.replace("&#39;", "'")
+    |> String.replace("&amp;", "&")
+  end
+
+  @doc """
   The request from a browser signed in as `profile_id` at `signed_in_at`, as
   the sign-in endpoint leaves its cookie: a bound sign-in lineage
   (`Patchbay.Accounts.SessionAuthority`) merged into the test session.

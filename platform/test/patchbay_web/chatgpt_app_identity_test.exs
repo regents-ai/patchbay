@@ -125,8 +125,7 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
         "decision" => "allow"
       })
 
-    assert allowed.status == 303
-    [location] = get_resp_header(allowed, "location")
+    location = returned_to(allowed)
     assert String.starts_with?(location, callback <> "?")
     assert %{"code" => _, "state" => ^state} = URI.decode_query(URI.parse(location).query)
   end

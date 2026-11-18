@@ -498,8 +498,7 @@ defmodule PatchbayWeb.MCPConnectedAppTest do
         "decision" => "allow"
       })
 
-    assert approved.status == 303
-    [location] = get_resp_header(approved, "location")
+    location = returned_to(approved)
     assert String.starts_with?(location, callback <> "?")
     {page, URI.decode_query(URI.parse(location).query)["code"]}
   end
