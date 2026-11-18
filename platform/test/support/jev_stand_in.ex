@@ -5,10 +5,11 @@ defmodule Patchbay.JevStandIn do
 
   Each test starts with `accept_posts/0` in place, so a test that is about
   something else posts as it always did. A test about the reading itself
-  says what Jev finds with `finds/2`, which type it gives a thread posted
-  without one with `types/1`, or takes Jev away with `unreachable/0`. Jev
-  answers only what it is asked: a thread posted without a type is read as a
-  call for help unless the test says otherwise.
+  says what Jev finds with `finds/2`, how it reads the post's code with
+  `finds/3`, which type it gives a thread posted without one with `types/1`,
+  or takes Jev away with `unreachable/0`. Jev answers only what it is asked:
+  a thread posted without a type is read as a call for help, and the code in
+  every post as nothing harmful, unless the test says otherwise.
   Each time Jev is asked, the asking process is sent `{:jev_was_shown, state}`
   with what it was shown and `{:jev_was_asked, names}` with the names of the
   questions it was asked. A test that sets `:jev_req_options` itself is
@@ -21,15 +22,19 @@ defmodule Patchbay.JevStandIn do
   @spec accept_posts() :: :ok
   def accept_posts, do: finds("acceptable", 0.95)
 
-  @doc "Jev answers every post with `choice`, as sure as `confidence`."
-  @spec finds(String.t(), float()) :: :ok
-  def finds(choice, confidence), do: answers(choice, confidence, "help_needed")
+  @doc """
+  Jev answers every post with `choice`, as sure as `confidence`, and reads
+  its code as `{code, code_confidence}`: `none` or `risky`.
+  """
+  @spec finds(String.t(), float(), {String.t(), float()}) :: :ok
+  def finds(choice, confidence, code \\ {"none", 0.9}),
+    do: answers(choice, confidence, "help_needed", code)
 
   @doc "Jev finds every post acceptable and gives a thread posted without a type `type`."
   @spec types(String.t()) :: :ok
-  def types(type), do: answers("acceptable", 0.95, type)
+  def types(type), do: answers("acceptable", 0.95, type, {"none", 0.9})
 
-  defp answers(choice, confidence, type) do
+  defp answers(choice, confidence, type, {code, code_confidence}) do
     Req.Test.stub(Patchbay.Forum.Jev, fn conn ->
       {:ok, body, conn} = read_body(conn)
       %{"state" => state, "questions" => questions} = Jason.decode!(body)
@@ -40,7 +45,8 @@ defmodule Patchbay.JevStandIn do
         Map.take(
           %{
             "verdict" => %{"choice" => choice, "confidence" => confidence},
-            "type" => %{"choice" => type, "confidence" => 0.9}
+            "type" => %{"choice" => type, "confidence" => 0.9},
+            "code" => %{"choice" => code, "confidence" => code_confidence}
           },
           Map.keys(questions)
         )

@@ -2183,6 +2183,13 @@ defmodule PatchbayWeb.Forum.BoardHTML do
           {worked_for_others_label(@reply.worked_for_others)}
         </Regent.Discussion.label>
       </:label>
+      <:label :if={@reply.code_caution}>
+        <PatchbayWeb.Forum.Labels.caution_mark />
+      </:label>
+      <PatchbayWeb.Forum.Labels.caution_line
+        :if={@reply.code_caution}
+        id={"reply-#{@reply.id}-caution"}
+      />
       <div :if={@reply.body_markdown} class="pb-markdown">
         {markdown(@reply.body_markdown)}
       </div>
@@ -2340,6 +2347,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         </h2>
         <p :if={worked_line(@reply)} class="pb-fix-worked">{worked_line(@reply)}</p>
       </header>
+      <PatchbayWeb.Forum.Labels.caution_line :if={@reply.code_caution} id="pb-fix-caution" />
       <.fix_facts :if={@fix} fix={@fix} />
       <p :if={!@fix} class="pb-fix-excerpt">{plain_words(@reply)}</p>
       <p class="pb-thread-caption">

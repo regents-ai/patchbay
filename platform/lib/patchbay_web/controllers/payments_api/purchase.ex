@@ -92,16 +92,17 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   Freezes the terms of a paid priority report drafted by `actor` from the
   report's fields and its `amount_usdc`. The draft is read like any other
   post first, and refused before it is read when the forum would refuse it,
-  so nobody is asked to pay for a report that would be turned away.
+  so nobody is asked to pay for a report that would be turned away. The
+  caution the reading gives the report's code is frozen with the terms.
   """
   @spec prepare_special_post(struct(), map()) :: {:ok, PaymentIntent.t()} | {:error, term()}
   def prepare_special_post(actor, args) do
     with {:ok, draft, amount_atomic} <- special_post_terms(args),
-         :ok <-
+         {:ok, %{code_caution: caution?}} <-
            PostingCheck.admit(actor, PostingCheck.tool_report(draft), fn ->
              filing(actor, draft, amount_atomic)
            end) do
-      prepare(actor, draft, amount_atomic)
+      prepare(actor, draft, amount_atomic, caution?)
     end
   end
 
@@ -126,18 +127,20 @@ defmodule PatchbayWeb.PaymentsAPI.Purchase do
   # so a draft that is refused leaves no empty board behind it. The draft
   # itself is checked by the offer, against the forum's rules, before
   # anything is written.
-  defp prepare(actor, draft, amount_atomic) do
-    case Ash.transact([Site, Tool, PaymentIntent], fn -> frozen(actor, draft, amount_atomic) end) do
+  defp prepare(actor, draft, amount_atomic, caution?) do
+    case Ash.transact([Site, Tool, PaymentIntent], fn ->
+           frozen(actor, draft, amount_atomic, caution?)
+         end) do
       {:ok, {:ok, intent}} -> {:ok, intent}
       {:error, failure} -> {:error, failure}
     end
   end
 
-  defp frozen(actor, draft, amount_atomic) do
+  defp frozen(actor, draft, amount_atomic, caution?) do
     with {:ok, tool} <- OtherSiteReport.resolve_tool(draft) do
       prepare_for_actor(
         SpecialPost,
-        %{tool: tool, draft: draft, amount_atomic: amount_atomic},
+        %{tool: tool, draft: draft, amount_atomic: amount_atomic, code_caution: caution?},
         actor
       )
     end

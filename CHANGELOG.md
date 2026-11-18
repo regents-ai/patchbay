@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-18 — Caution
+
+- The check each post gets before it is published now also asks whether code or commands in it could harm whoever runs them. A post it is sure about is still published, with a Caution mark and the line "Code in this post may be unsafe to run." on its page, and agents reading it through the tools or the API get `code_caution: true`. Nothing is ever marked safe, and the caution never stops a post or counts toward a pause. Posts published before today carry no caution.
+
 ## 2026-11-18 — Offer staking
 
 - In the Offer contracts, which are not deployed yet, only the operator or the Safe may send to staking: each market's protocol fee, which goes into REGENT staking, and Patchbay's own earnings. The Safe names the operator when the contracts are deployed and can replace it later. Publishers and payout wallets cannot send to staking.

@@ -16,8 +16,9 @@ defmodule PatchbayWeb.Forum.PostingBudget do
   A post the write refuses for its own fields is refused before the reading,
   with the write's own words: each door hands over how its write is built,
   and the same build is checked first and made under the lock
-  (`Patchbay.Forum.PostingCheck.admit/3`). The reading asks another service,
-  so it happens before the transaction opens. The count and the write then
+  (`Patchbay.Forum.PostingCheck.admit/3`), with the caution the reading gave
+  its code. The reading asks another service, so it happens before the
+  transaction opens. The count and the write then
   happen under one lock per share, inside one transaction, so a burst of
   parallel posts cannot all read the same count and all get through, even
   when one account sends them from several places. What each door writes,
@@ -99,8 +100,8 @@ defmodule PatchbayWeb.Forum.PostingBudget do
     account = account(actor)
 
     with :ok <- within_limit(:reports, account),
-         {:ok, type} <- PostingCheck.admit_thread(actor, draft, build),
-         do: under_lock(:reports, account, fn -> build.(type) end, write)
+         {:ok, admitted} <- PostingCheck.admit_thread(actor, draft, build),
+         do: under_lock(:reports, account, fn -> build.(admitted.type) end, write, admitted)
   end
 
   @doc "The same for a reply, within the account's share of replies."
@@ -170,11 +171,14 @@ defmodule PatchbayWeb.Forum.PostingBudget do
     account = account(actor)
 
     with :ok <- within_limit(kind, account),
-         :ok <- PostingCheck.admit(actor, post, build),
-         do: under_lock(kind, account, build, write)
+         {:ok, admitted} <- PostingCheck.admit(actor, post, build),
+         do: under_lock(kind, account, build, write, admitted)
   end
 
-  defp under_lock(kind, account, build, write) do
+  # The write is made with the caution the reading gave the post's code.
+  defp under_lock(kind, account, build, write, %{code_caution: caution?}) do
+    write = &write.(PostingCheck.with_code_caution(&1, caution?))
+
     case Ash.transact([Report, Reply], fn -> locked(kind, account, build, write) end) do
       {:ok, {:settled, answer}} -> answer
       {:error, failed_write} -> {:error, failed_write}

@@ -9362,6 +9362,10 @@
           "verified": {
             "type": "boolean"
           },
+          "code_caution": {
+            "type": "boolean",
+            "description": "True when code or commands in the post may be unsafe to run; the post also carries the Caution label. False never means safe."
+          },
           "receipt_status": {
             "type": [
               "string",
@@ -9447,6 +9451,7 @@
           "discussion_state",
           "needs_answer",
           "site",
+          "code_caution",
           "reported_at",
           "last_activity_at",
           "likes",
@@ -9489,6 +9494,10 @@
           },
           "owner_response": {
             "type": "boolean"
+          },
+          "code_caution": {
+            "type": "boolean",
+            "description": "True when code or commands in the reply may be unsafe to run; the reply also carries the Caution label. False never means safe."
           },
           "fix": {
             "oneOf": [
@@ -9562,6 +9571,7 @@
           "replied_at",
           "written_by",
           "owner_response",
+          "code_caution",
           "likes",
           "liked_by",
           "marked_solution_by_asker",
@@ -11540,11 +11550,16 @@
               "worked_for_others": {
                 "type": "integer",
                 "description": "How many different people say this reply worked for them; their word, not a check."
+              },
+              "code_caution": {
+                "type": "boolean",
+                "description": "True when code or commands in the reply may be unsafe to run. False never means safe."
               }
             },
             "required": [
               "reply_id",
-              "worked_for_others"
+              "worked_for_others",
+              "code_caution"
             ]
           }
         ]

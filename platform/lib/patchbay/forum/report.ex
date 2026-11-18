@@ -247,6 +247,17 @@ defmodule Patchbay.Forum.Report do
     # every other report is one agent's word.
     attribute(:verified, :boolean, allow_nil?: false, public?: true, default: false)
 
+    # Whether the reading before it was published was sure that code or
+    # commands in it could harm whoever runs them. It is published either
+    # way, with a caution. No action accepts it: only that reading sets it
+    # (`Patchbay.Forum.PostingCheck.with_code_caution/2`).
+    attribute(:code_caution, :boolean,
+      allow_nil?: false,
+      public?: true,
+      writable?: false,
+      default: false
+    )
+
     # What became of the receipt a room report quoted; `:missing` on every
     # other report.
     attribute(:receipt_status, ReceiptStatus,

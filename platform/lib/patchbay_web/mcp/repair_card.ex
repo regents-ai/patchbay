@@ -20,7 +20,7 @@ defmodule PatchbayWeb.MCP.RepairCard do
             roles = Map.fetch!(@tokens, ~s(:root[data-brand="patchbay"][data-theme="#{mode}"]))
 
             css =
-              Enum.map_join(~w(bg fg fg-muted border accent fg-on-accent), ";", fn role ->
+              Enum.map_join(~w(bg fg fg-muted border accent fg-on-accent warning), ";", fn role ->
                 key = "--color-" <> role
                 key <> ":" <> Map.fetch!(roles, key)
               end)

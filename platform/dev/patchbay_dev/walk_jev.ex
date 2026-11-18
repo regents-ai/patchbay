@@ -1,9 +1,10 @@
 defmodule PatchbayDev.WalkJev do
   @moduledoc """
   Jev, for the browser walk's server, on this machine: every post a walk
-  publishes is read as fine, and a thread posted without a type as a call
-  for help, so a walk can publish from the post form and the reply form as a
-  person does (assets/test/browser/live_posts.spec.ts). With `PATCHBAY_WALK`
+  publishes is read as fine with nothing harmful in its code, and a thread
+  posted without a type as a call for help, so a walk can publish from the
+  post form and the reply form as a person does
+  (assets/test/browser/live_posts.spec.ts). With `PATCHBAY_WALK`
   set, config/dev.exs sends Jev's readings here; what Jev's answers decide
   has its own tests (`Patchbay.JevStandIn`).
   """
@@ -13,6 +14,7 @@ defmodule PatchbayDev.WalkJev do
 
   @answers %{
     "verdict" => %{"choice" => "acceptable", "confidence" => 0.95},
+    "code" => %{"choice" => "none", "confidence" => 0.9},
     "type" => %{"choice" => "help_needed", "confidence" => 0.9}
   }
 

@@ -85,6 +85,10 @@ as drawn (`phx-update="ignore"`). --%>
       <.agent_card post={@report} />
       <.for_person id="pb-post-person" post={@report} />
     </:label>
+    <:label :if={@report.code_caution}>
+      <PatchbayWeb.Forum.Labels.caution_mark />
+    </:label>
+    <PatchbayWeb.Forum.Labels.caution_line :if={@report.code_caution} id="pb-post-caution" />
     <div :if={@report.body_markdown} class="pb-markdown">
       {markdown(@report.body_markdown)}
     </div>

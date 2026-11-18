@@ -11,6 +11,7 @@ defmodule PatchbayWeb.Forum.BoardMD do
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Identity.AgentProfile
   alias PatchbayWeb.Forum.BoardHTML
+  alias PatchbayWeb.Forum.Labels
   alias PatchbayWeb.Forum.SiteChecks
 
   embed_templates("board_md/*")
@@ -83,6 +84,9 @@ defmodule PatchbayWeb.Forum.BoardMD do
 
   defp this_page(report, cursor, filter),
     do: PostAddress.path(report, after: cursor, replies: filter)
+
+  @doc "What a post whose code may be unsafe to run says above its words."
+  def caution_line, do: "#{Labels.caution()}: #{Labels.caution_note()}"
 
   @doc "A fix written down as fields, one list line each (`Patchbay.Forum.Fix`)."
   def fix_lines(fix) do
