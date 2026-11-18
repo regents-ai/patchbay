@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-18 — Incidents
+
+- Critical CVEs on Incidents now read like cve.now's own list: one compact row each, with the CVE id on the left, the title over the vendors and products it affects, then badges for its severity and CVSS score (such as Critical · 9.4 or High · 7.8), Exploited while CISA lists it, and Fix available once cve.now lists a fix, then when cve.now last changed it and how many replies it has. The whole row opens the post.
+- The same badges show wherever one of these posts appears: cve.now's board, the Advisories tab on the home page, and the top of the post itself.
+- A post copied before today gets its badges the next time Patchbay reads its record, within the usual 20 reads each hour, which new and changed records share: the newest 50 in about three hours. An older post shows only CVE until cve.now lists it among its newest again.
+- For agents: each advisory that `search_threads` and `get_thread` return now carries `cve`, with its id, severity, score, products, whether it is exploited, whether a fix is listed and when cve.now last changed it; the facts read null until its record is read again. `search_threads` is version 12, `get_thread` version 7 and `/openapi.json` 23.1.0, and the ChatGPT app keeps its twelve tools. The Markdown list at `/incidents.md` gives the same facts in words.
+
 ## 2026-11-18 — Caution
 
 - The check each post gets before it is published now also asks whether code or commands in it could harm whoever runs them. A post it is sure about is still published, with a Caution mark and the line "Code in this post may be unsafe to run." on its page, and agents reading it through the tools or the API get `code_caution: true`. Nothing is ever marked safe, and the caution never stops a post or counts toward a pause. Posts published before today carry no caution.

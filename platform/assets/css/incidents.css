@@ -1,9 +1,9 @@
-/* The incidents (/incidents): one column of plain rows. Each incident's own
-   page is its discussion, drawn as any thread is. */
+/* The incidents (/incidents): the critical CVEs, then the briefings. Each
+   incident's own page is its discussion, drawn as any thread is. */
 .pb-incident {
   display: grid;
   gap: var(--space-3);
-  max-width: calc(48rem + 2 * var(--rg-panel-padding));
+  max-width: calc(var(--pb-page-width) + 2 * var(--rg-panel-padding));
   padding: var(--space-4) var(--rg-panel-padding) var(--space-6);
   font-family: var(--font-family-ui);
 }
@@ -39,3 +39,91 @@
 @media (max-width: 599px) {
   .pb-incident { padding-top: var(--space-2); }
 }
+
+/* The critical CVEs, one compact row each, as cve.now lists them: the id in
+   mono; the title over its vendor and product; then its badges, when cve.now
+   last changed it and its replies. The whole row opens the post. A row a
+   mouse is over takes the feed's light tint, with no movement. */
+.pb-cve-list { container: pb-cves / inline-size; margin: 0; padding: 0; border: 1px solid var(--pb-card-line); background: var(--pb-card); list-style: none; }
+.pb-cve-list > li { border-bottom: 1px solid var(--pb-card-line); }
+.pb-cve-list > li:last-child { border-bottom: 0; }
+.pb-cve-row {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  grid-template-columns: 9.5rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-1) var(--space-3);
+  min-height: 44px;
+  padding: 12px var(--space-2);
+  color: var(--pb-text);
+  text-decoration: none;
+}
+.pb-cve-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--pb-accent-wash);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+@media (hover: hover) and (pointer: fine) {
+  .pb-cve-row:hover::before { opacity: .5; transition-duration: 160ms; }
+  .pb-cve-row:hover .pb-cve-title { text-decoration: underline; text-underline-offset: 2px; }
+}
+.pb-cve-row:focus-visible { outline: 2px solid var(--pb-accent); outline-offset: -2px; }
+.pb-cve-id { color: var(--pb-text-muted); font: .8125rem/1.4 var(--font-family-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pb-cve-main { display: grid; gap: 2px; min-width: 0; }
+.pb-cve-title { font-size: .9375rem; line-height: 1.4; overflow-wrap: anywhere; }
+.pb-cve-product { color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.4; overflow-wrap: anywhere; }
+.pb-cve-meta { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-1) var(--space-2); color: var(--pb-text-muted); font-size: .8125rem; line-height: 1.4; }
+.pb-cve-when { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+.pb-cve-when time { font-family: var(--font-family-mono); font-size: .75rem; }
+.pb-cve-replies { display: inline-flex; align-items: center; gap: 4px; font-variant-numeric: tabular-nums; }
+.pb-cve-replies .rg-icon { width: 14px; height: 14px; }
+
+/* Too narrow for one line: the id with when it changed and its replies on
+   top, the title and its products beneath, then the badges, which wrap. */
+@container pb-cves (max-width: 60rem) {
+  .pb-cve-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "id when" "main main" "badges badges";
+    gap: 4px var(--space-2);
+    padding-block: var(--space-2);
+  }
+  .pb-cve-meta { display: contents; }
+  .pb-cve-id { grid-area: id; }
+  .pb-cve-when { grid-area: when; }
+  .pb-cve-main { grid-area: main; }
+  .pb-cve-badges { grid-area: badges; margin-top: 4px; }
+}
+
+/* A CVE's badges, the same on every page that lists or opens one: a quiet
+   CVE, its severity with its score in the level's colour (the level is
+   always written out), Exploited, and Fix available. Each is the colour of
+   its tone over a light wash of it, so it reads on any ground. Critical
+   takes the palette's purple, drawn toward the text colour so it keeps its
+   contrast in both themes. */
+:root { --pb-cve-critical: color-mix(in srgb, var(--color-category-4) 60%, var(--color-fg)); }
+.pb-cve-badges { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pb-cve-badge {
+  --pb-cve-tone: var(--pb-text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--pb-cve-tone) 14%, transparent);
+  color: var(--pb-cve-tone);
+  font: 500 .75rem/1.5 var(--font-family-ui);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.pb-cve-badge[data-severity="critical"] { --pb-cve-tone: var(--pb-cve-critical); }
+.pb-cve-badge[data-severity="critical"]::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pb-cve-badge[data-severity="high"], .pb-cve-badge[data-tone="exploited"] { --pb-cve-tone: var(--color-error); }
+.pb-cve-badge[data-severity="medium"] { --pb-cve-tone: var(--color-warning); }
+.pb-cve-badge[data-severity="low"] { --pb-cve-tone: var(--color-info); }
+.pb-cve-badge[data-tone="fix"] { --pb-cve-tone: var(--color-success); }

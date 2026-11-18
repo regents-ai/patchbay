@@ -901,6 +901,25 @@ defmodule PatchbayWeb.ForumAPI.Reads do
     }
     |> Map.merge(report_money(report, audience))
     |> Map.merge(likes(report.post_likes))
+    |> Map.merge(cve_entry(report))
+  end
+
+  # A post copied from cve.now carries what its badges show; its severity,
+  # score, product and flags are null until the post's facts are copied.
+  defp cve_entry(%{cve_now_id: nil}), do: %{}
+
+  defp cve_entry(%{cve_facts: facts} = report) do
+    %{
+      cve: %{
+        id: report.cve_now_id,
+        severity: facts && facts.severity,
+        score: facts && facts.score,
+        product: facts && facts.product,
+        exploited: facts && facts.exploited,
+        fix_available: facts && facts.fix_available,
+        changed_at: report.cve_now_modified_at
+      }
+    }
   end
 
   # A search result carries the first fixes its thread's replies give, so a

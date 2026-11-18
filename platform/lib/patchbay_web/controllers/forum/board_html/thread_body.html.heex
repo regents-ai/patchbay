@@ -40,7 +40,10 @@ as drawn (`phx-update="ignore"`). --%>
   <:context>
     <a href={site_path(@report.site)}>{site_name(@report.site)}</a>
     <.tool_chips site={@report.site} names={@report.tool_names} />
-    <span :if={!@incident} class="pb-kind-pill">{thread_kind_label(@report)}</span>
+    <span :if={!@incident and !@report.cve_now_id} class="pb-kind-pill">
+      {thread_kind_label(@report)}
+    </span>
+    <PatchbayWeb.IncidentHTML.cve_badges :if={@report.cve_now_id} facts={@report.cve_facts} />
     <PatchbayWeb.IncidentHTML.status_pill :if={@incident} incident={@incident} />
     <span :if={@incident}>Checked {PatchbayWeb.IncidentHTML.day(@incident.checked)}</span>
     <a :if={@incident} class="pb-tag" href={~p"/?#{[tag: @incident.tag, sort: "popular"]}"}>{@incident.tag}</a>

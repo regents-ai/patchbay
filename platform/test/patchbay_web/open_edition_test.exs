@@ -148,6 +148,43 @@ defmodule PatchbayWeb.OpenEditionTest do
     assert money_on(pages(site, report, asker), &(conn |> get(&1) |> html_response(200))) == %{}
   end
 
+  # An advisory copied from cve.now shows its badges on the open address
+  # wherever it is listed or opened, and none of those pages names money or
+  # patchbay.help.
+  test "an advisory's badges on the open address name no money and no other address", %{
+    conn: conn
+  } do
+    advisory =
+      Forum.mirror_cve_now!(%{
+        site_id: Forum.register_site!("cve.now").id,
+        title: "CVE-2026-100001: Example gateway flaw",
+        body_markdown: "An attacker can run code.",
+        topic_tags: ["cve-2026-100001"],
+        browser_session_id: Patchbay.Config.agent_session_id(),
+        cve_now_id: "CVE-2026-100001",
+        cve_now_modified_at: DateTime.utc_now(),
+        cve_facts: %{
+          severity: :critical,
+          score: 9.8,
+          exploited: true,
+          fix_available: true,
+          product: "Example Gateway · Example Edge"
+        }
+      })
+
+    open = on_open(conn)
+    pages = ["/incidents", "/cve.now", "/?source_kind=advisory", PostAddress.path(advisory)]
+
+    for path <- pages do
+      page = open |> get(path) |> html_response(200)
+      assert page =~ "Critical · 9.8", path
+      assert main_addresses(page) == [], path
+    end
+
+    assert money_on(pages, &(open |> get(&1) |> html_response(200))) == %{}
+    assert money_on(["/incidents.md"], &(open |> get(&1) |> response(200))) == %{}
+  end
+
   test "what arrives on the open address's open pages names no money and no other address", %{
     conn: conn,
     site: site,

@@ -5,6 +5,10 @@ defmodule Patchbay.Incidents.CveNowTest do
     board in Patchbay's name, and only the newest page is read;
   - a second run makes no post and reads no record again; a record cve.now
     changed has its post brought in line, and stays one post;
+  - a post with no badge facts yet is read again, oldest first, within the
+    reads a run may make; the facts are the level cve.now states or the CVSS
+    band of its score, whether CISA lists it, whether a fix is listed, and the
+    list's vendor and product line;
   - a record cve.now does not rate critical, or one not in the expected shape,
     is passed over and the rest are copied;
   - a read that fails, answers 503 or comes from cve.now's stale copy changes
@@ -18,6 +22,8 @@ defmodule Patchbay.Incidents.CveNowTest do
   use PatchbayWeb.ConnCase, async: false
   use Oban.Testing, repo: Patchbay.Repo
 
+  import Ecto.Query, only: [from: 2]
+
   @moduletag :capture_log
 
   alias Patchbay.Config
@@ -25,6 +31,7 @@ defmodule Patchbay.Incidents.CveNowTest do
   alias Patchbay.Forum.PostAddress
   alias Patchbay.Incidents.CveNow
   alias Patchbay.Incidents.CveNow.Post
+  alias Patchbay.Repo
 
   @older "CVE-2026-100001"
   @newer "CVE-2026-100002"
@@ -56,7 +63,13 @@ defmodule Patchbay.Incidents.CveNowTest do
     )
   end
 
-  defp item(entry), do: Map.take(entry, ["type", "id", "url", "title", "modifiedAt"])
+  # A record as the list gives it, with the vendor and product line the list
+  # shows under its title.
+  defp item(entry),
+    do:
+      entry
+      |> Map.take(["type", "id", "url", "title", "modifiedAt"])
+      |> Map.put("product", "Acme Gateway · Acme Edge")
 
   # cve.now as this test's stand-in: the list answers `entries`' items newest
   # first, and each entry answers itself, the first through a redirect to a
@@ -116,6 +129,14 @@ defmodule Patchbay.Incidents.CveNowTest do
     assert older.thread_kind == :discussion
     assert older.body_markdown =~ "(<https://cve.now/#{@older}>)"
 
+    assert %{
+             severity: :critical,
+             score: 9.8,
+             exploited: true,
+             fix_available: true,
+             product: "Acme Gateway · Acme Edge"
+           } = older.cve_facts
+
     {:ok, site} = Forum.register_site("cve.now")
     assert older.site_id == site.id
 
@@ -153,7 +174,8 @@ defmodule Patchbay.Incidents.CveNowTest do
       entry(@older, %{
         "title" => "Acme Gateway remote code execution, now fixed",
         "modifiedAt" => "2026-11-13T10:00:00.000Z",
-        "fixedIn" => ["2.0.2"]
+        "fixedIn" => ["2.0.2"],
+        "severity" => %{"cvss" => 9.1, "vector" => "CVSS:3.1/AV:N", "source" => "nvd"}
       })
 
     serve([changed])
@@ -167,10 +189,97 @@ defmodule Patchbay.Incidents.CveNowTest do
     assert refreshed.body_markdown =~ "2.0.2"
     refute refreshed.body_markdown =~ "2.0.1"
     assert DateTime.compare(refreshed.cve_now_modified_at, ~U[2026-11-13 10:00:00Z]) == :eq
+    assert %{severity: :critical, score: 9.1} = refreshed.cve_facts
 
     # Its list date no longer newer than the post's, it is not read again.
     assert :ok = perform_job(CveNow, %{})
     assert entry_reads() == 0
+  end
+
+  test "a post copied before its badge facts were kept gets them, within the reads a run may make" do
+    serve([entry(@newer), entry(@older)])
+    assert :ok = perform_job(CveNow, %{})
+    assert entry_reads() == 2
+
+    Repo.update_all(from(post in "forum_reports", where: not is_nil(post.cve_now_id)),
+      set: [cve_facts: nil]
+    )
+
+    settings = Application.fetch_env!(:patchbay, CveNow)
+    Application.put_env(:patchbay, CveNow, Keyword.put(settings, :reads_per_run, 1))
+    on_exit(fn -> Application.put_env(:patchbay, CveNow, settings) end)
+
+    # Oldest first, one read a run, until every post has them.
+    assert :ok = perform_job(CveNow, %{})
+    assert entry_reads() == 1
+    assert [%{cve_facts: %{severity: :critical}}, %{cve_facts: nil}] = posts()
+
+    assert :ok = perform_job(CveNow, %{})
+    assert entry_reads() == 1
+    assert [%{cve_facts: %{severity: :critical}}, %{cve_facts: %{severity: :critical}}] = posts()
+
+    assert :ok = perform_job(CveNow, %{})
+    assert entry_reads() == 0
+  end
+
+  test "a post's badges show the level cve.now states or its score's band, and whether it is exploited and fixed" do
+    facts = fn changes, product ->
+      {:ok, post} = @older |> entry(changes) |> Post.from_entry(product)
+      post.facts
+    end
+
+    # The CVSS bands, when cve.now states no level of its own.
+    for {score, level} <- [
+          {10, :critical},
+          {9.0, :critical},
+          {8.9, :high},
+          {7.0, :high},
+          {6.9, :medium},
+          {4.0, :medium},
+          {3.9, :low},
+          {0.1, :low},
+          {0, :none}
+        ] do
+      assert %{severity: ^level, score: kept} = facts.(%{"severity" => %{"cvss" => score}}, nil)
+      assert kept == score
+    end
+
+    # A level cve.now states comes first; with neither, there is none.
+    assert %{severity: :high, score: 9.8} = facts.(%{"statedSeverity" => " High "}, nil)
+
+    assert %{severity: :critical, score: nil} =
+             facts.(%{"severity" => nil, "statedSeverity" => "critical"}, nil)
+
+    assert %{severity: nil, score: nil} = facts.(%{"severity" => %{"cvss" => nil}}, nil)
+    assert %{severity: nil, score: nil} = facts.(%{"severity" => %{"cvss" => 11}}, nil)
+
+    # Exploited while CISA lists it; a fix once cve.now lists a fixed version
+    # or a fixed package, and not while every package waits for one.
+    unfixed = %{"fixedIn" => [], "exploitation" => %{"kev" => nil}}
+    package = %{"ecosystem" => "npm", "package" => "acme-gateway"}
+
+    assert %{exploited: false, fix_available: false} = facts.(unfixed, nil)
+
+    assert %{exploited: false, fix_available: true} =
+             facts.(
+               Map.put(unfixed, "fixStatus", %{
+                 "packages" => [Map.merge(package, %{"status" => "fixed", "fixed" => []})]
+               }),
+               nil
+             )
+
+    assert %{fix_available: false} =
+             facts.(
+               Map.put(unfixed, "fixStatus", %{
+                 "packages" => [Map.put(package, "status", "none")]
+               }),
+               nil
+             )
+
+    # The list's vendor and product line, on one line; none when it is blank.
+    assert %{product: "Acme Gateway · Acme Edge"} = facts.(%{}, " Acme Gateway\n· Acme Edge ")
+    assert %{product: nil} = facts.(%{}, "  ")
+    assert %{product: nil} = facts.(%{}, nil)
   end
 
   test "a record cve.now does not rate critical, or one not in the expected shape, is passed over" do
@@ -314,7 +423,7 @@ defmodule Patchbay.Incidents.CveNowTest do
           "text" => "# Owned\n\n- step [click](javascript:alert(1)) <b>bold</b> *loud*"
         }
       })
-      |> Post.from_entry()
+      |> Post.from_entry(nil)
 
     html = post.body |> PatchbayWeb.Forum.BoardHTML.markdown() |> Phoenix.HTML.safe_to_string()
     [opening | _sections] = String.split(html, "<h2>")

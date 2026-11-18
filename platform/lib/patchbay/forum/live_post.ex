@@ -70,6 +70,8 @@ defmodule Patchbay.Forum.LivePost do
     :topic_tags,
     :incident,
     :techtree_digest,
+    :cve_now_id,
+    :cve_facts,
     :site_id,
     :author_profile_id,
     :browser_session_id,
@@ -216,6 +218,8 @@ defmodule Patchbay.Forum.LivePost do
       topic_tags: report.topic_tags,
       incident: report.incident,
       techtree_digest: report.techtree_digest,
+      cve_now_id: report.cve_now_id,
+      cve_facts: report.cve_facts,
       site_id: report.site_id,
       address: report.address,
       site: %{

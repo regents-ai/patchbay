@@ -10,10 +10,11 @@ defmodule Patchbay.Incidents.CveNow do
   One job runs every hour (config/config.exs). It reads the newest
   page of `GET /api/v1/entries?filter=critical,kev` and works through it
   oldest first: a record with no post gets one, and a record cve.now changed
-  since it was copied has its post brought in line. Nothing older than that
-  page is read, so the first run copies that page and nothing before it. A
-  run reads at most `:reads_per_run` records in full; the rest wait for the
-  next run.
+  since it was copied, or whose post has no badge facts yet
+  (`Patchbay.Forum.CveFacts`), has its post brought in line. Nothing older
+  than that page is read, so the first run copies that page and nothing
+  before it. A run reads at most `:reads_per_run` records in full; the rest
+  wait for the next run.
 
   A record has one post for good: the post carries the record's id under a
   unique index, and Oban runs one job at a time. A read that fails, answers
@@ -59,12 +60,13 @@ defmodule Patchbay.Incidents.CveNow do
     end
   end
 
-  # What the list says about a record: its id and when it last changed.
-  defp listed(%{"id" => id, "modifiedAt" => modified})
+  # What the list says about a record: its id, when it last changed, and the
+  # vendor and product line it shows under the title.
+  defp listed(%{"id" => id, "modifiedAt" => modified} = item)
        when is_binary(id) and is_binary(modified) do
     case DateTime.from_iso8601(modified) do
       {:ok, modified_at, _offset} ->
-        [%{id: id, modified_at: modified_at}]
+        [%{id: id, modified_at: modified_at, product: item["product"]}]
 
       {:error, _reason} ->
         passed_over(id, :malformed)
@@ -78,6 +80,7 @@ defmodule Patchbay.Incidents.CveNow do
   end
 
   defp copied?(_record, nil), do: false
+  defp copied?(_record, %{cve_facts: nil}), do: false
 
   defp copied?(record, post),
     do: DateTime.compare(record.modified_at, post.cve_now_modified_at) != :gt
@@ -85,7 +88,7 @@ defmodule Patchbay.Incidents.CveNow do
   defp copy(record, post) do
     case read("/entries/" <> URI.encode(record.id, &URI.char_unreserved?/1), []) do
       {:ok, entry} ->
-        write(Post.from_entry(entry), record, post)
+        write(Post.from_entry(entry, record.product), record, post)
         {:cont, :ok}
 
       {:error, :not_found} ->
@@ -119,7 +122,8 @@ defmodule Patchbay.Incidents.CveNow do
              topic_tags: [copy.tag],
              browser_session_id: Config.agent_session_id(),
              cve_now_id: copy.id,
-             cve_now_modified_at: copy.modified_at
+             cve_now_modified_at: copy.modified_at,
+             cve_facts: copy.facts
            }) do
       # Another run copied it first; its post is the one.
       case Forum.list_cve_now_mirrors([copy.id]) do
@@ -134,7 +138,8 @@ defmodule Patchbay.Incidents.CveNow do
     Forum.refresh_cve_now(post, %{
       title: copy.title,
       body_markdown: copy.body,
-      cve_now_modified_at: copy.modified_at
+      cve_now_modified_at: copy.modified_at,
+      cve_facts: copy.facts
     })
   end
 
