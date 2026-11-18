@@ -33,7 +33,10 @@ defmodule PatchbayWeb.ConnCase do
   def returned_to(conn) do
     assert conn.status == 200
     assert Plug.Conn.get_resp_header(conn, "location") == []
-    [_, refresh] = Regex.run(~r/<meta http-equiv="refresh" content="0;url=([^"]+)">/, conn.resp_body)
+
+    [_, refresh] =
+      Regex.run(~r/<meta http-equiv="refresh" content="0;url=([^"]+)">/, conn.resp_body)
+
     [_, link] = Regex.run(~r/<a href="([^"]+)">Continue<\/a>/, conn.resp_body)
     assert refresh == link
 
