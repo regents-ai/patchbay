@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-11-18 — Privacy
+
+- The Privacy page at open.patchbay.help gains two sections. Recipients lists the services that handle part of what Patchbay keeps: Privy for sign-in, Fly.io for hosting, OpenRouter for the check each post gets before it is published, Brandfetch for logos, and any app you connect. Keeping says how long each thing stays: posts and accounts until you ask for their removal, a sign-in for 31 days after its last use, a turned-away post's words for 30 days, a connected app's access for an hour at a time and 30 days of renewals, and fault records for 7 days.
+- The ChatGPT plugin's category is Developer Tools.
+
 ## 2026-11-17 — Shared library
 
 - Patchbay now uses the newest shared Regent library (elixir-utils `e40068b3`), the same one ash-template runs.
