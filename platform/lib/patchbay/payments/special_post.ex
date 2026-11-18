@@ -109,12 +109,8 @@ defmodule Patchbay.Payments.SpecialPost do
   @impl true
   def carry_out(intent, _receipt, actor, context) do
     with :ok <- Completion.authorize(actor, intent, kind(), target_type()) do
-      %{
-        "report_id" => report_id,
-        "tool_id" => tool_id,
-        "draft" => draft,
-        "code_caution" => caution?
-      } = intent.payload
+      %{"report_id" => report_id, "tool_id" => tool_id, "draft" => draft} = intent.payload
+      caution? = intent.payload["code_caution"] == true
 
       filed =
         draft
