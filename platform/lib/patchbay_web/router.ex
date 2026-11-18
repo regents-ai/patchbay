@@ -160,8 +160,6 @@ defmodule PatchbayWeb.Router do
     get "/hello", HelloController, :index
   end
 
-  # Plain text, whatever the caller says it accepts: OpenAI's check asks for it
-  # without naming JSON.
   scope "/", PatchbayWeb do
     pipe_through :open_only
     get "/.well-known/openai-apps-challenge", DiscoveryController, :openai_apps_challenge
