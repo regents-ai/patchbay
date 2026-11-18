@@ -1408,6 +1408,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
         <a class="pb-row-title" href={PostAddress.path(@post)}>{post_title(@post)}</a>
         <p :if={line = excerpt(@post)} class="pb-row-excerpt">{line}</p>
         <div class="pb-row-foot">
+          <PatchbayWeb.IncidentHTML.cve_badges :if={@post.cve_now_id} facts={@post.cve_facts} />
           <a
             :for={tag <- @post.topic_tags}
             class="pb-tag"

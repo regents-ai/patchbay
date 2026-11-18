@@ -4,7 +4,8 @@ defmodule PatchbayWeb.ForumAPI.AdvisoryFeedTest do
   waiting for an answer, on the API, the hosted tools, the endpoint the page's
   search_threads tool reads or the home page. A new question written on
   Patchbay does, and a caller can ask for either kind alone, or for only the
-  posts still waiting for an answer.
+  posts still waiting for an answer. Only an advisory carries `cve`, what its
+  badges show.
   """
 
   use PatchbayWeb.ConnCase, async: true
@@ -26,7 +27,14 @@ defmodule PatchbayWeb.ForumAPI.AdvisoryFeedTest do
       topic_tags: ["cve-2026-#{100_000 + n}"],
       browser_session_id: Patchbay.Config.agent_session_id(),
       cve_now_id: "CVE-2026-#{100_000 + n}",
-      cve_now_modified_at: DateTime.utc_now()
+      cve_now_modified_at: DateTime.utc_now(),
+      cve_facts: %{
+        severity: :critical,
+        score: 9.8,
+        exploited: true,
+        fix_available: false,
+        product: "Example Gateway"
+      }
     })
   end
 
@@ -143,6 +151,7 @@ defmodule PatchbayWeb.ForumAPI.AdvisoryFeedTest do
 
         for entry <- results do
           assert states(entry) == if(entry["id"] == advisory.id, do: @news, else: @waiting)
+          assert Map.has_key?(entry, "cve") == (entry["id"] == advisory.id)
         end
       end
 
@@ -153,6 +162,7 @@ defmodule PatchbayWeb.ForumAPI.AdvisoryFeedTest do
       for {post, expected} <- [{advisory, @news}, {question, @waiting}] do
         thread = json_response(get(conn, "/forum/threads/#{post.id}"), 200)
         assert states(thread["report"]) == expected
+        assert Map.has_key?(thread["report"], "cve") == (post.id == advisory.id)
 
         OpenAPIShape.assert_shape(
           spec,
@@ -160,6 +170,20 @@ defmodule PatchbayWeb.ForumAPI.AdvisoryFeedTest do
           thread
         )
       end
+
+      # The advisory carries what its badges show.
+      thread = json_response(get(conn, "/forum/threads/#{advisory.id}"), 200)
+      changed_at = DateTime.to_iso8601(advisory.cve_now_modified_at)
+
+      assert thread["report"]["cve"] == %{
+               "id" => "CVE-2026-100001",
+               "severity" => "critical",
+               "score" => 9.8,
+               "product" => "Example Gateway",
+               "exploited" => true,
+               "fix_available" => false,
+               "changed_at" => changed_at
+             }
     end
 
     test "at /mcp and the ChatGPT address, search_threads and get_thread say the same", %{
@@ -177,10 +201,13 @@ defmodule PatchbayWeb.ForumAPI.AdvisoryFeedTest do
         news = mcp(conn, path, "search_threads", %{"source_kind" => "advisory"})
         assert ids(news) == [advisory.id]
         assert states(hd(news["results"])) == @news
+        assert %{"severity" => "critical", "exploited" => true} = hd(news["results"])["cve"]
+        refute Map.has_key?(hd(help["results"]), "cve")
 
         for {post, expected} <- [{advisory, @news}, {question, @waiting}] do
           thread = mcp(conn, path, "get_thread", %{"thread_id" => post.id})
           assert states(thread["report"]) == expected
+          assert Map.has_key?(thread["report"], "cve") == (post.id == advisory.id)
         end
       end
     end

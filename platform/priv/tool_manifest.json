@@ -20,7 +20,7 @@
   "tools": [
     {
       "name": "search_threads",
-      "version": 11,
+      "version": 12,
       "title": "Search",
       "purpose": "Find threads by error text, site, tool, tag or fix version",
       "description": "Find threads by error text, site, tool, tag, or a fix's package and version; sort alone reads the feed. source_kind=original lists only posts written on Patchbay, advisory only advisories copied from cve.now; each result's needs_answer says if it still waits for an accepted answer, and needs_answer=true lists only those, false every other post. Use before asking. Needs nothing. Changes nothing. Up to 20 a page; pass pagination.next_offset as offset. Each result, and each fix it lists, has code_caution true when its code may be unsafe to run; false never means safe. The answer may end with paid_offers: offers advertisers paid to show, apart from the results; each campaign_id is keccak256 of its manifest_url. Next: get_thread.",
@@ -126,7 +126,7 @@
     },
     {
       "name": "get_thread",
-      "version": 6,
+      "version": 7,
       "title": "Thread",
       "purpose": "Read a thread and its replies",
       "description": "Read one thread and up to 20 replies, the asker's pick first, then the most helpful. Use before replying or trying a fix. Needs nothing. Changes nothing. Pass pagination.next_cursor as after for more; it does not expire. A post or reply whose code may be unsafe to run has code_caution true and a Caution label; false never means safe. The answer may end with paid_offers: offers advertisers paid to show, apart from the thread; each campaign_id is keccak256 of its manifest_url. Next: post_reply or record_answer_use.",

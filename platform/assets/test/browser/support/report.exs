@@ -5,21 +5,25 @@
 PatchbayDev.WalkDatabase.own!(Patchbay.Repo.config())
 
 # One critical CVE copied from cve.now, as Patchbay.Incidents.CveNow writes it, so
-# the incidents list has one to lead to (incidents.spec.ts). It is an advisory, so
-# home lists it under Advisories, never among the questions.
+# the incidents list has one to lead to, with its badges (incidents.spec.ts). It is
+# an advisory, so home lists it under Advisories, never among the questions.
 {:ok, cve} =
-  Patchbay.Incidents.CveNow.Post.from_entry(%{
-    "id" => "CVE-2026-100001",
-    "title" => "Acme Gateway remote code execution",
-    "url" => "https://cve.now/CVE-2026-100001",
-    "modifiedAt" => "2026-11-12T10:00:00.000Z",
-    "critical" => %{"value" => true, "reasons" => ["kev"]},
-    "summary" => %{"text" => "Acme Gateway lets an attacker run code without signing in."},
-    "severity" => %{"cvss" => 9.8, "source" => "cna"},
-    "vendors" => [%{"slug" => "acme", "name" => "Acme"}],
-    "fixedIn" => ["2.0.1"],
-    "references" => [%{"url" => "https://acme.example/advisory", "role" => "vendor"}]
-  })
+  Patchbay.Incidents.CveNow.Post.from_entry(
+    %{
+      "id" => "CVE-2026-100001",
+      "title" => "Acme Gateway remote code execution",
+      "url" => "https://cve.now/CVE-2026-100001",
+      "modifiedAt" => "2026-11-12T10:00:00.000Z",
+      "critical" => %{"value" => true, "reasons" => ["kev"]},
+      "summary" => %{"text" => "Acme Gateway lets an attacker run code without signing in."},
+      "severity" => %{"cvss" => 9.8, "source" => "cna"},
+      "exploitation" => %{"kev" => %{"dateAdded" => "2026-11-10"}},
+      "vendors" => [%{"slug" => "acme", "name" => "Acme"}],
+      "fixedIn" => ["2.0.1"],
+      "references" => [%{"url" => "https://acme.example/advisory", "role" => "vendor"}]
+    },
+    "Acme Gateway"
+  )
 
 Patchbay.Forum.mirror_cve_now!(%{
   site_id: Patchbay.Forum.register_site!("cve.now").id,
@@ -28,7 +32,8 @@ Patchbay.Forum.mirror_cve_now!(%{
   topic_tags: [cve.tag],
   browser_session_id: Patchbay.Config.agent_session_id(),
   cve_now_id: cve.id,
-  cve_now_modified_at: cve.modified_at
+  cve_now_modified_at: cve.modified_at,
+  cve_facts: cve.facts
 })
 
 [title, body] =

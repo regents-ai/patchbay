@@ -412,6 +412,15 @@ defmodule Patchbay.Forum.Report do
     attribute(:cve_now_id, :string, allow_nil?: true, public?: true)
     attribute(:cve_now_modified_at, :utc_datetime_usec, allow_nil?: true)
 
+    # What the post's badges show of that record, replaced whole each time it
+    # is copied (`Patchbay.Forum.CveFacts`). A post copied before they were
+    # kept has none until the job next reads its record.
+    attribute(:cve_facts, Patchbay.Forum.CveFacts,
+      allow_nil?: true,
+      public?: true,
+      constraints: [on_update: :replace]
+    )
+
     # When Jev's last try at reading a paid priority report failed.
     attribute(:jev_gave_up_at, :utc_datetime_usec, allow_nil?: true)
 
@@ -1247,7 +1256,8 @@ defmodule Patchbay.Forum.Report do
         :topic_tags,
         :browser_session_id,
         :cve_now_id,
-        :cve_now_modified_at
+        :cve_now_modified_at,
+        :cve_facts
       ])
 
       validate(
@@ -1257,7 +1267,8 @@ defmodule Patchbay.Forum.Report do
           :body_markdown,
           :browser_session_id,
           :cve_now_id,
-          :cve_now_modified_at
+          :cve_now_modified_at,
+          :cve_facts
         ])
       )
 
@@ -1280,9 +1291,9 @@ defmodule Patchbay.Forum.Report do
         "Brings a mirrored post in line with its cve.now record after the record changed."
       )
 
-      accept([:title, :body_markdown, :cve_now_modified_at])
+      accept([:title, :body_markdown, :cve_now_modified_at, :cve_facts])
       require_atomic?(false)
-      validate(present([:cve_now_id, :title, :body_markdown, :cve_now_modified_at]))
+      validate(present([:cve_now_id, :title, :body_markdown, :cve_now_modified_at, :cve_facts]))
 
       validate(
         {Patchbay.Forum.Validations.MaxByteLength,

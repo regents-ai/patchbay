@@ -9,6 +9,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
   # The sitemap reads the shared Wallet Bench, one reading for the whole run.
   use PatchbayWeb.ConnCase, async: false
 
+  import Ecto.Query, only: [from: 2]
   import Phoenix.LiveViewTest
 
   alias Patchbay.Forum
@@ -31,8 +32,16 @@ defmodule PatchbayWeb.IncidentControllerTest do
     )
   end
 
+  @critical %{
+    severity: :critical,
+    score: 9.8,
+    exploited: true,
+    fix_available: true,
+    product: "Example Gateway · Example Edge"
+  }
+
   # A post copied from one cve.now record, as `Patchbay.Incidents.CveNow` writes it.
-  defp cve_post!(n) do
+  defp cve_post!(n, facts \\ @critical) do
     site = Forum.register_site!("cve.now")
 
     Forum.mirror_cve_now!(%{
@@ -42,9 +51,25 @@ defmodule PatchbayWeb.IncidentControllerTest do
       topic_tags: ["cve-2026-#{100_000 + n}"],
       browser_session_id: Patchbay.Config.agent_session_id(),
       cve_now_id: "CVE-2026-#{100_000 + n}",
-      cve_now_modified_at: DateTime.utc_now()
+      cve_now_modified_at: DateTime.utc_now(),
+      cve_facts: facts
     })
   end
+
+  # As a post copied before its badge facts were kept.
+  defp without_facts!(post) do
+    Patchbay.Repo.update_all(
+      from(row in "forum_reports", where: row.id == type(^post.id, Ecto.UUID)),
+      set: [cve_facts: nil]
+    )
+
+    %{post | cve_facts: nil}
+  end
+
+  defp squished(node), do: node |> LazyHTML.text() |> String.split() |> Enum.join(" ")
+
+  defp badges(node),
+    do: node |> LazyHTML.query(".pb-cve-badge") |> Enum.map(&squished/1)
 
   defp paths(posts), do: Enum.map(posts, &PostAddress.path/1)
 
@@ -299,12 +324,10 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     assert "/incidents/emudhra" in incident_links
 
-    rows = LazyHTML.query(html, "#patchbay-cves .pb-incident-row")
+    rows = LazyHTML.query(html, "#patchbay-cves .pb-cve-row")
 
-    assert attributes(LazyHTML.query(rows, ".pb-incident-row-title"), "href") ==
-             paths([newer, older])
-
-    assert rows |> Enum.at(1) |> LazyHTML.text() =~ "1 reply"
+    assert attributes(rows, "href") == paths([newer, older])
+    assert rows |> Enum.at(1) |> squished() =~ "1 reply"
 
     markdown = conn |> get("/incidents.md") |> response(200)
     assert markdown =~ "(/incidents/emudhra.md)"
@@ -313,13 +336,115 @@ defmodule PatchbayWeb.IncidentControllerTest do
     assert links == paths([newer, older])
   end
 
+  test "a critical CVE's row gives its id, its title over its products and its badges, the same wherever it shows",
+       %{conn: conn} do
+    critical = cve_post!(1)
+    high = cve_post!(2, %{@critical | severity: :high, score: 7.8, exploited: false})
+
+    medium =
+      cve_post!(3, %{
+        @critical
+        | severity: :medium,
+          score: 4.3,
+          exploited: false,
+          fix_available: false,
+          product: nil
+      })
+
+    unread = 4 |> cve_post!() |> without_facts!()
+
+    html = conn |> get(~p"/incidents") |> html_response(200) |> LazyHTML.from_document()
+    rows = html |> LazyHTML.query("#patchbay-cves .pb-cve-row") |> Enum.to_list()
+    assert attributes(rows, "href") == paths([unread, medium, high, critical])
+    [unread_row, medium_row, high_row, critical_row] = rows
+
+    assert critical_row |> LazyHTML.query(".pb-cve-id") |> squished() == critical.cve_now_id
+
+    assert critical_row |> LazyHTML.query(".pb-cve-title") |> squished() ==
+             "Example gateway flaw 1"
+
+    assert critical_row |> LazyHTML.query(".pb-cve-product") |> squished() ==
+             "Example Gateway · Example Edge"
+
+    assert badges(critical_row) == ["CVE", "Critical · 9.8", "Exploited", "Fix available"]
+    assert badges(high_row) == ["CVE", "High · 7.8", "Fix available"]
+    assert badges(medium_row) == ["CVE", "Medium · 4.3"]
+    assert medium_row |> LazyHTML.query(".pb-cve-product") |> Enum.empty?()
+    assert badges(unread_row) == ["CVE"]
+    assert unread_row |> LazyHTML.query(".pb-cve-product") |> Enum.empty?()
+
+    # The same badges on cve.now's board, on the home page's Advisories tab
+    # and at the top of the post; an ordinary post has none.
+    site = Ash.load!(critical, :site, authorize?: false).site
+
+    ordinary =
+      Forum.ask_question!(
+        %{
+          site_id: Forum.register_site!("nodejs.org").id,
+          browser_session_id: Ash.UUID.generate(),
+          title: "Node 24 streams stop after a minute",
+          thread_kind: :help_needed,
+          body_markdown: "What I changed and how I tested it."
+        },
+        authorize?: false
+      )
+
+    row = fn page, post ->
+      page
+      |> LazyHTML.query(".pb-row")
+      |> Enum.find(&(attributes(LazyHTML.query(&1, ".pb-row-title"), "href") == paths([post])))
+    end
+
+    for path <- ["/" <> site.origin, ~p"/?source_kind=advisory"] do
+      page = conn |> get(path) |> html_response(200) |> LazyHTML.from_document()
+      assert page |> row.(critical) |> badges() == badges(critical_row), path
+      assert page |> row.(medium) |> badges() == badges(medium_row), path
+      assert page |> row.(unread) |> badges() == ["CVE"], path
+    end
+
+    home = conn |> get(~p"/") |> html_response(200) |> LazyHTML.from_document()
+    assert home |> row.(ordinary) |> LazyHTML.query(".pb-cve-badges") |> Enum.empty?()
+
+    thread = conn |> get(PostAddress.path(critical)) |> html_response(200)
+    thread = LazyHTML.from_document(thread)
+    assert badges(thread) == badges(critical_row)
+    assert thread |> LazyHTML.query(".pb-kind-pill") |> Enum.empty?()
+
+    ordinary_thread =
+      conn |> get(PostAddress.path(ordinary)) |> html_response(200) |> LazyHTML.from_document()
+
+    assert ordinary_thread |> LazyHTML.query(".pb-cve-badges") |> Enum.empty?()
+    refute ordinary_thread |> LazyHTML.query(".pb-kind-pill") |> Enum.empty?()
+
+    # The open address draws the same badges in each of those places.
+    for path <- [
+          ~p"/incidents",
+          "/" <> site.origin,
+          ~p"/?source_kind=advisory",
+          PostAddress.path(critical)
+        ] do
+      main = conn |> get(path) |> html_response(200) |> LazyHTML.from_document()
+      open = conn |> on_open() |> get(path) |> html_response(200) |> LazyHTML.from_document()
+      assert badges(open) == badges(main), path
+    end
+
+    # The Markdown list says the same in words.
+    markdown = conn |> get("/incidents.md") |> response(200)
+
+    assert markdown =~
+             "(#{PostAddress.path(critical)}) (Example Gateway · Example Edge) — Critical (CVSS 9.8) · exploited · fix available · changed "
+
+    assert markdown =~ "(#{PostAddress.path(medium)}) — Medium (CVSS 4.3) · changed "
+    assert markdown =~ "(#{PostAddress.path(unread)}) — changed "
+  end
+
   test "the critical CVEs are paged 25 at a time, with the incidents on the first page only",
        %{conn: conn} do
     posts = Enum.map(1..26, &cve_post!/1)
     [oldest | _rest] = posts
 
     first = conn |> get(~p"/incidents") |> html_response(200) |> LazyHTML.from_document()
-    assert first |> LazyHTML.query("#patchbay-cves .pb-incident-row") |> Enum.count() == 25
+    assert first |> LazyHTML.query("#patchbay-cves .pb-cve-row") |> Enum.count() == 25
 
     assert first |> LazyHTML.query(".pb-incident-pages a[rel=next]") |> attributes("href") == [
              "/incidents?page=2"
@@ -327,8 +452,7 @@ defmodule PatchbayWeb.IncidentControllerTest do
 
     second = conn |> get(~p"/incidents?page=2") |> html_response(200) |> LazyHTML.from_document()
 
-    assert second |> LazyHTML.query(".pb-incident-row-title") |> attributes("href") ==
-             paths([oldest])
+    assert second |> LazyHTML.query(".pb-cve-row") |> attributes("href") == paths([oldest])
 
     assert second |> LazyHTML.query(".pb-incident-pages a[rel=prev]") |> attributes("href") == [
              "/incidents"

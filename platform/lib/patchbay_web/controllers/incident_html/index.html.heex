@@ -20,15 +20,33 @@
       No critical CVEs yet.
     </p>
 
-    <ol :if={@cves != :unavailable and @cves.posts != []} class="pb-incident-list">
-      <li :for={post <- @cves.posts} class="pb-incident-row">
-        <a class="pb-incident-row-title" href={PostAddress.path(post)}>{post.title}</a>
-        <p class="pb-incident-meta">
-          <span>Posted {day(post.inserted_at)}</span>
-          <a href={PostAddress.path(post) <> "#patchbay-replies"}>
-            {replies_label(post.reply_count)}
-          </a>
-        </p>
+    <ol :if={@cves != :unavailable and @cves.posts != []} class="pb-cve-list">
+      <li :for={post <- @cves.posts}>
+        <a class="pb-cve-row" href={PostAddress.path(post)}>
+          <span class="pb-cve-id">{post.cve_now_id}</span>
+          <span class="pb-cve-main">
+            <span class="pb-cve-title">{cve_title(post)}</span>
+            <span :if={post.cve_facts && post.cve_facts.product} class="pb-cve-product">
+              {post.cve_facts.product}
+            </span>
+          </span>
+          <span class="pb-cve-meta">
+            <.cve_badges facts={post.cve_facts} />
+            <span class="pb-cve-when">
+              <time
+                datetime={DateTime.to_iso8601(post.cve_now_modified_at)}
+                title={"Changed on cve.now " <> PatchbayWeb.Forum.BoardHTML.moment(post.cve_now_modified_at)}
+              >{RegentFormat.relative_time(post.cve_now_modified_at, DateTime.utc_now())}</time>
+              <span class="pb-cve-replies" title={replies_label(post.reply_count)}>
+                <Regent.Icons.icon name="message-square" />
+                {post.reply_count}
+                <span class="visually-hidden">
+                  {if post.reply_count == 1, do: "reply", else: "replies"}
+                </span>
+              </span>
+            </span>
+          </span>
+        </a>
       </li>
     </ol>
 

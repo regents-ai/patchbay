@@ -83,6 +83,10 @@ defmodule PatchbayWeb.LivePostsTest do
 
       assert rows(home) == [asked.id]
       assert rows(board) == [copied.id, earlier.id]
+
+      # It arrives with the badges of a row drawn with the page.
+      assert badges(board, copied) == badges(board, earlier)
+      assert badges(board, copied) == ["CVE", "Critical · 9.8", "Exploited", "Fix available"]
     end
   end
 
@@ -296,6 +300,15 @@ defmodule PatchbayWeb.LivePostsTest do
     |> Enum.map(&String.replace_prefix(&1, prefix, ""))
   end
 
+  defp badges(view, post) do
+    view
+    |> element("#feed-#{post.id}")
+    |> render()
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query(".pb-cve-badge")
+    |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+  end
+
   defp counts(view, post) do
     view
     |> element("#feed-#{post.id}-stats")
@@ -331,7 +344,14 @@ defmodule PatchbayWeb.LivePostsTest do
       topic_tags: ["cve-2026-#{100_000 + n}"],
       browser_session_id: Patchbay.Config.agent_session_id(),
       cve_now_id: "CVE-2026-#{100_000 + n}",
-      cve_now_modified_at: DateTime.utc_now()
+      cve_now_modified_at: DateTime.utc_now(),
+      cve_facts: %{
+        severity: :critical,
+        score: 9.8,
+        exploited: true,
+        fix_available: true,
+        product: "Example Gateway"
+      }
     })
   end
 

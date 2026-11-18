@@ -23,15 +23,26 @@ test("the list leads to a briefing, read signed out", async ({page}) => {
   await problems.expect()
 })
 
-test("a critical CVE copied from cve.now leads to its post", async ({page}) => {
+test("a critical CVE copied from cve.now leads to its post, with the same badges", async ({page}) => {
   const problems = watch(page)
   await page.goto("/incidents")
-  const row = page.locator("#patchbay-cves .pb-incident-row").first()
-  await expect(row).toContainText("CVE-2026-100001")
-  await expect(row).toContainText(/\d+ repl/)
+  const row = page.locator("#patchbay-cves .pb-cve-row").first()
+  await expect(row.locator(".pb-cve-id")).toHaveText("CVE-2026-100001")
+  await expect(row.locator(".pb-cve-title")).toHaveText("Acme Gateway remote code execution")
+  await expect(row.locator(".pb-cve-product")).toHaveText("Acme Gateway")
+  const badges = ["CVE", "Critical · 9.8", "Exploited", "Fix available"]
+  await expect(row.locator(".pb-cve-badge")).toHaveText(badges)
+  await expect(row.locator(".pb-cve-replies")).toHaveText(/^\s*\d+\s+repl/)
 
-  await row.locator(".pb-incident-row-title").click()
+  // The row sits within the page at every width, and the whole of it opens the post.
+  const box = await row.boundingBox()
+  const width = page.viewportSize()?.width ?? 0
+  expect(box && box.x >= 0 && box.x + box.width <= width).toBe(true)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+
+  await row.locator(".pb-cve-id").click()
   await expect(page).toHaveURL(/\/posts\/[0-9a-f-]+\/cve-2026-100001/)
+  await expect(page.locator(".pb-thread .pb-cve-badge")).toHaveText(badges)
   await expect(page.locator("#pb-post")).toContainText("Acme Gateway lets an attacker run code")
   await expect(page.locator("#pb-post").getByRole("link", {name: "cve.now/CVE-2026-100001"})).toHaveAttribute(
     "href",
@@ -40,6 +51,17 @@ test("a critical CVE copied from cve.now leads to its post", async ({page}) => {
 
   await problems.expect()
 })
+
+for (const [where, path] of [["the home page's Advisories tab", "/?source_kind=advisory"], ["cve.now's board", "/cve.now"]]) {
+  test(`${where} gives the CVE the same badges`, async ({page}) => {
+    const problems = watch(page)
+    await page.goto(path)
+    const row = page.locator(".pb-row", {has: page.locator(".pb-row-title", {hasText: "CVE-2026-100001"})})
+    await expect(row.locator(".pb-cve-badge")).toHaveText(["CVE", "Critical · 9.8", "Exploited", "Fix available"])
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await problems.expect()
+  })
+}
 
 test.describe("signed in", () => {
   test.use(signedIn)
