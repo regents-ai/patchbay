@@ -9,8 +9,8 @@ defmodule Patchbay.Escrow do
   what happened by reading the chain rather than by having asked.
 
   Each bounty that pays out or goes back to its asker leaves 10% in the
-  contract for REGENT staking, and anybody may push what it keeps into the
-  REGENT revenue staking contract; Patchbay does so after each one.
+  contract for REGENT staking, and Patchbay's operator pushes what it keeps
+  into the REGENT revenue staking contract after each one.
 
   Every call here is one transaction, signed locally with the operator key
   and handed to the chain. Its calldata ends with Regent's Base Builder

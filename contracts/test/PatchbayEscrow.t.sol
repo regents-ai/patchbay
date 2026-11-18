@@ -45,8 +45,9 @@ contract TestStaking is IRegentRevenueStaking {
 /// @title PatchbayEscrowTest
 /// @notice What the escrow promises about money: an attribution can never exceed what is held, a
 ///         post pays out once, both payouts follow the same 90/10 split, a bounty cannot be
-///         taken back before the refund delay has passed, and the 10% reaches REGENT staking without
-///         a paused staking contract ever holding up a payout.
+///         taken back before the refund delay has passed, and the 10% reaches REGENT staking, sent
+///         only by the operator or the Safe, without a paused staking contract ever holding up a
+///         payout.
 contract PatchbayEscrowTest is Test {
     TestUSDC internal usdc;
     TestStaking internal staking;
@@ -233,23 +234,76 @@ contract PatchbayEscrowTest is Test {
         escrow.release(POST, winner);
     }
 
-    function test_pushRevenue_depositsAllThatIsOwedTaggedForAnyCaller() public {
+    function test_pushRevenue_depositsAllThatIsOwedTaggedForTheOperatorAndTheOwner() public {
+        address[2] memory senders = [operator, owner];
+        for (uint256 i; i < senders.length; ++i) {
+            bytes32 postId = keccak256(abi.encode("post", i));
+            _fund(postId);
+            vm.prank(operator);
+            escrow.release(postId, winner);
+
+            vm.expectEmit(true, false, false, true);
+            emit RevenuePushed(senders[i], 10_000_000);
+            vm.prank(senders[i]);
+            assertEq(escrow.pushRevenue(), 10_000_000);
+
+            assertEq(usdc.balanceOf(address(staking)), 10_000_000 * (i + 1));
+            assertEq(staking.lastSourceTag(), bytes32("patchbay.escrow"));
+            assertEq(escrow.revenueOwed(), 0);
+            assertEq(usdc.balanceOf(address(escrow)), 0);
+
+            vm.expectRevert(PatchbayEscrow.NothingOwed.selector);
+            vm.prank(senders[i]);
+            escrow.pushRevenue();
+        }
+    }
+
+    function test_pushRevenue_refusesEveryoneButTheOperatorAndTheOwner() public {
         _fund(POST);
         vm.prank(operator);
         escrow.release(POST, winner);
 
-        vm.expectEmit(true, false, false, true);
-        emit RevenuePushed(stranger, 10_000_000);
-        vm.prank(stranger);
-        assertEq(escrow.pushRevenue(), 10_000_000);
+        address[3] memory refused = [stranger, payer, winner];
+        for (uint256 i; i < refused.length; ++i) {
+            vm.expectRevert(PatchbayEscrow.NotStakingSender.selector);
+            vm.prank(refused[i]);
+            escrow.pushRevenue();
+        }
 
-        assertEq(usdc.balanceOf(address(staking)), 10_000_000);
-        assertEq(staking.lastSourceTag(), bytes32("patchbay.escrow"));
-        assertEq(escrow.revenueOwed(), 0);
-        assertEq(usdc.balanceOf(address(escrow)), 0);
+        assertEq(escrow.revenueOwed(), 10_000_000);
+        assertEq(usdc.balanceOf(address(staking)), 0);
+    }
 
-        vm.expectRevert(PatchbayEscrow.NothingOwed.selector);
+    /// @dev Refused whether or not anything is owed.
+    function testFuzz_pushRevenue_refusesAnyOtherCaller(address caller, bool owed) public {
+        vm.assume(caller != operator && caller != owner);
+        if (owed) {
+            _fund(POST);
+            vm.prank(operator);
+            escrow.release(POST, winner);
+        }
+
+        vm.expectRevert(PatchbayEscrow.NotStakingSender.selector);
+        vm.prank(caller);
         escrow.pushRevenue();
+    }
+
+    function test_pushRevenue_followsTheOperatorTheOwnerSets() public {
+        _fund(POST);
+        vm.prank(operator);
+        escrow.release(POST, winner);
+
+        address nextOperator = makeAddr("next-operator");
+        vm.prank(owner);
+        escrow.setOperator(nextOperator);
+
+        vm.expectRevert(PatchbayEscrow.NotStakingSender.selector);
+        vm.prank(operator);
+        escrow.pushRevenue();
+
+        vm.prank(nextOperator);
+        assertEq(escrow.pushRevenue(), 10_000_000);
+        assertEq(usdc.balanceOf(address(staking)), 10_000_000);
     }
 
     /// @dev Sean's 43 a: payouts and refunds never depend on the staking contract being unpaused.
@@ -267,10 +321,12 @@ contract PatchbayEscrowTest is Test {
         assertEq(usdc.balanceOf(payer), 90_000_000);
 
         vm.expectRevert(bytes("PAUSED"));
+        vm.prank(operator);
         escrow.pushRevenue();
         assertEq(escrow.revenueOwed(), 20_000_000);
 
         staking.setPaused(false);
+        vm.prank(operator);
         escrow.pushRevenue();
         assertEq(usdc.balanceOf(address(staking)), 20_000_000);
         assertEq(usdc.balanceOf(address(escrow)), 0);

@@ -59,9 +59,9 @@ contract Sanity is Script, StdCheats {
         require(escrow.totalCredited() == 0, "refund did not clear the credit");
         console2.log("refund ok: payer", USDC.balanceOf(payer), "revenue owed", escrow.revenueOwed());
 
-        // Push: anybody may hand what is owed to REGENT staking.
+        // Push: only the operator or the Safe may send to staking.
         uint256 stakingBefore = USDC.balanceOf(address(STAKING));
-        vm.prank(makeAddr("another passer-by"));
+        vm.prank(operator);
         escrow.pushRevenue();
         require(USDC.balanceOf(address(STAKING)) == stakingBefore + 20_000_000, "staking did not receive 20");
         require(escrow.revenueOwed() == 0, "push did not clear the revenue owed");

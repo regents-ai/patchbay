@@ -8,9 +8,11 @@ for. The Patchbay server confirms the settlement off-chain and then tells the co
 that a given amount now belongs to a given post. When the asker marks an answer correct, the server
 releases the post: the winning answer receives 90% and the escrow keeps the other 10% as Regents
 Labs revenue. If no answer is ever chosen, then thirty days after the deposit was recorded anyone
-may send the money back to the asker, who receives 90% of it on the same split. Anyone may push the
-revenue kept into the REGENT revenue staking contract, which shares each deposit between REGENT
-stakers, by the staked share of the total supply, and its treasury.
+may send the money back to the asker, who receives 90% of it on the same split. Only the operator or
+the Safe (the owner) may push the revenue kept into the REGENT revenue staking contract, which shares
+each deposit between REGENT stakers, by the staked share of the total supply, and its treasury. The
+copy live on Base since 4 Oct 2026, at `0x170FA3C1bD90220AF4c4609078a1016d01be7681`, was deployed
+before this rule and is unchanged.
 
 The revenue is kept and pushed separately so that a paused staking contract never holds up a
 winner or an asker: while it is paused only the push waits.
@@ -47,8 +49,9 @@ key from then on; it does not undo payouts already made.
 another wallet the asker controls.
 
 The owner is a separate address. It can only point the escrow at a new operator address
-(`setOperator`) — useful if the server key is rotated or compromised — and hand ownership on in two
-steps (`transferOwnership` then `acceptOwnership` by the new owner). The owner has no way to
+(`setOperator`), useful if the server key is rotated or compromised; push the revenue kept into the
+staking contract; and hand ownership on in two steps (`transferOwnership` then `acceptOwnership` by
+the new owner). The owner has no way to
 withdraw, but because it chooses the operator it ultimately decides who attributes deposits and
 names winners.
 
@@ -63,7 +66,7 @@ Set the environment first:
 | Variable            | Meaning                                                                           |
 | ------------------- | --------------------------------------------------------------------------------- |
 | `STAKING`           | The REGENT revenue staking contract the 10% is pushed into. Required.             |
-| `OPERATOR`          | The Patchbay server address allowed to credit and release. Required.               |
+| `OPERATOR`          | The Patchbay server address allowed to credit, release and push the revenue. Required. |
 | `OWNER`             | The address that owns the escrow from construction. Required.                      |
 | `USDC`              | Token address. Optional; defaults to Base mainnet USDC `0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`. |
 | `BASE_RPC_URL`      | Base mainnet RPC endpoint.                                                        |
@@ -83,8 +86,9 @@ contract, operator and owner it was given. `OWNER` is the owner from constructio
 ## What the server calls
 
 `credit` and `release` are operator-only and revert with `NotOperator()` for anyone else; `refund`
-is open to any caller once the delay has passed, and `pushRevenue` is open to any caller. Amounts are
-USDC base units (6 decimals), so 1 USDC is `1000000`. `postId` is the 32-byte id the server derives
+is open to any caller once the delay has passed; only the operator or the Safe (the owner) may call
+`pushRevenue`, which reverts with `NotStakingSender()` for anyone else. Amounts are USDC base units
+(6 decimals), so 1 USDC is `1000000`. `postId` is the 32-byte id the server derives
 from the report, so one report has one post id and can only be credited once.
 
 ```solidity
@@ -141,6 +145,7 @@ Revert reasons the server should recognise:
 | Error                    | Meaning                                                             |
 | ------------------------ | ------------------------------------------------------------------- |
 | `NotOperator()`          | The caller is not the operator address.                             |
+| `NotStakingSender()`     | The caller of `pushRevenue` is neither the operator nor the owner.  |
 | `PostAlreadyCredited()`  | That post id is already credited. On a retry, read `posts(postId)`: the same payer and amount means the earlier credit landed; anything else needs a person. |
 | `PostNotFunded()`        | The post was never credited, or has already been released/refunded. |
 | `AmountExceedsBalance()` | The deposit has not landed yet, or the amount is too large.         |
@@ -161,7 +166,7 @@ slither . --filter-paths "lib/"
 ```
 
 `script/Sanity.s.sol` walks a deposit through credit → release and a second through credit → refund
-against real Base USDC on a local fork, then pushes the revenue kept into the real staking contract. It is a simulation, never broadcast:
+against real Base USDC on a local fork, then, as the operator, pushes the revenue kept into the real staking contract. It is a simulation, never broadcast:
 
 ```sh
 forge script script/Sanity.s.sol --rpc-url $BASE_RPC_URL

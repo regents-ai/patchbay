@@ -508,6 +508,11 @@
   },
   {
     "type": "error",
+    "name": "NotStakingSender",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "NothingOwed",
     "inputs": []
   },

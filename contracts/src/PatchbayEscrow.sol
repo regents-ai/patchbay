@@ -17,7 +17,8 @@ interface IRegentRevenueStaking {
 ///         picks a correct answer, then pays the winner 90% and keeps 10% as Regents Labs revenue
 ///         for REGENT stakers. An answer the asker never picks is not held forever: 30 days after a
 ///         post is funded anyone may refund it, which pays the asker back 90% and keeps the same
-///         10%. Anyone may push the revenue kept into the REGENT revenue staking contract.
+///         10%. Only the operator or the Safe (the owner) may push the revenue kept into the REGENT
+///         revenue staking contract.
 /// @dev The asker pays over x402, whose settlement is a plain USDC transfer to this contract, so a
 ///      deposit arrives with no indication of which post it belongs to. The Patchbay server (the
 ///      operator) attributes each confirmed deposit to a post id with `credit`, and later calls
@@ -81,7 +82,8 @@ contract PatchbayEscrow is Ownable2Step {
     /// @notice The source tag every push carries, so stakers can see the revenue came from here.
     bytes32 public constant SOURCE_TAG = bytes32("patchbay.escrow");
 
-    /// @notice The Patchbay server address allowed to credit and release.
+    /// @notice The Patchbay server address allowed to credit and release, and with the owner the
+    ///         only address that may push the revenue to staking.
     address public operator;
 
     /// @notice Attributed deposits, keyed by the post id the server assigns.
@@ -109,10 +111,15 @@ contract PatchbayEscrow is Ownable2Step {
     event Refunded(bytes32 indexed postId, address indexed payer, uint256 payerAmount, uint256 revenueAmount);
 
     /// @notice Emitted when the revenue owed is deposited into the staking contract.
+    /// @param caller The operator or the owner, whichever pushed.
     event RevenuePushed(address indexed caller, uint256 amount);
 
     /// @notice Thrown when a call that only the operator may make comes from another address.
     error NotOperator();
+
+    /// @notice Thrown by `pushRevenue` for a caller that is neither the operator nor the owner:
+    ///         only the operator or the Safe may send to staking.
+    error NotStakingSender();
 
     /// @notice Thrown when an address argument is the zero address.
     error ZeroAddress();
@@ -153,8 +160,10 @@ contract PatchbayEscrow is Ownable2Step {
     ///         role in the same deploy receipt. Ownable2Step still applies to later handovers.
     /// @param usdc_ The USDC token address on this chain.
     /// @param staking_ The REGENT revenue staking contract the 10% revenue share is pushed into.
-    /// @param operator_ The Patchbay server address allowed to credit and release.
-    /// @param owner_ The address that may later call `setOperator` and transfer ownership.
+    /// @param operator_ The Patchbay server address allowed to credit, release and push the revenue
+    ///        to staking.
+    /// @param owner_ The address (the Safe) that may later call `setOperator`, transfer ownership and
+    ///        push the revenue to staking.
     constructor(IERC20 usdc_, IRegentRevenueStaking staking_, address operator_, address owner_) Ownable(owner_) {
         if (address(usdc_) == address(0)) revert ZeroAddress();
         if (address(staking_) == address(0)) revert ZeroAddress();
@@ -165,7 +174,8 @@ contract PatchbayEscrow is Ownable2Step {
     }
 
     /// @notice Points the escrow at a new Patchbay server address.
-    /// @dev Owner only. Moves no funds; it only changes who may call credit and release.
+    /// @dev Owner only. Moves no funds; it only changes who may call credit, release and
+    ///      pushRevenue.
     /// @param newOperator The new operator address.
     function setOperator(address newOperator) external onlyOwner {
         _setOperator(newOperator);
@@ -247,10 +257,13 @@ contract PatchbayEscrow is Ownable2Step {
 
     /// @notice Deposits all the revenue owed into the REGENT revenue staking contract, tagged
     ///         `patchbay.escrow`.
-    /// @dev Anyone may call this: the money can only go to the immutable staking contract. While
-    ///      that contract is paused the deposit reverts and the revenue stays owed.
+    /// @dev Only the operator or the Safe (the owner) may send to staking; anyone else, a payer and
+    ///      a winner included, is refused with `NotStakingSender`. The money can only go to the
+    ///      immutable staking contract. While that contract is paused the deposit reverts and the
+    ///      revenue stays owed.
     /// @return amount The USDC pushed, in 6-decimal base units.
     function pushRevenue() external returns (uint256 amount) {
+        if (msg.sender != operator && msg.sender != owner()) revert NotStakingSender();
         amount = revenueOwed;
         if (amount == 0) revert NothingOwed();
         revenueOwed = 0;
