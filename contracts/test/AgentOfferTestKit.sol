@@ -131,7 +131,10 @@ abstract contract AgentOfferBase is Test {
     AgentOfferFactory internal factory;
     AgentOfferMarket internal market;
 
+    /// @dev The factory's owner, standing in for the Safe.
     address internal admin = makeAddr("admin");
+    /// @dev The factory's operator: with the owner, the only address that may send to staking.
+    address internal operator = makeAddr("operator");
     address internal publisher;
     uint256 internal publisherKey;
     address internal payout = makeAddr("payout");
@@ -143,10 +146,11 @@ abstract contract AgentOfferBase is Test {
         market = AgentOfferMarket(factory.createMarket(payout));
     }
 
-    /// @dev `_baseChain`, then a factory with a 10% fee that admits Patchbay; no market yet.
+    /// @dev `_baseChain`, then a factory with a 10% fee and the kit's operator that admits Patchbay;
+    ///      no market yet.
     function _deployFactory(FreezableUSDC tokenCode) internal {
         _baseChain(tokenCode);
-        factory = new AgentOfferFactory(admin, publisher, staking, FEE_BPS);
+        factory = new AgentOfferFactory(admin, operator, publisher, staking, FEE_BPS);
     }
 
     /// @dev Chain 8453, Patchbay's publisher key, a stand-in USDC at Circle's address and the staking

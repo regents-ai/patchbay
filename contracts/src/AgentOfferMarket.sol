@@ -11,6 +11,7 @@ import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IRegentRevenueStaking} from "./PatchbayEscrow.sol";
 import {IAgentOfferMarket} from "./IAgentOfferMarket.sol";
+import {AgentOfferFactory} from "./AgentOfferFactory.sol";
 
 /// @title AgentOfferMarket
 /// @notice One publisher's market for reserved, fixed-term Offer placements, paid in USDC. See
@@ -18,6 +19,11 @@ import {IAgentOfferMarket} from "./IAgentOfferMarket.sol";
 /// @dev Deployed once as an implementation by `AgentOfferFactory`, then cloned once per publisher.
 ///      The implementation can never be initialized, and each clone is initialized exactly once,
 ///      in the factory call that creates it. There is no upgrade, owner, pause or sweep.
+///
+///      The caller of `initialize` is recorded as the market's `factory`, whose `maySendToStaking`
+///      decides who may call `pushRevenue`: only the operator or the Safe may send to staking. A
+///      clone of the implementation that someone other than the factory initializes answers to
+///      that initializer alone; it gains nothing from the factory.
 ///
 ///      Money. A purchase is held for its lease until the lease is settled; settlement only ever
 ///      credits: the unused part to the buyer, the earned part to the payout wallet less the
@@ -77,6 +83,10 @@ contract AgentOfferMarket is IAgentOfferMarket, Initializable, ReentrancyGuardTr
     /// @notice The protocol fee on earned money, in basis points. Never changes.
     uint16 public feeBps;
 
+    /// @notice The factory that initialized this market, whose operator and owner are the only
+    ///         addresses that may call `pushRevenue`. Never changes.
+    AgentOfferFactory public factory;
+
     /// @notice Number of placements created; ids run from 1 to this.
     uint256 public placementCount;
 
@@ -117,6 +127,7 @@ contract AgentOfferMarket is IAgentOfferMarket, Initializable, ReentrancyGuardTr
     }
 
     /// @inheritdoc IAgentOfferMarket
+    /// @dev Records the caller as `factory`.
     function initialize(Init calldata config) external initializer {
         if (
             address(config.usdc) == address(0) || config.publisher == address(0) || config.payout == address(0)
@@ -129,6 +140,7 @@ contract AgentOfferMarket is IAgentOfferMarket, Initializable, ReentrancyGuardTr
         payout = config.payout;
         staking = config.staking;
         feeBps = config.feeBps;
+        factory = AgentOfferFactory(msg.sender);
 
         // No call is made here; the `initializer` modifier only reads this market's own code size.
         // forge-lint: disable-start(reentrancy-events)
@@ -282,6 +294,7 @@ contract AgentOfferMarket is IAgentOfferMarket, Initializable, ReentrancyGuardTr
     ///      the revenue stays owed; nothing else waits on it. The staking contract is trusted to pull
     ///      exactly the amount it is approved for, as USDC's `transferFrom` does.
     function pushRevenue() external nonReentrant returns (uint256 amountUSDC) {
+        if (!factory.maySendToStaking(msg.sender)) revert NotStakingSender();
         amountUSDC = revenueOwed;
         if (amountUSDC == 0) revert NothingOwed();
         revenueOwed = 0;

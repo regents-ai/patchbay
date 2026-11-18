@@ -6,7 +6,7 @@ import {IRegentRevenueStaking} from "./PatchbayEscrow.sol";
 
 /// @title IAgentOfferMarket
 /// @notice One publisher's market for reserved, fixed-term Offer placements, paid in USDC.
-/// @dev A publisher is the operator that actually shows Offers to agents and is paid for it. A
+/// @dev A publisher is the site that actually shows Offers to agents and is paid for it. A
 ///      placement is one surface the publisher sells: a number of slots, each rented for a fixed
 ///      term at a price no lower than the placement's floor. While a lease is live a buyer may take
 ///      its slot by paying at least the placement's step more than the lease paid; the replaced
@@ -164,6 +164,7 @@ interface IAgentOfferMarket {
     event Claimed(address indexed account, address indexed recipient, uint256 amountUSDC);
 
     /// @notice Emitted when the revenue owed is deposited into the staking contract.
+    /// @param caller The operator or the factory's owner, whichever pushed.
     event RevenuePushed(address indexed caller, uint256 amountUSDC);
 
     /// @notice Thrown by `initialize` for a zero address, a payout wallet that is the market itself,
@@ -172,6 +173,10 @@ interface IAgentOfferMarket {
 
     /// @notice Thrown when a call only the publisher may make comes from another address.
     error NotPublisher();
+
+    /// @notice Thrown by `pushRevenue` for a caller that is neither the factory's operator nor its
+    ///         owner: only the operator or the Safe may send to staking.
+    error NotStakingSender();
 
     /// @notice Thrown when a placement's source, policy or terms are zero or out of bounds.
     error InvalidTerms();
@@ -217,7 +222,8 @@ interface IAgentOfferMarket {
     error InvalidRecipient();
 
     /// @notice Sets the market up. The factory calls it in the same transaction that creates the
-    ///         market; it can never run twice, and never on the implementation itself.
+    ///         market; it can never run twice, and never on the implementation itself. Its caller
+    ///         becomes the market's factory, whose rule decides who may call `pushRevenue`.
     function initialize(Init calldata config) external;
 
     /// @notice Creates a placement whose terms never change. Publisher only.
@@ -272,8 +278,9 @@ interface IAgentOfferMarket {
     /// @notice What `account` may take with `claim`: refunds and, for the payout wallet, earnings.
     function claimable(address account) external view returns (uint256);
 
-    /// @notice Deposits all the revenue owed into the REGENT revenue staking contract. Anyone may
-    ///         call it.
+    /// @notice Deposits all the revenue owed into the REGENT revenue staking contract. Only the
+    ///         factory's operator or its owner (the Safe) may call it; anyone else, the publisher
+    ///         and the payout wallet included, is refused with `NotStakingSender`.
     /// @return amountUSDC What was pushed.
     function pushRevenue() external returns (uint256 amountUSDC);
 }

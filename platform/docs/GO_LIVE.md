@@ -179,17 +179,19 @@ Before you start:
   site holds its key, and it never holds money. It sends the three deploy
   transactions, so it needs a little ETH on Base. Keep its key in a Foundry
   keystore entry (`cast wallet import <name> --interactive`).
-- **The admin.** The factory's owner, who admits other publishers. Ideally a
-  Safe.
+- **The admin.** The factory's owner, who admits other publishers and sets the
+  operator. Ideally a Safe.
+- **The operator.** Only the operator or the Safe may send to staking: each
+  market's 10% share and Patchbay's earnings. The admin can replace it later.
 - **The REGENT revenue staking contract**, the one `STAKING_CONTRACT_ADDRESS`
   names.
 - **`BASE_RPC_URL` set on the Fly app** ("3. Turn on payments" above):
   production reads the market through it.
 
 1. **Deploy the contracts** (Sean's go). From `repos/patchbay/contracts`, with
-   `OFFERS_ADMIN`, `OFFERS_PUBLISHER`, `OFFERS_STAKING`, `OFFERS_FEE_BPS`
-   (1000), `BASE_RPC_URL` and `ETHERSCAN_API_KEY` set in your shell. Run it once
-   without `--broadcast` to simulate, then:
+   `OFFERS_ADMIN`, `OFFERS_OPERATOR`, `OFFERS_PUBLISHER`, `OFFERS_STAKING`,
+   `OFFERS_FEE_BPS` (1000), `BASE_RPC_URL` and `ETHERSCAN_API_KEY` set in your
+   shell. Run it once without `--broadcast` to simulate, then:
 
    ```sh
    forge script script/DeployOffers.s.sol --rpc-url $BASE_RPC_URL --broadcast --verify --account <publisher keystore name>
@@ -200,9 +202,9 @@ Before you start:
 
 2. **Record the addresses.** Write down the factory, staking payout and market
    addresses the script logs, and the block number forge prints for the last of
-   the three transactions (`createMarket`). Check the owner, staking contract,
-   fee, publisher and payout it logs against what you meant: none of them can
-   be changed.
+   the three transactions (`createMarket`). Check the owner, operator, staking
+   contract, fee, publisher and payout it logs against what you meant. Only the
+   owner's role and the operator can change later, and only by the owner.
 
 3. **Set the three secrets** (Sean's go). The publisher key never goes on a
    command line, in a chat or in a log: it is read from a file only this step

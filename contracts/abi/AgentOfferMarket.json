@@ -327,6 +327,19 @@
   },
   {
     "type": "function",
+    "name": "factory",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract AgentOfferFactory"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "feeBps",
     "inputs": [],
     "outputs": [
@@ -1036,6 +1049,11 @@
   {
     "type": "error",
     "name": "NotPublisher",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotStakingSender",
     "inputs": []
   },
   {

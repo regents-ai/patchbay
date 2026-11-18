@@ -12,7 +12,9 @@ defmodule PatchbayDev.OffersLab do
   contract (`RecordingStaking`) beside it. Every transaction is sent from one
   of anvil's own unlocked accounts, so no key is used to deploy: account 0
   owns the factory, account 1 is Patchbay's publisher, account 2 its payout
-  wallet, and accounts 3 and 4 are advertisers with 1,000 USDC each.
+  wallet, accounts 3 and 4 are advertisers with 1,000 USDC each, and account 5
+  is the factory's operator, which with the owner is the only account that
+  may send to staking.
 
   Every function first checks that the address is a lab chain: http on this
   machine, a node that says it is anvil, serving chain 8453.
@@ -27,7 +29,8 @@ defmodule PatchbayDev.OffersLab do
     publisher: "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
     payout: "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc",
     advertiser: "0x90f79bf6eb2c4f870365e785982e1f101e93b906",
-    rival: "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65"
+    rival: "0x15d34aaf54267db7d7c367839aaf71a00a2c6a65",
+    operator: "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc"
   }
   # Anvil's account 1, as Foundry documents it: a test key, never a real one.
   @publisher_key "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
@@ -103,8 +106,14 @@ defmodule PatchbayDev.OffersLab do
       create!(
         rpc_url,
         "AgentOfferFactory.sol/AgentOfferFactory",
-        [:address, :address, :address, {:uint, 16}],
-        [bin(@accounts.owner), bin(@accounts.publisher), bin(staking), @fee_bps]
+        [:address, :address, :address, :address, {:uint, 16}],
+        [
+          bin(@accounts.owner),
+          bin(@accounts.operator),
+          bin(@accounts.publisher),
+          bin(staking),
+          @fee_bps
+        ]
       )
 
     receipt =

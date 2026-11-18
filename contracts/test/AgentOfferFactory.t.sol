@@ -2,6 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Clones} from "@openzeppelin/contracts/proxy/Clones.sol";
 import {Initializable} from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import {AgentOfferFactory} from "../src/AgentOfferFactory.sol";
 import {AgentOfferMarket} from "../src/AgentOfferMarket.sol";
@@ -13,8 +14,10 @@ import {AgentOfferBase, FreezableUSDC} from "./AgentOfferTestKit.sol";
 /// @notice What the factory promises: it deploys only on Base with Circle's USDC there, a staking
 ///         contract with code and a fee no higher than a fifth; it admits Patchbay from the start and
 ///         others only by the owner; each admitted publisher gets exactly one market, at the address
-///         `predictMarket` gave beforehand, set up in the same call and never again; and an
-///         admission signed for one market is worthless on any other.
+///         `predictMarket` gave beforehand, set up in the same call and never again; only its
+///         operator and its owner may send to staking, and only the owner sets the operator; a clone
+///         made outside it gains nothing; and an admission signed for one market is worthless on any
+///         other.
 contract AgentOfferFactoryTest is AgentOfferBase {
     address internal other = makeAddr("other-publisher");
     address internal stranger = makeAddr("stranger");
@@ -28,6 +31,7 @@ contract AgentOfferFactoryTest is AgentOfferBase {
     function test_constructor_pinsBaseUsdcAndAdmitsPatchbay() public {
         assertEq(factory.BASE_USDC(), BASE_USDC);
         assertEq(factory.owner(), admin);
+        assertEq(factory.operator(), operator);
         assertEq(address(factory.staking()), address(staking));
         assertEq(factory.feeBps(), FEE_BPS);
         assertTrue(factory.publisherAllowed(publisher));
@@ -35,36 +39,41 @@ contract AgentOfferFactoryTest is AgentOfferBase {
         assertGt(factory.implementation().code.length, 0);
 
         vm.expectEmit();
+        emit AgentOfferFactory.OperatorSet(stranger);
+        vm.expectEmit();
         emit AgentOfferFactory.PublisherAllowed(other, true);
-        new AgentOfferFactory(admin, other, staking, 2_000);
-        new AgentOfferFactory(admin, other, staking, 0);
+        new AgentOfferFactory(admin, stranger, other, staking, 2_000);
+        new AgentOfferFactory(admin, operator, other, staking, 0);
     }
 
     function test_constructor_refusesAnythingButBaseWithItsUsdc() public {
         vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
-        new AgentOfferFactory(admin, address(0), staking, FEE_BPS);
+        new AgentOfferFactory(admin, operator, address(0), staking, FEE_BPS);
 
         vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
-        new AgentOfferFactory(admin, publisher, IRegentRevenueStaking(address(0)), FEE_BPS);
+        new AgentOfferFactory(admin, address(0), publisher, staking, FEE_BPS);
 
         vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
-        new AgentOfferFactory(admin, publisher, IRegentRevenueStaking(stranger), FEE_BPS);
+        new AgentOfferFactory(admin, operator, publisher, IRegentRevenueStaking(address(0)), FEE_BPS);
 
         vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
-        new AgentOfferFactory(admin, publisher, staking, 2_001);
+        new AgentOfferFactory(admin, operator, publisher, IRegentRevenueStaking(stranger), FEE_BPS);
+
+        vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
+        new AgentOfferFactory(admin, operator, publisher, staking, 2_001);
 
         vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableInvalidOwner.selector, address(0)));
-        new AgentOfferFactory(address(0), publisher, staking, FEE_BPS);
+        new AgentOfferFactory(address(0), operator, publisher, staking, FEE_BPS);
 
         // Base Sepolia, and any other chain, is refused.
         vm.chainId(84532);
         vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
-        new AgentOfferFactory(admin, publisher, staking, FEE_BPS);
+        new AgentOfferFactory(admin, operator, publisher, staking, FEE_BPS);
 
         vm.chainId(8453);
         vm.etch(BASE_USDC, "");
         vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
-        new AgentOfferFactory(admin, publisher, staking, FEE_BPS);
+        new AgentOfferFactory(admin, operator, publisher, staking, FEE_BPS);
     }
 
     function test_implementation_cannotBeInitialized() public {
@@ -105,6 +114,112 @@ contract AgentOfferFactoryTest is AgentOfferBase {
         vm.prank(other);
         factory.acceptOwnership();
         assertEq(factory.owner(), other);
+    }
+
+    // ---------------------------------------------------------------- sending to staking
+
+    /// @dev Any caller, any operator: the rule says yes to exactly the operator and the owner, and
+    ///      follows the owner through a two-step handover.
+    function testFuzz_maySendToStaking_onlyTheOperatorAndTheOwner(address caller, address newOperator) public {
+        vm.assume(newOperator != address(0));
+        vm.prank(admin);
+        factory.setOperator(newOperator);
+
+        assertEq(factory.maySendToStaking(caller), caller == newOperator || caller == admin);
+        assertTrue(factory.maySendToStaking(newOperator));
+        assertTrue(factory.maySendToStaking(admin));
+
+        vm.prank(admin);
+        factory.transferOwnership(other);
+        assertTrue(factory.maySendToStaking(admin), "a pending owner is not the owner yet");
+        vm.prank(other);
+        factory.acceptOwnership();
+        assertTrue(factory.maySendToStaking(other));
+        assertEq(factory.maySendToStaking(admin), admin == newOperator);
+    }
+
+    function test_setOperator_isOwnerOnly() public {
+        address[3] memory notOwners = [operator, publisher, stranger];
+        for (uint256 i; i < notOwners.length; ++i) {
+            vm.expectRevert(abi.encodeWithSelector(Ownable.OwnableUnauthorizedAccount.selector, notOwners[i]));
+            vm.prank(notOwners[i]);
+            factory.setOperator(other);
+        }
+        assertEq(factory.operator(), operator);
+
+        vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
+        vm.prank(admin);
+        factory.setOperator(address(0));
+        assertEq(factory.operator(), operator);
+    }
+
+    /// @dev The operator key is replaced: from then on the old one is refused and the new one, and
+    ///      still the owner, push the fee.
+    function test_setOperator_replacesWhoMayPushTheFee() public {
+        address newOperator = makeAddr("new-operator");
+        uint256 id = _patchbayPlacement(market);
+        _buy(market, makeAddr("alice"), id, 0, FLOOR);
+        _buy(market, makeAddr("alice"), id, 1, FLOOR);
+        skip(DURATION);
+        market.settleExpired(id, 0);
+
+        vm.expectEmit(address(factory));
+        emit AgentOfferFactory.OperatorSet(newOperator);
+        vm.prank(admin);
+        factory.setOperator(newOperator);
+        assertEq(factory.operator(), newOperator);
+        assertFalse(factory.maySendToStaking(operator));
+
+        vm.expectRevert(IAgentOfferMarket.NotStakingSender.selector);
+        vm.prank(operator);
+        market.pushRevenue();
+
+        vm.prank(newOperator);
+        assertEq(market.pushRevenue(), FLOOR / 10);
+
+        market.settleExpired(id, 1);
+        vm.prank(admin);
+        assertEq(market.pushRevenue(), FLOOR / 10);
+        assertEq(usdc.balanceOf(address(staking)), 2 * (FLOOR / 10));
+        _assertBooks(market);
+    }
+
+    /// @dev A clone of the public implementation that a stranger initializes answers to the
+    ///      stranger, not to this factory: it is not listed, the factory's operator and owner cannot
+    ///      push its fee, and its initializer is still refused on the factory's real market.
+    function test_aCloneMadeOutsideTheFactoryGainsNothing() public {
+        AgentOfferMarket rogue = AgentOfferMarket(Clones.clone(factory.implementation()));
+        vm.prank(stranger);
+        rogue.initialize(
+            IAgentOfferMarket.Init({
+                usdc: usdc, publisher: publisher, payout: payout, staking: staking, feeBps: FEE_BPS
+            })
+        );
+        assertEq(address(rogue.factory()), stranger);
+        assertEq(address(market.factory()), address(factory));
+        assertEq(factory.marketOf(stranger), address(0));
+
+        uint256 rogueId = _patchbayPlacement(rogue);
+        _buy(rogue, makeAddr("alice"), rogueId, 0, FLOOR);
+        uint256 id = _patchbayPlacement(market);
+        _buy(market, makeAddr("bob"), id, 0, FLOOR);
+        skip(DURATION);
+        rogue.settleExpired(rogueId, 0);
+        market.settleExpired(id, 0);
+
+        address[3] memory callers = [operator, admin, stranger];
+        for (uint256 i; i < callers.length; ++i) {
+            vm.expectRevert();
+            vm.prank(callers[i]);
+            rogue.pushRevenue();
+        }
+        assertEq(rogue.revenueOwed(), FLOOR / 10);
+
+        vm.expectRevert(IAgentOfferMarket.NotStakingSender.selector);
+        vm.prank(stranger);
+        market.pushRevenue();
+        assertEq(market.revenueOwed(), FLOOR / 10);
+        assertEq(usdc.balanceOf(address(staking)), 0);
     }
 
     // ---------------------------------------------------------------- markets
@@ -189,7 +304,7 @@ contract AgentOfferFactoryTest is AgentOfferBase {
     }
 
     function test_aZeroFeeMarketKeepsNothingForStaking() public {
-        AgentOfferFactory free = new AgentOfferFactory(admin, publisher, staking, 0);
+        AgentOfferFactory free = new AgentOfferFactory(admin, operator, publisher, staking, 0);
         vm.prank(publisher);
         AgentOfferMarket freeMarket = AgentOfferMarket(free.createMarket(payout));
         uint256 id = _patchbayPlacement(freeMarket);
@@ -200,6 +315,7 @@ contract AgentOfferFactoryTest is AgentOfferBase {
         assertEq(freeMarket.claimable(payout), FLOOR);
         assertEq(freeMarket.revenueOwed(), 0);
         vm.expectRevert(IAgentOfferMarket.NothingOwed.selector);
+        vm.prank(operator);
         freeMarket.pushRevenue();
     }
 
@@ -209,7 +325,7 @@ contract AgentOfferFactoryTest is AgentOfferBase {
     ///      policy and price: only the market's own address differs, and the admission signed for
     ///      market A is refused by market B. The implementation's cached domain is never used.
     function test_aPermitForMarketAIsRefusedByMarketB() public {
-        AgentOfferFactory second = new AgentOfferFactory(admin, publisher, staking, FEE_BPS);
+        AgentOfferFactory second = new AgentOfferFactory(admin, operator, publisher, staking, FEE_BPS);
         vm.prank(publisher);
         AgentOfferMarket marketB = AgentOfferMarket(second.createMarket(payout));
         assertTrue(address(marketB) != address(market));

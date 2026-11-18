@@ -22,9 +22,10 @@ contract DeployOffersTest is AgentOfferBase {
     }
 
     function test_deploy_wiresFactoryPayoutAndMarketAsTheReadmeSays() public {
-        (factory, earnings, market) = script.deploy(admin, publisher, staking, FEE_BPS);
+        (factory, earnings, market) = script.deploy(admin, operator, publisher, staking, FEE_BPS);
 
         assertEq(factory.owner(), admin);
+        assertEq(factory.operator(), operator);
         assertTrue(factory.publisherAllowed(publisher));
         assertEq(address(factory.staking()), address(staking));
         assertEq(factory.feeBps(), FEE_BPS);
@@ -32,6 +33,8 @@ contract DeployOffersTest is AgentOfferBase {
 
         assertEq(address(market), factory.predictMarket(publisher), "predicted");
         assertEq(factory.marketOf(publisher), address(market));
+        assertEq(address(market.factory()), address(factory));
+        assertEq(address(earnings.factory()), address(factory));
         assertEq(address(earnings.market()), address(market));
         assertEq(address(earnings.staking()), address(staking));
         assertEq(address(earnings.usdc()), BASE_USDC);
@@ -44,7 +47,7 @@ contract DeployOffersTest is AgentOfferBase {
     }
 
     function test_deploy_leavesAMarketThatSellsAndPaysStaking() public {
-        (factory, earnings, market) = script.deploy(admin, publisher, staking, FEE_BPS);
+        (factory, earnings, market) = script.deploy(admin, operator, publisher, staking, FEE_BPS);
         payout = address(earnings);
 
         uint256 placementId = _patchbayPlacement(market);
@@ -52,8 +55,10 @@ contract DeployOffersTest is AgentOfferBase {
         skip(DURATION);
         market.settleExpired(placementId, 0);
 
+        vm.prank(operator);
         assertEq(market.pushRevenue(), FLOOR / 10, "fee");
         assertEq(staking.lastSourceTag(), market.SOURCE_TAG());
+        vm.prank(operator);
         assertEq(earnings.pushEarnings(), FLOOR - FLOOR / 10, "Patchbay's share");
         assertEq(staking.lastSourceTag(), earnings.SOURCE_TAG());
         assertEq(staking.lastSourceRef(), bytes32(uint256(uint160(address(market)))));
@@ -63,6 +68,7 @@ contract DeployOffersTest is AgentOfferBase {
 
     function test_run_readsItsSettingsFromTheEnvironment() public {
         vm.setEnv("OFFERS_ADMIN", vm.toString(admin));
+        vm.setEnv("OFFERS_OPERATOR", vm.toString(operator));
         vm.setEnv("OFFERS_PUBLISHER", vm.toString(publisher));
         vm.setEnv("OFFERS_STAKING", vm.toString(address(staking)));
         vm.setEnv("OFFERS_FEE_BPS", "1500");
@@ -70,6 +76,7 @@ contract DeployOffersTest is AgentOfferBase {
         (factory, earnings, market) = script.run();
 
         assertEq(factory.owner(), admin);
+        assertEq(factory.operator(), operator);
         assertEq(market.publisher(), publisher);
         assertEq(address(market.staking()), address(staking));
         assertEq(market.feeBps(), 1_500);
@@ -79,22 +86,25 @@ contract DeployOffersTest is AgentOfferBase {
     function test_deploy_refusesAnotherChain() public {
         vm.chainId(84532);
         vm.expectRevert(bytes("DeployOffers: Base mainnet (chain 8453) only"));
-        script.deploy(admin, publisher, staking, FEE_BPS);
+        script.deploy(admin, operator, publisher, staking, FEE_BPS);
     }
 
     function test_deploy_refusesAZeroAddress() public {
         vm.expectRevert(bytes("DeployOffers: OFFERS_ADMIN is the zero address"));
-        script.deploy(address(0), publisher, staking, FEE_BPS);
+        script.deploy(address(0), operator, publisher, staking, FEE_BPS);
+
+        vm.expectRevert(bytes("DeployOffers: OFFERS_OPERATOR is the zero address"));
+        script.deploy(admin, address(0), publisher, staking, FEE_BPS);
 
         vm.expectRevert(bytes("DeployOffers: OFFERS_PUBLISHER is the zero address"));
-        script.deploy(admin, address(0), staking, FEE_BPS);
+        script.deploy(admin, operator, address(0), staking, FEE_BPS);
 
         vm.expectRevert(bytes("DeployOffers: OFFERS_STAKING is the zero address"));
-        script.deploy(admin, publisher, IRegentRevenueStaking(address(0)), FEE_BPS);
+        script.deploy(admin, operator, publisher, IRegentRevenueStaking(address(0)), FEE_BPS);
     }
 
     function test_deploy_leavesTheFeeCapToTheFactory() public {
         vm.expectRevert(AgentOfferFactory.InvalidConfiguration.selector);
-        script.deploy(admin, publisher, staking, 2_001);
+        script.deploy(admin, operator, publisher, staking, 2_001);
     }
 }
