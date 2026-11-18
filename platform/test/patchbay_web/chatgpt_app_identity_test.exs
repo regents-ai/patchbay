@@ -78,6 +78,59 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
     assert length(agents(owner)) == 1
   end
 
+  test "a person allows an app that sends a long state, as ChatGPT's portal does", %{conn: conn} do
+    owner = account!()
+    callback = "https://chatgpt.com/connector/oauth/callback"
+    state = String.duplicate("s", 1200)
+
+    client_id =
+      conn
+      |> on_open()
+      |> post("/oauth/register", %{"client_name" => "ChatGPT", "redirect_uris" => [callback]})
+      |> json_response(201)
+      |> Map.fetch!("client_id")
+
+    query =
+      URI.encode_query(%{
+        "client_id" => client_id,
+        "redirect_uri" => callback,
+        "response_type" => "code",
+        "scope" => "patchbay.events.read " <> RegentMCPAgents.identity_scope(),
+        "state" => state,
+        "resource" => PatchbayWeb.SiteEdition.within(:open, &RegentOAuth.resource/0),
+        "code_challenge" =>
+          :crypto.hash(:sha256, String.duplicate("v", 43)) |> Base.url_encode64(padding: false),
+        "code_challenge_method" => "S256"
+      })
+
+    page =
+      build_conn()
+      |> on_open()
+      |> sign_in(owner.id)
+      |> put_req_header("accept", "text/html")
+      |> get("/oauth/authorize?" <> query)
+
+    assert page.status == 200
+    [_, csrf] = Regex.run(~r/name="_csrf_token" value="([^"]+)"/, page.resp_body)
+    [_, key] = Regex.run(~r/name="approval_key" value="([^"]+)"/, page.resp_body)
+
+    allowed =
+      page
+      |> recycle()
+      |> on_open()
+      |> put_req_header("accept", "text/html")
+      |> post("/oauth/authorize", %{
+        "_csrf_token" => csrf,
+        "approval_key" => key,
+        "decision" => "allow"
+      })
+
+    assert allowed.status == 303
+    [location] = get_resp_header(allowed, "location")
+    assert String.starts_with?(location, callback <> "?")
+    assert %{"code" => _, "state" => ^state} = URI.decode_query(URI.parse(location).query)
+  end
+
   # A person signed in through Privy, with the shared account a sign-in makes.
   defp account! do
     owner =
