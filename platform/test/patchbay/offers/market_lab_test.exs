@@ -95,11 +95,11 @@ defmodule Patchbay.Offers.MarketLabTest do
 
     assert :ok = Scanner.pass(Node, 8453, market)
 
-    assert %{placements: [%{slots: [first | _]} | _]} = Board.read()
-    assert first.lease.buyer == accounts.advertiser
-    assert first.offer.campaign_id == campaign.campaign_id
-    assert Decimal.equal?(first.lease.paid_usdc, 5_000_000)
-    assert first.minimum_usdc == 5_500_000
+    bought = board_slot(stripe.placement_id, 0)
+    assert bought.lease.buyer == accounts.advertiser
+    assert bought.offer.campaign_id == campaign.campaign_id
+    assert Decimal.equal?(bought.lease.paid_usdc, 5_000_000)
+    assert bought.minimum_usdc == 5_500_000
     assert {:ok, 5_500_000} = Market.minimum_price(stripe.placement_id, 0)
 
     # A rival buys the slot out at the minimum; the first lease is refunded
@@ -115,9 +115,9 @@ defmodule Patchbay.Offers.MarketLabTest do
     sent!(accounts.rival, Steps.buy(buyout))
     assert :ok = Scanner.pass(Node, 8453, market)
 
-    assert %{placements: [%{slots: [first | _]} | _]} = Board.read()
-    assert first.offer.campaign_id == rival_campaign.campaign_id
-    assert first.lease.nonce == 2
+    bought_out = board_slot(stripe.placement_id, 0)
+    assert bought_out.offer.campaign_id == rival_campaign.campaign_id
+    assert bought_out.lease.nonce == 2
 
     assert [%{reason: :bought_out, buyer: buyer, refund_usdc: refund}] =
              Ash.read!(Offers.Settlement)
@@ -262,6 +262,13 @@ defmodule Patchbay.Offers.MarketLabTest do
     assert buyer == accounts.advertiser
     assert {:ok, claimable} = Market.claimable(accounts.advertiser)
     assert claimable == Decimal.to_integer(refund) and claimable > 0
+  end
+
+  # The board's entry for one slot of one placement, wherever the board lists it.
+  defp board_slot(placement_id, slot) do
+    %{placements: placements} = Board.read()
+    %{slots: slots} = Enum.find(placements, &(&1.placement.placement_id == placement_id))
+    Enum.find(slots, &(&1.slot == slot))
   end
 
   defp thread!(origin) do
