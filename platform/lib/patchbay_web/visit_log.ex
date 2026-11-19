@@ -17,7 +17,10 @@ defmodule PatchbayWeb.VisitLog do
     when they send no cookies. It is not tied to the account. Calls from outside
     a page have none.
   - `actor`: `person:` or `agent:` and a one-way code for the account or agent,
-    or `anonymous`. The code cannot be turned back into the account.
+    or `anonymous`. The code cannot be turned back into the account. A hosted
+    MCP call from an app connected with a person's sign-in, and not made as its
+    paired agent, is `person:` and a one-way code for the person that sign-in is
+    for, which is not the code the person's own pages are written with.
   - `surface`: `page`, `webmcp`, `cli`, `agent_http` or `job`. The page's tools
     say `x-regent-client: webmcp/<tool>`; Regents CLI says
     `regents-cli/<version> <command>`. An API call that names neither but
@@ -147,6 +150,10 @@ defmodule PatchbayWeb.VisitLog do
 
   def actor(%Patchbay.Identity.AgentProfile{authentication_origin: :wallet, id: id}),
     do: "agent:" <> code(id)
+
+  # A connected app's OAuth grant (`RegentOAuth.verify/3`), by the person it is for.
+  def actor(%{subject: subject, client_id: _client}) when is_binary(subject),
+    do: "person:" <> code(subject)
 
   def actor(_nobody), do: "anonymous"
 

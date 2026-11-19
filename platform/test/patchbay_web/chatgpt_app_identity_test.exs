@@ -12,6 +12,11 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
   alias Patchbay.Forum.Report
   alias PatchbayWeb.SignedAgent
 
+  defmodule Lines do
+    @moduledoc "A logger handler that hands every log event to the test that added it."
+    def log(event, %{config: %{test: test}}), do: send(test, {:logged, event})
+  end
+
   setup do
     SignedAgent.stub_siwa()
 
@@ -131,6 +136,47 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
     assert %{"code" => _, "state" => ^state} = URI.decode_query(URI.parse(location).query)
   end
 
+  @tag :capture_log
+  test "a connected app's calls are written as its person's, and a call without a token as anonymous",
+       %{conn: conn} do
+    owner = account!()
+    first = connect!(conn, owner)
+    second = connect!(conn, owner)
+    someone_else = connect!(conn, account!())
+    listen!()
+
+    for app <- [first, second, someone_else], do: call_tool(conn, app.access, "get_identity", %{})
+    conn |> recycle() |> call_tool("get_patchbay_help", %{})
+
+    events = logged()
+    assert [mine, mine_again, theirs] = actors(events, "/chatgpt/mcp:get_identity")
+    assert mine =~ ~r/\Aperson:[0-9a-f]{16}\z/
+    assert mine_again == mine
+    refute theirs == mine
+    assert actors(events, "/chatgpt/mcp:get_patchbay_help") == ["anonymous"]
+  end
+
+  @tag :capture_log
+  test "a request the hosted signer refuses leaves one warning naming why", %{conn: conn} do
+    app = connect!(conn, account!())
+
+    Req.Test.stub(__MODULE__, fn conn ->
+      conn
+      |> Plug.Conn.put_status(422)
+      |> Req.Test.json(%{"error" => %{"code" => "hosted_request_refused"}})
+    end)
+
+    listen!()
+
+    assert %{"isError" => true, "content" => [%{"text" => text}]} =
+             call_tool(conn, app.access, "register_identity", %{})
+
+    assert Jason.decode!(text)["error"]["code"] == "identity_request_refused"
+
+    assert [%{meta: %{error_type: ":identity_request_refused"}}] =
+             for(%{level: :warning} = event <- logged(), do: event)
+  end
+
   # A person signed in through Privy, with the shared account a sign-in makes.
   defp account! do
     owner =
@@ -247,8 +293,14 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
   defp call_tool(conn, bearer, name, arguments) do
     conn
     |> recycle()
-    |> on_open()
     |> put_req_header("authorization", "Bearer " <> bearer)
+    |> call_tool(name, arguments)
+  end
+
+  # A tool call at the ChatGPT address with whatever token `conn` carries.
+  defp call_tool(conn, name, arguments) do
+    conn
+    |> on_open()
     |> put_req_header("content-type", "application/json")
     |> post(
       "/chatgpt/mcp",
@@ -293,6 +345,33 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
     conn
     |> Plug.Conn.merge_resp_headers(answer.resp_headers)
     |> Plug.Conn.send_resp(answer.status, answer.resp_body)
+  end
+
+  # Hands this test every log event from here on, the visit log's :info lines
+  # included (`Lines`).
+  defp listen! do
+    level = Logger.level()
+    Logger.configure(level: :info)
+    :ok = :logger.add_handler(__MODULE__, Lines, %{config: %{test: self()}})
+
+    on_exit(fn ->
+      :logger.remove_handler(__MODULE__)
+      Logger.configure(level: level)
+    end)
+  end
+
+  defp logged do
+    receive do
+      {:logged, event} -> [event | logged()]
+    after
+      0 -> []
+    end
+  end
+
+  # The actor of each visit line for a hosted MCP call named `where`, in order.
+  defp actors(events, where) do
+    for %{meta: %{event: %{name: "tool.call", where: ^where}, actor: actor}} <- events,
+        do: actor
   end
 
   defp put_env(app, key, value) do
