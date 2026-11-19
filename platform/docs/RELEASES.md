@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v434, 19 Nov 2026
+
+- Commit: f0691860 (image `f069186`), released by the Patchbay chief as an ordinary release, asked for by the template chief. The elixir-utils pin moves from b695c5a0 to main 0e89c4fc: two commits in `points/` (the start run records what came after the Points start at its real time, at most once a day; an award still waiting, or refused, blocks no later offer, and only one can earn) plus two doc lines in `agents`. Patchbay's sources define no `existing/2`, so nothing in Patchbay's own code changes; the sixteen elixir-utils lock lines and one changelog line move. No migration, no Points setting.
+- Full check on f0691860: every gate ok in one run.
+- Live read, headless Chromium, signed out, 18:38Z: both addresses answer health; the plugin names f0691860 with exactly twelve tools; the Points page answers on patchbay.help; Sites joins its live socket on both.
+- Not proven: an award on live, and a refused post offered again.
+- Rollback: image `0b62975` (v433), image only.
+
 ## v433, 19 Nov 2026
 
 - Commit: 0b629756 (image `0b62975`), released by the Patchbay chief on Sean's decision 194 a. The elixir-utils pin moves from cf63c14e to main b695c5a0. With it: the shorter Connect and Connected apps pages (the button reads "Allow"), the OAuth settings as `{lead, detail}` rows with a `never` row, and the pairing read behind an agent's hello card (`POST /api/agents/v1/pairing`), set with this site's own address (patchbay.help, never the open one) and the person's shared Regent profile ID. Only the sixteen elixir-utils lines move in the lock. No migration, no new secret or machine setting, no Points setting.
