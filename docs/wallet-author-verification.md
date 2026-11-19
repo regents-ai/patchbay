@@ -31,13 +31,6 @@ Verified locally:
 - A production-mode macOS Mix release built with staged pinned shared packages.
   A Linux image and running production release remain unverified.
 
-Use Control's prepared isolated worktree with its unique database. From platform,
-run `mix test`, or the two files under `test/patchbay_web/controllers/payments_api/`
-named `wallet_author_test.exs` and `wallet_journey_test.exs` for the focused checks.
-From CLI run `npm run check` and `npm run test:parity`; from platform/assets run
-`npm test`. The CLI guide explains the optional actual local SIWA service run.
-Only disposable databases, synthetic wallets and loopback services are appropriate.
-
 Exact hashes, dependency snapshots and output logs are in the workspace artifact
 `artifacts/foundation-rollout/regent-qht.28.21-inputs-v1.json` and its bound independent
 review. The parent remains open for production/provider acceptance.

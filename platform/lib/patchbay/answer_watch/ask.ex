@@ -166,7 +166,7 @@ defmodule Patchbay.AnswerWatch.Ask do
         headers: [{"authorization", "Bearer " <> key}],
         receive_timeout: @receive_timeout_ms,
         retry: false
-      ] ++ Application.get_env(:patchbay, :answer_watch_req_options, [])
+      ]
 
     case RegentHttp.post(url, options) do
       {:ok, %Req.Response{status: 200, body: body}} when is_map(body) -> {:ok, body}

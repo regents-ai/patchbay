@@ -88,8 +88,7 @@ defmodule Patchbay.Forum.EventSubscription do
   end
 
   # Who challenges a callback and posts its webhooks
-  # (`Patchbay.Forum.EventWebhooks`): `Regent.MCPEvents`, and in the tests
-  # `PatchbayWeb.CallbackStandIn`.
+  # (`Patchbay.Forum.EventWebhooks`): `Regent.MCPEvents`.
   @webhooks Application.compile_env!(:patchbay, [__MODULE__, :webhooks])
 
   @doc "The sender of every callback challenge and webhook."

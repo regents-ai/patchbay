@@ -132,7 +132,7 @@ defmodule PatchbayWeb.Telemetry do
   end
 
   # Counted only where the fee queue runs, the machine whose jobs send from
-  # the operator wallet, so nothing is read where no queue runs (tests).
+  # the operator wallet, so nothing is read where no queue runs.
   # Logged and skipped like the job age.
   @doc false
   def operator_wallet_waiting do
@@ -161,7 +161,7 @@ defmodule PatchbayWeb.Telemetry do
   defp not_measured(what, why), do: Logger.warning("#{what} not measured: #{why}")
 
   # Only running queues are measured: a paused queue holds its jobs on purpose,
-  # and its age would only grow. Where no queue runs (tests), nothing is read.
+  # and its age would only grow. Where no queue runs, nothing is read.
   defp measure_oldest_unfinished_jobs do
     case for %{queue: queue, paused: false} <- Oban.check_all_queues(), do: queue do
       [] -> :ok

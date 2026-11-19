@@ -14,7 +14,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const platform = join(here, "..", "..");
-const { chromium } = createRequire(join(platform, "assets", "package.json"))("@playwright/test");
+const { chromium } = createRequire(join(platform, "assets", "package.json"))("playwright");
 
 const pictures = [
   { label: "patchbay.help", file: "og-image.png" },

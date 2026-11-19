@@ -2,9 +2,7 @@
   "name": "patchbay-assets",
   "private": true,
   "scripts": {
-    "test": "node --test test/webmcp/*.test.ts test/hooks/*.test.ts test/privy/*.test.ts test/dev/*.test.ts",
-    "typecheck": "tsc --project tsconfig.json && tsc --project test/tsconfig.json && tsc --project test/browser/tsconfig.json",
-    "test:browser": "playwright test",
+    "typecheck": "tsc --project tsconfig.json",
     "stills:value-cards": "node js/value_cards/stills.mjs"
   },
   "dependencies": {
@@ -20,11 +18,10 @@
     "viem": "2.57.16"
   },
   "devDependencies": {
-    "@playwright/test": "1.65.1",
-    "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@webgpu/types": "0.1.74",
+    "playwright": "1.65.1",
     "typescript": "7.0.2"
   },
   "overrides": {

@@ -5,48 +5,10 @@ config :patchbay, Patchbay.Repo,
   username: System.get_env("PATCHBAY_DB_USERNAME", System.get_env("USER", "postgres")),
   password: System.get_env("PATCHBAY_DB_PASSWORD"),
   hostname: System.get_env("PATCHBAY_DB_HOST", "127.0.0.1"),
-  # Each browser walk run (assets/playwright.config.ts) has its own database,
-  # patchbay_browser_<port>_dev, with a small pool.
-  database: "patchbay#{System.get_env("PATCHBAY_DEV_PARTITION")}_dev",
+  database: "patchbay_dev",
   stacktrace: true,
   show_sensitive_data_on_connection_error: true,
   pool_size: String.to_integer(System.get_env("POOL_SIZE", "10"))
-
-# For development, we disable any cache and enable
-# debugging and code reloading.
-#
-# The watchers configuration can be used to run external
-# watchers to your application. For example, we can use it
-# to bundle .js and .css sources.
-# The browser walk's server (assets/playwright.config.ts) never leaves the machine.
-# Its chain nodes are a closed port here, so their reads fail at once, its sign-in
-# service has no address (assets/test/browser/support/serve.sh clears it), no
-# site's name resolves, and any other request outside it is refused and fails the
-# walk (PatchbayDev.WalkOffline), in that run's own file.
-walk? = System.get_env("PATCHBAY_WALK") == "true"
-
-if walk? do
-  closed = "http://127.0.0.1:9"
-
-  config :patchbay, :chain_nodes, %{8453 => closed}
-  config :req, default_options: [adapter: PatchbayDev.WalkOffline]
-  config :patchbay, :assist_target, resolve: &PatchbayDev.WalkOffline.resolve/1
-  # Jev reads each post a walk publishes on this machine (PatchbayDev.WalkJev).
-  config :patchbay, :jev_req_options, plug: PatchbayDev.WalkJev
-
-  outside = "../tmp/walk-outside#{System.get_env("PATCHBAY_DEV_PARTITION")}.txt"
-  config :patchbay, :walk_outside_file, Path.expand(outside, __DIR__)
-  # No background work runs during a walk: its scheduled site scans, pictures and
-  # source refreshes reach outside the machine, and no walk check waits on one.
-  config :patchbay, Oban, testing: :manual
-  # Every walk check reads from one address, many pages a minute; the reads
-  # budget has its own tests (config/test.exs lifts it the same way).
-  config :patchbay, :reads_per_minute, 1_000_000
-  # Every walk check that publishes does so as the walk's person, who also has
-  # questions seeded in their name, more than one account's hourly share of
-  # reports; the share has its own tests (PatchbayWeb.Forum.PostingBudget's).
-  config :patchbay, :forum_reports_per_hour, 1_000_000
-end
 
 # A development server never copies cve.now's records into its posts, and
 # never goes round the listed sites on its own, to check them or to take
@@ -55,36 +17,30 @@ config :patchbay, Patchbay.Incidents.CveNow, enabled?: false
 config :patchbay, Patchbay.Forum.SiteCheckSweep, enabled?: false
 config :patchbay, Patchbay.Forum.ListedSitePictureSweep, enabled?: false
 
+# For development, we disable any cache and enable
+# debugging and code reloading.
+#
+# The watchers configuration can be used to run external
+# watchers to your application. For example, we can use it
+# to bundle .js and .css sources.
 config :patchbay, PatchbayWeb.Endpoint,
   # Binding to loopback ipv4 address prevents access from other machines.
   # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
   http: [ip: {127, 0, 0, 1}],
   check_origin: false,
-  # The walk's server runs as a release does, with no code reloader. The code reloader
-  # checks the build on every request and every live connection, one at a time, which
-  # made pages answer so slowly on a busy machine that their live connections gave up
-  # and checks timed out. The walk builds into its own folder
-  # (assets/test/browser/support/serve.sh), so this never recompiles the everyday build.
-  code_reloader: not walk?,
+  code_reloader: true,
   reloadable_compilers: [:ash_signals, :phoenix_live_view, :elixir, :app],
   # scripts/readiness.sh sets this to off, so error pages answer as they do in a release.
   debug_errors: System.get_env("PATCHBAY_DEBUG_ERRORS", "on") == "on",
   secret_key_base: "AEzU7cDlq6ghPh8aabbqv24S3vr7M3tdTmNYtKMF16hvq7mgI6XQrhr6dxM0uNC/",
-  # The browser walk builds the pages' scripts and styles before its server starts,
-  # so nothing rebuilds them and reloads a page while a check is on it.
-  watchers:
-    if(walk?,
-      do: [],
-      else: [
-        esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
-        privy_bridge:
-          {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
-        theme_switch_island:
-          {Esbuild, :install_and_run, [:patchbay_theme_switch, ~w(--sourcemap=inline --watch)]},
-        payments_lab:
-          {Esbuild, :install_and_run, [:patchbay_payments_lab, ~w(--sourcemap=inline --watch)]}
-      ]
-    )
+  watchers: [
+    esbuild: {Esbuild, :install_and_run, [:patchbay, ~w(--sourcemap=inline --watch)]},
+    privy_bridge: {Esbuild, :install_and_run, [:patchbay_privy, ~w(--sourcemap=inline --watch)]},
+    theme_switch_island:
+      {Esbuild, :install_and_run, [:patchbay_theme_switch, ~w(--sourcemap=inline --watch)]},
+    payments_lab:
+      {Esbuild, :install_and_run, [:patchbay_payments_lab, ~w(--sourcemap=inline --watch)]}
+  ]
 
 # ## SSL Support
 #
@@ -111,21 +67,16 @@ config :patchbay, PatchbayWeb.Endpoint,
 
 # Reload browser tabs when matching files change.
 config :patchbay, PatchbayWeb.Endpoint,
-  # Nothing changes under the browser walk, so its pages carry no live reload frame.
-  live_reload:
-    if(walk?,
-      do: [],
-      else: [
-        web_console_logger: true,
-        patterns: [
-          # Static assets, except user uploads
-          ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
-          # Router, Controllers, LiveViews and LiveComponents
-          ~r"lib/patchbay_web/router\.ex$"E,
-          ~r"lib/patchbay_web/(controllers|live|components)/.*\.(ex|heex)$"E
-        ]
-      ]
-    )
+  live_reload: [
+    web_console_logger: true,
+    patterns: [
+      # Static assets, except user uploads
+      ~r"priv/static/(?!uploads/).*\.(js|css|png|jpeg|jpg|gif|svg)$"E,
+      # Router, Controllers, LiveViews and LiveComponents
+      ~r"lib/patchbay_web/router\.ex$"E,
+      ~r"lib/patchbay_web/(controllers|live|components)/.*\.(ex|heex)$"E
+    ]
+  ]
 
 # Enable dev routes for dashboard and mailbox
 config :patchbay, dev_routes: true

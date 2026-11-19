@@ -136,10 +136,5 @@ defmodule Patchbay.Techtree do
   defp decision("accepted"), do: :accepted
   defp decision("rejected"), do: :rejected
 
-  defp req_options do
-    Keyword.merge(
-      [retry: false, receive_timeout: 2_000, connect_options: [timeout: 1_000]],
-      Application.get_env(:patchbay, :techtree_req_options, [])
-    )
-  end
+  defp req_options, do: [retry: false, receive_timeout: 2_000, connect_options: [timeout: 1_000]]
 end

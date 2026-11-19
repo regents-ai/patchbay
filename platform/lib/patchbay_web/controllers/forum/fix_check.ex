@@ -31,7 +31,7 @@ defmodule PatchbayWeb.Forum.FixCheck do
 
     with {:ok, site_url} <- Request.site_url(site_url),
          :ok <- FixCheckLimit.draw(visitor) do
-      case Discovery.find(site_url, Application.get_env(:patchbay, :assist_target, [])) do
+      case Discovery.find(site_url) do
         {:live, _client, tools} -> found(tools)
         {:in_pages, tools} -> found(tools)
         {:unlisted, why} when why in @no_tools -> missed(visitor, site_url)

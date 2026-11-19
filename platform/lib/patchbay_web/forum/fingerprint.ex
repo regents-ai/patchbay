@@ -29,8 +29,6 @@ defmodule PatchbayWeb.Forum.Fingerprint do
   # The two readable bands, one per theme, the same width apart from where they
   # start: below the light one everything is darker than the paper it sits on,
   # above the dark one everything is paler than the panel it sits on.
-  # `test/patchbay_web/forum/fingerprint_test.exs` checks every colour either
-  # band can produce rather than trusting the arithmetic here.
   @lightness_floor 22
   @dark_lightness_floor 60
   @lightness_span 13

@@ -3,8 +3,7 @@ defmodule PatchbayDev.OffersLab do
   The agent offers lab: Patchbay's offer market on a lab chain on this
   machine, never anywhere else. `scripts/offers-lab.sh start` runs anvil as
   Base (chain 8453) and calls `start!/2`, and its `place` and `fund` call
-  `place_site!/2` and `fund_wallet!/1`; the end-to-end test calls `deploy/1`
-  and the rest directly.
+  `place_site!/2` and `fund_wallet!/1`.
 
   The factory refuses any chain but Base with Circle's USDC at its address, so
   the lab places a stand-in USDC (the contracts' `FreezableUSDC`, anyone may
@@ -36,12 +35,6 @@ defmodule PatchbayDev.OffersLab do
   @publisher_key "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"
   @fee_bps 1_000
   @dollar 1_000_000
-
-  @doc "Anvil's accounts the lab uses, by role."
-  def accounts, do: @accounts
-
-  @doc "The publisher's key: anvil's account 1, Foundry's published test key."
-  def publisher_key, do: @publisher_key
 
   @doc """
   `scripts/offers-lab.sh start`: deploys a fresh market on the lab chain at
@@ -173,13 +166,6 @@ defmodule PatchbayDev.OffersLab do
   def send(rpc_url, from, to, data) do
     lab!(rpc_url)
     rpc!(rpc_url, "eth_sendTransactionSync", [%{from: from, to: to, data: data}])
-  end
-
-  @doc "Moves the lab chain's clock on by `seconds` and makes a block."
-  def wait!(rpc_url, seconds) do
-    lab!(rpc_url)
-    rpc!(rpc_url, "evm_increaseTime", [seconds])
-    rpc!(rpc_url, "evm_mine", [])
   end
 
   @doc "One JSON-RPC request to the lab chain; `{:ok, result}` or `{:error, error}`."

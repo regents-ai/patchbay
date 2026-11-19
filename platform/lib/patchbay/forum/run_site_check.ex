@@ -14,12 +14,11 @@ defmodule Patchbay.Forum.RunSiteCheck do
   @impl true
   def update(changeset, _opts, _context) do
     check = changeset.data
-    opts = Application.get_env(:patchbay, :assist_target, [])
 
-    {page_url, whole?, found} = SiteScan.findings(check.domain, opts)
+    {page_url, whole?, found} = SiteScan.findings(check.domain, [])
 
     findings =
-      Map.put(found, "directory", SiteScan.directory_findings(check.domain, check.findings, opts))
+      Map.put(found, "directory", SiteScan.directory_findings(check.domain, check.findings, []))
 
     # Patchbay's own job: it answers to nobody's request.
     with {:ok, check} <-

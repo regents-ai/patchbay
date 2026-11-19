@@ -1,9 +1,9 @@
 defmodule Patchbay.Offers.Client do
   @moduledoc """
   The chain the market is on, as Patchbay reads it, always at `latest`: the
-  site's own node (`Patchbay.Offers.Node`), a stand-in the test describes in
-  tests. Every call answers `{:error, :unavailable}` when the
-  node does not answer, which is the provider's weather, not a fault.
+  site's own node (`Patchbay.Offers.Node`). Every call answers
+  `{:error, :unavailable}` when the node does not answer, which is the
+  provider's weather, not a fault.
   """
 
   @type head :: %{number: non_neg_integer(), hash: String.t()}

@@ -12,7 +12,7 @@ defmodule Mix.Tasks.Patchbay.SeedFixes do
   kept once by its request key, so running the task again posts nothing new.
   A dated update whose words are still empty is left out until it is filled in.
 
-  Local development and test databases only.
+  Local development databases only.
   """
 
   use Mix.Task
@@ -40,12 +40,12 @@ defmodule Mix.Tasks.Patchbay.SeedFixes do
 
   @doc """
   Posts every seed file and says what became of each, by the file's name.
-  Only on a local development or test database.
+  Only on a local development database.
   """
   @spec post_all() :: [{String.t(), term()}]
   def post_all do
-    unless @env in [:dev, :test], do: raise("seeding is for local databases only")
-    Patchbay.LocalDatabaseFixture.validate_target!(@env, Patchbay.Repo.config())
+    unless @env == :dev, do: raise("seeding is for local databases only")
+    Patchbay.LocalDatabaseFixture.validate_target!(Patchbay.Repo.config())
 
     {actor, session_id} = agent!()
 

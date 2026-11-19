@@ -370,7 +370,7 @@ config :patchbay, :name_first, :ens
 
 # The build /capabilities.json and the hosted MCP server's serverInfo.version
 # name. A deployed image sets its commit and image (config/runtime.exs); a
-# machine built from no commit, a laptop or the tests, is "local".
+# machine built from no commit, such as a laptop, is "local".
 config :patchbay, :build, %{commit: "local", release: nil}
 
 # Production marks the session cookie HTTPS-only; local runs serve plain HTTP.

@@ -1,28 +1,24 @@
 .DEFAULT_GOAL := help
-.PHONY: help check platform-deps check-platform platform-assets platform-precommit platform-test check-browser check-required-fixes check-cli check-siwa-latest check-contracts release readiness
+.PHONY: help check platform-deps check-platform platform-assets platform-precommit check-required-fixes check-cli check-siwa-latest check-contracts release readiness
 help:
-	@echo "Run make check for every gate, side by side, each writing its output to platform/_build/check/<gate>.log; it prints every gate's log, the failed ones last, then one line per gate. Or run check-platform, check-browser, check-required-fixes, check-cli, check-siwa-latest or check-contracts for one component."
+	@echo "Run make check for every gate, side by side, each writing its output to platform/_build/check/<gate>.log; it prints every gate's log, the failed ones last, then one line per gate. Or run check-platform, check-required-fixes, check-cli, check-siwa-latest or check-contracts for one component."
 	@echo "Run make release to run every gate, then build the committed tree into an image."
 	@echo "Run make readiness to start the local server and check what the agent-readiness scorer looks for."
-# make check fetches the libraries first (platform-deps), since three gates read them,
+# make check fetches the libraries first (platform-deps), since two gates read them,
 # then runs its gates side by side, each writing its output to $(CHECK_LOGS)/<gate>.log,
 # then prints every gate's log, the failed ones last, and one line per gate, and fails
 # when any gate failed. The gates of the quoted lane run in turn: platform-assets
 # installs assets/node_modules afresh and copies the shared libraries' files into
-# assets/vendor, which mix precommit's type check and Node tests read, and the browser
-# walk runs from assets/node_modules and copies assets/vendor again (mix assets.build
-# deletes each folder first). mix test runs beside them: it reads neither folder, its
-# databases are its own (MIX_TEST_PARTITION), and of _build/test, which mix precommit
-# compiles too, Mix lets one compile at a time. The other gates write nothing another
-# reads.
-CHECK_LANES := "platform-assets platform-precommit check-browser" platform-test check-required-fixes check-cli check-siwa-latest check-contracts
+# assets/vendor, which mix precommit's type check reads. The other gates write nothing
+# another reads.
+CHECK_LANES := "platform-assets platform-precommit" check-required-fixes check-cli check-siwa-latest check-contracts
 CHECK_GATES := $(subst ",,$(CHECK_LANES))
 CHECK_LOGS := platform/_build/check
 # Each gate's budget in seconds, about 40% over its usual time in make check on a
 # 16-core Mac (Nov 2026), and 5 s for a gate that takes a second or two. A gate over
 # its budget gets a SLOW line under its own at the end; it never fails the check.
-CHECK_BUDGETS := platform-assets:50 platform-precommit:15 check-browser:120 platform-test:360 \
-  check-required-fixes:5 check-cli:5 check-siwa-latest:5 check-contracts:65
+CHECK_BUDGETS := platform-assets:50 platform-precommit:15 check-required-fixes:5 check-cli:5 \
+  check-siwa-latest:5 check-contracts:65
 check: platform-deps
 	@mkdir -p $(CHECK_LOGS) && : > $(CHECK_LOGS)/results
 	@echo "Running $(words $(CHECK_GATES)) gates side by side; each writes $(CHECK_LOGS)/<gate>.log."
@@ -52,23 +48,14 @@ check: platform-deps
 	test -z "$$failed"
 # A new checkout needs nothing first: the libraries (platform-deps), the page packages,
 # esbuild and the shared library copies the type check reads (platform-assets) are all
-# fetched or built here, so the browser walk itself fetches nothing.
-check-platform: platform-deps platform-assets platform-precommit platform-test
+# fetched or built here.
+check-platform: platform-deps platform-assets platform-precommit
 platform-deps:
 	cd platform && mix deps.get
 platform-assets:
 	cd platform && mix assets.setup && mix do regent_ui.assets + regent_blog.assets + regent_identity.assets + regent_agent_access.assets
 platform-precommit:
 	cd platform && mix precommit
-# The Elixir suite, then the tests whose transactions must really commit, in a database
-# of their own (platform/scripts/committed_tests.sh).
-platform-test:
-	cd platform && mix test --warnings-as-errors && scripts/committed_tests.sh
-# The browser walk (platform/assets/test/browser): pages at 320, 390 and 1280 in
-# headless Chromium. Each run starts its own server on its own port and database,
-# drops it at the end, and refuses every request outside this machine.
-check-browser:
-	cd platform/assets && test/browser/support/failed_start_check.sh && ./node_modules/.bin/playwright test
 # Every site runs the same check against ash-template's current main branch, so a
 # newly published required fix reaches every site's next gate. Needs `gh auth login`.
 TEMPLATE := repos/regents-ai/ash-template

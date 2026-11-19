@@ -78,9 +78,8 @@ defmodule Patchbay.SharedReading do
     # How the bench works, for a visit with filters the bench's rows and each
     # of the five tests' checks, what every pair's page and the sitemap share,
     # and one for each agent and wallet pair on the roster. That is nine and
-    # 120 pairs, 129 keys, for the 12 agents by 10 wallets
-    # `Patchbay.WalletBench.ScaleTest` seeds as production's size and beyond;
-    # 400 leaves room for a roster three times that. The checks are the large
+    # 120 pairs, 129 keys, for 12 agents by 10 wallets, production's size and
+    # beyond; 400 leaves room for a roster three times that. The checks are the large
     # reading: 8 MB at 2,000 finished attempts (5,000 runs and 33,000 checks),
     # so the size limit leaves room to grow too.
     wallet_bench: %{

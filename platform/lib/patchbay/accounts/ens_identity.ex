@@ -27,8 +27,7 @@ defmodule Patchbay.Accounts.EnsIdentity do
 
   alias Patchbay.Accounts.EnsIdentity.LookUp
 
-  # Who reads a wallet's verified ENS name: `AgentEns.PrimaryName`; tests use
-  # `PatchbayWeb.EnsStandIn`.
+  # Who reads a wallet's verified ENS name: `AgentEns.PrimaryName`.
   @primary_name Application.compile_env!(:patchbay, [__MODULE__, :primary_name])
 
   postgres do

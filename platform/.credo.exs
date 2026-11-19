@@ -3,7 +3,7 @@
     %{
       name: "default",
       files: %{
-        included: ["mix.exs", "config/", "dev/", "lib/", "test/"],
+        included: ["mix.exs", "config/", "dev/", "lib/"],
         excluded: [
           # Build artifacts are generated and are not application source.
           ~r"/_build/",
@@ -116,15 +116,7 @@
           {ExSlop.Check.Refactor.ReduceMapPut, []},
           {ExSlop.Check.Refactor.RedundantBooleanIf, []},
           {ExSlop.Check.Refactor.FlatMapFilter, []},
-          {ExSlop.Check.Refactor.LengthComparison,
-           [
-             files: %{
-               excluded: [
-                 # Exact-size assertions are clearer test failures than counting helpers.
-                 "test/**/*.exs"
-               ]
-             }
-           ]},
+          {ExSlop.Check.Refactor.LengthComparison, []},
           {ExSlop.Check.Readability.NarratorDoc, []},
           {ExSlop.Check.Readability.BoilerplateDocParams, []},
           {ExSlop.Check.Readability.NarratorComment, []},

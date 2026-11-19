@@ -178,7 +178,7 @@ defmodule Patchbay.Assist.Work do
   # What a run carries between steps: how the site's tools are reached, the
   # tools, the ones tried so far, and how much of the run's limits is left.
   defp discover(run, budget) do
-    case Discovery.find(run.site_url, target_options()) do
+    case Discovery.find(run.site_url) do
       {:live, client, tools} ->
         run
         |> note("The site answers as an MCP server and lists #{length(tools)} tools.")
@@ -238,7 +238,7 @@ defmodule Patchbay.Assist.Work do
   end
 
   defp with_arguments(run, tool, ctx) do
-    case Arguments.for_tool(run, tool, model_options()) do
+    case Arguments.for_tool(run, tool) do
       {:ok, arguments, source} ->
         run
         |> note(arguments_note(tool.name, source))
@@ -408,7 +408,4 @@ defmodule Patchbay.Assist.Work do
   defp why(:timeout), do: "it did not answer in time"
   defp why(:answer_too_long), do: "its answer was longer than Patchbay reads"
   defp why(_other), do: "it did not answer"
-
-  defp target_options, do: Application.get_env(:patchbay, :assist_target, [])
-  defp model_options, do: Application.get_env(:patchbay, :assist_model_options, [])
 end

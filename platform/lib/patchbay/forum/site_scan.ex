@@ -339,7 +339,7 @@ defmodule Patchbay.Forum.SiteScan do
         headers: [{"accept", "application/json"}, {"user-agent", "Patchbay (patchbay.help)"}],
         receive_timeout: @search_timeout_ms,
         retry: false
-      ] ++ Application.get_env(:patchbay, :site_scan_req_options, [])
+      ]
 
     case Req.get(options) do
       {:ok, %Req.Response{status: 200, body: %{} = body}} -> {:ok, body}

@@ -86,7 +86,7 @@ defmodule Patchbay.Forum.Jev do
         ],
         receive_timeout: Keyword.get(opts, :receive_timeout, @receive_timeout_ms),
         retry: false
-      ] ++ Application.get_env(:patchbay, :jev_req_options, [])
+      ]
 
     # The request carries the key, so what went wrong is reduced to a status
     # or a reason before anything is returned or logged.

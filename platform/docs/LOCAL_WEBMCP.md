@@ -22,8 +22,7 @@ documents a flag that needs no origin-trial token:
 
 A headless Chromium started by Playwright takes the same switch as
 `--enable-features=WebMCP` (from Chromium 159; earlier builds named it
-`WebMCPTesting`); the browser walk's WebMCP step
-(`assets/test/browser/webmcp.spec.ts`) starts its Chromium that way.
+`WebMCPTesting`).
 
 On https://patchbay.help the origin-trial token does the same for visitors.
 It is a public token, tied to that one host, and it expires on 30 March

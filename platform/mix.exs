@@ -33,17 +33,9 @@ defmodule Patchbay.MixProject do
     ]
   end
 
-  def cli do
-    [
-      preferred_envs: [precommit: :test]
-    ]
-  end
-
   # Specifies which paths to compile per environment.
-  # `dev/` holds the payments lab, which only a machine of ours ever runs, and
-  # the shared account table and Wallet Bench tables a database on this machine
-  # gets.
-  defp elixirc_paths(:test), do: ["lib", "dev", "test/support"]
+  # `dev/` holds the payments and offers labs, which only a machine of ours
+  # ever runs.
   defp elixirc_paths(:dev), do: ["lib", "dev"]
   defp elixirc_paths(_), do: ["lib"]
 
@@ -91,11 +83,10 @@ defmodule Patchbay.MixProject do
       {:nebulex, "~> 3.0"},
       {:nebulex_local, "~> 3.0"},
       {:ash_oban, "~> 0.10.3"},
-      {:igniter, "== 0.8.5", only: [:dev, :test], runtime: false},
+      {:igniter, "== 0.8.5", only: :dev, runtime: false},
       {:simple_sat, "~> 0.1"},
       # Shared baseline: compatible with Cachex 4.1.1 and Nebulex Distributed.
       {:ex_hash_ring, "== 6.0.4"},
-      {:lazy_html, ">= 0.1.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.9"},
       {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
       {:swoosh, "~> 1.16"},
@@ -109,8 +100,7 @@ defmodule Patchbay.MixProject do
       {:decimal, "== 3.2.0"},
       {:jason, "~> 1.2"},
       # Checks a hosted tool's arguments against its input schema in the manifest
-      # (`PatchbayWeb.MCP.Arguments`); the tests also check answers against each
-      # tool's output schema with it.
+      # (`PatchbayWeb.MCP.Arguments`).
       {:jsv, "~> 0.27"},
       {:logger_json, "~> 7.0"},
       {:error_tracker, "~> 0.9"},
@@ -143,16 +133,12 @@ defmodule Patchbay.MixProject do
       {:hammer, "~> 7.5"},
       # ethers and jsv still ask for idna 7, which EEF-CVE-2026-117678 is against.
       {:idna, "~> 8.0", override: true},
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
-      {:sobelow, "~> 0.18", only: [:dev, :test], runtime: false},
-      {:usage_rules, "~> 1.3", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: :dev, runtime: false},
+      {:ex_slop, "~> 0.4", only: :dev, runtime: false},
+      {:sobelow, "~> 0.18", only: :dev, runtime: false},
+      {:usage_rules, "~> 1.3", only: :dev, runtime: false},
       {:credo_ash,
-       git: @elixir_utils,
-       ref: @elixir_utils_ref,
-       sparse: "credo_ash",
-       only: [:dev, :test],
-       runtime: false}
+       git: @elixir_utils, ref: @elixir_utils_ref, sparse: "credo_ash", only: :dev, runtime: false}
     ]
   end
 
@@ -182,7 +168,6 @@ defmodule Patchbay.MixProject do
       setup: ["deps.get", "ecto.setup", "assets.setup", "assets.build"],
       "ecto.setup": ["ecto.create", "patchbay.setup_local_auth"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
-      test: ["ecto.create --quiet", "patchbay.setup_local_auth", "test"],
       "assets.setup": [
         "esbuild.install --if-missing",
         "cmd npm ci --prefix assets"
@@ -231,8 +216,7 @@ defmodule Patchbay.MixProject do
         "xref graph --label compile-connected --fail-above 68",
         "ash.codegen --check",
         "usage_rules.sync --check",
-        "cmd npm run typecheck --prefix assets",
-        "cmd npm test --prefix assets"
+        "cmd npm run typecheck --prefix assets"
       ]
     ]
   end

@@ -82,12 +82,8 @@ config :regent_mcp_agents, :config,
   ]
 
 # Explicit opt-in; SIWA owns challenge/receipt/replay state. No product receipt secret.
-# Tests answer the sign-in service themselves (config/test.exs), so a shell's
-# address never reaches them.
-if config_env() != :test do
-  config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
-  config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]
-end
+config :patchbay, :wallet_author, broker_url: System.get_env("PATCHBAY_SIWA_URL")
+config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]
 
 # Before it gives an agent a hello card, the sign-in service asks whether the
 # agent is paired here at the first address it lists for audience patchbay,
@@ -130,8 +126,8 @@ config :patchbay, Oban, prefix: database_schema
 config :error_tracker, prefix: database_schema
 
 # The motion lab at /animations (PatchbayWeb.Showcase). Production must choose
-# "public" or "off", and any other value stops the boot. Development and tests
-# are "public" unless told otherwise.
+# "public" or "off", and any other value stops the boot. Development is
+# "public" unless told otherwise.
 showcase =
   case {config_env(), System.get_env("PATCHBAY_SHOWCASE")} do
     {:prod, "public"} -> :public
@@ -237,44 +233,37 @@ config :regent_payments, RegentPayments.Facilitator,
 # call per reading. Nothing else needs it: a machine started without it serves
 # everything but the balance reading, which answers that it is not set up
 # here. The address may carry the provider's own key, so it is kept a secret.
-# Tests never read a chain node from the shell: their requests stay on this
-# machine (PatchbayTest.Offline).
-if config_env() != :test do
-  config :regent_payments, base_rpc_url: System.get_env("BASE_RPC_URL")
+config :regent_payments, base_rpc_url: System.get_env("BASE_RPC_URL")
 
-  # Regent Points reads NFTs through the same Base node when it is set;
-  # otherwise through the public address in config/config.exs.
-  node_overrides =
-    for {chain_id, setting} <- [{8453, "BASE_RPC_URL"}],
-        node_url = System.get_env(setting),
-        into: %{} do
-      case URI.new(node_url) do
-        {:ok, %URI{scheme: scheme, host: host}}
-        when scheme in ["http", "https"] and host not in [nil, ""] ->
-          {chain_id, node_url}
-
-        _invalid ->
-          raise "#{setting} must be an http or https address"
-      end
-    end
-
-  config :patchbay,
-         :chain_nodes,
-         Map.merge(Application.fetch_env!(:patchbay, :chain_nodes), node_overrides)
-end
-
-# Each sign-in reads the wallet's ENS name and picture from Ethereum mainnet
-# while this endpoint is set (Patchbay.Accounts.EnsIdentity). Tests never read
-# it.
-if config_env() != :test do
-  if ethereum_read_rpc_url = System.get_env("ETHEREUM_READ_RPC_URL") do
-    case URI.new(ethereum_read_rpc_url) do
-      {:ok, %URI{scheme: "https", host: host}} when host not in [nil, ""] ->
-        config :patchbay, :ethereum_read_rpc_url, ethereum_read_rpc_url
+# Regent Points reads NFTs through the same Base node when it is set;
+# otherwise through the public address in config/config.exs.
+node_overrides =
+  for {chain_id, setting} <- [{8453, "BASE_RPC_URL"}],
+      node_url = System.get_env(setting),
+      into: %{} do
+    case URI.new(node_url) do
+      {:ok, %URI{scheme: scheme, host: host}}
+      when scheme in ["http", "https"] and host not in [nil, ""] ->
+        {chain_id, node_url}
 
       _invalid ->
-        raise "ETHEREUM_READ_RPC_URL must be an https address"
+        raise "#{setting} must be an http or https address"
     end
+  end
+
+config :patchbay,
+       :chain_nodes,
+       Map.merge(Application.fetch_env!(:patchbay, :chain_nodes), node_overrides)
+
+# Each sign-in reads the wallet's ENS name and picture from Ethereum mainnet
+# while this endpoint is set (Patchbay.Accounts.EnsIdentity).
+if ethereum_read_rpc_url = System.get_env("ETHEREUM_READ_RPC_URL") do
+  case URI.new(ethereum_read_rpc_url) do
+    {:ok, %URI{scheme: "https", host: host}} when host not in [nil, ""] ->
+      config :patchbay, :ethereum_read_rpc_url, ethereum_read_rpc_url
+
+    _invalid ->
+      raise "ETHEREUM_READ_RPC_URL must be an https address"
   end
 end
 
@@ -295,7 +284,7 @@ end
 config :patchbay, :escrow,
   contract_address: System.get_env("ESCROW_CONTRACT_ADDRESS"),
   operator_private_key: System.get_env("OPERATOR_PRIVATE_KEY"),
-  rpc_url: if(config_env() != :test, do: System.get_env("BASE_RPC_URL"))
+  rpc_url: System.get_env("BASE_RPC_URL")
 
 # Fees of the paid assists that ran before they ended. STAKING_CONTRACT_ADDRESS
 # is the REGENT revenue staking contract a fee still waiting is forwarded to,
@@ -304,8 +293,8 @@ config :patchbay, :escrow,
 # operator wallet for a person to forward.
 config :patchbay, :assist, staking_contract_address: System.get_env("STAKING_CONTRACT_ADDRESS")
 
-# Agent offers (`Patchbay.Offers`), in production and in development; tests
-# switch them on themselves. With none of these set the feature stays off.
+# Agent offers (`Patchbay.Offers`), in production and in development. With
+# none of these set the feature stays off.
 # PATCHBAY_OFFERS_MARKET turns it on and adds the market's five-minute read to
 # the Oban cron (`Patchbay.Offers.Watch`); PATCHBAY_OFFERS_FROM_BLOCK is the
 # block the market was made in, required with the market so a read never starts
@@ -315,43 +304,41 @@ config :patchbay, :assist, staking_contract_address: System.get_env("STAKING_CON
 # market through its Base node (BASE_RPC_URL, above). In development the market
 # is a lab chain on this machine (`scripts/offers-lab.sh`), whose node
 # PATCHBAY_OFFERS_RPC_URL names: the site and the lab read through it.
-if config_env() != :test do
-  if market = System.get_env("PATCHBAY_OFFERS_MARKET") do
-    market = String.downcase(String.trim(market))
+if market = System.get_env("PATCHBAY_OFFERS_MARKET") do
+  market = String.downcase(String.trim(market))
 
-    Regex.match?(~r/\A0x[0-9a-f]{40}\z/, market) or
-      raise "PATCHBAY_OFFERS_MARKET must be an address"
+  Regex.match?(~r/\A0x[0-9a-f]{40}\z/, market) or
+    raise "PATCHBAY_OFFERS_MARKET must be an address"
 
-    from_block = String.trim(System.fetch_env!("PATCHBAY_OFFERS_FROM_BLOCK"))
+  from_block = String.trim(System.fetch_env!("PATCHBAY_OFFERS_FROM_BLOCK"))
 
-    Regex.match?(~r/\A[0-9]+\z/, from_block) or
-      raise "PATCHBAY_OFFERS_FROM_BLOCK must be a block number"
+  Regex.match?(~r/\A[0-9]+\z/, from_block) or
+    raise "PATCHBAY_OFFERS_FROM_BLOCK must be a block number"
 
-    config :patchbay, Patchbay.Offers,
-      market_address: market,
-      from_block: String.to_integer(from_block),
-      publisher_private_key: System.get_env("PATCHBAY_OFFERS_PUBLISHER_KEY")
+  config :patchbay, Patchbay.Offers,
+    market_address: market,
+    from_block: String.to_integer(from_block),
+    publisher_private_key: System.get_env("PATCHBAY_OFFERS_PUBLISHER_KEY")
 
-    if config_env() == :dev do
-      node_url = System.fetch_env!("PATCHBAY_OFFERS_RPC_URL")
+  if config_env() == :dev do
+    node_url = System.fetch_env!("PATCHBAY_OFFERS_RPC_URL")
 
-      case URI.new(node_url) do
-        {:ok, %URI{scheme: "http", host: host}} when host in ["127.0.0.1", "localhost"] -> :ok
-        _other -> raise "PATCHBAY_OFFERS_RPC_URL must be a lab chain on this machine"
-      end
-
-      config :patchbay, Patchbay.Offers, wallet_rpc_url: node_url
-
-      config :patchbay,
-             :chain_nodes,
-             Map.put(Application.fetch_env!(:patchbay, :chain_nodes), 8453, node_url)
+    case URI.new(node_url) do
+      {:ok, %URI{scheme: "http", host: host}} when host in ["127.0.0.1", "localhost"] -> :ok
+      _other -> raise "PATCHBAY_OFFERS_RPC_URL must be a lab chain on this machine"
     end
 
-    oban = Application.fetch_env!(:patchbay, Oban)
+    config :patchbay, Patchbay.Offers, wallet_rpc_url: node_url
 
-    config :patchbay, Oban,
-      cron: [crontab: oban[:cron][:crontab] ++ [{"*/5 * * * *", Patchbay.Offers.Watch}]]
+    config :patchbay,
+           :chain_nodes,
+           Map.put(Application.fetch_env!(:patchbay, :chain_nodes), 8453, node_url)
   end
+
+  oban = Application.fetch_env!(:patchbay, Oban)
+
+  config :patchbay, Oban,
+    cron: [crontab: oban[:cron][:crontab] ++ [{"*/5 * * * *", Patchbay.Offers.Watch}]]
 end
 
 migrating? = System.get_env("PATCHBAY_RELEASE_COMMAND") == "migrate"
@@ -367,9 +354,6 @@ case config_env() do
 
   :dev ->
     config :patchbay, Patchbay.Repo, Patchbay.DatabaseConfig.runtime_config!(:dev)
-
-  :test ->
-    :ok
 end
 
 if config_env() == :prod do
@@ -381,7 +365,7 @@ if config_env() == :prod do
       LoggerJSON.Formatters.Basic.new(metadata: PatchbayWeb.VisitLog.fields() ++ [:error_type])
 
   # The secret key base is used to sign/encrypt cookies and other secrets.
-  # A default value is used in config/dev.exs and config/test.exs but you
+  # A default value is used in config/dev.exs but you
   # want to use a different value for prod and you most likely don't want
   # to check this value into version control, so we use an environment
   # variable instead.

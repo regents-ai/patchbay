@@ -7,7 +7,7 @@ defmodule Patchbay.Assist.Drafter do
   checked by the caller. Nothing here logs what the model was shown or what
   it wrote. Where the model is, which one and the key are set in
   `config :patchbay, :openrouter`; each draft is written down as a
-  `Patchbay.Assist.ModelCall` for its run. Tests may inject a `:request` function.
+  `Patchbay.Assist.ModelCall` for its run.
   """
 
   alias Patchbay.Assist.ArgumentsSchema
@@ -30,14 +30,13 @@ defmodule Patchbay.Assist.Drafter do
   schema, the goal, and what went wrong when the agent said) for the run
   `run_id`, or why none could be had.
   """
-  @spec draft(map(), Ash.UUID.t(), keyword()) :: {:ok, map()} | {:error, term()}
-  def draft(input, run_id, opts \\ []) when is_map(input) do
+  @spec draft(map(), Ash.UUID.t()) :: {:ok, map()} | {:error, term()}
+  def draft(input, run_id) when is_map(input) do
     settings = Application.fetch_env!(:patchbay, :openrouter)
-    request = Keyword.get(opts, :request, &request/3)
     model = Keyword.fetch!(settings, :drafter_model)
     call = ModelCalls.ask(:draft_arguments, model, run_id)
 
-    answered = request.(payload(input, model), opts, Keyword.fetch!(settings, :drafter_url))
+    answered = request(payload(input, model), Keyword.fetch!(settings, :drafter_url))
 
     with {:ok, body} <- ModelCalls.close(call, answered, {"prompt_tokens", "completion_tokens"}) do
       arguments(body)
@@ -77,18 +76,16 @@ defmodule Patchbay.Assist.Drafter do
 
   defp arguments(_body), do: {:error, :response_shape_invalid}
 
-  defp request(payload, opts, endpoint) do
+  defp request(payload, endpoint) do
     case Keyword.get(Application.fetch_env!(:patchbay, :openrouter), :api_key) do
       key when key in [nil, ""] -> {:error, :api_key_missing}
-      key -> post(payload, key, opts, endpoint)
+      key -> post(payload, key, endpoint)
     end
   end
 
   # The request carries the key, so what went wrong is reduced to a status
   # or a reason before anything is returned or logged.
-  defp post(payload, key, opts, endpoint) do
-    receive_timeout = Keyword.get(opts, :receive_timeout, @receive_timeout_ms)
-
+  defp post(payload, key, endpoint) do
     case RegentHttp.post(endpoint,
            json: payload,
            headers: [
@@ -96,9 +93,9 @@ defmodule Patchbay.Assist.Drafter do
              {"http-referer", PatchbayWeb.Endpoint.url()},
              {"x-title", "Patchbay"}
            ],
-           receive_timeout: receive_timeout,
-           request_timeout: receive_timeout,
-           connect_options: [timeout: min(receive_timeout, 5_000)],
+           receive_timeout: @receive_timeout_ms,
+           request_timeout: @receive_timeout_ms,
+           connect_options: [timeout: 5_000],
            retry: false
          ) do
       {:ok, %Req.Response{status: 200, body: body}} when is_map(body) -> {:ok, body}

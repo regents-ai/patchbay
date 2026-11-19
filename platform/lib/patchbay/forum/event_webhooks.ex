@@ -2,7 +2,7 @@ defmodule Patchbay.Forum.EventWebhooks do
   @moduledoc """
   What sends an events subscription's callback its challenge and its events
   (`Patchbay.Forum.EventSubscription.webhooks/0`): `Regent.MCPEvents`, the
-  shared safe sender, and in the tests `PatchbayWeb.CallbackStandIn`.
+  shared safe sender.
   """
 
   @doc "Sends the callback a signed challenge; `:ok` only when it echoes it."

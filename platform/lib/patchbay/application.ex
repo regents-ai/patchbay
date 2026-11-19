@@ -73,8 +73,8 @@ defmodule Patchbay.Application do
 
     children =
       children ++
-        site_loader() ++
         [
+          site_loader(),
           # Start to serve requests, typically the last entry
           PatchbayWeb.Endpoint
         ] ++ metrics()
@@ -90,8 +90,8 @@ defmodule Patchbay.Application do
     if serving?(), do: [PatchbayWeb.Metrics], else: []
   end
 
-  # The bench is read only where pages are served, so a task or a test never
-  # reads Techtree's views before it asks to.
+  # The bench is read only where pages are served, so a task never reads
+  # Techtree's views before it asks to.
   defp wallet_bench_board do
     if serving?(), do: Patchbay.WalletBench.Board
   end
@@ -110,17 +110,11 @@ defmodule Patchbay.Application do
 
   # The WebMCP catalog is synced and each program's site made once, at boot.
   defp site_loader do
-    if Application.get_env(:patchbay, :load_sites_at_boot, true) do
-      [
-        {Task,
-         fn ->
-           Patchbay.Forum.Catalog.sync!()
-           Patchbay.Forum.ProgramSites.make!()
-         end}
-      ]
-    else
-      []
-    end
+    {Task,
+     fn ->
+       Patchbay.Forum.Catalog.sync!()
+       Patchbay.Forum.ProgramSites.make!()
+     end}
   end
 
   # Tell Phoenix to update the endpoint configuration

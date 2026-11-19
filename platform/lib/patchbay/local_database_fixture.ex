@@ -3,19 +3,19 @@ defmodule Patchbay.LocalDatabaseFixture do
 
   # A local database is prepared exactly as staging's first deployment is
   # (`Patchbay.Release.prepare_database!/2`): the same tables, the same shared
-  # changes, in production's order. `mix test` and `mix patchbay.setup_local_auth`
-  # run this. In production `bin/migrate-shared` applies the shared changes.
+  # changes, in production's order. `mix patchbay.setup_local_auth` runs this.
+  # In production `bin/migrate-shared` applies the shared changes.
   def ensure_human_accounts! do
-    validate_target!(current_env(), Patchbay.Repo.config())
+    validate_target!(Patchbay.Repo.config())
     Patchbay.Release.prepare_database!(Patchbay.Repo)
   end
 
-  def validate_target!(env, repo) when is_list(repo) do
+  def validate_target!(repo) when is_list(repo) do
     host = to_string(repo[:hostname])
     database = to_string(repo[:database])
 
-    if env in [:dev, :test] and host in ["127.0.0.1", "::1"] and
-         String.ends_with?(database, ["_dev", "_test"]) do
+    if current_env() == :dev and host in ["127.0.0.1", "::1"] and
+         String.ends_with?(database, "_dev") do
       :ok
     else
       raise "local human-account fixture refused unsafe database target"

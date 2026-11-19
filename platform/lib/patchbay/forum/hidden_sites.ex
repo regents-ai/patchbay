@@ -56,12 +56,10 @@ defmodule Patchbay.Forum.HiddenSites do
     end
   end
 
-  @doc """
-  Reads the hidden sites again and shares them. The process calls it as it
-  starts, on each notice and on each minute's heal; a test calls it directly.
-  """
+  # Reads the hidden sites again and shares them. The process calls it as it
+  # starts, on each notice and on each minute's heal.
   @spec refresh() :: :ok | {:error, term()}
-  def refresh do
+  defp refresh do
     case SiteDirectory.read_hidden_hosts() do
       {:ok, hosts} ->
         hosts |> shared() |> kept()

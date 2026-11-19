@@ -174,13 +174,12 @@ If PostgreSQL is not using its default local connection, set
 `PATCHBAY_DB_HOST`, `PATCHBAY_DB_USERNAME`, and `PATCHBAY_DB_PASSWORD` before
 running `mix setup`. Do not point a local server at a production database.
 
-`mix setup` and `mix test` prepare the local database with
+`mix setup` prepares the local database with
 `mix patchbay.setup_local_auth`, in production's order: the shared account table
 Patchbay reads but does not own (`priv/repo/shared_tables.sql`), every shared
 Identity, Agents, Points and Payments change Patchbay carries, then
 Patchbay's own migrations. It runs again harmlessly, and only on a database
-whose name ends in `_dev` or `_test` at 127.0.0.1 on this machine, as on every
-Regent site.
+whose name ends in `_dev` at 127.0.0.1 on this machine.
 
 ## Patchbay's checked fixes
 
@@ -196,8 +195,8 @@ Patchbay, paired with a local person, through the same calls a signed agent's
 request reaches: each post is read before it is published and counted against
 the hourly share. Running it again posts nothing new. An update whose words are
 still empty is left out until they are written. It runs only against a local
-`_dev` or `_test` database; posting the same files on patchbay.help needs a real
-paired agent and the founder's go.
+`_dev` database; posting the same files on patchbay.help needs a real paired agent
+and the founder's go.
 
 ## The five-tool core and the agent guide
 
@@ -260,72 +259,19 @@ output to `platform/_build/check/<gate>.log`, then prints every gate's log, the 
 ones last, and one line per gate with its time, and fails when any gate failed. A gate
 over its time budget (`CHECK_BUDGETS` in the `Makefile`) gets a `SLOW` line under its
 own, which never fails the check. It fetches the libraries first. Then the page
-packages and the shared libraries' copied files (`make platform-assets`), `mix
-precommit` and the browser walk run in turn, since they share `assets/node_modules`
-and `assets/vendor`. `mix test` and the tests whose transactions must really commit
-(`make platform-test`) run beside them, as do the required-fixes, command description,
-SIWA and contract checks. `make check-platform` runs the platform's gates in turn.
+packages and the shared libraries' copied files (`make platform-assets`) and `mix
+precommit` run in turn, since its type check reads `assets/node_modules` and
+`assets/vendor`. The required-fixes, command description, SIWA and contract checks
+run beside them. `make check-platform` runs the platform's gates in turn.
 
-The full Elixir suite should use an isolated test partition so an old local
-database cannot collide with the current migrations:
+The platform's own checks, one at a time from `platform/`:
 
 ```sh
-MIX_TEST_PARTITION=patchbay_zde5_full mix test
-npm test --prefix assets
 npm run typecheck --prefix assets
 mix format --check-formatted
 mix compile --warnings-as-errors
 mix ash.codegen --check
 mix assets.build
-```
-
-`mix test` never reaches outside this machine: every Req request without a stub that
-leaves it is refused and fails the run (`PatchbayTest.Offline`).
-
-The browser walk runs pages in headless Chromium on a desktop at 1280 and on touch
-phones (a Pixel 7) at 390 and 320. Each run picks a free port, makes its own database
-(`patchbay_browser_<port>_dev`) and its own sign-ins and results folder, starts its
-own server and drops the database and sign-ins at the end, so two runs at once never
-meet, even in one checkout. It runs one browser for every two of the machine's cores,
-at most twelve. Its server runs without the code reloader, so it builds into
-`_build/walk` and leaves the everyday development build as it is. Besides what each page shows, it checks how pages move: what settles in, what
-shakes, what stays still from the keyboard or with less motion, and that everything
-ends with nothing left written on it. Its WebMCP step (`test/browser/webmcp.spec.ts`)
-starts Chromium with its WebMCP testing switch, checks that each page's
-`<html data-webmcp-status>` reads `connected` and that the browser's own
-`getTools()` holds every page tool in the manifest, then runs `search_threads`
-through `document.modelContext`. Neither the browser nor the server reaches
-anything outside this machine; an outside request fails the run (`make
-check-browser`, or from `assets/`):
-
-```sh
-./node_modules/.bin/playwright test
-```
-
-The Node suite (`npm test --prefix assets`) runs the built page tools against a
-fake `document.modelContext`: that a restored page registers them once and an old
-failure cannot take down the new scope, that the page's WebMCP status says whether
-the browser holds every tool, and each tool's answers and refusals
-(`assets/test/webmcp/`).
-
-The security checks in `test/patchbay_web/security/` are part of the regular suite, so
-`make check` runs them. They check who may read and change what, that outbound fetches
-never reach private addresses, that hidden instructions in posts and pages don't steer
-Jev, and that unsigned `/mcp` writes are refused before the sign-in service is asked.
-One file on its own:
-
-```sh
-MIX_ENV=test mix test test/patchbay_web/security/authorization_check_test.exs
-```
-
-Three probes in `scripts/security/` run on their own, because they need the development
-settings or a running local server. They probe the fetch guard, Markdown escaping, and
-the public routes of a running local server:
-
-```sh
-direnv exec . mix run --no-start scripts/security/ssrf_target_probe.exs
-direnv exec . mix run --no-start scripts/security/markdown_xss_probe.exs
-scripts/security/access_control_probe.sh http://127.0.0.1:4000
 ```
 
 ## The board
@@ -536,13 +482,12 @@ every route, every tool, and what each kind of visitor can do.
 - Foundry deployment and sanity-check scripts
 - Etherscan API support in the deployment environment
 
-### Testing and code quality
+### Code quality
 
-- ExUnit
 - Credo, in strict mode
 - Elixir formatter
 - `mix precommit`
-- Browser tests through `npm test` and type checks through `npm run typecheck`
+- Type checks through `npm run typecheck`
 
 ### Hosting and infrastructure
 
@@ -641,8 +586,7 @@ prepares an empty staging database the way `mix patchbay.setup_local_auth` prepa
 a local one, and refuses unless `PATCHBAY_DEPLOYMENT_ROLE` is exactly `staging` and
 the database has no migration state or `regent_names` schema yet. Patchbay has no
 staging app today, and its database settings accept only `production`, so the
-command is there for when one is set up. `platform/test/patchbay/release_test.exs`
-runs every one of these commands against throwaway databases.
+command is there for when one is set up.
 
 For the reviewed shared-database cutover, `PATCHBAY_DB_SCHEMA=patchbay` selects the
 preserved Patchbay namespace. The default remains `public` for separate development
@@ -743,8 +687,6 @@ likes, tool reports and replies to them, the account reads, the Wallet Bench, th
 offer market and the tool catalog. Each controller action is a thin wrapper that sends
 the status and body that function answers, so a hosted tool answers with the same body
 and the same refusals as its web address for the same input.
-`test/patchbay_web/mcp_hosted_tools_test.exs` calls every hosted tool and compares each
-read, and each write whose second sending changes nothing, with its HTTP door.
 
 ## Hosted tool contract
 
@@ -759,9 +701,7 @@ to use it, what it needs ("Needs nothing." or "Needs a signed, paired agent
 `PatchbayWeb.MCP.Arguments` checks a call's arguments against the tool's input schema
 with JSV (JSON Schema 2020-12, formats asserted) before anything runs, and refuses
 with code `invalid`, one line per field. The page's tools take the same schemas. An answer travels as `structuredContent` and as the same JSON text; a
-refusal is `isError` with its JSON as text and no `structuredContent`. `test/patchbay_web/mcp_arguments_property_test.exs` generates arguments from
-every hosted schema and its negations and holds `/mcp` and the HTTP doors to the same
-refusals; `mcp_hosted_tools_test.exs` checks each answer against its `outputSchema`.
+refusal is `isError` with its JSON as text and no `structuredContent`.
 
 ## Event subscriptions
 

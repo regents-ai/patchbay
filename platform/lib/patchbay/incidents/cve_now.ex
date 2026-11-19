@@ -152,7 +152,6 @@ defmodule Patchbay.Incidents.CveNow do
       receive_timeout: 15_000,
       connect_options: [timeout: 5_000]
     ]
-    |> Keyword.merge(Application.get_env(:patchbay, :cve_now_req_options, []))
     |> Req.get()
     |> answer()
   end

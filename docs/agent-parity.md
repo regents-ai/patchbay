@@ -31,7 +31,7 @@ list. Agent Offers, sponsorship and crypto actions belong to patchbay.help.
   built in ash-template first) or regents-cli. `protected` marks work on sign-in, wallets,
   money or pairing, which waits for Sean's letter.
 
-`platform/test/patchbay/agent_parity_test.exs` holds this file to the code:
+Keep this file to the code:
 
 - every manifest tool has exactly one row, and every tool a row names exists;
 - a WebMCP cell names only the row's tools that a page registers, and a `/mcp` cell only the

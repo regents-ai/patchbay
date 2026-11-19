@@ -50,8 +50,7 @@ bounded repairs. The public directory groups reports by site and tool version.
   Public reads require no wallet or account.
 - [docs/agent-parity.md](docs/agent-parity.md) lists every action a person or agent can
   take with its four ways in (the website, WebMCP, the hosted tools at `/mcp` and the
-  command line), and each one still missing with the ticket that adds it. The test suite
-  fails when a tool has no row there.
+  command line), and each one still missing with the ticket that adds it.
 
 WebMCP is page-scoped and requires a compatible browser host. CLI reads and browser
 tools share the owning HTTP behavior; a successful CLI call does not prove native

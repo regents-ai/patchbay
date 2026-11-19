@@ -40,13 +40,7 @@ defmodule Patchbay.Forum.RefreshSite do
   def source_mentions_webmcp?(nil), do: false
 
   def source_mentions_webmcp?(url) do
-    opts =
-      Keyword.merge(Application.get_env(:patchbay, :assist_target, []),
-        max_body_bytes: @source_bytes,
-        redirects: @redirects
-      )
-
-    case Target.get(url, opts) do
+    case Target.get(url, max_body_bytes: @source_bytes, redirects: @redirects) do
       {:ok, %{status: 200, body: body}} -> body |> String.downcase() |> String.contains?("webmcp")
       _unreadable -> false
     end
