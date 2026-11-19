@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v436, 19 Nov 2026
+
+- Commit: dbff8a32 (image `dbff8a3`), released by the Patchbay chief on Sean's instruction of 19:12Z ("Delete all tests from all repos"). 1175dc85 removes every test: the Elixir suite, the browser walks, the Node tests, the security probes, the test config and the code paths and settings that existed only for tests (305 files, 55,812 lines). `make check` no longer has `platform-test` or `check-browser`; what remains is the asset build, `mix precommit` (compile with warnings as errors, unused-lock check, Hex audit, formatter, Credo, Sobelow, compile-graph budget, Ash codegen check, usage-rules check, TypeScript type check), required-fixes, the command check, the SIWA check and the contracts gate. dbff8a32 moves the elixir-utils pin from 4259fe6c to b9d530d4, the same library code without its tests, which the SIWA check requires. Contract tests and proofs are untouched, held for Sean's ruling. No migration, no machine setting.
+- Full check on dbff8a32: every remaining gate ok, about one minute.
+- Live read, headless Chromium, signed out, 20:04Z: both addresses answer health; the plugin names dbff8a32 with exactly twelve tools; patchbay.help registers its 41 page tools; the Points page answers; Sites joins its live socket on both.
+- Gone with the tests, now resting on reading and the live read: the release-command rehearsal against throwaway databases, the open address's no-money-words and no-other-address checks, the authorization, unsigned-write, outbound-fetch and hidden-instruction security checks, and the guide and capability agreement checks.
+- Rollback: image `54d0ed0` (v435), image only.
+
 ## v435, 19 Nov 2026
 
 - Commit: 54d0ed03 (image `54d0ed0`), released by the Patchbay chief as an ordinary release, asked for by the template chief. The elixir-utils pin moves from 0e89c4fc to main 4259fe6c: six commits in `points/` only. An offer never fails the action it rides in (`record_event/2` answers `{:ok, _}`; an over-long reference is marked `invalid` and queues nothing); the start run's checks and awards wait behind live ones, offer again what has not earned, and stop before the start. Patchbay's own code and Points settings are unchanged; only the sixteen elixir-utils lock lines move. No migration.
