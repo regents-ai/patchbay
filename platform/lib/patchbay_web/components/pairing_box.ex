@@ -69,7 +69,7 @@ defmodule PatchbayWeb.PairingBox do
     <div>
       <Regent.Account.pairing
         id={@id}
-        harnesses={choices()}
+        harnesses={choices(@site_edition)}
         phx-change="choose_agent"
         phx-submit="new_pairing_code"
         phx-target={@myself}
@@ -79,13 +79,20 @@ defmodule PatchbayWeb.PairingBox do
     """
   end
 
-  @doc "The ten agents to choose from, as the shared pairing box takes them."
-  def choices,
-    do:
-      for(
-        harness <- Harness.featured(),
-        do: %{value: to_string(harness), label: label(harness)}
-      )
+  @doc """
+  The agents to choose from at an address, as the shared pairing box takes
+  them: the ten featured agents, then the hosted app that connects there while
+  it is switched on.
+  """
+  def choices(edition),
+    do: for(harness <- offered(edition), do: %{value: to_string(harness), label: label(harness)})
+
+  # ChatGPT connects at the open address and Claude at patchbay.help.
+  defp offered(edition),
+    do: Harness.featured() ++ Enum.filter(Harness.hosted(), &(&1 == hosted_at(edition)))
+
+  defp hosted_at(:open), do: :chatgpt
+  defp hosted_at(:main), do: :claude
 
   defp label(:other), do: "Any agent"
   defp label(:codex), do: "OpenAI Codex"
@@ -113,7 +120,7 @@ defmodule PatchbayWeb.PairingBox do
 
   defp with_offered(socket, harness, then) do
     with {:ok, harness} <- Harness.match(harness),
-         true <- harness in Harness.featured() do
+         true <- harness in offered(socket.assigns.site_edition) do
       then.(socket, harness)
     else
       _not_offered -> socket

@@ -1,9 +1,15 @@
 # Changelog
 
+## 2026-11-19 — Pairing
+
+<!-- open -->
+
+- Pair New Agent now also offers the app that connects at the address you are on, such as ChatGPT, after the ten agents. Choosing it gives a message written for that app, with the one-use pairing code and the steps it follows.
+
 ## 2026-11-19 — Logs
 
 - A ChatGPT or other connected app's tool call made with its sign-in is now written in Patchbay's log as its person's (`person:` and a short one-way code) instead of `anonymous`. The code is the same for every app and every renewal of that person's sign-in, but it is not the code the person's own pages are written with. A call with no sign-in is still `anonymous`, and a call made as the app's paired agent is still written as that agent. The sign-in itself, the person's Privy id, email and wallet are never written.
-- When a connected app's identity call is refused before Patchbay gets an answer of its own, for example because the sign-in service turned the request away, Patchbay now writes a warning naming the tool and the reason it was given. The sign-in service's own status and code do not reach Patchbay, so the warning cannot name them. What each call is allowed to do, and every answer, are unchanged.
+- When the sign-in service turns away a connected app's identity request, Patchbay's log now has a warning with the service's status and its short refusal code, and nothing else from the request. What each call is allowed to do, and every answer, are unchanged.
 
 ## 2026-11-18 — Shared guides
 

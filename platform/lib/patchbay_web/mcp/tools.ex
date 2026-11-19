@@ -13,8 +13,6 @@ defmodule PatchbayWeb.MCP.Tools do
   happens on the website.
   """
 
-  require Logger
-
   alias Patchbay.DatabaseBusy
   alias Patchbay.Forum.Capabilities
   alias Patchbay.Forum.SiteDirectory
@@ -177,7 +175,7 @@ defmodule PatchbayWeb.MCP.Tools do
     if RegentMCPAgents.enabled?() do
       name
       |> RegentMCPAgents.Tools.call(arguments, Map.get(caller, :principal))
-      |> identity_answer(name)
+      |> identity_answer()
     else
       :unknown_tool
     end
@@ -219,7 +217,7 @@ defmodule PatchbayWeb.MCP.Tools do
   # (`PatchbayWeb.MCP.ConnectedApp`).
   def call(name, arguments, %{surface: :native_mcp, principal: %{} = principal})
       when name in @identity_names,
-      do: name |> RegentMCPAgents.Tools.call(arguments, principal) |> identity_answer(name)
+      do: name |> RegentMCPAgents.Tools.call(arguments, principal) |> identity_answer()
 
   def call(name, arguments, caller) when name in @names and is_map(arguments) do
     case Arguments.check(name, arguments) do
@@ -248,24 +246,19 @@ defmodule PatchbayWeb.MCP.Tools do
     else
       {:invalid_arguments, _} = invalid -> invalid
       {:ok, _no_result} -> {:error, RegentMCPAgents.Tools.refusal()}
-      refused -> identity_answer(refused, name)
+      refused -> identity_answer(refused)
     end
   end
 
   # The shared library's answers, read into the one answer shape every
   # Patchbay tool gives: a refusal keeps its code, words and hint, and a wait
-  # names its seconds. A refusal the library gives as a bare reason, such as
-  # for a request the hosted signer turned away, is warned about by the tool's
-  # name and that reason, all there is: the library keeps none of the signer's
-  # status or code.
-  defp identity_answer({:ok, answer}, _name), do: {:ok, answer}
+  # names its seconds. A request the hosted signer turned away is warned about
+  # by the library, with the signer's status and code.
+  defp identity_answer({:ok, answer}), do: {:ok, answer}
+  defp identity_answer({:answer, _status, %{"error" => error}, _retry_after}), do: refused(error)
+  defp identity_answer({:refused, _status, error}), do: refused(error)
 
-  defp identity_answer({:answer, _status, %{"error" => error}, _retry_after}, _name),
-    do: refused(error)
-
-  defp identity_answer({:refused, _status, error}, _name), do: refused(error)
-
-  defp identity_answer({:error, {:rate_limited, seconds}}, _name) do
+  defp identity_answer({:error, {:rate_limited, seconds}}) do
     {:error,
      ApiError.body(
        "rate_limited",
@@ -275,12 +268,7 @@ defmodule PatchbayWeb.MCP.Tools do
      )}
   end
 
-  defp identity_answer({:error, reason}, name) when is_atom(reason) do
-    Logger.warning("Hosted identity call #{name} refused", error_type: inspect(reason))
-    {:error, RegentMCPAgents.Tools.refusal()}
-  end
-
-  defp identity_answer(_no_answer, _name), do: {:error, RegentMCPAgents.Tools.refusal()}
+  defp identity_answer(_no_answer), do: {:error, RegentMCPAgents.Tools.refusal()}
 
   defp refused(%{"code" => _, "message" => _, "hint" => _} = error), do: {:error, %{error: error}}
   defp refused(_error), do: {:error, RegentMCPAgents.Tools.refusal()}

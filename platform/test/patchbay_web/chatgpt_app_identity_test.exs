@@ -156,27 +156,6 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
     assert actors(events, "/chatgpt/mcp:get_patchbay_help") == ["anonymous"]
   end
 
-  @tag :capture_log
-  test "a request the hosted signer refuses leaves one warning naming why", %{conn: conn} do
-    app = connect!(conn, account!())
-
-    Req.Test.stub(__MODULE__, fn conn ->
-      conn
-      |> Plug.Conn.put_status(422)
-      |> Req.Test.json(%{"error" => %{"code" => "hosted_request_refused"}})
-    end)
-
-    listen!()
-
-    assert %{"isError" => true, "content" => [%{"text" => text}]} =
-             call_tool(conn, app.access, "register_identity", %{})
-
-    assert Jason.decode!(text)["error"]["code"] == "identity_request_refused"
-
-    assert [%{meta: %{error_type: ":identity_request_refused"}}] =
-             for(%{level: :warning} = event <- logged(), do: event)
-  end
-
   # A person signed in through Privy, with the shared account a sign-in makes.
   defp account! do
     owner =

@@ -64,6 +64,37 @@ defmodule PatchbayWeb.PairingBoxTest do
     refute main =~ PatchbayWeb.SiteEdition.url(:open)
   end
 
+  test "each address offers the hosted app that connects there, and only that one", %{conn: conn} do
+    old = Application.get_env(:regent_agents, :hosted_pairing, [])
+    Application.put_env(:regent_agents, :hosted_pairing, [:chatgpt, :claude])
+    on_exit(fn -> Application.put_env(:regent_agents, :hosted_pairing, old) end)
+
+    page = fn site_edition, hex ->
+      conn
+      |> at(site_edition)
+      |> signed_in("did:privy:pair-hosted-#{site_edition}", hex)
+      |> pair_page()
+    end
+
+    choose = fn view, harness ->
+      view |> element("#pair-pairing-box") |> render_change(%{"harness" => harness}) |> code()
+    end
+
+    for {site_edition, hex, offered, other} <- [
+          {:open, "1", "chatgpt", "claude"},
+          {:main, "2", "claude", "chatgpt"}
+        ] do
+      view = page.(site_edition, hex)
+
+      assert has_element?(view, "#pair-pairing-box input[name=harness][value=#{offered}]")
+      refute has_element?(view, "#pair-pairing-box input[name=harness][value=#{other}]")
+
+      # The app that connects elsewhere gets no code here, even when asked for by name.
+      assert choose.(view, other) == ""
+      assert choose.(view, offered) =~ ~r/Pairing code:\s*\S+/
+    end
+  end
+
   test "the message sends the agent on to the named page only when it is on this site", %{
     conn: conn
   } do
