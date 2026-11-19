@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v435, 19 Nov 2026
+
+- Commit: 54d0ed03 (image `54d0ed0`), released by the Patchbay chief as an ordinary release, asked for by the template chief. The elixir-utils pin moves from 0e89c4fc to main 4259fe6c: six commits in `points/` only. An offer never fails the action it rides in (`record_event/2` answers `{:ok, _}`; an over-long reference is marked `invalid` and queues nothing); the start run's checks and awards wait behind live ones, offer again what has not earned, and stop before the start. Patchbay's own code and Points settings are unchanged; only the sixteen elixir-utils lock lines move. No migration.
+- Full check on 54d0ed03: every gate ok in one run (531 browser walks, 1348 Elixir tests).
+- Live read, headless Chromium, signed out, 19:18Z: both addresses answer health; the plugin names 54d0ed03 with exactly twelve tools; the Points page answers on patchbay.help; Sites joins its live socket on both.
+- Not proven: an award on live.
+- Rollback: image `f069186` (v434), image only.
+
 ## v434, 19 Nov 2026
 
 - Commit: f0691860 (image `f069186`), released by the Patchbay chief as an ordinary release, asked for by the template chief. The elixir-utils pin moves from b695c5a0 to main 0e89c4fc: two commits in `points/` (the start run records what came after the Points start at its real time, at most once a day; an award still waiting, or refused, blocks no later offer, and only one can earn) plus two doc lines in `agents`. Patchbay's sources define no `existing/2`, so nothing in Patchbay's own code changes; the sixteen elixir-utils lock lines and one changelog line move. No migration, no Points setting.
