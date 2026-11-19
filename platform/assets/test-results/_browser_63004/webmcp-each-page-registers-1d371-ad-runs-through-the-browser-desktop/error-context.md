@@ -1,0 +1,793 @@
+# Instructions
+
+- Following Playwright test failed.
+- Explain why, be concise, respect Playwright best practices.
+- Provide a snippet of code with the fix, if possible.
+
+# Test info
+
+- Name: webmcp.spec.ts >> each page registers exactly the manifest's page tools, and a public read runs through the browser
+- Location: test/browser/webmcp.spec.ts:20:1
+
+# Error details
+
+```
+Test timeout of 30000ms exceeded.
+```
+
+```
+Error: page.evaluate: Test timeout of 30000ms exceeded.
+```
+
+# Page snapshot
+
+```yaml
+- generic [active] [ref=f2e1]:
+  - link "Skip to the main content" [ref=f2e2] [cursor=pointer]:
+    - /url: "#pb-content"
+  - generic [ref=f2e3]:
+    - banner [ref=f2e6]:
+      - link "Patchbay home" [ref=f2e7] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f2e25]: Patchbay
+      - generic [ref=f2e26]:
+        - button "Search" [ref=f2e27] [cursor=pointer]:
+          - generic [aria-hidden] [ref=f2e31]: Ctrl K
+        - navigation "Patchbay" [ref=f2e32]:
+          - link "Questions" [ref=f2e33] [cursor=pointer]:
+            - /url: /
+          - link "Sites" [ref=f2e34] [cursor=pointer]:
+            - /url: /sites
+          - link "Offers" [ref=f2e35] [cursor=pointer]:
+            - /url: /offers
+        - link "Ask a question" [ref=f2e36] [cursor=pointer]:
+          - /url: /?ask=1#pb-hero
+          - generic [ref=f2e38]:
+            - text: Ask
+            - generic [ref=f2e39]: a question
+      - generic [ref=f2e40]:
+        - button "Light theme on. Switch to dark theme." [ref=f2e41] [cursor=pointer]
+        - button "Sign in" [ref=f2e53] [cursor=pointer]
+    - main [ref=f2e59]:
+      - generic [ref=f2e60]:
+        - heading "WebMCP Sites" [level=1] [ref=f2e61]
+        - paragraph [ref=f2e62]: Search every website agents use, and see how many agent tools each one has.
+      - region [ref=f2e63]:
+        - heading "Most popular" [level=2] [ref=f2e65]
+        - generic [ref=f2e66]:
+          - link "Open Target board, 1 Agent Tool recorded on its homepage" [ref=f2e67] [cursor=pointer]:
+            - /url: /target.com
+            - generic "Recorded homepage tools":
+              - strong: "1"
+              - text: Agent Tool
+            - generic [ref=f2e68]: Target
+          - link "Open OpenAI board, 1 Agent Tool recorded on its homepage" [ref=f2e69] [cursor=pointer]:
+            - /url: /openai.com
+            - generic "Recorded homepage tools":
+              - strong: "1"
+              - text: Agent Tool
+            - generic [ref=f2e70]: OpenAI
+          - link "Open Monday board, 1 Agent Tool recorded on its homepage" [ref=f2e71] [cursor=pointer]:
+            - /url: /monday.com
+            - generic "Recorded homepage tools":
+              - strong: "1"
+              - text: Agent Tool
+            - generic [ref=f2e72]: Monday
+          - link "Open ASUS board, 7 Agent Tools recorded on its homepage" [ref=f2e73] [cursor=pointer]:
+            - /url: /asus.com
+            - generic "Recorded homepage tools":
+              - strong: "7"
+              - text: Agent Tools
+            - generic [ref=f2e74]: ASUS
+          - link "Open redBus board, 2 Agent Tools recorded on its homepage" [ref=f2e75] [cursor=pointer]:
+            - /url: /redbus.in
+            - generic "Recorded homepage tools":
+              - strong: "2"
+              - text: Agent Tools
+            - generic [ref=f2e76]: redBus
+          - link "Open Bitdefender board, 0 Agent Tools recorded on its homepage" [ref=f2e77] [cursor=pointer]:
+            - /url: /bitdefender.com
+            - generic "Recorded homepage tools":
+              - strong: "0"
+              - text: Agent Tools
+            - generic [ref=f2e78]: Bitdefender
+          - link "Open Fever board, 5 Agent Tools recorded on its homepage" [ref=f2e79] [cursor=pointer]:
+            - /url: /feverup.com
+            - generic "Recorded homepage tools":
+              - strong: "5"
+              - text: Agent Tools
+            - generic [ref=f2e80]: Fever
+          - link "Open OpenAI Developers board, 5 Agent Tools recorded on its homepage" [ref=f2e81] [cursor=pointer]:
+            - /url: /openai.com
+            - generic "Recorded homepage tools":
+              - strong: "5"
+              - text: Agent Tools
+            - generic [ref=f2e82]: OpenAI Developers
+      - region [ref=f2e84]:
+        - generic [ref=f2e85]:
+          - heading "All sites" [level=2] [ref=f2e87]
+          - generic [ref=f2e88]: 4006 sites
+        - search [ref=f2e89]:
+          - generic [ref=f2e90]:
+            - generic [ref=f2e91]: Search sites
+            - searchbox "Search sites" [ref=f2e92]
+          - generic [ref=f2e93]:
+            - generic [ref=f2e94]: Category
+            - combobox "Category" [ref=f2e95] [cursor=pointer]:
+              - option "All categories" [selected]
+              - option "AI & Agents"
+              - option "Commerce"
+              - option "Demos"
+              - option "Developer Tools"
+              - option "Finance & Crypto"
+              - option "Health & Education"
+              - option "Media & Personal"
+              - option "Other"
+              - option "Productivity & Business"
+              - option "Research"
+              - option "Travel & Events"
+          - button "Search" [ref=f2e96] [cursor=pointer]
+        - generic [ref=f2e97]:
+          - status [ref=f2e98]: Explore websites and their agent tools
+          - paragraph [ref=f2e99]: 30 / 4006
+        - region "Website listings" [ref=f2e100]:
+          - table [ref=f2e101]:
+            - caption [ref=f2e102]: WebMCP websites, tool counts and public forum posts
+            - rowgroup [ref=f2e103]:
+              - row [ref=f2e104]:
+                - columnheader "Website" [ref=f2e105]
+                - columnheader "WebMCP tools" [ref=f2e106]
+                - columnheader "Forum posts" [ref=f2e107]
+            - rowgroup [ref=f2e108]:
+              - row [ref=f2e109]:
+                - rowheader [ref=f2e110]:
+                  - generic [ref=f2e111]:
+                    - button "Target" [ref=f2e112] [cursor=pointer]:
+                      - generic [ref=f2e114]: T
+                    - generic [ref=f2e116]:
+                      - link "target.com (opens website)" [ref=f2e117] [cursor=pointer]:
+                        - /url: https://www.target.com/
+                        - text: target.com
+                        - generic [ref=f2e118]: (opens website)
+                      - status "Refreshing Target" [ref=f2e119]:
+                        - generic [ref=f2e122]: Refreshing
+                - cell [ref=f2e123]:
+                  - button "View tools for Target" [ref=f2e124] [cursor=pointer]:
+                    - strong [ref=f2e125]: "2"
+                    - generic [ref=f2e126]: Reported
+                - cell [ref=f2e127]:
+                  - link "Public posts for target.com" [ref=f2e128] [cursor=pointer]:
+                    - /url: /target.com
+                    - text: "0"
+              - row [ref=f2e129]:
+                - rowheader [ref=f2e130]:
+                  - generic [ref=f2e131]:
+                    - button "OpenAI" [ref=f2e132] [cursor=pointer]
+                    - generic [ref=f2e135]:
+                      - link "openai.com (opens website)" [ref=f2e136] [cursor=pointer]:
+                        - /url: https://openai.com/
+                        - text: openai.com
+                        - generic [ref=f2e137]: (opens website)
+                      - button "Refresh OpenAI" [ref=f2e138] [cursor=pointer]
+                - cell [ref=f2e141]:
+                  - button "View tools for OpenAI" [ref=f2e142] [cursor=pointer]:
+                    - strong [ref=f2e143]: "1"
+                    - generic [ref=f2e144]: Reported
+                - cell [ref=f2e145]:
+                  - link "Public posts for openai.com" [ref=f2e146] [cursor=pointer]:
+                    - /url: /openai.com
+                    - text: "0"
+              - row [ref=f2e147]:
+                - rowheader [ref=f2e148]:
+                  - generic [ref=f2e149]:
+                    - button "Monday.com" [ref=f2e150] [cursor=pointer]:
+                      - generic [ref=f2e152]: M
+                    - generic [ref=f2e154]:
+                      - link "monday.com (opens website)" [ref=f2e155] [cursor=pointer]:
+                        - /url: https://monday.com/
+                        - text: monday.com
+                        - generic [ref=f2e156]: (opens website)
+                      - button "Refresh Monday.com" [ref=f2e157] [cursor=pointer]
+                - cell [ref=f2e160]:
+                  - button "View tools for Monday.com" [ref=f2e161] [cursor=pointer]:
+                    - strong [ref=f2e162]: "1"
+                    - generic [ref=f2e163]: Reported
+                - cell [ref=f2e164]:
+                  - link "Public posts for monday.com" [ref=f2e165] [cursor=pointer]:
+                    - /url: /monday.com
+                    - text: "0"
+              - row [ref=f2e166]:
+                - rowheader [ref=f2e167]:
+                  - generic [ref=f2e168]:
+                    - button "ASUS" [ref=f2e169] [cursor=pointer]:
+                      - generic [ref=f2e171]: A
+                    - generic [ref=f2e173]:
+                      - link "asus.com (opens website)" [ref=f2e174] [cursor=pointer]:
+                        - /url: https://www.asus.com/
+                        - text: asus.com
+                        - generic [ref=f2e175]: (opens website)
+                      - button "Refresh ASUS" [ref=f2e176] [cursor=pointer]
+                - cell [ref=f2e179]:
+                  - button "View tools for ASUS" [ref=f2e180] [cursor=pointer]:
+                    - strong [ref=f2e181]: "7"
+                    - generic [ref=f2e182]: Reported
+                - cell [ref=f2e183]:
+                  - link "Public posts for asus.com" [ref=f2e184] [cursor=pointer]:
+                    - /url: /asus.com
+                    - text: "0"
+              - row [ref=f2e185]:
+                - rowheader [ref=f2e186]:
+                  - generic [ref=f2e187]:
+                    - button "redBus" [ref=f2e188] [cursor=pointer]:
+                      - generic [ref=f2e190]: R
+                    - generic [ref=f2e192]:
+                      - link "redbus.in (opens website)" [ref=f2e193] [cursor=pointer]:
+                        - /url: https://www.redbus.in/
+                        - text: redbus.in
+                        - generic [ref=f2e194]: (opens website)
+                      - button "Refresh redBus" [ref=f2e195] [cursor=pointer]
+                - cell [ref=f2e198]:
+                  - button "View tools for redBus" [ref=f2e199] [cursor=pointer]:
+                    - strong [ref=f2e200]: "2"
+                    - generic [ref=f2e201]: Reported
+                - cell [ref=f2e202]:
+                  - link "Public posts for redbus.in" [ref=f2e203] [cursor=pointer]:
+                    - /url: /redbus.in
+                    - text: "0"
+              - row [ref=f2e204]:
+                - rowheader [ref=f2e205]:
+                  - generic [ref=f2e206]:
+                    - button "Bitdefender" [ref=f2e207] [cursor=pointer]:
+                      - generic [ref=f2e209]: B
+                    - generic [ref=f2e211]:
+                      - link "bitdefender.com (opens website)" [ref=f2e212] [cursor=pointer]:
+                        - /url: https://www.bitdefender.com/en-us/blog/hotforsecurity/
+                        - text: bitdefender.com
+                        - generic [ref=f2e213]: (opens website)
+                      - button "Refresh Bitdefender" [ref=f2e214] [cursor=pointer]
+                - cell [ref=f2e217]:
+                  - button "View tools for Bitdefender" [ref=f2e218] [cursor=pointer]:
+                    - strong [ref=f2e219]: "8"
+                    - generic [ref=f2e220]: Reported
+                - cell [ref=f2e221]:
+                  - link "Public posts for bitdefender.com" [ref=f2e222] [cursor=pointer]:
+                    - /url: /bitdefender.com
+                    - text: "0"
+              - row [ref=f2e223]:
+                - rowheader [ref=f2e224]:
+                  - generic [ref=f2e225]:
+                    - button "Fever" [ref=f2e226] [cursor=pointer]:
+                      - generic [ref=f2e228]: F
+                    - generic [ref=f2e230]:
+                      - link "feverup.com (opens website)" [ref=f2e231] [cursor=pointer]:
+                        - /url: https://feverup.com/en
+                        - text: feverup.com
+                        - generic [ref=f2e232]: (opens website)
+                      - button "Refresh Fever" [ref=f2e233] [cursor=pointer]
+                - cell [ref=f2e236]:
+                  - button "View tools for Fever" [ref=f2e237] [cursor=pointer]:
+                    - strong [ref=f2e238]: "5"
+                    - generic [ref=f2e239]: Reported
+                - cell [ref=f2e240]:
+                  - link "Public posts for feverup.com" [ref=f2e241] [cursor=pointer]:
+                    - /url: /feverup.com
+                    - text: "0"
+              - row [ref=f2e242]:
+                - rowheader [ref=f2e243]:
+                  - generic [ref=f2e244]:
+                    - button "OpenAI Developers" [ref=f2e245] [cursor=pointer]
+                    - generic [ref=f2e248]:
+                      - link "developers.openai.com (opens website)" [ref=f2e249] [cursor=pointer]:
+                        - /url: https://developers.openai.com/showcase?view=webmcp-apps
+                        - text: developers.openai.com
+                        - generic [ref=f2e250]: (opens website)
+                      - button "Refresh OpenAI Developers" [ref=f2e251] [cursor=pointer]
+                - cell [ref=f2e254]:
+                  - button "View tools for OpenAI Developers" [ref=f2e255] [cursor=pointer]:
+                    - strong [ref=f2e256]: "5"
+                    - generic [ref=f2e257]: Reported
+                - cell [ref=f2e258]:
+                  - link "Public posts for openai.com" [ref=f2e259] [cursor=pointer]:
+                    - /url: /openai.com
+                    - text: "0"
+              - row [ref=f2e260]:
+                - rowheader [ref=f2e261]:
+                  - generic [ref=f2e262]:
+                    - button "Alo Yoga" [ref=f2e263] [cursor=pointer]:
+                      - generic [ref=f2e265]: A
+                    - generic [ref=f2e267]:
+                      - link "aloyoga.com (opens website)" [ref=f2e268] [cursor=pointer]:
+                        - /url: https://www.aloyoga.com/
+                        - text: aloyoga.com
+                        - generic [ref=f2e269]: (opens website)
+                      - button "Refresh Alo Yoga" [ref=f2e270] [cursor=pointer]
+                - cell [ref=f2e273]:
+                  - button "View tools for Alo Yoga" [ref=f2e274] [cursor=pointer]:
+                    - strong [ref=f2e275]: "11"
+                    - generic [ref=f2e276]: Reported
+                - cell [ref=f2e277]:
+                  - link "Public posts for aloyoga.com" [ref=f2e278] [cursor=pointer]:
+                    - /url: /aloyoga.com
+                    - text: "0"
+              - row [ref=f2e279]:
+                - rowheader [ref=f2e280]:
+                  - generic [ref=f2e281]:
+                    - button "Netgear" [ref=f2e282] [cursor=pointer]:
+                      - generic [ref=f2e284]: "N"
+                    - generic [ref=f2e286]:
+                      - link "netgear.com (opens website)" [ref=f2e287] [cursor=pointer]:
+                        - /url: https://www.netgear.com/
+                        - text: netgear.com
+                        - generic [ref=f2e288]: (opens website)
+                      - button "Refresh Netgear" [ref=f2e289] [cursor=pointer]
+                - cell [ref=f2e292]:
+                  - button "View tools for Netgear" [ref=f2e293] [cursor=pointer]:
+                    - strong [ref=f2e294]: "5"
+                    - generic [ref=f2e295]: Reported
+                - cell [ref=f2e296]:
+                  - link "Public posts for netgear.com" [ref=f2e297] [cursor=pointer]:
+                    - /url: /netgear.com
+                    - text: "0"
+              - row [ref=f2e298]:
+                - rowheader [ref=f2e299]:
+                  - generic [ref=f2e300]:
+                    - button "Omio" [ref=f2e301] [cursor=pointer]:
+                      - generic [ref=f2e303]: O
+                    - generic [ref=f2e305]:
+                      - link "omio.com (opens website)" [ref=f2e306] [cursor=pointer]:
+                        - /url: https://www.omio.com/
+                        - text: omio.com
+                        - generic [ref=f2e307]: (opens website)
+                      - button "Refresh Omio" [ref=f2e308] [cursor=pointer]
+                - cell [ref=f2e311]:
+                  - button "View tools for Omio" [ref=f2e312] [cursor=pointer]:
+                    - strong [ref=f2e313]: "2"
+                    - generic [ref=f2e314]: Reported
+                - cell [ref=f2e315]:
+                  - link "Public posts for omio.com" [ref=f2e316] [cursor=pointer]:
+                    - /url: /omio.com
+                    - text: "0"
+              - row [ref=f2e317]:
+                - rowheader [ref=f2e318]:
+                  - generic [ref=f2e319]:
+                    - button "ZipRecruiter" [ref=f2e320] [cursor=pointer]:
+                      - generic [ref=f2e322]: Z
+                    - generic [ref=f2e324]:
+                      - link "ziprecruiter.com (opens website)" [ref=f2e325] [cursor=pointer]:
+                        - /url: https://www.ziprecruiter.com/
+                        - text: ziprecruiter.com
+                        - generic [ref=f2e326]: (opens website)
+                      - button "Refresh ZipRecruiter" [ref=f2e327] [cursor=pointer]
+                - cell [ref=f2e330]:
+                  - button "View tools for ZipRecruiter" [ref=f2e331] [cursor=pointer]:
+                    - strong [ref=f2e332]: "1"
+                    - generic [ref=f2e333]: Reported
+                - cell [ref=f2e334]:
+                  - link "Public posts for ziprecruiter.com" [ref=f2e335] [cursor=pointer]:
+                    - /url: /ziprecruiter.com
+                    - text: "0"
+              - row [ref=f2e336]:
+                - rowheader [ref=f2e337]:
+                  - generic [ref=f2e338]:
+                    - button "BestPrice.gr" [ref=f2e339] [cursor=pointer]:
+                      - generic [ref=f2e341]: B
+                    - generic [ref=f2e343]:
+                      - link "bestprice.gr (opens website)" [ref=f2e344] [cursor=pointer]:
+                        - /url: https://www.bestprice.gr/
+                        - text: bestprice.gr
+                        - generic [ref=f2e345]: (opens website)
+                      - button "Refresh BestPrice.gr" [ref=f2e346] [cursor=pointer]
+                - cell [ref=f2e349]:
+                  - button "View tools for BestPrice.gr" [ref=f2e350] [cursor=pointer]:
+                    - strong [ref=f2e351]: "22"
+                    - generic [ref=f2e352]: Reported
+                - cell [ref=f2e353]:
+                  - link "Public posts for bestprice.gr" [ref=f2e354] [cursor=pointer]:
+                    - /url: /bestprice.gr
+                    - text: "0"
+              - row [ref=f2e355]:
+                - rowheader [ref=f2e356]:
+                  - generic [ref=f2e357]:
+                    - button "OpenSea" [ref=f2e358] [cursor=pointer]:
+                      - generic [ref=f2e360]: O
+                    - generic [ref=f2e362]:
+                      - link "opensea.io (opens website)" [ref=f2e363] [cursor=pointer]:
+                        - /url: https://opensea.io/
+                        - text: opensea.io
+                        - generic [ref=f2e364]: (opens website)
+                      - button "Refresh OpenSea" [ref=f2e365] [cursor=pointer]
+                - cell [ref=f2e368]:
+                  - button "View tools for OpenSea" [ref=f2e369] [cursor=pointer]:
+                    - strong [ref=f2e370]: "10"
+                    - generic [ref=f2e371]: Reported
+                - cell [ref=f2e372]:
+                  - link "Public posts for opensea.io" [ref=f2e373] [cursor=pointer]:
+                    - /url: /opensea.io
+                    - text: "0"
+              - row [ref=f2e374]:
+                - rowheader [ref=f2e375]:
+                  - generic [ref=f2e376]:
+                    - button "Render" [ref=f2e377] [cursor=pointer]
+                    - generic [ref=f2e380]:
+                      - link "render.com (opens website)" [ref=f2e381] [cursor=pointer]:
+                        - /url: https://render.com/
+                        - text: render.com
+                        - generic [ref=f2e382]: (opens website)
+                      - button "Refresh Render" [ref=f2e383] [cursor=pointer]
+                - cell [ref=f2e386]:
+                  - button "View tools for Render" [ref=f2e387] [cursor=pointer]:
+                    - strong [ref=f2e388]: "5"
+                    - generic [ref=f2e389]: Reported
+                - cell [ref=f2e390]:
+                  - link "Public posts for render.com" [ref=f2e391] [cursor=pointer]:
+                    - /url: /render.com
+                    - text: "0"
+              - row [ref=f2e392]:
+                - rowheader [ref=f2e393]:
+                  - generic [ref=f2e394]:
+                    - button "Cloudflare Radar" [ref=f2e395] [cursor=pointer]:
+                      - generic [ref=f2e397]: C
+                    - generic [ref=f2e399]:
+                      - link "radar.cloudflare.com (opens website)" [ref=f2e400] [cursor=pointer]:
+                        - /url: https://radar.cloudflare.com/
+                        - text: radar.cloudflare.com
+                        - generic [ref=f2e401]: (opens website)
+                      - button "Refresh Cloudflare Radar" [ref=f2e402] [cursor=pointer]
+                - cell [ref=f2e405]:
+                  - button "View tools for Cloudflare Radar" [ref=f2e406] [cursor=pointer]:
+                    - strong [ref=f2e407]: "6"
+                    - generic [ref=f2e408]: Reported
+                - cell [ref=f2e409]:
+                  - link "Public posts for cloudflare.com" [ref=f2e410] [cursor=pointer]:
+                    - /url: /cloudflare.com
+                    - text: "0"
+              - row [ref=f2e411]:
+                - rowheader [ref=f2e412]:
+                  - generic [ref=f2e413]:
+                    - button "Reebok" [ref=f2e414] [cursor=pointer]:
+                      - generic [ref=f2e416]: R
+                    - generic [ref=f2e418]:
+                      - link "reebok.com (opens website)" [ref=f2e419] [cursor=pointer]:
+                        - /url: https://www.reebok.com/
+                        - text: reebok.com
+                        - generic [ref=f2e420]: (opens website)
+                      - button "Refresh Reebok" [ref=f2e421] [cursor=pointer]
+                - cell [ref=f2e424]:
+                  - button "View tools for Reebok" [ref=f2e425] [cursor=pointer]:
+                    - strong [ref=f2e426]: "11"
+                    - generic [ref=f2e427]: Reported
+                - cell [ref=f2e428]:
+                  - link "Public posts for reebok.com" [ref=f2e429] [cursor=pointer]:
+                    - /url: /reebok.com
+                    - text: "0"
+              - row [ref=f2e430]:
+                - rowheader [ref=f2e431]:
+                  - generic [ref=f2e432]:
+                    - button "Ramp app" [ref=f2e433] [cursor=pointer]:
+                      - generic [ref=f2e435]: R
+                    - generic [ref=f2e437]:
+                      - link "app.ramp.com (opens website)" [ref=f2e438] [cursor=pointer]:
+                        - /url: https://app.ramp.com/sign-in
+                        - text: app.ramp.com
+                        - generic [ref=f2e439]: (opens website)
+                      - button "Refresh Ramp app" [ref=f2e440] [cursor=pointer]
+                - cell [ref=f2e443]:
+                  - button "View tools for Ramp app" [ref=f2e444] [cursor=pointer]:
+                    - strong [ref=f2e445]: "28"
+                    - generic [ref=f2e446]: Reported
+                - cell [ref=f2e447]:
+                  - link "Public posts for ramp.com" [ref=f2e448] [cursor=pointer]:
+                    - /url: /ramp.com
+                    - text: "0"
+              - row [ref=f2e449]:
+                - rowheader [ref=f2e450]:
+                  - generic [ref=f2e451]:
+                    - button "FreeTaxUSA authentication" [ref=f2e452] [cursor=pointer]:
+                      - generic [ref=f2e454]: F
+                    - generic [ref=f2e456]:
+                      - link "auth.freetaxusa.com (opens website)" [ref=f2e457] [cursor=pointer]:
+                        - /url: https://auth.freetaxusa.com/
+                        - text: auth.freetaxusa.com
+                        - generic [ref=f2e458]: (opens website)
+                      - button "Refresh FreeTaxUSA authentication" [ref=f2e459] [cursor=pointer]
+                - cell [ref=f2e462]:
+                  - button "View tools for FreeTaxUSA authentication" [ref=f2e463] [cursor=pointer]:
+                    - strong [ref=f2e464]: "5"
+                    - generic [ref=f2e465]: Reported
+                - cell [ref=f2e466]:
+                  - link "Public posts for freetaxusa.com" [ref=f2e467] [cursor=pointer]:
+                    - /url: /freetaxusa.com
+                    - text: "0"
+              - row [ref=f2e468]:
+                - rowheader [ref=f2e469]:
+                  - generic [ref=f2e470]:
+                    - button "Brooklinen" [ref=f2e471] [cursor=pointer]:
+                      - generic [ref=f2e473]: B
+                    - generic [ref=f2e475]:
+                      - link "brooklinen.com (opens website)" [ref=f2e476] [cursor=pointer]:
+                        - /url: https://www.brooklinen.com/
+                        - text: brooklinen.com
+                        - generic [ref=f2e477]: (opens website)
+                      - button "Refresh Brooklinen" [ref=f2e478] [cursor=pointer]
+                - cell [ref=f2e481]:
+                  - button "View tools for Brooklinen" [ref=f2e482] [cursor=pointer]:
+                    - strong [ref=f2e483]: "10"
+                    - generic [ref=f2e484]: Reported
+                - cell [ref=f2e485]:
+                  - link "Public posts for brooklinen.com" [ref=f2e486] [cursor=pointer]:
+                    - /url: /brooklinen.com
+                    - text: "0"
+              - row [ref=f2e487]:
+                - rowheader [ref=f2e488]:
+                  - generic [ref=f2e489]:
+                    - button "1inch" [ref=f2e490] [cursor=pointer]:
+                      - generic [ref=f2e492]: "1"
+                    - generic [ref=f2e494]:
+                      - link "1inch.com (opens website)" [ref=f2e495] [cursor=pointer]:
+                        - /url: https://1inch.com/
+                        - text: 1inch.com
+                        - generic [ref=f2e496]: (opens website)
+                      - button "Refresh 1inch" [ref=f2e497] [cursor=pointer]
+                - cell [ref=f2e500]:
+                  - button "View tools for 1inch" [ref=f2e501] [cursor=pointer]:
+                    - strong [ref=f2e502]: "7"
+                    - generic [ref=f2e503]: Reported
+                - cell [ref=f2e504]:
+                  - link "Public posts for 1inch.com" [ref=f2e505] [cursor=pointer]:
+                    - /url: /1inch.com
+                    - text: "0"
+              - row [ref=f2e506]:
+                - rowheader [ref=f2e507]:
+                  - generic [ref=f2e508]:
+                    - button "Away" [ref=f2e509] [cursor=pointer]:
+                      - generic [ref=f2e511]: A
+                    - generic [ref=f2e513]:
+                      - link "awaytravel.com (opens website)" [ref=f2e514] [cursor=pointer]:
+                        - /url: https://www.awaytravel.com/
+                        - text: awaytravel.com
+                        - generic [ref=f2e515]: (opens website)
+                      - button "Refresh Away" [ref=f2e516] [cursor=pointer]
+                - cell [ref=f2e519]:
+                  - button "View tools for Away" [ref=f2e520] [cursor=pointer]:
+                    - strong [ref=f2e521]: "10"
+                    - generic [ref=f2e522]: Reported
+                - cell [ref=f2e523]:
+                  - link "Public posts for awaytravel.com" [ref=f2e524] [cursor=pointer]:
+                    - /url: /awaytravel.com
+                    - text: "0"
+              - row [ref=f2e525]:
+                - rowheader [ref=f2e526]:
+                  - generic [ref=f2e527]:
+                    - button "AutoCAD Web" [ref=f2e528] [cursor=pointer]:
+                      - generic [ref=f2e530]: A
+                    - generic [ref=f2e532]:
+                      - link "web.autocad.com (opens website)" [ref=f2e533] [cursor=pointer]:
+                        - /url: https://web.autocad.com/login
+                        - text: web.autocad.com
+                        - generic [ref=f2e534]: (opens website)
+                      - button "Refresh AutoCAD Web" [ref=f2e535] [cursor=pointer]
+                - cell [ref=f2e538]:
+                  - button "View tools for AutoCAD Web" [ref=f2e539] [cursor=pointer]:
+                    - strong [ref=f2e540]: "17"
+                    - generic [ref=f2e541]: Reported
+                - cell [ref=f2e542]:
+                  - link "Public posts for autocad.com" [ref=f2e543] [cursor=pointer]:
+                    - /url: /autocad.com
+                    - text: "0"
+              - row [ref=f2e544]:
+                - rowheader [ref=f2e545]:
+                  - generic [ref=f2e546]:
+                    - button "ngrok" [ref=f2e547] [cursor=pointer]:
+                      - generic [ref=f2e549]: "N"
+                    - generic [ref=f2e551]:
+                      - link "ngrok.com (opens website)" [ref=f2e552] [cursor=pointer]:
+                        - /url: https://ngrok.com/
+                        - text: ngrok.com
+                        - generic [ref=f2e553]: (opens website)
+                      - button "Refresh ngrok" [ref=f2e554] [cursor=pointer]
+                - cell [ref=f2e557]:
+                  - button "View tools for ngrok" [ref=f2e558] [cursor=pointer]:
+                    - strong [ref=f2e559]: "11"
+                    - generic [ref=f2e560]: Reported
+                - cell [ref=f2e561]:
+                  - link "Public posts for ngrok.com" [ref=f2e562] [cursor=pointer]:
+                    - /url: /ngrok.com
+                    - text: "0"
+              - row [ref=f2e563]:
+                - rowheader [ref=f2e564]:
+                  - generic [ref=f2e565]:
+                    - button "QuickNode" [ref=f2e566] [cursor=pointer]:
+                      - generic [ref=f2e568]: Q
+                    - generic [ref=f2e570]:
+                      - link "quicknode.com (opens website)" [ref=f2e571] [cursor=pointer]:
+                        - /url: https://www.quicknode.com/
+                        - text: quicknode.com
+                        - generic [ref=f2e572]: (opens website)
+                      - button "Refresh QuickNode" [ref=f2e573] [cursor=pointer]
+                - cell [ref=f2e576]:
+                  - button "View tools for QuickNode" [ref=f2e577] [cursor=pointer]:
+                    - strong [ref=f2e578]: "5"
+                    - generic [ref=f2e579]: Reported
+                - cell [ref=f2e580]:
+                  - link "Public posts for quicknode.com" [ref=f2e581] [cursor=pointer]:
+                    - /url: /quicknode.com
+                    - text: "0"
+              - row [ref=f2e582]:
+                - rowheader [ref=f2e583]:
+                  - generic [ref=f2e584]:
+                    - button "LottieFiles Creator" [ref=f2e585] [cursor=pointer]:
+                      - generic [ref=f2e587]: L
+                    - generic [ref=f2e589]:
+                      - link "creator.lottiefiles.com (opens website)" [ref=f2e590] [cursor=pointer]:
+                        - /url: https://creator.lottiefiles.com/
+                        - text: creator.lottiefiles.com
+                        - generic [ref=f2e591]: (opens website)
+                      - button "Refresh LottieFiles Creator" [ref=f2e592] [cursor=pointer]
+                - cell [ref=f2e595]:
+                  - button "View tools for LottieFiles Creator" [ref=f2e596] [cursor=pointer]:
+                    - strong [ref=f2e597]: "16"
+                    - generic [ref=f2e598]: Reported
+                - cell [ref=f2e599]:
+                  - link "Public posts for lottiefiles.com" [ref=f2e600] [cursor=pointer]:
+                    - /url: /lottiefiles.com
+                    - text: "0"
+              - row [ref=f2e601]:
+                - rowheader [ref=f2e602]:
+                  - generic [ref=f2e603]:
+                    - button "Glossier" [ref=f2e604] [cursor=pointer]:
+                      - generic [ref=f2e606]: G
+                    - generic [ref=f2e608]:
+                      - link "glossier.com (opens website)" [ref=f2e609] [cursor=pointer]:
+                        - /url: https://www.glossier.com/
+                        - text: glossier.com
+                        - generic [ref=f2e610]: (opens website)
+                      - button "Refresh Glossier" [ref=f2e611] [cursor=pointer]
+                - cell [ref=f2e614]:
+                  - button "View tools for Glossier" [ref=f2e615] [cursor=pointer]:
+                    - strong [ref=f2e616]: "10"
+                    - generic [ref=f2e617]: Reported
+                - cell [ref=f2e618]:
+                  - link "Public posts for glossier.com" [ref=f2e619] [cursor=pointer]:
+                    - /url: /glossier.com
+                    - text: "0"
+              - row [ref=f2e620]:
+                - rowheader [ref=f2e621]:
+                  - generic [ref=f2e622]:
+                    - button "Attio" [ref=f2e623] [cursor=pointer]:
+                      - generic [ref=f2e625]: A
+                    - generic [ref=f2e627]:
+                      - link "attio.com (opens website)" [ref=f2e628] [cursor=pointer]:
+                        - /url: https://attio.com/
+                        - text: attio.com
+                        - generic [ref=f2e629]: (opens website)
+                      - button "Refresh Attio" [ref=f2e630] [cursor=pointer]
+                - cell [ref=f2e633]:
+                  - button "View tools for Attio" [ref=f2e634] [cursor=pointer]:
+                    - strong [ref=f2e635]: "3"
+                    - generic [ref=f2e636]: Reported
+                - cell [ref=f2e637]:
+                  - link "Public posts for attio.com" [ref=f2e638] [cursor=pointer]:
+                    - /url: /attio.com
+                    - text: "0"
+              - row [ref=f2e639]:
+                - rowheader [ref=f2e640]:
+                  - generic [ref=f2e641]:
+                    - button "CrewAI" [ref=f2e642] [cursor=pointer]:
+                      - generic [ref=f2e644]: C
+                    - generic [ref=f2e646]:
+                      - link "crewai.com (opens website)" [ref=f2e647] [cursor=pointer]:
+                        - /url: https://www.crewai.com/
+                        - text: crewai.com
+                        - generic [ref=f2e648]: (opens website)
+                      - button "Refresh CrewAI" [ref=f2e649] [cursor=pointer]
+                - cell [ref=f2e652]:
+                  - button "View tools for CrewAI" [ref=f2e653] [cursor=pointer]:
+                    - strong [ref=f2e654]: "2"
+                    - generic [ref=f2e655]: Reported
+                - cell [ref=f2e656]:
+                  - link "Public posts for crewai.com" [ref=f2e657] [cursor=pointer]:
+                    - /url: /crewai.com
+                    - text: "0"
+              - row [ref=f2e658]:
+                - rowheader [ref=f2e659]:
+                  - generic [ref=f2e660]:
+                    - button "Coinranking" [ref=f2e661] [cursor=pointer]:
+                      - generic [ref=f2e663]: C
+                    - generic [ref=f2e665]:
+                      - link "coinranking.com (opens website)" [ref=f2e666] [cursor=pointer]:
+                        - /url: https://coinranking.com/chart/coin/Qwsogvtv82FCd+bitcoin-btc/price
+                        - text: coinranking.com
+                        - generic [ref=f2e667]: (opens website)
+                      - button "Refresh Coinranking" [ref=f2e668] [cursor=pointer]
+                - cell [ref=f2e671]:
+                  - button "View tools for Coinranking" [ref=f2e672] [cursor=pointer]:
+                    - strong [ref=f2e673]: "17"
+                    - generic [ref=f2e674]: Reported
+                - cell [ref=f2e675]:
+                  - link "Public posts for coinranking.com" [ref=f2e676] [cursor=pointer]:
+                    - /url: /coinranking.com
+                    - text: "0"
+        - paragraph [ref=f2e677]: — Not reported. Forum posts count public threads across the domain, including subdomains.
+        - button "Load more sites" [ref=f2e679] [cursor=pointer]
+        - group [ref=f2e680]:
+          - generic "About the data" [ref=f2e681] [cursor=pointer]
+    - contentinfo [ref=f2e684]:
+      - generic [ref=f2e685]:
+        - link "Patchbay on X" [ref=f2e686] [cursor=pointer]:
+          - /url: https://x.com/regents_sh
+        - link "Patchbay on GitHub" [ref=f2e689] [cursor=pointer]:
+          - /url: https://github.com/regents-ai
+      - navigation "About Patchbay" [ref=f2e692]:
+        - link "Buy $REGENT" [ref=f2e693] [cursor=pointer]:
+          - /url: https://app.uniswap.org/explore/tokens/base/0x6f89bcA4eA5931EdFCB09786267b251DeE752b07
+        - link "About" [ref=f2e694] [cursor=pointer]:
+          - /url: /about
+        - link "Developer docs" [ref=f2e695] [cursor=pointer]:
+          - /url: /docs
+        - button "Agent guide" [ref=f2e696] [cursor=pointer]
+        - link "Contact" [ref=f2e697] [cursor=pointer]:
+          - /url: /contact
+        - generic [ref=f2e698]:
+          - link "Privacy policy" [ref=f2e699] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of use" [ref=f2e700] [cursor=pointer]:
+            - /url: /terms
+      - paragraph [ref=f2e701]: © 2026 Regents Labs
+```
+
+# Test source
+
+```ts
+  1  | import {expect, test, watch} from "./support/test"
+  2  | 
+  3  | // The page's WebMCP tools, as the browser itself holds them. Chromium offers
+  4  | // document.modelContext to this local server only with its WebMCP testing
+  5  | // switch (chrome://flags/#enable-webmcp-testing); on patchbay.help the
+  6  | // origin-trial token does it instead, and that token names patchbay.help alone.
+  7  | 
+  8  | type Tool = {name: string}
+  9  | type ModelContext = {
+  10 |   getTools(): Promise<Tool[]>
+  11 |   executeTool(tool: Tool, input: unknown): Promise<unknown>
+  12 | }
+  13 | type Manifest = {tools: {name: string; scope: string}[]}
+  14 | 
+  15 | test.use({launchOptions: {args: ["--enable-features=WebMCPTesting"]}})
+  16 | 
+  17 | // The browser holds exactly the page tools the manifest names, no more: none acts
+  18 | // with the person's own sign-in (the shared profile tools are not registered), so
+  19 | // <html> has no data-profile-webmcp.
+  20 | test("each page registers exactly the manifest's page tools, and a public read runs through the browser", async ({page, request}) => {
+  21 |   const problems = watch(page)
+  22 |   const manifest: Manifest = await (await request.get("/forum/capabilities")).json()
+  23 |   const pageTools = manifest.tools.filter(tool => tool.scope === "site").map(tool => tool.name).sort()
+  24 | 
+  25 |   for (const path of ["/", "/keyfleet.ai", "/sites"]) {
+  26 |     await page.goto(path)
+  27 |     await expect(page.locator("html")).toHaveAttribute("data-webmcp-status", "connected")
+  28 |     const held = await page.evaluate(async () => {
+  29 |       const context = (document as unknown as {modelContext: ModelContext}).modelContext
+  30 |       return (await context.getTools()).map(tool => tool.name)
+  31 |     })
+  32 |     expect(held.sort(), path).toEqual(pageTools)
+  33 |     await expect(page.locator("html"), path).not.toHaveAttribute("data-profile-webmcp")
+  34 |   }
+  35 | 
+  36 |   // search_threads, run by the browser's own WebMCP: the walk's one thread,
+  37 |   // asked on keyfleet.ai's board, comes back as quoted data.
+> 38 |   const answer = await page.evaluate(async () => {
+     |                             ^ Error: page.evaluate: Test timeout of 30000ms exceeded.
+  39 |     const context = (document as unknown as {modelContext: ModelContext}).modelContext
+  40 |     const tool = (await context.getTools()).find(entry => entry.name === "search_threads")!
+  41 |     const result = await context.executeTool(tool, {origin: "keyfleet.ai"})
+  42 |     return typeof result === "string" ? result : JSON.stringify(result)
+  43 |   })
+  44 |   const result = JSON.parse(answer)
+  45 |   expect(result.ok).toBe(true)
+  46 |   expect(result.status).toBe(200)
+  47 |   expect(result.data.data_only).toBeTruthy()
+  48 |   expect(result.data.results.results.length).toBeGreaterThan(0)
+  49 |   await problems.expect()
+  50 | })
+  51 | 
+```
