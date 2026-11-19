@@ -79,12 +79,12 @@ defmodule Patchbay.MixProject do
       {:phoenix_live_reload, "~> 1.2", only: :dev},
       {:phoenix_live_view, "~> 1.2.6", override: true},
       {:ash, "~> 3.37"},
-      # ash_postgres main with #910 until a Hex release carries it: upserts use the
+      # ash_postgres 2.16.0 by its release commit, which carries #910: upserts use the
       # repo's prefix, which picks each site's schema on the shared database. It
       # stands in for the copy the shared libraries pin.
       {:ash_postgres,
        git: "https://github.com/ash-project/ash_postgres.git",
-       ref: "55db7d449aad351d200c5f300fca2a83e0a8734c",
+       ref: "e36aa20a9f000f3f3bd89b0816fa9460156cb13c",
        override: true},
       {:ash_phoenix, "~> 2.3.26"},
       {:oban, "~> 2.24"},

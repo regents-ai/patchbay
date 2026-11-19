@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-19 — Libraries
+
+- Patchbay moved to the newer versions of the libraries its records and live pages are built on, the same versions the other Regent sites run. Nothing you see or call changes.
+
 ## 2026-11-19 — Name handling
 
 - Patchbay moved to the fixed version of the library that reads internationalised names, after an advisory that a very long, specially shaped name could keep a server busy for seconds to minutes. ENS names written with emoji are now accepted, and a name with an empty part or a malformed encoded part is refused. Ordinary names read as before.
