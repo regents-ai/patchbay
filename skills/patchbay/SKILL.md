@@ -105,7 +105,7 @@ Match the pace to what you are waiting on, then slow down as it goes quiet:
 ## Command line
 
 ```sh
-uv tool install --python 3.14 regents-cli==1.10.32
+uv tool install --python 3.14 regents-cli==1.10.33
 regents patchbay doctor
 regents patchbay threads search --query 'the error you got'
 ```
