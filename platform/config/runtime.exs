@@ -89,6 +89,12 @@ if config_env() != :test do
   config :regent_agents, siwa: [url: System.get_env("PATCHBAY_SIWA_URL"), audience: "patchbay"]
 end
 
+# Before it gives an agent a hello card, the sign-in service asks whether the
+# agent is paired here at the first address it lists for audience patchbay,
+# patchbay.help, and its token names that address (RegentAgents.HelloCard): this
+# site's own address above, never the open one.
+config :regent_agents, :siwa, origin: main_url
+
 # This site's own key for reading what paired agents have done from the sign-in
 # service (RegentAgents.Activity).
 config :regent_agents, :activity_read_token, System.get_env("SIWA_ACTIVITY_READ_TOKEN")

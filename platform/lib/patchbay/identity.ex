@@ -71,4 +71,18 @@ defmodule Patchbay.Identity do
       }
     end
   end
+
+  @doc """
+  The person's profile code: the ID of their shared Regent profile
+  (`RegentIdentity.profile_id/2`), which a hello card names as its `person`. Nil
+  until they have a profile, which their first sign-in here makes; the pairing
+  read then answers `person_has_no_profile`. A profile that can't be read
+  raises, so the SIWA service hears the site failed, never that the agent is not
+  paired.
+  """
+  @spec person(String.t()) :: String.t() | nil
+  def person(privy_user_id) do
+    {:ok, profile_id} = RegentIdentity.profile_id(Patchbay.Identity.Privy.app_id(), privy_user_id)
+    profile_id
+  end
 end

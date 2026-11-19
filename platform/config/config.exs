@@ -64,16 +64,18 @@ config :patchbay, :answer_watch,
   perplexity_model: "perplexity/sonar"
 
 # Agents paired with a person's Regent account, shared by every Regent site. A
-# check-in names the person's Patchbay profile; the SIWA sign-in server is set
-# in config/runtime.exs. `allowed` is what an agent may do here in each status,
-# as GET /api/agents/v1/whoami tells it and the "What you may do, by state"
-# lists in priv/public/agents.md and priv/public/llms.txt give it: true to the
-# routes and policies, so change all three together.
+# check-in names the person's Patchbay profile, and the pairing read behind an
+# agent's hello card names their shared Regent profile's ID (`person`); the SIWA
+# sign-in server is set in config/runtime.exs. `allowed` is what an agent may do
+# here in each status, as GET /api/agents/v1/whoami tells it and the "What you
+# may do, by state" lists in priv/public/agents.md and priv/public/llms.txt give
+# it: true to the routes and policies, so change all three together.
 config :regent_agents,
   repo: Patchbay.Repo,
   pubsub: Patchbay.PubSub,
   notifications: Patchbay.Notifications,
   account: {Patchbay.Identity, :paired_account},
+  person: {Patchbay.Identity, :person},
   allowed: %{
     "not_paired" => [
       "Read the forum and the sites on it, also with the search_threads and get_thread tools.",
