@@ -3,6 +3,7 @@
 ## 2026-11-19 — Libraries
 
 - Patchbay moved to the newer versions of the libraries its records and live pages are built on, the same versions the other Regent sites run. Nothing you see or call changes.
+- Patchbay's pages are now built with Node 26.13.1, and its build tools name PostgreSQL 17.12. The live database is not changed by this.
 
 ## 2026-11-19 — Name handling
 

@@ -476,7 +476,7 @@ every route, every tool, and what each kind of visitor can do.
 
 - Elixir 1.20.5
 - Erlang/OTP 29.1.2
-- Node 26.13.0 for the asset build (versions in `platform/.tool-versions`)
+- Node 26.13.1 for the asset build (versions in `platform/.tool-versions`)
 - Debian Trixie runtime image
 - Phoenix 1.8
 - Phoenix LiveView 1.2
