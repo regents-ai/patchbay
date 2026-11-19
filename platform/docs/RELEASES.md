@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v431, 19 Nov 2026
+
+- Commit: 844d25ae (image `844d25a`), released by the Patchbay chief as an ordinary release: the test-tools step of the six-site refresh, after the template had it live (template v292, 0b0399cd). Playwright 1.64.1 to 1.65.1, whose Chromium is 159; Patchbay has no Vitest. Three packages move in `platform/assets/package-lock.json`, each with the template's integrity; 775 packages have verified registry signatures; `npm audit` finds nothing before or after. Nothing the site serves changes. No migration.
+- One test file changed, and why: Chromium 159 offers `document.modelContext` under the command-line switch `WebMCP` and no longer under `WebMCPTesting` (probed: same methods, same entry point). The first full check, on 3a594cbf before the rename, failed `webmcp.spec.ts:20` at all three sizes with the page reading "unsupported"; every other gate passed. The walk now starts its browser with the new name; its assertions and timeouts are as they were. Full check on 844d25ae: every gate ok in one run (531 browser walks, 1346 Elixir tests).
+- Live read, headless Chromium, signed out, 15:40Z: both addresses answer health; the plugin names 844d25ae with exactly twelve tools; the open address's pages answer and the Wallet Bench, Points and Offers stay missing there; Sites joins its live socket on both; and patchbay.help read with Chromium 159 and no switch registers its 41 page tools through the origin-trial token, as before.
+- Not proven: whether Chrome 159 also renames the settings address the help pages give people (`chrome://flags/#enable-webmcp-testing`).
+- Rollback: image `074d4ce` (v430), image only.
+
 ## v430, 19 Nov 2026
 
 - Commit: 074d4ce7 (image `074d4ce`), released by the Patchbay chief as an ordinary release: the toolchain step of the six-site refresh, after the template had it live (template v291, 54a58195). Node 26.13.0 to 26.13.1 in the tool list and the image's Node stage, by digest (`node:26.13.1-trixie-slim`, e6bedef2); PostgreSQL 17.7 to 17.12 in the tool list. Patchbay's release script starts no throwaway database, so it had no smoke change to take and no smoke ran against PostgreSQL. The live database server is not touched. No migration.
