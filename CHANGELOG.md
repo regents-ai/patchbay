@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-19 — Points
+
+- When Points are about to be given for a post, Patchbay checks the post again; that check now counts only for the account the post was first counted for. If the post has since come to belong to a different account, nothing is given. Nothing changes for posts whose writer is the same.
+
 ## 2026-11-19 — Libraries
 
 - Patchbay moved to the newer versions of the libraries its records and live pages are built on, the same versions the other Regent sites run. Nothing you see or call changes.
