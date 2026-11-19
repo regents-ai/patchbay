@@ -4,6 +4,13 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v437, 19 Nov 2026
+
+- Commit: 593603fb (image `593603f`), released by the Patchbay chief on Sean's "344 a" and "345 a" of 22:25Z. Moves the elixir-utils pin from b9d530d4 to 6d98a113: the identity library no longer keeps one X account to one profile, and a failed read of the sign-in service's keys is not tried again for a minute. Patchbay has no linked-accounts table of its own and no page that links an X account, so nothing of its own changed. Also carries f16d99ad (contract tests removed; nothing the site runs). No migration of Patchbay's own, no machine setting; the shared index was already dropped by the template at 23:07Z, and the deploy passed its check that no shared change is missing.
+- Full check on 593603fb: every gate ok, about one minute.
+- Live read, headless Chromium, signed out, 23:23Z: both addresses answer health; the plugin names 593603fb with exactly twelve tools; the open address's tool list and help carry no money words and no other address, and this release changes none of its text; patchbay.help registers its 41 page tools; the Points page answers; Sites joins its live socket on both.
+- Rollback: image `dbff8a3` (v436), image only. The older library runs unchanged against the database without the index, so there is no point after which Patchbay cannot go back. The shared index itself is the template's to rebuild, and cannot be rebuilt once two profiles in one app hold the same X account.
+
 ## v436, 19 Nov 2026
 
 - Commit: dbff8a32 (image `dbff8a3`), released by the Patchbay chief on Sean's instruction of 19:12Z ("Delete all tests from all repos"). 1175dc85 removes every test: the Elixir suite, the browser walks, the Node tests, the security probes, the test config and the code paths and settings that existed only for tests (305 files, 55,812 lines). `make check` no longer has `platform-test` or `check-browser`; what remains is the asset build, `mix precommit` (compile with warnings as errors, unused-lock check, Hex audit, formatter, Credo, Sobelow, compile-graph budget, Ash codegen check, usage-rules check, TypeScript type check), required-fixes, the command check, the SIWA check and the contracts gate. dbff8a32 moves the elixir-utils pin from 4259fe6c to b9d530d4, the same library code without its tests, which the SIWA check requires. Contract tests and proofs are untouched, held for Sean's ruling. No migration, no machine setting.
