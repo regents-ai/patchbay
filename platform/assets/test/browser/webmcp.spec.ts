@@ -1,9 +1,11 @@
 import {expect, test, watch} from "./support/test"
 
 // The page's WebMCP tools, as the browser itself holds them. Chromium offers
-// document.modelContext to this local server only with its WebMCP testing
-// switch (chrome://flags/#enable-webmcp-testing); on patchbay.help the
-// origin-trial token does it instead, and that token names patchbay.help alone.
+// document.modelContext to this local server only with its WebMCP switch
+// (chrome://flags/#enable-webmcp-testing in Chrome; `WebMCP` on the command
+// line from Chromium 159, which no longer answers to `WebMCPTesting`). On
+// patchbay.help the origin-trial token does it instead, and that token names
+// patchbay.help alone.
 
 type Tool = {name: string}
 type ModelContext = {
@@ -12,7 +14,7 @@ type ModelContext = {
 }
 type Manifest = {tools: {name: string; scope: string}[]}
 
-test.use({launchOptions: {args: ["--enable-features=WebMCPTesting"]}})
+test.use({launchOptions: {args: ["--enable-features=WebMCP"]}})
 
 // The browser holds exactly the page tools the manifest names, no more: none acts
 // with the person's own sign-in (the shared profile tools are not registered), so

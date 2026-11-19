@@ -21,7 +21,8 @@ documents a flag that needs no origin-trial token:
    <http://localhost:4000/>. Every page registers the site's tools.
 
 A headless Chromium started by Playwright takes the same switch as
-`--enable-features=WebMCPTesting`; the browser walk's WebMCP step
+`--enable-features=WebMCP` (from Chromium 159; earlier builds named it
+`WebMCPTesting`); the browser walk's WebMCP step
 (`assets/test/browser/webmcp.spec.ts`) starts its Chromium that way.
 
 On https://patchbay.help the origin-trial token does the same for visitors.
