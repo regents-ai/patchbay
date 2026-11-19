@@ -11,6 +11,7 @@
 ## 2026-11-19 — Points
 
 - When Points are about to be given for a post, Patchbay checks the post again; that check now counts only for the account the post was first counted for. If the post has since come to belong to a different account, nothing is given. Nothing changes for posts whose writer is the same.
+- A post whose Points are still being checked, or were turned down, no longer stops the same post being counted later when it does qualify. Only one of them can earn.
 
 ## 2026-11-19 — Libraries
 
