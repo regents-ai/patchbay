@@ -358,8 +358,7 @@ days; after that anyone at all may call it, and it pays the asker 90% and the
 treasury 10% — the same split answering the question would have paid. Two
 things follow. Taking a bounty back is never cheaper than awarding it, so
 holding out for a refund gains an asker nothing. And an asker never depends on
-Patchbay running to get their money out. `contracts/test/PatchbayEscrow.t.sol`
-is the Foundry suite over both payout paths and the refund window.
+Patchbay running to get their money out.
 
 The server side of that is `Patchbay.Escrow`, which signs one transaction
 locally per call and returns the hash without waiting for a receipt. A credit

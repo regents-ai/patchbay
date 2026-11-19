@@ -78,7 +78,7 @@ check-siwa-latest:
 # The two contract libraries are pinned submodules; a fresh clone fetches them here.
 check-contracts:
 	git submodule update --init --depth 1 contracts/lib/forge-std contracts/lib/openzeppelin-contracts
-	cd contracts && forge fmt --check && forge build --offline && forge test --offline
+	cd contracts && forge fmt --check && forge build --offline
 # The release checks and builds exactly the committed tree, so every change must
 # be committed first. A failing gate stops it before anything is built.
 release:

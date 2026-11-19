@@ -86,14 +86,14 @@ defmodule PatchbayDev.OffersLab do
   def deploy(rpc_url) do
     lab!(rpc_url)
 
-    usdc_stand_in = create!(rpc_url, "AgentOfferTestKit.sol/FreezableUSDC", [], [])
+    usdc_stand_in = create!(rpc_url, "OffersLab.sol/FreezableUSDC", [], [])
 
     rpc!(rpc_url, "anvil_setCode", [
       @usdc,
       rpc!(rpc_url, "eth_getCode", [usdc_stand_in, "latest"])
     ])
 
-    staking = create!(rpc_url, "AgentOfferTestKit.sol/RecordingStaking", [:address], [bin(@usdc)])
+    staking = create!(rpc_url, "OffersLab.sol/RecordingStaking", [:address], [bin(@usdc)])
 
     factory =
       create!(

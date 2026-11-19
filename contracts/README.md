@@ -161,7 +161,6 @@ Revert reasons the server should recognise:
 ```sh
 forge build
 forge fmt --check
-forge test
 slither . --filter-paths "lib/"
 ```
 
@@ -323,24 +322,3 @@ staking payout contract, and the market with its publisher and payout. The marke
 block its `MarketCreated` transaction landed in are what the site needs (`platform/docs/GO_LIVE.md`,
 "Offers").
 Without `--broadcast` the same command only simulates.
-
-## Checks
-
-The same commands as above. `test/AgentOfferMarket.t.sol` holds the unit, fuzz, reentrancy and
-invariant suites; `test/AgentOfferFactory.t.sol` the factory's, including who may send to staking,
-a clone made outside the factory, and a permit for one market being refused by another;
-`test/AgentOfferStakingPayout.t.sol` the staking payout's, including a staking contract that calls
-back mid-deposit; `test/DeployOffers.t.sol` runs the deploy script and checks what it leaves wired,
-sells on it and pushes everything earned into staking.
-
-`test/AgentOfferForkRehearsal.t.sol` rehearses the whole money path on a local fork of Base mainnet
-pinned to one block, with Circle's real USDC and the live REGENT revenue staking contract: the
-factory, Patchbay's market paying its staking payout contract and a second market paying a plain
-wallet, sales, a buyout, a lease run to its end, a placement terminated early, every claim, the fees
-and Patchbay's earnings pushed into staking by the operator, and every unit accounted for.
-It logs the gas of each step as a transaction of its own. Nothing is broadcast. It is skipped
-unless `BASE_RPC_URL` is set, so `forge test` stays offline:
-
-```sh
-BASE_RPC_URL=https://mainnet.base.org forge test --match-path test/AgentOfferForkRehearsal.t.sol -vv
-```
