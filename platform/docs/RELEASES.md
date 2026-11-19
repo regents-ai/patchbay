@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v433, 19 Nov 2026
+
+- Commit: 0b629756 (image `0b62975`), released by the Patchbay chief on Sean's decision 194 a. The elixir-utils pin moves from cf63c14e to main b695c5a0. With it: the shorter Connect and Connected apps pages (the button reads "Allow"), the OAuth settings as `{lead, detail}` rows with a `never` row, and the pairing read behind an agent's hello card (`POST /api/agents/v1/pairing`), set with this site's own address (patchbay.help, never the open one) and the person's shared Regent profile ID. Only the sixteen elixir-utils lines move in the lock. No migration, no new secret or machine setting, no Points setting.
+- Full check on 0b629756: every gate ok in one run (531 browser walks, 1348 Elixir tests).
+- Live read, headless Chromium, signed out, 18:24Z: both addresses answer health; the plugin names 0b629756 with exactly twelve tools; the Points page answers on patchbay.help; Sites joins its live socket on both.
+- Not proven: the Connect page on live (it shows only to a signed-in person an app is asking for), and a hello card end to end with the live sign-in service, which needs the machine's own address and sign-in address settings to match the service's.
+- Rollback: image `54a82f5` (v432), image only.
+
 ## v432, 19 Nov 2026
 
 - Commit: 54a82f58 (image `54a82f5`), released by the Patchbay chief as an ordinary release, asked for by the template chief after the version refresh. The elixir-utils pin moves from 51a8f8d3 to cf63c14e (branch `eu/points-review-on-patchbay-pin-1119`): Patchbay's pin plus three commits in `points/` only. At the award the source's yes counts only for the account saved at intake, and otherwise the event ends refused as `account_changed`; a rule that is off answers `disabled` before the reference is looked at. Patchbay's own sources (`PublishedReply`, `PublishedReport`) already name the writer's account; the Points page test's stand-in for the account site now names the event's account. Only the sixteen elixir-utils lines move in the lock. Not in it: the move to elixir-utils main (shorter Connect pages, the OAuth settings rename, hello cards), which waits on Sean's decision 194. No migration, no Points setting.
