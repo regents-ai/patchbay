@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v430, 19 Nov 2026
+
+- Commit: 074d4ce7 (image `074d4ce`), released by the Patchbay chief as an ordinary release: the toolchain step of the six-site refresh, after the template had it live (template v291, 54a58195). Node 26.13.0 to 26.13.1 in the tool list and the image's Node stage, by digest (`node:26.13.1-trixie-slim`, e6bedef2); PostgreSQL 17.7 to 17.12 in the tool list. Patchbay's release script starts no throwaway database, so it had no smoke change to take and no smoke ran against PostgreSQL. The live database server is not touched. No migration.
+- Full check on 074d4ce7 on Node 26.13.1: every gate ok except the browser gate, where one walk of 531 failed (`pairing.spec.ts:295` on the small phone: the pairing box's label had not changed five seconds after an agent was chosen, with the Mac at load 86). The browser gate was then run whole on the same commit and passed (531). Elixir 1346.
+- Live read, headless Chromium, signed out, 14:51Z: both addresses answer health; the plugin names 074d4ce7 with exactly twelve tools; the open address's pages answer at 1280 and 390 with no page error or sideways scroll and the Wallet Bench, Points and Offers stay missing there; on both addresses the Sites page joins its live socket with the newly built scripts and lists its sites, and search answers.
+- Not in this release: the picture machine (`shots/`), a separate machine whose image still names Node 26.13.0.
+- Rollback: image `4780265` (v429), image only.
+
 ## v429, 19 Nov 2026
 
 - Commit: 4780265c (image `4780265`), released by the Patchbay chief as an ordinary release: Patchbay's part of the six-site library refresh Sean asked for, after the template had it live (template v290, f513e944). Ash 3.37.2 to 3.37.7, Ash SQL 0.8.7 to 0.8.9, Spark 2.7.9 to 2.7.10, WebSock Adapter 0.7.0 to 0.7.2, AshPostgres from 55db7d44 to its 2.16.0 release commit e36aa20a, which has 55db7d44 as an ancestor. finch, nimble_pool and reactor stay where they were, as on the template; the lock matches the template's on every Hex library both have. Patchbay has no Ash AI. Pins and lock only. No migration. Full check on 4780265c: every gate ok in one run (531 browser walks, 1346 Elixir tests).
