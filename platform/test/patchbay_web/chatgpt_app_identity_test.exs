@@ -50,7 +50,8 @@ defmodule PatchbayWeb.ChatGPTAppIdentityTest do
 
     refused = call_tool(conn, second.access, "ask_question", question())
     assert %{"isError" => true, "content" => [%{"text" => text}]} = refused
-    assert Jason.decode!(text)["error"]["code"] == "agent_not_paired"
+    assert %{"code" => "agent_not_paired", "hint" => hint} = Jason.decode!(text)["error"]
+    assert hint =~ PatchbayWeb.SiteEdition.url(:open) <> "/errors/agent_not_paired"
     assert length(agents(owner)) == 1
 
     # Paired with a code of its own, it is a second agent, posting as itself.

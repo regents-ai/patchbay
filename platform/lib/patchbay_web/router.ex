@@ -213,7 +213,7 @@ defmodule PatchbayWeb.Router do
   end
 
   scope "/", PatchbayWeb do
-    pipe_through [:open_only, :api]
+    pipe_through [:open_only, :api, :own_help_links]
 
     post "/chatgpt/mcp", MCPController, :message,
       log: false,
