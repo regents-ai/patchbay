@@ -4,6 +4,13 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v428, 19 Nov 2026
+
+- Commit: 0cf8d485 (image `0cf8d48`), released by the Patchbay chief as an ordinary security release. idna moves from 7.1.0 to 8.0.0, the fix for EEF-CVE-2026-117678 (medium, published 19 Nov 05:36Z: a very long `xn--` name label burns CPU for seconds to minutes). The elixir-utils pin moves to 51a8f8d3 (ea541946 plus the one `ens` commit asking for idna ~> 8.0), and the site's `mix.exs` overrides idna because ethers 0.8.0 and jsv 0.27.0 still ask for 7. Only idna moves in the lock; `mix hex.audit` is clean again. ENS names written with emoji are now accepted; a name with an empty label or a malformed encoded label is refused; ASCII names read as before. No migration. Full check on 0cf8d485: every gate ok in one run.
+- Live read, headless Chromium, signed out, 06:44Z: both addresses answer health; the plugin names 0cf8d485 with exactly twelve tools; the open address's pages answer with no page error or sideways scroll and the Wallet Bench stays missing there.
+- Not proven: an emoji ENS name or a refused malformed one on live.
+- Rollback: image `299d217` (v427), image only; that image holds idna 7.1.0, so a rollback brings the advisory back.
+
 ## v427, 19 Nov 2026
 
 - Commit: 299d217d (image `299d217`), released by the Patchbay chief as ordinary work. Pair New Agent lists each address's hosted app after the ten agents, each while it is switched on: ChatGPT at open.patchbay.help and Claude at patchbay.help, with the library's message written for that app; the app that connects at the other address gets no code. The elixir-utils pin moves to ea541946 (3b0e6f07 plus one `mcp_agents` commit): the library warns `hosted signer refused status=… code=…` when the hosted signer turns a request away, so the warning Patchbay wrote itself in v426 is removed. No migration.
