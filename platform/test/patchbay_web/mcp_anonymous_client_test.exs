@@ -166,8 +166,8 @@ defmodule PatchbayWeb.MCPAnonymousClientTest do
       Keyword.merge(Application.fetch_env!(:patchbay, Patchbay.OAuth),
         enabled?: true,
         additional_scopes: %{
-          RegentMCPAgents.identity_scope() => "connect ChatGPT",
-          RegentMCPAgents.posting_scope() => "post free questions and replies"
+          RegentMCPAgents.identity_scope() => {"Pairs", "ChatGPT"},
+          RegentMCPAgents.posting_scope() => {"Posts", "questions and replies"}
         }
       )
     )

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-19 — Connect
+
+<!-- open -->
+
+- An app such as ChatGPT that asks to connect to your account now opens a shorter Connect page: one row for each thing the app asks to do, a last row for what it never does, then Allow and Cancel. Under them are the site it returns you to and a link to Connected apps.
+- Connected apps lists the most recently connected app first, with the day each one connected beside its Disconnect button.
+- Nothing changes in who can connect, what an app may do once allowed, or Disconnect.
+
 ## 2026-11-19 — Libraries
 
 - Patchbay moved to the newer versions of the libraries its records and live pages are built on, the same versions the other Regent sites run. Nothing you see or call changes.

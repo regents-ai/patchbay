@@ -20,9 +20,20 @@ defmodule PatchbayWeb.PointsLiveTest do
 
   # Account activated is earned where the person's account is kept, never on
   # Patchbay: this stands in for that site's check, which Points asks again as it
-  # awards, and which accepts the account it is asked about.
+  # awards, and which accepts the event for the account it was recorded for.
   defmodule AccountSite do
-    def verify(_reference), do: {:ok, %{}}
+    require Ash.Query
+
+    def verify(%{"source_app" => app, "source_kind" => kind, "source_event_key" => key}) do
+      [%{account_id: account_id}] =
+        RegentPoints.Event
+        |> Ash.Query.filter(
+          source_app == ^app and source_kind == ^kind and source_event_key == ^key
+        )
+        |> Ash.read!(actor: Store.system())
+
+      {:ok, %{account_id: account_id}}
+    end
   end
 
   # Base, while earning is open in a test: it gives no answer, so the bonus card

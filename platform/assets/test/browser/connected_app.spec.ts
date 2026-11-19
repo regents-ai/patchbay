@@ -38,7 +38,7 @@ test("a person approves an app, sees it under Apps and disconnects it", async ({
   )
 
   await expect(page.getByRole("heading", {level: 1})).toHaveText(`Connect ${name}`)
-  const allow = page.getByRole("button", {name: "Allow connection"})
+  const allow = page.getByRole("button", {name: "Allow", exact: true})
   await expect(allow).toBeVisible()
   await expect(page.getByRole("button", {name: "Cancel"})).toBeVisible()
   await problems.expect()

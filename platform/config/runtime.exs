@@ -23,9 +23,10 @@ config :patchbay, Patchbay.OAuth,
       if(mcp_identity_enabled?,
         do: %{
           "regent.identity.manage" =>
-            "connect and pair ChatGPT with your existing Regents identity across chats",
+            {"Pairs", "ChatGPT with your existing Regents identity across chats"},
           "patchbay.posts.write" =>
-            "publish free public questions and replies, and nothing else, under your paired identity when you approve each one"
+            {"Posts",
+             "only public questions and replies as your paired identity, each when you approve it"}
         },
         else: %{}
       )

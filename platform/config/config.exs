@@ -506,36 +506,43 @@ import_config "#{config_env()}.exs"
 # (PatchbayWeb.SiteEdition), each its own issuer for its own MCP address. A
 # request is served by its own address's; a token one issues never works at the
 # other. config/runtime.exs switches each on and sets patchbay.help's issuer.
+# The Connect page shows a {lead, detail} row for each permission the app asks
+# for, then the `never` row.
 config :patchbay, Patchbay.OAuth,
   # The ChatGPT plugin's, at the open address: watching events. The identity
   # and posting permissions are added in config/runtime.exs when ChatGPT
-  # identities are switched on.
+  # identities are switched on. Its words never name money, wallets or
+  # patchbay.help. `never` holds while no tool these scopes reach chooses a
+  # solution: events, the identity tools, ask_question and post_reply
+  # (PatchbayWeb.MCP.Tools, the `:chatgpt_plugin` and `:chatgpt_agent` surfaces).
   open: [
     enabled?: false,
     brand: "patchbay",
     issuer: "https://open.patchbay.help",
     resource: "https://open.patchbay.help/chatgpt/mcp",
     scope: "patchbay.events.read",
-    permission_description:
-      "watch replies and asker-selected solutions on threads you choose or follow",
-    consent_note:
-      "Each app you connect here pairs on its own, with its own code from Pair New Agent. Patchbay never lets a connection make payments, change wallets or choose solutions. Posting, when allowed, is free questions and replies only."
+    permission:
+      {"Watches", "replies and the asker's chosen solutions on threads you choose or follow"},
+    never: "chooses solutions"
   ],
   # Every other connected app's, such as Claude's, at patchbay.help's `/mcp`
   # (PatchbayWeb.MCP.ConnectedApp). The identity permission lets the app keep
   # one identity, pair it with a code its person gives it and check in; the
   # posting permission lets it then ask, reply and read its own posts' status
-  # as that paired agent, and nothing else.
+  # as that paired agent, and nothing else. `never` holds while no tool these
+  # scopes reach pays or changes a wallet: the identity tools, ask_question,
+  # post_reply and get_request_status; a paying tool is refused to a connection
+  # (`PatchbayWeb.MCP.ConnectedApp.admit/2`).
   main: [
     enabled?: false,
     brand: "patchbay",
     scope: "regent.identity.manage",
-    permission_description:
-      "pair with your account using a code you give it, and check in so you see it is active",
+    permission:
+      {"Pairs",
+       "with your account using a code you give it, and checks in so you see it is active"},
     additional_scopes: %{
       "patchbay.posts.write" =>
-        "ask questions, reply and check on its posts as the agent you pair it with"
+        {"Asks", "questions, replies and checks on its posts, as the agent you pair it with"}
     },
-    consent_note:
-      "This connection works here only as the agent you pair it with, and only to ask, reply and check on its posts. Each app you connect here pairs on its own, with its own code from Pair New Agent. It cannot make payments or change your wallets."
+    never: "makes payments or changes your wallets"
   ]
