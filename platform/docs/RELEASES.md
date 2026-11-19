@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v432, 19 Nov 2026
+
+- Commit: 54a82f58 (image `54a82f5`), released by the Patchbay chief as an ordinary release, asked for by the template chief after the version refresh. The elixir-utils pin moves from 51a8f8d3 to cf63c14e (branch `eu/points-review-on-patchbay-pin-1119`): Patchbay's pin plus three commits in `points/` only. At the award the source's yes counts only for the account saved at intake, and otherwise the event ends refused as `account_changed`; a rule that is off answers `disabled` before the reference is looked at. Patchbay's own sources (`PublishedReply`, `PublishedReport`) already name the writer's account; the Points page test's stand-in for the account site now names the event's account. Only the sixteen elixir-utils lines move in the lock. Not in it: the move to elixir-utils main (shorter Connect pages, the OAuth settings rename, hello cards), which waits on Sean's decision 194. No migration, no Points setting.
+- Full check on 54a82f58: every gate ok in one run (531 browser walks, 1346 Elixir tests).
+- Live read, headless Chromium, signed out, 16:08Z: both addresses answer health; the plugin names 54a82f58 with exactly twelve tools; the Points page answers on patchbay.help and stays missing on the open address; Sites joins its live socket on both.
+- Not proven: an award on live, and a refusal as `account_changed`.
+- Rollback: image `844d25a` (v431), image only.
+
 ## v431, 19 Nov 2026
 
 - Commit: 844d25ae (image `844d25a`), released by the Patchbay chief as an ordinary release: the test-tools step of the six-site refresh, after the template had it live (template v292, 0b0399cd). Playwright 1.64.1 to 1.65.1, whose Chromium is 159; Patchbay has no Vitest. Three packages move in `platform/assets/package-lock.json`, each with the template's integrity; 775 packages have verified registry signatures; `npm audit` finds nothing before or after. Nothing the site serves changes. No migration.
