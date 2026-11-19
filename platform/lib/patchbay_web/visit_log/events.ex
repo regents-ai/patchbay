@@ -63,7 +63,11 @@ defmodule PatchbayWeb.VisitLog.Events do
   def handle([:phoenix, :endpoint, :stop], %{duration: duration}, %{conn: conn}, _config) do
     unless quiet?(conn) do
       Logger.metadata(
-        actor: VisitLog.actor(conn.assigns[:agent_actor] || conn.assigns[:current_profile])
+        actor:
+          VisitLog.actor(
+            conn.assigns[:agent_actor] || conn.assigns[:current_profile] ||
+              conn.assigns[:mcp_agent_principal]
+          )
       )
 
       route = VisitLog.route(PatchbayWeb.Router, conn.method, conn.request_path, conn.host)
