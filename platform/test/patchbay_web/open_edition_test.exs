@@ -264,7 +264,7 @@ defmodule PatchbayWeb.OpenEditionTest do
            |> response(200) =~ @own_words
   end
 
-  test "the home page's value cards are patchbay.help's, three over the search and three at the foot",
+  test "both home pages link to the shared features and only patchbay.help links to the bench",
        %{conn: conn} do
     rows = fn conn ->
       home = conn |> get("/") |> html_response(200) |> LazyHTML.from_document()
@@ -274,15 +274,29 @@ defmodule PatchbayWeb.OpenEditionTest do
     end
 
     assert rows.(conn) == [~w(ask sites fixes), ~w(pair bench connect)]
-    assert rows.(on_open(conn)) == [[], []]
+    assert rows.(on_open(conn)) == [~w(ask sites fixes), ~w(pair connect)]
+
+    html = conn |> on_open() |> get("/") |> html_response(200) |> LazyHTML.from_document()
+    links = html |> LazyHTML.query("#cards-top a, #cards-row a") |> LazyHTML.attribute("href")
+
+    for path <- ~w(/?ask=1#pb-hero /sites /?scope=solved /pair /docs), do: assert(path in links)
+    refute "/wallet-bench" in links
   end
 
   test "the Wallet Bench and the posts about wallets are patchbay.help's", %{conn: conn} do
     SharedBench.share!()
 
-    for path <- ~w(/wallet-bench /wallet-bench/how-it-works /api/wallet-bench /api/v1/docs) do
+    for path <-
+          ~w(/wallet-bench /wallet-bench/how-it-works /api/wallet-bench) do
       assert conn |> get(path) |> response(200), path
       assert_error_sent 404, fn -> conn |> on_open() |> get(path) end
+    end
+
+    for asset <- ~w(/data/agent-wallet-bench-v7.csv /images/wallet-bench/bankr.svg) do
+      assert conn |> get(asset) |> response(200) != ""
+      assert conn |> head(asset) |> response(200) == ""
+      assert conn |> on_open() |> get(asset) |> response(404)
+      assert conn |> on_open() |> head(asset) |> response(404) == ""
     end
 
     assert conn |> get("/blog/agent-wallet-bench-v7") |> html_response(200)
@@ -302,7 +316,34 @@ defmodule PatchbayWeb.OpenEditionTest do
   test "the open address's guides and help for agents say nothing about money", %{conn: conn} do
     conn = on_open(conn)
 
-    assert money_on(~w(/llms.txt /forum/help), &(conn |> get(&1) |> response(200))) == %{}
+    paths = ~w(/llms.txt /agents.md /forum/help /api/v1/docs)
+    assert money_on(paths, &(conn |> get(&1) |> response(200))) == %{}
+
+    assert %{"markdown" => markdown} = conn |> get("/api/v1/docs") |> json_response(200)
+
+    assert markdown ==
+             conn |> put_req_header("accept", "text/markdown") |> get("/docs") |> response(200)
+
+    assert markdown =~ "/forum/search"
+
+    for path <- ~w(/docs /webmcp /changelog), accept <- ["text/html", "text/markdown"] do
+      body = conn |> put_req_header("accept", accept) |> get(path) |> response(200)
+      assert money_words(body) == []
+      assert main_addresses(body) == []
+    end
+
+    assert conn |> get("/developers") |> redirected_to(301) == "/docs"
+  end
+
+  test "Open's WebMCP guide keeps the tool permission and skips the other host's trial", %{
+    conn: conn
+  } do
+    main = get(conn, "/webmcp")
+    open = conn |> on_open() |> get("/webmcp")
+
+    assert get_resp_header(main, "origin-trial") != []
+    assert get_resp_header(open, "origin-trial") == []
+    assert get_resp_header(open, "permissions-policy") == ["tools=(self)"]
   end
 
   test "the open address's tool list names only the tools it offers", %{conn: conn} do
@@ -403,6 +444,7 @@ defmodule PatchbayWeb.OpenEditionTest do
     end
 
     assert api["paths"]["/forum/threads"]["post"]
+    assert api["paths"]["/api/v1/docs"]["get"]["operationId"] == "getDocs"
     refute api["paths"]["/api/agent/payment_intents"]
     assert api["servers"] == [%{"url" => SiteEdition.url(:open)}]
 
@@ -591,6 +633,11 @@ defmodule PatchbayWeb.OpenEditionTest do
     conn = conn |> on_open() |> put_req_header("accept", "text/markdown")
 
     assert money_on(pages(site, report, asker), &(conn |> get(&1) |> response(200))) == %{}
+
+    privacy = conn |> get("/privacy") |> response(200)
+    assert privacy =~ "## Recipients"
+    assert privacy =~ "## Keeping"
+    assert privacy =~ "31 days after it was last used"
   end
 
   test "signed in, the open address's pages and account say nothing about money", %{

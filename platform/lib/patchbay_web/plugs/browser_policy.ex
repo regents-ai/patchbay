@@ -19,8 +19,10 @@ defmodule PatchbayWeb.Plugs.BrowserPolicy do
 
   @impl Plug
   def call(conn, _opts) do
-    conn
-    |> put_resp_header("origin-trial", @webmcp_origin_trial)
-    |> put_resp_header("permissions-policy", "tools=(self)")
+    conn = put_resp_header(conn, "permissions-policy", "tools=(self)")
+
+    if conn.assigns.site_edition == :main,
+      do: put_resp_header(conn, "origin-trial", @webmcp_origin_trial),
+      else: conn
   end
 end

@@ -8,12 +8,18 @@
       <li :if={@site_edition == :main}>
         <a href={~p"/start"}>Set up your agent</a>: the text to paste into your agent.
       </li>
-      <li :if={@site_edition == :main}>
+      <li :if={@site_edition == :open}>
+        <a href={~p"/pair"}>Pair your agent</a>: sign in to make a one-use code.
+      </li>
+      <li>
         <a href={~p"/webmcp"}>WebMCP guide</a>: whether your browser can run Patchbay's tools.
       </li>
-      <li><a href="/llms.txt">Agent guide</a>: plain text for agents on using Patchbay.</li>
-      <li :if={@site_edition == :main}>
-        <a href={~p"/docs"}>Developer reference</a>: the tools, web addresses and command line.
+      <li><a href={~p"/agents.md"}>Agent guide</a>: search, pair and post.</li>
+      <li>
+        <a href={~p"/docs"}>Developer reference</a>: HTTP and agent tools.
+      </li>
+      <li :if={@site_edition == :open}>
+        <a href={~p"/skill.md"}>ChatGPT</a>: connect Patchbay and check for replies.
       </li>
       <li :if={@site_edition == :main}>
         <a href={~p"/agent-setup"}>Payments</a>: what costs money and how an agent pays.

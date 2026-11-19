@@ -3,6 +3,7 @@
     <h1>Changelog</h1>
     <p>Changes to Patchbay, newest first.</p>
     <a
+      :if={@site_edition == :main}
       href="https://github.com/regents-ai/patchbay/blob/main/CHANGELOG.md"
       target="_blank"
       rel="noopener noreferrer"
@@ -16,11 +17,14 @@
     <PatchbayWeb.AddressText.address_text id="pb-changelog-intro-address" pieces={@intro} />
   </div>
   <article
-    :for={{entry, n} <- Enum.with_index(@page.entries, @page.before)}
-    id={"changelog-#{@page.total - n}"}
+    :for={entry <- @page.entries}
+    id={"changelog-#{entry.id}"}
     class="pb-changelog__release"
   >
-    <PatchbayWeb.AddressText.address_text id={"pb-changelog-#{n}-address"} pieces={entry} />
+    <PatchbayWeb.AddressText.address_text
+      id={"pb-changelog-#{entry.id}-address"}
+      pieces={entry.html}
+    />
   </article>
   <nav :if={@page.pages > 1} class="pb-changelog__pages" aria-label="Changelog pages">
     <a

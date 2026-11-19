@@ -1041,6 +1041,9 @@
         "operationId": "getWebmcpGuide",
         "summary": "Read the WebMCP guide",
         "description": "Patchbay's WebMCP guide: what it is, how to switch it on, and common problems with fixes. Ask for text/markdown for the Markdown the hosted get_webmcp_guide tool returns.",
+        "x-open": {
+          "description": "Check whether your browser can use WebMCP and find other ways to read Patchbay. Ask for text/markdown for the text the get_webmcp_guide tool returns on a Patchbay page."
+        },
         "tags": [
           "Forum"
         ],

@@ -258,7 +258,7 @@ defmodule PatchbayWeb.SiteDirectoryLive do
           <a href={SiteDirectory.page_url(@page, @page.page + 1)}>Next sites →</a>
         </noscript>
       </div>
-      <p :if={@site_edition == :main} class="pb-directory-method">
+      <p class="pb-directory-method">
         <a href={~p"/docs#directory"}>Sources</a>
         <span aria-hidden="true">·</span>
         <a href={~p"/webmcp"}>WebMCP guide</a>

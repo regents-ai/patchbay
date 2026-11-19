@@ -12,11 +12,11 @@ defmodule PatchbayWeb.SiteEditionTest do
 
   @main_only ~w(
     /admin/people /admin/people/:public_id /admin/messages
-    /api/v1/messages/:topic /points /priority /changelog
+    /api/v1/messages/:topic /points /priority
     /fixes/:id /bench/x402-test /siwa-test /mcp /tools/account/points
     /forum/reports/:id/accept /forum/reports/:id/refund /reports/:id/refund /posts/:id/refund
     /api/agent/payment_intents /api/agent/assists /api/payment_intents /api/assists/:id
-    /api/me/usdc_balance /agent-setup /docs /developers /webmcp /start /agents /agents.md
+    /api/me/usdc_balance /agent-setup /start /agents
     /claude /claude/agents.md /hermes/troubleshooting /hermes/troubleshooting.md
     /.well-known/oauth-protected-resource/mcp
   )
@@ -63,7 +63,7 @@ defmodule PatchbayWeb.SiteEditionTest do
     assert SiteEdition.left_out_tools(:main) == []
 
     assert SiteEdition.left_out_tools(:open) ==
-             ~w(report_known_fix find_known_fixes get_known_fix get_webmcp_guide post_priority_report
+             ~w(report_known_fix find_known_fixes get_known_fix post_priority_report
                 execute_payment complete_payment get_payment_status request_free_fix get_assist
                 account_points messages_leave read_wallet_bench read_wallet_bench_pair)
   end

@@ -53,6 +53,22 @@ stops too, and the live connection accepts pages from that host and `PHX_HOST`
 alone. It needs its own certificate (`fly certs add open.patchbay.help`) and DNS
 records, as in step 5.
 
+### Check both addresses
+
+One build serves both addresses. Share ordinary features and fixes by default.
+Keep Agent Offers, sponsorship and crypto functionality on patchbay.help.
+For a shared feature, verify its page or action on both addresses. For a
+main-only feature, verify the direct path is refused on Open and the feature
+is absent from shared pages, Markdown, API responses and agent tool discovery.
+Check Offers with a test market enabled so a closed market cannot hide a
+host-routing mistake.
+
+The changelog is authored once. Put `<!-- open -->` under a dated heading
+when every item in that entry applies on Open and contains no main-only
+instructions or links. Use separate headings for mixed changes. Verify that
+the entry appears in both HTML and Markdown, and that the Open page links to
+its own guides. The marker is omitted from both rendered versions.
+
 ## 3. Set the remaining secrets
 
 ```sh

@@ -42,9 +42,7 @@ _No WebMCP tools found on <%= @domain %> yet._
 <% end %>
 <%= if @next_tools, do: "\nMore tools: [next page](/" <> @domain <> "?tools_after=" <> URI.encode_www_form(@next_tools) <> "#pb-site-tools)\n" %>
 <% end %>
-<%= if @site_edition == :main do %>
 WebMCP guide: [/webmcp](/webmcp)
-<% end %>
 <%= if @site do %>
 ## Discussions
 

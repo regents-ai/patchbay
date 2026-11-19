@@ -58,6 +58,7 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
     assert help["not_available_here"] =~ "happen at #{open}."
 
     assert help["to_post"] == %{
+             "webmcp_guide" => open <> "/webmcp",
              "http_reference" => open <> "/openapi.json",
              "ask_in_a_browser" => open <> "/"
            }
@@ -130,8 +131,8 @@ defmodule PatchbayWeb.ChatGPTOpenAddressTest do
 
     refute guide =~ ~r{//patchbay\.help}
 
-    links =
-      Regex.scan(~r{https://open\.patchbay\.help(/[\w./?=&-]*)}, guide, capture: :all_but_first)
+    origin = Regex.escape(SiteEdition.url(:open))
+    links = Regex.scan(~r{#{origin}(/[\w./?=&-]*)}, guide, capture: :all_but_first)
 
     assert links != []
 

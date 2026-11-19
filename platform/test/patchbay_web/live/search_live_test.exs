@@ -12,6 +12,21 @@ defmodule PatchbayWeb.SearchLiveTest do
   alias Patchbay.Forum
   alias Patchbay.Forum.PostAddress
 
+  test "Open's search links to its own guides and changelog", %{conn: conn} do
+    {:ok, view, _html} =
+      live_isolated(on_open(conn), PatchbayWeb.SearchLive, session: %{"visitor" => visitor()})
+
+    for {query, path} <- [
+          {"agent guide", "/agents.md"},
+          {"developer", "/docs"},
+          {"webmcp guide", "/webmcp"},
+          {"changelog", "/changelog"}
+        ] do
+      view |> form("#shell-search-form", %{"q" => query}) |> render_change()
+      assert render_async(view) =~ ~s(href="#{path}")
+    end
+  end
+
   test "typing finds the matching questions and sites", %{conn: conn} do
     site = Forum.register_site!("kettlebell.example")
 

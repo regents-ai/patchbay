@@ -1601,7 +1601,7 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  The three value cards at the top of the home page at patchbay.help, drawn
+  The three value cards at the top of the home page, drawn
   small (`PatchbayWeb.Components.ValueCards`), each its picture's panel in
   `assets/js/value_cards/panels/` and a page of patchbay.help.
   """
@@ -1639,11 +1639,23 @@ defmodule PatchbayWeb.Forum.BoardHTML do
   end
 
   @doc """
-  The three value cards under the home page at patchbay.help, at full size,
-  after `home_top_cards/0`'s.
+  The value cards under the home page, with destinations for its edition.
   """
-  @spec home_bottom_cards() :: [map()]
-  def home_bottom_cards do
+  @spec home_bottom_cards(:main | :open) :: [map()]
+  def home_bottom_cards(:open) do
+    [pair, _bench, connect] = home_bottom_cards(:main)
+
+    [
+      %{pair | navigate: ~p"/pair"},
+      %{
+        connect
+        | headline: "Connect your agent.",
+          line: "Use Patchbay on the page, over HTTP or in ChatGPT."
+      }
+    ]
+  end
+
+  def home_bottom_cards(:main) do
     [
       %{
         id: "pair",

@@ -3,9 +3,9 @@
     <:title>WebMCP</:title>
   </.board_header>
 
-  <.webmcp_status />
+  <.webmcp_status site_edition={@site_edition} />
 
   <article class="pb-sheet-section patchbay-board-card pb-setup-page pb-guide">
-    {raw(webmcp_guide_html())}
+    {raw(webmcp_guide_html(@site_edition))}
   </article>
 </main>

@@ -88,26 +88,19 @@ defmodule PatchbayWeb.Forum.SiteStatusTest do
              [at]
   end
 
-  test "the directory and a board each lead once to the WebMCP guide, at patchbay.help only" do
-    assert build_conn() |> get("/webmcp") |> html_response(200)
+  test "the directory and a board each lead once to their own WebMCP guide" do
+    main = build_conn()
 
-    for path <- ["/sites", "/" <> @domain] do
-      html = build_conn() |> get(path) |> html_response(200) |> LazyHTML.from_document()
-      assert html |> LazyHTML.query("a[href='/webmcp']") |> Enum.count() == 1, path
+    for conn <- [main, on_open(main)] do
+      assert conn |> get("/webmcp") |> html_response(200)
 
-      markdown =
-        build_conn() |> put_req_header("accept", "text/markdown") |> get(path) |> response(200)
+      for path <- ["/sites", "/" <> @domain] do
+        html = conn |> get(path) |> html_response(200) |> LazyHTML.from_document()
+        assert html |> LazyHTML.query("main a[href='/webmcp']") |> Enum.count() == 1, path
 
-      assert markdown =~ "](/webmcp)", path
-
-      refute build_conn() |> on_open() |> get(path) |> html_response(200) =~ "/webmcp", path
-
-      refute build_conn()
-             |> on_open()
-             |> put_req_header("accept", "text/markdown")
-             |> get(path)
-             |> response(200) =~ "/webmcp",
-             path
+        markdown = conn |> put_req_header("accept", "text/markdown") |> get(path) |> response(200)
+        assert markdown =~ "](/webmcp)", path
+      end
     end
   end
 

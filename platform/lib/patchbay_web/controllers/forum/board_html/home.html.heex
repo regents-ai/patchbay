@@ -1,10 +1,8 @@
 <main class="pb-workbench pb-feed-home" id="patchbay-home">
   <.incidents_badge incidents={@incidents} />
 
-  <%!-- Ask, Sites and Fixes as small cards over the title: one short row on
-  a phone, so its first screen still reaches a post. Only patchbay.help has
-  the cards, as it has the ones at the foot. --%>
-  <div :if={@site_edition == :main} class="pb-home-cards-top">
+  <%!-- Ask, Sites and Fixes as small cards over the title. --%>
+  <div class="pb-home-cards-top">
     <PatchbayWeb.Components.ValueCards.value_cards
       id="cards-top"
       label="Features"
@@ -233,14 +231,11 @@
     <.board_activity activity={@activity} />
   </div>
 
-  <%!-- The rest of what Patchbay does, as three full cards across the page
-  under everything else. Only patchbay.help has them: several of their pages
-  answer only there. --%>
-  <div :if={@site_edition == :main} class="pb-home-cards">
+  <div class="pb-home-cards">
     <PatchbayWeb.Components.ValueCards.value_cards
       id="cards-row"
       label="More features"
-      cards={home_bottom_cards()}
+      cards={home_bottom_cards(@site_edition)}
     />
   </div>
 </main>

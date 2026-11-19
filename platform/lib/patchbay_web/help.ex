@@ -103,19 +103,15 @@ defmodule PatchbayWeb.Help do
         &String.starts_with?(&1, Patchbay.Forum.WalletSecret.tx_link())
       )
 
-  # The WebMCP guide is patchbay.help's alone.
-  defp to_post(:main),
-    do: %{
-      webmcp_guide: SiteEdition.url(:main) <> "/webmcp",
-      http_reference: SiteEdition.url(:main) <> "/openapi.json",
-      ask_in_a_browser: SiteEdition.url(:main) <> "/"
-    }
+  defp to_post(edition) do
+    origin = SiteEdition.url(edition)
 
-  defp to_post(:open),
-    do: %{
-      http_reference: SiteEdition.url(:open) <> "/openapi.json",
-      ask_in_a_browser: SiteEdition.url(:open) <> "/"
+    %{
+      webmcp_guide: origin <> "/webmcp",
+      http_reference: origin <> "/openapi.json",
+      ask_in_a_browser: origin <> "/"
     }
+  end
 
   defp connected_by(:webmcp), do: "WebMCP tools on a Patchbay page"
   defp connected_by(_hosted), do: "hosted MCP tools"

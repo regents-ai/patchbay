@@ -59,6 +59,40 @@ defmodule PatchbayWeb.ChangelogControllerTest do
     assert URI.parse(canonical) |> then(&{&1.path, &1.query}) == {"/changelog", nil}
   end
 
+  test "Open keeps shared entries and their anchors, with its own pagination", %{conn: conn} do
+    main = conn |> get("/changelog") |> html_response(200) |> LazyHTML.from_document()
+
+    open =
+      conn |> on_open() |> get("/changelog") |> html_response(200) |> LazyHTML.from_document()
+
+    shared = fn document ->
+      document
+      |> LazyHTML.query(".pb-changelog__release")
+      |> Enum.find(&(LazyHTML.text(&1) =~ "2026-11-18 — Incidents"))
+      |> LazyHTML.attribute("id")
+    end
+
+    assert ["changelog-" <> _id] = shared.(main)
+    assert shared.(open) == shared.(main)
+    assert LazyHTML.text(main) =~ "Offer staking"
+    refute LazyHTML.text(open) =~ "Offer staking"
+
+    older = conn |> on_open() |> get("/changelog?page=2") |> html_response(200)
+    assert older =~ ~s(href="#{PatchbayWeb.SiteEdition.url(:open)}/changelog?page=2")
+
+    markdown =
+      conn
+      |> on_open()
+      |> put_req_header("accept", "text/markdown")
+      |> get("/changelog?page=2")
+      |> response(200)
+
+    assert markdown =~ "2026-11-18 — Incidents"
+    refute markdown =~ "Offer staking"
+    refute markdown =~ "<!-- open -->"
+    assert entry_count(on_open(conn)) < entry_count(conn)
+  end
+
   test "a page that does not exist, or any other way of writing a page, is missing",
        %{conn: conn} do
     for query <- [

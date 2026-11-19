@@ -66,24 +66,22 @@ defmodule PatchbayWeb.Router do
     get "/about", PagesController, :about
     get "/privacy", PagesController, :privacy
     get "/terms", PagesController, :terms
+    get "/changelog", PagesController, :changelog
+    get "/developers", PagesController, :developers
+    get "/webmcp", PagesController, :webmcp
+    get "/docs", PagesController, :docs
   end
 
-  # The pages for setting up agents and for developers, the changelog and the
-  # Wallet Bench are patchbay.help's.
+  # The harness index and Wallet Bench are patchbay.help's.
   scope "/", PatchbayWeb do
     pipe_through [:main_only, :browser]
     get "/wallet-bench", WalletBenchController, :index
     get "/wallet-bench/how-it-works", WalletBenchController, :method
     get "/wallet-bench/:harness_id/:wallet_id", WalletBenchController, :show
-    get "/changelog", PagesController, :changelog
-    get "/developers", PagesController, :developers
-    get "/webmcp", PagesController, :webmcp
-    get "/docs", PagesController, :docs
     get "/agents", PagesController, :agents
   end
 
   scope "/", PatchbayWeb do
-    pipe_through :main_only
     get "/agents.md", DiscoveryController, :agents
   end
 
@@ -581,11 +579,6 @@ defmodule PatchbayWeb.Router do
   scope "/api/v1", PatchbayWeb do
     pipe_through :api
     get "/health", HealthController, :site_status
-  end
-
-  # The developer page as JSON is patchbay.help's, as the page is.
-  scope "/api/v1", PatchbayWeb do
-    pipe_through [:main_only, :api]
     get "/docs", PagesController, :docs_document
   end
 

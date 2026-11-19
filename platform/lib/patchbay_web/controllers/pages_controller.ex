@@ -12,6 +12,11 @@ defmodule PatchbayWeb.PagesController do
   def help(conn, _params),
     do: render(conn, :help, PatchbayWeb.PublicDocuments.page("/help", conn.assigns.site_edition))
 
+  def webmcp(%{assigns: %{site_edition: :open}} = conn, _params) do
+    template = if get_format(conn) == "md", do: :webmcp_open, else: :webmcp
+    render(conn, template, PatchbayWeb.PublicDocuments.page("/webmcp", :open))
+  end
+
   def webmcp(conn, _params),
     do: render(conn, :webmcp, PatchbayWeb.PublicDocuments.page("/webmcp"))
 
@@ -44,14 +49,20 @@ defmodule PatchbayWeb.PagesController do
   defp terms_page(:open), do: :terms_open
 
   def changelog(conn, params) do
+    edition = conn.assigns.site_edition
+    page = changelog_page!(params, edition)
+
     conn
-    |> merge_assigns(changelog_head(params))
+    |> merge_assigns(changelog_head(page, edition))
     |> render(:changelog,
-      page: changelog_page!(params),
-      intro: Patchbay.Changelog.intro(),
-      markdown: Patchbay.Changelog.markdown()
+      page: page,
+      intro: Patchbay.Changelog.intro(edition),
+      markdown: Patchbay.Changelog.markdown(edition)
     )
   end
+
+  def docs(%{assigns: %{site_edition: :open}} = conn, _params),
+    do: render(conn, :docs_open, PatchbayWeb.PublicDocuments.page("/docs", :open))
 
   def docs(conn, _params) do
     conn
@@ -64,6 +75,12 @@ defmodule PatchbayWeb.PagesController do
   end
 
   @doc "The developer page as JSON, `{title, markdown}`: the text `/docs` answers as markdown."
+  def docs_document(%{assigns: %{site_edition: :open}} = conn, _params) do
+    head = PatchbayWeb.PublicDocuments.page("/docs", :open)
+    markdown = IO.iodata_to_binary(PatchbayWeb.PagesMD.docs_open(%{}))
+    json(conn, %{title: head[:page_title], markdown: markdown})
+  end
+
   def docs_document(conn, _params) do
     [page_title: title, page_description: _description] =
       PatchbayWeb.PublicDocuments.page("/docs")
@@ -127,33 +144,23 @@ defmodule PatchbayWeb.PagesController do
   # /changelog itself and each older one is `?page=N`, N written in plain digits
   # from 2; any other value names no page. The Markdown answer is the whole
   # changelog on every page.
-  defp changelog_page!(params) do
+  defp changelog_page!(params, edition) do
     number = changelog_number!(params)
 
-    case Patchbay.Changelog.page(number) do
-      {:ok, entries, before, pages} ->
-        %{
-          entries: entries,
-          before: before,
-          number: number,
-          pages: pages,
-          total: Patchbay.Changelog.entry_count()
-        }
+    case Patchbay.Changelog.page(number, edition) do
+      {:ok, entries, pages} ->
+        %{entries: entries, number: number, pages: pages}
 
       :error ->
         raise PatchbayWeb.Forum.NotFoundError
     end
   end
 
-  defp changelog_head(params) do
-    case changelog_number!(params) do
-      1 ->
-        PatchbayWeb.PublicDocuments.page("/changelog")
+  defp changelog_head(%{number: 1}, edition),
+    do: PatchbayWeb.PublicDocuments.page("/changelog", edition)
 
-      number ->
-        PatchbayWeb.PublicDocuments.changelog_page(number, Patchbay.Changelog.page_count())
-    end
-  end
+  defp changelog_head(%{number: number, pages: pages}, _edition),
+    do: PatchbayWeb.PublicDocuments.changelog_page(number, pages)
 
   defp changelog_number!(%{"page" => page}) when is_binary(page) do
     if Regex.match?(~r/\A[1-9][0-9]*\z/, page) and page != "1",

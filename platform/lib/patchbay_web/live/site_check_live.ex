@@ -223,7 +223,7 @@ defmodule PatchbayWeb.SiteCheckLive do
               label="More tools"
               next_label="More tools →"
             />
-            <p :if={@site_edition == :main} class="pb-site-check-guide">
+            <p class="pb-site-check-guide">
               <a href={~p"/webmcp"}>WebMCP guide</a>
             </p>
           </div>

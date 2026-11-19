@@ -22,7 +22,7 @@ defmodule PatchbayWeb.DiscoveryController do
 
   @directory "priv/public"
   @files Map.new(
-           ~w(openapi.json llms.txt llms_open.txt robots.txt agents.md),
+           ~w(openapi.json llms.txt llms_open.txt robots.txt agents.md agents_open.md),
            &{&1, Path.join(@directory, &1)}
          )
   for {_name, path} <- @files, do: @external_resource(path)
@@ -82,7 +82,10 @@ defmodule PatchbayWeb.DiscoveryController do
     api
     |> put_in(["info", "contact", "url"], open <> ~p"/about")
     |> put_in(["servers"], [%{"url" => open}])
-    |> put_in(["externalDocs"], %{"description" => "Agent guide", "url" => open <> "/llms.txt"})
+    |> put_in(["externalDocs"], %{
+      "description" => "Developer reference",
+      "url" => open <> "/docs"
+    })
     |> put_in(["tags"], Enum.filter(api["tags"], &(&1["name"] in used_tags)))
     |> put_in(["paths"], %Jason.OrderedObject{values: paths})
     |> put_in(["components", "schemas"], used_schemas(api["components"]["schemas"], paths))
@@ -124,16 +127,20 @@ defmodule PatchbayWeb.DiscoveryController do
     body =
       @sources[@guides[edition]]
       |> String.replace("{{facts}}", Patchbay.WrittenPages.facts(edition))
+      |> String.replace("{{origin}}", SiteEdition.url(edition))
       |> guide(edition)
 
     conn |> cache(body) |> put_resp_content_type("text/plain") |> send_resp(200, body)
   end
 
   def agents(conn, _params) do
+    edition = conn.assigns.site_edition
+    source = if edition == :open, do: "agents_open.md", else: "agents.md"
+
     body =
-      @sources["agents.md"]
-      |> guide(:main)
-      |> String.replace("{{origin}}", PatchbayWeb.Endpoint.url())
+      @sources[source]
+      |> guide(edition)
+      |> String.replace("{{origin}}", SiteEdition.url(edition))
 
     conn |> cache(body) |> put_resp_content_type("text/markdown") |> send_resp(200, body)
   end
@@ -259,8 +266,7 @@ defmodule PatchbayWeb.DiscoveryController do
 
   @doc """
   The RFC 9727 API catalog: the API, its description and its documentation,
-  each at the address being served. The open address has no `/docs`, so its
-  documentation is its agent guide.
+  each at the address being served.
   """
   # The body is JSON built from this site's own addresses, sent as a linkset with
   # the RFC 9727 profile, which Sobelow does not read as a safe content type.
@@ -277,7 +283,7 @@ defmodule PatchbayWeb.DiscoveryController do
             "service-desc" => [
               %{"href" => origin <> ~p"/openapi.json", "type" => "application/json"}
             ],
-            "service-doc" => [service_doc(edition, origin)]
+            "service-doc" => [%{"href" => origin <> ~p"/docs", "type" => "text/html"}]
           }
         ]
       })
@@ -290,11 +296,6 @@ defmodule PatchbayWeb.DiscoveryController do
     )
     |> send_resp(200, body)
   end
-
-  defp service_doc(:main, origin), do: %{"href" => origin <> ~p"/docs", "type" => "text/html"}
-
-  defp service_doc(:open, origin),
-    do: %{"href" => origin <> ~p"/llms.txt", "type" => "text/plain"}
 
   defp cache(conn, body) do
     conn

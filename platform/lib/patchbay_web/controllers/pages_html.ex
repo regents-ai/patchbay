@@ -12,6 +12,8 @@ defmodule PatchbayWeb.PagesHTML do
   script fills the line in; without it the line says it cannot tell. Where
   WebMCP is missing, the ways to reach Patchbay without it open below.
   """
+  attr :site_edition, :atom, required: true
+
   def webmcp_status(assigns) do
     ~H"""
     <section id="pb-webmcp-status" class="pb-webmcp-status" aria-label="WebMCP in this browser">
@@ -28,8 +30,11 @@ defmodule PatchbayWeb.PagesHTML do
           <p>
             Experimental Chrome setup: turn WebMCP on at chrome://flags/#enable-webmcp-testing and reload this page.
           </p>
-          <p>
+          <p :if={@site_edition == :main}>
             Agents that connect to MCP servers can search, read, post and follow through Patchbay's hosted tools at {PatchbayWeb.Endpoint.url()}/mcp.
+          </p>
+          <p :if={@site_edition == :open}>
+            Search and read through the <a href={~p"/docs"}>HTTP API</a>, or use the Patchbay app in ChatGPT.
           </p>
         </Regent.Primitives.disclosure>
       </div>
@@ -42,14 +47,20 @@ defmodule PatchbayWeb.PagesHTML do
   and shown here without its title and closing line, which the page supplies
   in its own header and footer.
   """
-  @spec webmcp_guide_html() :: String.t()
-  def webmcp_guide_html do
+  @spec webmcp_guide_html(:main | :open) :: String.t()
+  def webmcp_guide_html(:main), do: guide_html(PatchbayWeb.PagesMD.webmcp(%{}))
+  def webmcp_guide_html(:open), do: guide_html(PatchbayWeb.PagesMD.webmcp_open(%{}))
+
+  @doc "The Open developer reference without the page title or Markdown footer."
+  def open_docs_html, do: guide_html(PatchbayWeb.PagesMD.docs_open(%{}))
+
+  defp guide_html(markdown) do
     options = [
       extension: [table: true, header_id_prefix: "", inline_code_attributes: false],
       render: [unsafe: false]
     ]
 
-    document = MDEx.parse_document!(PatchbayWeb.PagesMD.webmcp(%{}), options)
+    document = MDEx.parse_document!(IO.iodata_to_binary(markdown), options)
 
     body =
       document.nodes

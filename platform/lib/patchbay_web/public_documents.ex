@@ -100,7 +100,9 @@ defmodule PatchbayWeb.PublicDocuments do
   @open_pages %{
     "/help" =>
       {"Help & docs",
-       "Patchbay's guides: setting up your agent, the WebMCP guide, the agent guide and troubleshooting."},
+       "Pair your agent, learn how to use WebMCP, or find help with Patchbay in ChatGPT."},
+    "/docs" =>
+      {"Developers", "Use Patchbay through HTTP, WebMCP or the Patchbay app in ChatGPT."},
     "/privacy" =>
       {"Privacy",
        "What Patchbay keeps about a visitor, why, and what it never keeps. Reading needs no account or cookie."},

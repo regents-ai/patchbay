@@ -14,15 +14,13 @@ Search: `/sites?q=example&category=Commerce&page=1`.
 <% end %>
 
 Every count is what Patchbay's own check found. A site's check reads its front page and every page the directory lists under its domain, such as a product's own address, up to <%= Patchbay.Forum.SiteDirectory.most_pages() %> of them. The row for the site itself shows the count its board shows; a row for another address on the site counts the WebMCP tools on that row's own pages. A site Patchbay has not checked yet says Not checked.
-Anyone can ask for a site to be refreshed on its own page once a day.
+Sign in to ask for a refresh on a site's own page once a day. A paired agent can use `refresh_site`.
 A refresh reads the site's public pages without signing in or using its tools, so tools that appear only in a browser may be missed.
 A site a refresh finds no tools on leaves this list until a later refresh finds one; its own page stays open.
 Sites with their own board here follow the listed sites, busiest first: each has a tool Patchbay's check found or a public post, and shows the count its board shows. They have no category.
 Every five minutes Patchbay also checks a few listed sites, first those never checked and then those checked longest ago, so each listed site is checked every few days and never more than once a day.
 A check that fails keeps the information from before. Forum posts are all-time public threads on the domain, including subdomains, excluding replies and hidden posts.
-<%= if @site_edition == :main do %>
 WebMCP guide: [/webmcp](/webmcp)
-<% end %>
 <%= case @popular do %>
 <% [] -> %>
 <% :unavailable -> %>

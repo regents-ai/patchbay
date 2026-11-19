@@ -3,6 +3,7 @@ defmodule Patchbay.Changelog do
 
   @path Path.expand("../../../CHANGELOG.md", __DIR__)
   @external_resource @path
+  @open_marker "<!-- open -->"
   @document @path
             |> File.read!()
             |> MDEx.parse_document!(extension: [inline_code_attributes: false])
@@ -21,52 +22,75 @@ defmodule Patchbay.Changelog do
              acc -> {:cont, Enum.reverse(acc), []}
            end
          )
-         |> Enum.map(fn [heading | _] = nodes ->
+         |> Enum.map(fn [heading | body] ->
            title = MDEx.to_markdown!(%{@document | nodes: [heading]}) |> String.trim()
 
            [date] =
              Regex.run(~r/\A## (\d{4}-\d{2}-\d{2}) — .+\z/u, title, capture: :all_but_first)
 
-           {Date.from_iso8601!(date), nodes}
+           {markers, body} =
+             Enum.split_with(body, fn
+               %MDEx.HtmlBlock{literal: text} -> String.trim(text) == @open_marker
+               _other -> false
+             end)
+
+           {Date.from_iso8601!(date), [heading | body], markers != []}
          end)
          |> Enum.sort_by(&elem(&1, 0), {:desc, Date})
-  @releases Enum.map(@dated, &elem(&1, 1))
   @dates Enum.map(@dated, &elem(&1, 0))
 
-  @entries Enum.map(@releases, fn nodes ->
-             Patchbay.AddressText.html(%{@document | nodes: nodes})
-           end)
-  @intro_pieces Patchbay.AddressText.html(%{
-                  @document
-                  | nodes: Enum.reject(@intro, &match?(%MDEx.Heading{level: 1}, &1))
-                })
-  @markdown MDEx.to_markdown!(%{@document | nodes: @intro ++ List.flatten(@releases)})
-
-  # The page shows twelve entries at a time; the Markdown answer stays whole.
   @per_page 12
-  @pages Enum.chunk_every(@entries, @per_page)
-  @page_count length(@pages)
+  @entries @dated
+           |> Enum.with_index()
+           |> Enum.map(fn {{_date, nodes, open?}, index} ->
+             %{
+               id: length(@dated) - index,
+               nodes: nodes,
+               html: Patchbay.AddressText.html(%{@document | nodes: nodes}),
+               open?: open?
+             }
+           end)
+  @editions Map.new([:main, :open], fn edition ->
+              entries = if edition == :open, do: Enum.filter(@entries, & &1.open?), else: @entries
+
+              intro =
+                if edition == :open,
+                  do: Enum.filter(@intro, &match?(%MDEx.Heading{level: 1}, &1)),
+                  else: @intro
+
+              nodes = intro ++ Enum.flat_map(entries, & &1.nodes)
+
+              {edition,
+               %{
+                 pages:
+                   entries |> Enum.map(&Map.take(&1, [:id, :html])) |> Enum.chunk_every(@per_page),
+                 intro:
+                   Patchbay.AddressText.html(%{
+                     @document
+                     | nodes: Enum.reject(intro, &match?(%MDEx.Heading{level: 1}, &1))
+                   }),
+                 markdown: MDEx.to_markdown!(%{@document | nodes: nodes})
+               }}
+            end)
 
   @doc """
-  One page of the dated entries as HTML, newest first, with their addresses cut
-  out (`Patchbay.AddressText.html/1`): the entries, how many entries come
-  before them, and how many pages there are. The first page is the newest.
+  One page of the dated entries, newest first, and the number of pages for
+  that edition. Open carries only entries marked `<!-- open -->` in the source.
+  Each entry keeps the same anchor on both addresses.
   """
-  @spec page(integer()) :: {:ok, [term()], non_neg_integer(), pos_integer()} | :error
-  def page(number) when number in 1..@page_count//1,
-    do: {:ok, Enum.at(@pages, number - 1), (number - 1) * @per_page, @page_count}
+  @spec page(pos_integer(), :main | :open) :: {:ok, [map()], pos_integer()} | :error
+  def page(number, edition) when number > 0 do
+    pages = @editions[edition].pages
 
-  def page(_number), do: :error
-
-  @doc "How many pages the entries fill."
-  def page_count, do: @page_count
-
-  @doc "How many dated entries there are."
-  def entry_count, do: length(@dates)
+    case Enum.fetch(pages, number - 1) do
+      {:ok, entries} -> {:ok, entries, length(pages)}
+      :error -> :error
+    end
+  end
 
   @doc "The words before the first entry, as the entries' pieces (`Patchbay.AddressText.html/1`)."
-  def intro, do: @intro_pieces
-  def markdown, do: @markdown
+  def intro(edition), do: @editions[edition].intro
+  def markdown(edition), do: @editions[edition].markdown
 
   @doc "How many entries are dated after the given day."
   @spec entries_after(Date.t()) :: non_neg_integer()
