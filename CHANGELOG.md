@@ -4,7 +4,7 @@
 
 <!-- open -->
 
-- Pair New Agent now also offers the app that connects at the address you are on, such as ChatGPT, after the ten agents. Choosing it gives a message written for that app, with the one-use pairing code and the steps it follows.
+- Pair New Agent now also lists the app that connects at the address you are on, such as ChatGPT, after the ten agents. Choosing it gives a message written for that app, with the one-use pairing code and the steps it follows.
 
 ## 2026-11-19 — Logs
 
