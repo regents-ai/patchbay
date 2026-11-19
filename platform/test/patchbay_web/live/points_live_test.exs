@@ -23,10 +23,11 @@ defmodule PatchbayWeb.PointsLiveTest do
   # awards, and which accepts the event for the account it was recorded for.
   defmodule AccountSite do
     require Ash.Query
+    alias RegentPoints.{Event, Store}
 
     def verify(%{"source_app" => app, "source_kind" => kind, "source_event_key" => key}) do
       [%{account_id: account_id}] =
-        RegentPoints.Event
+        Event
         |> Ash.Query.filter(
           source_app == ^app and source_kind == ^kind and source_event_key == ^key
         )
