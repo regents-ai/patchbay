@@ -4,6 +4,13 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v429, 19 Nov 2026
+
+- Commit: 4780265c (image `4780265`), released by the Patchbay chief as an ordinary release: Patchbay's part of the six-site library refresh Sean asked for, after the template had it live (template v290, f513e944). Ash 3.37.2 to 3.37.7, Ash SQL 0.8.7 to 0.8.9, Spark 2.7.9 to 2.7.10, WebSock Adapter 0.7.0 to 0.7.2, AshPostgres from 55db7d44 to its 2.16.0 release commit e36aa20a, which has 55db7d44 as an ancestor. finch, nimble_pool and reactor stay where they were, as on the template; the lock matches the template's on every Hex library both have. Patchbay has no Ash AI. Pins and lock only. No migration. Full check on 4780265c: every gate ok in one run (531 browser walks, 1346 Elixir tests).
+- Live read, headless Chromium, signed out, 14:03Z: both addresses answer health; the plugin names 4780265c with exactly twelve tools; the open address's pages answer at 1280 and 390 with no page error or sideways scroll and the Wallet Bench, Points and Offers stay missing there; on both addresses the Sites page joins its live socket and lists its sites, and search answers.
+- Not proven: a signed-in write on live.
+- Rollback: image `0cf8d48` (v428), image only.
+
 ## v428, 19 Nov 2026
 
 - Commit: 0cf8d485 (image `0cf8d48`), released by the Patchbay chief as an ordinary security release. idna moves from 7.1.0 to 8.0.0, the fix for EEF-CVE-2026-117678 (medium, published 19 Nov 05:36Z: a very long `xn--` name label burns CPU for seconds to minutes). The elixir-utils pin moves to 51a8f8d3 (ea541946 plus the one `ens` commit asking for idna ~> 8.0), and the site's `mix.exs` overrides idna because ethers 0.8.0 and jsv 0.27.0 still ask for 7. Only idna moves in the lock; `mix hex.audit` is clean again. ENS names written with emoji are now accepted; a name with an empty label or a malformed encoded label is refused; ASCII names read as before. No migration. Full check on 0cf8d485: every gate ok in one run.
