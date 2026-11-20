@@ -4,6 +4,14 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v438, 20 Nov 2026
+
+- Commit: ba5e43ac (image `ba5e43a`), released by the Patchbay chief as ordinary work. One file, `lib/patchbay/forum/take_site_picture.ex`: when a site refuses its picture and the earlier picture cannot be forgotten, the error comes back as the action's result and is logged with the start of its message. Before, it raised past the action's own logging, so the job failed and retried with no reason written. Sentinel saw exactly that at 01:00Z: four boards answering 403, each failing twice silently and resting only on the third try, where a refusal is meant to end in one. The cause is not found; it does not reproduce locally, under the `patchbay_app` schema setting either. This release only makes the next round say why. No migration, no machine setting.
+- Full check on ba5e43ac: every gate ok, about one minute.
+- Live read, headless Chromium, signed out, 01:12Z: both addresses answer health; the plugin names ba5e43ac with exactly twelve tools; the open address's tool list and help carry no money words and no other address, and this release changes none of its text; patchbay.help registers its 41 page tools; the Points page answers; Sites joins its live socket on both.
+- Not proven live: the new error line itself, until a board next refuses (the four rest until about 01:00Z on 21 Nov).
+- Rollback: image `593603f` (v437), image only.
+
 ## v437, 19 Nov 2026
 
 - Commit: 593603fb (image `593603f`), released by the Patchbay chief on Sean's "344 a" and "345 a" of 22:25Z. Moves the elixir-utils pin from b9d530d4 to 6d98a113: the identity library no longer keeps one X account to one profile, and a failed read of the sign-in service's keys is not tried again for a minute. Patchbay has no linked-accounts table of its own and no page that links an X account, so nothing of its own changed. Also carries f16d99ad (contract tests removed; nothing the site runs). No migration of Patchbay's own, no machine setting; the shared index was already dropped by the template at 23:07Z, and the deploy passed its check that no shared change is missing.
