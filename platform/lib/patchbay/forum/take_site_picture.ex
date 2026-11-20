@@ -110,13 +110,20 @@ defmodule Patchbay.Forum.TakeSitePicture do
   defp refused(site, reason) do
     warn(site, reason)
 
-    SiteScreenshot
-    |> Ash.Query.filter(site_id == ^site.id)
-    |> Ash.bulk_destroy!(:forget, %{}, authorize?: false)
+    forgotten =
+      SiteScreenshot
+      |> Ash.Query.filter(site_id == ^site.id)
+      |> Ash.bulk_destroy(:forget, %{}, authorize?: false, return_errors?: true)
 
-    site
-    |> Ash.Changeset.for_update(:forget_picture, %{})
-    |> Ash.update(authorize?: false)
+    case forgotten do
+      %Ash.BulkResult{status: :success} ->
+        site
+        |> Ash.Changeset.for_update(:forget_picture, %{})
+        |> Ash.update(authorize?: false)
+
+      %Ash.BulkResult{errors: errors} ->
+        {:error, Ash.Error.to_error_class(errors)}
+    end
   end
 
   # As in keep/2.
@@ -141,11 +148,15 @@ defmodule Patchbay.Forum.TakeSitePicture do
   end
 
   # The trigger leaves logging here, so a failure of Patchbay's own is still an
-  # error, named by its kind.
+  # error, named by its kind and the start of its message.
   defp logged({:error, %PictureNotTaken{}} = not_taken), do: not_taken
 
   defp logged({:error, error} = failed) do
-    Logger.error("A site's picture could not be kept", error_type: inspect(error.__struct__))
+    Logger.error(
+      "A site's picture could not be kept: " <> String.slice(Exception.message(error), 0, 600),
+      error_type: inspect(error.__struct__)
+    )
+
     failed
   end
 
