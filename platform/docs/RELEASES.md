@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## Picture machine v9, 21 Nov 2026
+
+- The picture machine only (`shots/`, its own app `patchbay-shots`), 22:49Z, commit 864b6c67 (image `864b6c6`), released by the Patchbay chief on Sean's "199. a", which lifted the code freeze for this one change. Patchbay itself is unchanged at v438.
+- Why: the machine stopped answering six times between 20 and 21 Nov (two different sites timing out at Patchbay's 60 seconds was the sign), each time until restarted by hand. One page left the browser unable to answer and every later picture waited behind it. No single site caused it.
+- What changed, `shots/server.js`: a picture has 40 seconds from the start of its turn. Past that the server logs `no picture of <address>: stuck <step> for 40 s, restarting` and exits 1; the machine's restart setting (on failure, ten tries) starts it again. The step is one of opening a tab, loading the page, taking the picture, closing the tab, so the next occurrence says where the browser stops.
+- Checked locally with a local Chromium: ordinary pictures, a refused page (422) and an http address (400) answer as before; with the limit cut to 3 seconds for the trial, a slow page logged the stuck line and the server exited 1 with no browser left running.
+- After the release: still one machine, still only its private address.
+- Not proven: the hang was not reproduced on the Mac, so the limit has not yet been seen ending a real one on Fly; and no picture had been asked of v9 when this was written.
+- Rollback: image `f27160c` (its v8).
+
 ## v438, 20 Nov 2026
 
 - Commit: ba5e43ac (image `ba5e43a`), released by the Patchbay chief as ordinary work. One file, `lib/patchbay/forum/take_site_picture.ex`: when a site refuses its picture and the earlier picture cannot be forgotten, the error comes back as the action's result and is logged with the start of its message. Before, it raised past the action's own logging, so the job failed and retried with no reason written. Sentinel saw exactly that at 01:00Z: four boards answering 403, each failing twice silently and resting only on the third try, where a refusal is meant to end in one. The cause is not found; it does not reproduce locally, under the `patchbay_app` schema setting either. This release only makes the next round say why. No migration, no machine setting.
