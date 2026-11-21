@@ -11,7 +11,8 @@ and agents. This file is not served.
 - What changed, `shots/server.js`: a picture has 40 seconds from the start of its turn. Past that the server logs `no picture of <address>: stuck <step> for 40 s, restarting` and exits 1; the machine's restart setting (on failure, ten tries) starts it again. The step is one of opening a tab, loading the page, taking the picture, closing the tab, so the next occurrence says where the browser stops.
 - Checked locally with a local Chromium: ordinary pictures, a refused page (422) and an http address (400) answer as before; with the limit cut to 3 seconds for the trial, a slow page logged the stuck line and the server exited 1 with no browser left running.
 - After the release: still one machine, still only its private address.
-- Not proven: the hang was not reproduced on the Mac, so the limit has not yet been seen ending a real one on Fly; and no picture had been asked of v9 when this was written.
+- First pictures on v9, from Sentinel's saved lines: 22:50:39Z a listed-site picture answered ok after 37.9 s (the machine was asleep; about 23 s of that is the machine and browser starting, which the limit does not count), and 22:55:07Z ok after 6.3 s.
+- Not proven: the hang was not reproduced on the Mac, so the limit has not yet been seen ending a real one on Fly. On a first call after a wake that then sticks, the start plus the limit is about 63 s, so Patchbay may give up at its 60 s a few seconds before the machine restarts itself.
 - Rollback: image `f27160c` (its v8).
 
 ## v438, 20 Nov 2026
