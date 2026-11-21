@@ -3,7 +3,8 @@
 // POST /shot with {"url": "https://..."} answers with a WebP picture of the
 // page at 1600×1000, or an error status. A page that answers with an error
 // status of its own (4xx or 5xx) is not pictured: the answer is 422 with
-// {"page_status": N}. Pictures are taken one at a time.
+// {"page_status": N}. Pictures are taken one at a time, and one that takes
+// longer than 40 seconds restarts the machine.
 // This machine holds no keys, and start.sh stops the browser from reaching
 // anything but public addresses.
 
@@ -16,6 +17,9 @@ const HEIGHT = 1000;
 const LOAD_TIMEOUT_MS = 25_000;
 // Time for late fonts, images and cookie banners to settle after the load.
 const SETTLE_MS = 1_500;
+// The longest one picture may take once the browser is up, start to finish.
+// Patchbay stops waiting for its answer at 60 seconds.
+const PICTURE_LIMIT_MS = 40_000;
 const MAX_BODY_BYTES = 4_096;
 
 // The browser takes about 20 seconds to start on this machine, longer than
@@ -56,18 +60,35 @@ function inTurn(work) {
 
 async function shoot(url) {
   const browser = await launching;
-  const context = await browser.createBrowserContext();
+  let step = "opening a tab";
+
+  // A page can leave the browser unable to answer, and every picture after it
+  // would wait behind this one. The browser is not trusted again: the machine
+  // restarts, as it does when the browser goes away.
+  const stuck = setTimeout(() => {
+    console.error(`no picture of ${url}: stuck ${step} for ${PICTURE_LIMIT_MS / 1000} s, restarting`);
+    process.exit(1);
+  }, PICTURE_LIMIT_MS);
 
   try {
-    const page = await context.newPage();
-    await page.setViewport({ width: WIDTH, height: HEIGHT });
-    // The answer to the last address in any chain of redirects.
-    const response = await page.goto(url, { waitUntil: "load", timeout: LOAD_TIMEOUT_MS });
-    if (response.status() >= 400) throw new PageRefused(response.status());
-    await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
-    return await page.screenshot({ type: "webp", quality: 80 });
+    const context = await browser.createBrowserContext();
+
+    try {
+      const page = await context.newPage();
+      await page.setViewport({ width: WIDTH, height: HEIGHT });
+      step = "loading the page";
+      // The answer to the last address in any chain of redirects.
+      const response = await page.goto(url, { waitUntil: "load", timeout: LOAD_TIMEOUT_MS });
+      if (response.status() >= 400) throw new PageRefused(response.status());
+      await new Promise((resolve) => setTimeout(resolve, SETTLE_MS));
+      step = "taking the picture";
+      return await page.screenshot({ type: "webp", quality: 80 });
+    } finally {
+      step = "closing the tab";
+      await context.close();
+    }
   } finally {
-    await context.close();
+    clearTimeout(stuck);
   }
 }
 

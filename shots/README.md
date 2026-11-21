@@ -20,6 +20,13 @@ WebP picture, `400` for anything but an https address (a request body over
 (4xx or 5xx), so no picture of an error page is ever returned, or `502` when
 the page could not be pictured. Pictures are taken one at a time.
 
+One picture has 40 seconds from the moment its turn begins. Past that the
+browser is taken to be stuck: the server logs `no picture of <address>: stuck
+<step> for 40 s, restarting`, exits, and Fly starts the machine again, so the
+call that was waiting ends without an answer and Patchbay's job retries it.
+Before 21 November a stuck picture held every later one behind it until the
+machine was restarted by hand.
+
 ## Run it locally
 
 ```bash
@@ -101,3 +108,12 @@ its path the server logged `the browser did not start` and exited 1. On Fly
 the browser takes about 20 seconds to start after the machine wakes, longer
 than the proxy waits for the port, so before this the first picture of each
 hour failed.
+
+Run locally on 2026-11-21, after the 40-second limit (server.js with a local
+Chromium, no address rules): `https://example.com/` and
+`https://www.nayax.com.br/` were pictured (200, 1.7 s and 17 s),
+`https://httpbin.org/status/403` answered 422 and an http address 400. With
+the limit cut to 3 seconds for the trial, the slow page logged `stuck loading
+the page for 3 s, restarting` and the server exited 1 with no browser left
+running. The hang itself was not reproduced on the Mac; on Fly it had stopped
+the machine six times in two days.
