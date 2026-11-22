@@ -4,6 +4,16 @@ What shipped in each release, for operators. The public changelog
 (`CHANGELOG.md`, shown at patchbay.help/changelog) says what changed for people
 and agents. This file is not served.
 
+## v439, 22 Nov 2026
+
+- 04:33Z, commit 1b18d67b (image `1b18d67`), released by the Patchbay chief on Sean's "370 a" and "374 a" during the code freeze, with the orchestrator's 04:23Z ruling on the LiveView number.
+- What changed: two lock lines and nothing else. Phoenix 1.8.16 to 1.8.17 and phoenix_live_view 1.2.13 to 1.2.15, both security fixes (LiveView's is EEF-CVE-2026-126334: a page joined without its address skipped its session's sign-in guards). 1.2.14 carries that fix but was published without its type files, so the page-script type check failed on it; 1.2.15 is the same code with them restored.
+- No migration, no setting, no source change.
+- `make check` on 1b18d67b: every gate ok, the advisory audit included.
+- Read on https://patchbay.help in headless Chromium after the switch: /, /sites, /points, /pair, /incidents and /help answer 200 with no script error, and the two live pages (/points, /pair) connect. Sentinel's first read at 04:34Z: 54 requests, no server error, 9 jobs all success.
+- Not checked: a signed-in page, a post, a pairing, a payment or a connected ChatGPT call on the new build.
+- Rollback: image `ba5e43a` (v438), image only.
+
 ## Picture machine v9, 21 Nov 2026
 
 - The picture machine only (`shots/`, its own app `patchbay-shots`), 22:49Z, commit 864b6c67 (image `864b6c6`), released by the Patchbay chief on Sean's "199. a", which lifted the code freeze for this one change. Patchbay itself is unchanged at v438.
